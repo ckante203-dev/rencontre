@@ -1,0 +1,68 @@
+name: rencontre
+description: App de rencontre + réseau social (Grindr x Snapchat)
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State management ─────────────────────────────────────────
+  get: ^4.6.6
+
+  # ── Supabase ──────────────────────────────────────────────────
+  supabase_flutter: ^2.5.6
+
+  # ── Auth providers ────────────────────────────────────────────
+  google_sign_in: ^6.2.1
+
+  # ── UI ────────────────────────────────────────────────────────
+  google_fonts: ^6.1.0
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  flutter_staggered_animations: ^1.1.1
+
+  # ── Géolocalisation ───────────────────────────────────────────
+  geolocator: ^10.1.0
+  awesome_notifications: ^0.10.0
+  camera: ^0.11.0
+  image: ^4.1.3
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.0
+
+  # ── Media ─────────────────────────────────────────────────────
+  image_picker: ^1.0.7
+  file_picker: ^8.0.3
+
+  # ── Audio ─────────────────────────────────────────────────────
+  flutter_sound: ^9.2.13
+  path_provider: ^2.1.3
+
+  # ── Permissions ───────────────────────────────────────────────
+  permission_handler: ^11.3.1
+
+  # ── Utilitaires ───────────────────────────────────────────────
+  timeago: ^3.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/logo.png
+  adaptive_icon_background: "#0d0d1a"
+  adaptive_icon_foreground: assets/images/logo.png
+  min_sdk_android: 21
