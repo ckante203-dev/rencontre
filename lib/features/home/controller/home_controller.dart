@@ -1,252 +1,307 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/shared/models/story_model.dart';
-import 'package:rencontre/features/home/view/story_screen.dart';
+import 'package:rencontre/shared/models/user_model.dart';
 
 class HomeController extends GetxController {
   final _service = SupabaseService();
 
-  final RxList<UserModel> nearbyUsers = <UserModel>[].obs;
-  final RxList<StoryModel> stories = <StoryModel>[].obs;
-  List<StoryModel> _allStories = [];
-  final Rx<Position?> currentPosition = Rx<Position?>(null);
-  final RxBool isLoadingUsers = false.obs;
-  final RxBool isLoadingStories = false.obs;
+  final RxList<UserModel> profiles = <UserModel>[].obs;
+  final RxBool isLoading = false.obs;
+  RxBool get isLoadingUsers => isLoading;
+
+  final Rx<UserModel?> _myProfile = Rx<UserModel?>(null);
+  UserModel? get myProfile => _myProfile.value;
+
+  final RxList<StoryModel> _allStories = <StoryModel>[].obs;
+  final Set<String> _viewedStoryIds = {};
+
+  // ── Une seule story par utilisateur (la plus récente) ──
+  List<StoryModel> get stories {
+    final seen = <String>{};
+    final result = <StoryModel>[];
+    for (final s
+        in _allStories.where((s) => s.userId != _myUid && s.isActive)) {
+      if (!seen.contains(s.userId)) {
+        seen.add(s.userId);
+        result.add(s.copyWith(isSeen: _viewedStoryIds.contains(s.id)));
+      }
+    }
+    return result;
+  }
+
+  StoryModel? get myActiveStory =>
+      _allStories.where((s) => s.userId == _myUid && s.isActive).firstOrNull;
+
+  double? _myLat;
+  double? _myLng;
+
   final RxBool locationError = false.obs;
-  final RxDouble radiusKm = 50.0.obs;
   final RxString filterMode = 'all'.obs;
-  // Filtres avancés
-  final RxString filterGender = 'tous'.obs;   // tous / homme / femme
-  final RxInt filterMinAge = 18.obs;
-  final RxInt filterMaxAge = 50.obs;
-  final RxDouble filterDistance = 50.0.obs;   // en km
+  final RxString filterGender = 'tous'.obs;
+  final RxDouble filterDistance = 50.0.obs;
+
+  static const double _storyRadiusKm = 50.0;
+
+  String? get _myUid => _service.currentUserId;
 
   @override
   void onInit() {
     super.onInit();
-    _service.setOnline(true);
-    // Charge les profils et stories au démarrage
-    loadProfiles();
-    loadStories();
-    // Tente la géolocalisation en parallèle
-    _getLocation();
+    _init();
   }
 
-  @override
-  void onClose() {
-    _service.setOnline(false);
-    super.onClose();
+  Future<void> _init() async {
+    await _loadMyProfile();
+    await _locateMe();
+    await loadProfiles();
+    await loadStories();
   }
 
-  // ─── PROFILS ─────────────────────────────────────────────────
-
-  Future<void> loadProfiles() async {
-    isLoadingUsers.value = true;
-    try {
-      final profiles = await _service.fetchProfiles();
-      nearbyUsers.value = profiles;
-      // Calcule les distances si on a la position
-      if (currentPosition.value != null) {
-        _updateDistances(currentPosition.value!);
-      }
-    } catch (_) {} finally {
-      isLoadingUsers.value = false;
-      isLoadingStories.value = false;
-    }
+  Future<void> _loadMyProfile() async {
+    _myProfile.value = await _service.fetchMyProfile();
   }
 
-  Future<void> refresh() => loadProfiles();
-  Future<void> loadNearbyUsers() => loadProfiles();
-  Future<void> refreshProfiles() => loadProfiles();
-
-  // ─── ACTIONS PROFIL ──────────────────────────────────────────
-
-  void openProfile(UserModel user) {
-    Get.toNamed('/profile/view', arguments: user);
-  }
-
-  void openAddStory() async {
-    final result = await Get.to(() => const AddStoryScreen(),
-      transition: Transition.downToUp);
-    if (result == true) loadStories();
-  }
-
-  void openStory(StoryModel story) {
-    // Récupère toutes les stories de cet utilisateur triées par date
-    final userStories = _allStories
-      .where((s) => s.userId == story.userId)
-      .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    Get.to(() => StoryViewerScreen(
-      stories: userStories.isEmpty ? [story] : userStories,
-      initialIndex: 0,
-    ), transition: Transition.fadeIn);
-  }
-
-  // Supprime une story
-  Future<void> deleteStory(String storyId) async {
-    try {
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      // Supprime de la BDD
-      await Supabase.instance.client.from('stories')
-        .delete().eq('id', storyId).eq('user_id', uid!);
-      // Recharge
-      await loadStories();
-      Get.snackbar('Story supprimee', '',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF1A1A2E),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2));
-    } catch (e) {
-      debugPrint('deleteStory error: \$e');
-    }
-  }
-
-  // ─── FILTRES ─────────────────────────────────────────────────
-
-  // ─── STORIES ─────────────────────────────────────────────────
-
-  Future<void> loadStories() async {
-    try {
-      isLoadingStories.value = true;
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      final data = await Supabase.instance.client
-        .from('stories')
-        .select('*, profiles(name, photo_url)')
-        .gt('expires_at', DateTime.now().toIso8601String())
-        .order('created_at', ascending: false);
-
-      // Parse toutes les stories
-      final allStories = (data as List).map((row) {
-        final profile = row['profiles'] as Map<String, dynamic>?;
-        final viewedBy = (row['viewed_by'] as List?)
-          ?.map((e) => e.toString()).toList() ?? [];
-        return StoryModel(
-          id: row['id'],
-          userId: row['user_id'],
-          userName: profile?['name'] ?? 'Utilisateur',
-          userPhotoUrl: profile?['photo_url'],
-          mediaUrl: row['media_url'],
-          isVideo: row['is_video'] ?? false,
-          caption: row['caption'],
-          createdAt: DateTime.parse(row['created_at']),
-          expiresAt: DateTime.parse(row['expires_at']),
-          viewedBy: viewedBy,
-          isSeen: uid != null && viewedBy.contains(uid),
-        );
-      }).toList();
-
-      // Garde toutes les stories mais trie par user (plus récentes en premier)
-      // La bulle affiche la plus récente, le viewer montre toutes les stories du user
-      final Map<String, StoryModel> latestByUser = {};
-      for (final s in allStories) {
-        if (!latestByUser.containsKey(s.userId) ||
-            s.createdAt.isAfter(latestByUser[s.userId]!.createdAt)) {
-          latestByUser[s.userId] = s;
-        }
-      }
-      // Stocke toutes les stories pour le viewer
-      _allStories = allStories;
-      stories.value = latestByUser.values.toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    } catch (e) {
-      debugPrint('loadStories error: \$e');
-    } finally {
-      isLoadingStories.value = false;
-    }
-  }
-
-  void setFilter(String mode) => filterMode.value = mode;
-  void setRadius(double km) { radiusKm.value = km; loadProfiles(); }
-
-  List<UserModel> get filteredUsers {
-    List<UserModel> result = nearbyUsers.toList();
-
-    // Filtre mode de base
-    if (filterMode.value == 'online') {
-      result = result.where((u) => u.isOnline).toList();
-    } else if (filterMode.value == 'nearby') {
-      result = result.where((u) =>
-        u.distanceMeters != null && u.distanceMeters! < 500).toList();
-    }
-
-    // Filtre sexe
-    if (filterGender.value != 'tous') {
-      result = result.where((u) =>
-        u.gender?.toLowerCase() == filterGender.value).toList();
-    }
-
-    // Filtre âge
-    result = result.where((u) =>
-      u.age >= filterMinAge.value && u.age <= filterMaxAge.value).toList();
-
-    // Filtre distance
-    result = result.where((u) =>
-      u.distanceMeters == null ||
-      u.distanceMeters! <= filterDistance.value * 1000).toList();
-
-    return result;
-  }
-
-  void applyFilters({
-    String? gender,
-    int? minAge,
-    int? maxAge,
-    double? distance,
-  }) {
-    if (gender != null) filterGender.value = gender;
-    if (minAge != null) filterMinAge.value = minAge;
-    if (maxAge != null) filterMaxAge.value = maxAge;
-    if (distance != null) filterDistance.value = distance;
-  }
-
-  // ─── GÉOLOCALISATION ─────────────────────────────────────────
-
-  Future<void> _getLocation() async {
+  Future<void> _locateMe() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         locationError.value = true;
         return;
       }
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) {
+          locationError.value = true;
+          return;
+        }
       }
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
+      if (perm == LocationPermission.deniedForever) {
         locationError.value = true;
         return;
       }
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 5),
       );
-      currentPosition.value = position;
+      _myLat = pos.latitude;
+      _myLng = pos.longitude;
       locationError.value = false;
-      await _service.updateLocation(position.latitude, position.longitude);
-      _updateDistances(position);
-    } catch (_) {
-      // Localisation échouée mais on affiche quand même les profils
-      locationError.value = false;
+      await _service.updateLocation(pos.latitude, pos.longitude);
+    } catch (e) {
+      locationError.value = true;
+      debugPrint('_locateMe error: $e');
     }
   }
 
-  void _updateDistances(Position position) {
-    nearbyUsers.value = nearbyUsers.map((user) {
-      if (user.latitude == null || user.longitude == null) return user;
-      final dist = Geolocator.distanceBetween(
-        position.latitude, position.longitude,
-        user.latitude!, user.longitude!,
+  Future<void> loadProfiles() async {
+    isLoading.value = true;
+    try {
+      final myProfile = _myProfile.value;
+      profiles.value = await _service.fetchProfiles(
+        genderFilter: myProfile?.lookingFor,
+        lookingFor: myProfile?.gender,
+        myLat: _myLat,
+        myLng: _myLng,
       );
-      return user.copyWith(distanceMeters: dist);
-    }).toList();
-    nearbyUsers.sort((a, b) =>
-      (a.distanceMeters ?? 99999).compareTo(b.distanceMeters ?? 99999));
+    } catch (e) {
+      debugPrint('loadProfiles error: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  Future<void> openLocationSettings() => Geolocator.openLocationSettings();
+  void setFilter(String mode) => filterMode.value = mode;
+
+  List<UserModel> get filteredUsers {
+    return profiles.where((u) {
+      if (filterMode.value == 'online' && !u.isOnline) return false;
+      if (filterMode.value == 'nearby') {
+        final dist = u.distanceMeters;
+        if (dist == null || dist > filterDistance.value * 1000) return false;
+      }
+      if (filterGender.value != 'tous' && u.gender != filterGender.value)
+        return false;
+      if (filterMode.value != 'nearby') {
+        final dist = u.distanceMeters;
+        if (dist != null && dist > filterDistance.value * 1000) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  static String formatDistance(double? meters) {
+    if (meters == null) return '';
+    if (meters < 1000) return '${meters.round()} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  // ✅ FIX BUG 1 : route corrigée '/profile/view' (était '/profile')
+  void openProfile(UserModel user) =>
+      Get.toNamed('/profile/view', arguments: user);
+
+  void openLocationSettings() => Geolocator.openLocationSettings();
+
+  // ─── STORIES ─────────────────────────────────────────────────
+
+  Future<void> loadStories() async {
+    final uid = _myUid;
+    if (uid == null) return;
+    try {
+      final data = await Supabase.instance.client
+          .from('stories')
+          .select('*, profiles(name, photo_url, latitude, longitude)')
+          .gt('expires_at', DateTime.now().toIso8601String())
+          .order('created_at', ascending: false);
+
+      final Set<String> chattedUserIds = await _fetchChattedUserIds(uid);
+      final stories = <StoryModel>[];
+
+      for (final row in (data as List)) {
+        final profile = row['profiles'] as Map<String, dynamic>?;
+        final authorId = row['user_id'] as String? ?? '';
+
+        if (authorId == uid) {
+          stories.add(_rowToStory(row, profile));
+          continue;
+        }
+
+        final bool hasChatted = chattedUserIds.contains(authorId);
+        final bool isNearby = _isNearby(profile);
+        if (hasChatted && isNearby) {
+          stories.add(_rowToStory(row, profile, hasChatted: true));
+        }
+      }
+
+      _allStories.value = stories;
+    } catch (e) {
+      debugPrint('loadStories error: $e');
+    }
+  }
+
+  Future<Set<String>> _fetchChattedUserIds(String uid) async {
+    try {
+      final data = await Supabase.instance.client
+          .from('conversations')
+          .select('user1_id, user2_id')
+          .or('user1_id.eq.$uid,user2_id.eq.$uid');
+      final Set<String> ids = {};
+      for (final row in (data as List)) {
+        final u1 = row['user1_id'] as String? ?? '';
+        final u2 = row['user2_id'] as String? ?? '';
+        if (u1 != uid) ids.add(u1);
+        if (u2 != uid) ids.add(u2);
+      }
+      return ids;
+    } catch (e) {
+      debugPrint('_fetchChattedUserIds error: $e');
+      return {};
+    }
+  }
+
+  bool _isNearby(Map<String, dynamic>? profile) {
+    if (_myLat == null || _myLng == null) return true;
+    final lat = profile?['latitude']?.toDouble();
+    final lng = profile?['longitude']?.toDouble();
+    if (lat == null || lng == null) return false;
+    return _distanceKm(_myLat!, _myLng!, lat, lng) <= _storyRadiusKm;
+  }
+
+  double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371.0;
+    final dLat = _deg2rad(lat2 - lat1);
+    final dLon = _deg2rad(lon2 - lon1);
+    final a = (dLat / 2) * (dLat / 2) +
+        _deg2rad(lat1) * _deg2rad(lat2) * (dLon / 2) * (dLon / 2);
+    return r * 2 * (a < 1 ? a : 1);
+  }
+
+  double _deg2rad(double deg) => deg * 3.141592653589793 / 180;
+
+  StoryModel _rowToStory(
+      Map<String, dynamic> row, Map<String, dynamic>? profile,
+      {bool hasChatted = false}) {
+    final viewedBy = List<String>.from(row['viewed_by'] ?? []);
+    final uid = _myUid ?? '';
+    double? distanceKm;
+    if (_myLat != null && _myLng != null) {
+      final lat = profile?['latitude']?.toDouble();
+      final lng = profile?['longitude']?.toDouble();
+      if (lat != null && lng != null) {
+        distanceKm = _distanceKm(_myLat!, _myLng!, lat, lng);
+      }
+    }
+    return StoryModel(
+      id: row['id'] ?? '',
+      userId: row['user_id'] ?? '',
+      userName: profile?['name'] ?? 'Utilisateur',
+      userPhotoUrl: profile?['photo_url'],
+      mediaUrl: row['media_url'] ?? '',
+      caption: row['caption'],
+      isVideo: row['is_video'] ?? false,
+      isSeen: viewedBy.contains(uid) || _viewedStoryIds.contains(row['id']),
+      createdAt: DateTime.parse(row['created_at']),
+      expiresAt: DateTime.parse(row['expires_at']),
+      viewedBy: viewedBy,
+      distanceKm: distanceKm,
+      hasChatted: hasChatted,
+    );
+  }
+
+  void markStoryAsSeen(String storyId) {
+    _viewedStoryIds.add(storyId);
+    final idx = _allStories.indexWhere((s) => s.id == storyId);
+    if (idx >= 0) _allStories[idx] = _allStories[idx].copyWith(isSeen: true);
+    _markStorySeenInDb(storyId);
+  }
+
+  Future<void> _markStorySeenInDb(String storyId) async {
+    final uid = _myUid;
+    if (uid == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('stories')
+          .select('viewed_by')
+          .eq('id', storyId)
+          .maybeSingle();
+      if (row == null) return;
+      final List<String> viewedBy = List<String>.from(row['viewed_by'] ?? []);
+      if (!viewedBy.contains(uid)) {
+        viewedBy.add(uid);
+        await Supabase.instance.client
+            .from('stories')
+            .update({'viewed_by': viewedBy}).eq('id', storyId);
+      }
+    } catch (e) {
+      debugPrint('_markStorySeenInDb error: $e');
+    }
+  }
+
+  bool userHasActiveStory(String userId) =>
+      _allStories.any((s) => s.userId == userId && s.isActive);
+
+  bool userStoryIsSeen(String userId) {
+    final userStories =
+        _allStories.where((s) => s.userId == userId && s.isActive);
+    if (userStories.isEmpty) return true;
+    return userStories.every((s) => s.isSeen || _viewedStoryIds.contains(s.id));
+  }
+
+  // ✅ Toutes les stories d'un user (pour le viewer qui défile)
+  List<StoryModel> storiesForUser(String userId) =>
+      _allStories.where((s) => s.userId == userId && s.isActive).toList();
+
+  Future<void> setOnline(bool online) async => await _service.setOnline(online);
+
+  @override
+  void onClose() {
+    setOnline(false);
+    super.onClose();
+  }
 }

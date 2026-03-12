@@ -1,13 +1,1273 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
-import 'package:rencontre/features/home/view/custom_camera_screen.dart';
 import 'package:rencontre/shared/models/story_model.dart';
+import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/features/chat/controller/chat_controller.dart';
+import 'package:rencontre/features/chat/model/message_model.dart';
+
+class StoryViewerScreen extends StatefulWidget {
+  final List<StoryModel> stories;
+  final int initialIndex;
+
+  const StoryViewerScreen(
+      {super.key, required this.stories, this.initialIndex = 0});
+
+  @override
+  State<StoryViewerScreen> createState() => _StoryViewerScreenState();
+}
+
+class _StoryViewerScreenState extends State<StoryViewerScreen>
+    with SingleTickerProviderStateMixin {
+  late int _current;
+  late AnimationController _progressCtrl;
+  VideoPlayerController? _videoCtrl;
+  bool _videoReady = false;
+  final String? _myUid = Supabase.instance.client.auth.currentUser?.id;
+  bool _replyFocused = false;
+  bool _paused = false;
+  bool _longPressing = false; // vrai pendant le maintien → masque l'UI
+  final Set<String> _likedStoryIds = {};
+
+  static const Duration _imageDuration = Duration(seconds: 5);
+  static const int _freeViewersLimit = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+    _current = widget.initialIndex.clamp(0, widget.stories.length - 1);
+    _progressCtrl = AnimationController(vsync: this);
+    _progressCtrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _next();
+    });
+    _loadStory(_current);
+  }
+
+  @override
+  void dispose() {
+    _progressCtrl.dispose();
+    _videoCtrl?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadStory(int index) async {
+    _progressCtrl.stop();
+    _progressCtrl.reset();
+    await _videoCtrl?.dispose();
+    _videoCtrl = null;
+    if (mounted) setState(() => _videoReady = false);
+
+    final s = widget.stories[index];
+    if (s.isVideo) {
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(s.mediaUrl));
+      _videoCtrl = ctrl;
+      await ctrl.initialize();
+      if (!mounted) return;
+      setState(() => _videoReady = true);
+      ctrl.play();
+      _progressCtrl.duration = ctrl.value.duration;
+    } else {
+      _progressCtrl.duration = _imageDuration;
+    }
+    _progressCtrl.forward();
+    if (mounted) setState(() {});
+    _loadLikes(s); // charge si déjà liké
+  }
+
+  void _next() {
+    if (_current < widget.stories.length - 1) {
+      setState(() => _current++);
+      _loadStory(_current);
+    } else {
+      Get.back();
+    }
+  }
+
+  void _prev() {
+    if (_current > 0) {
+      setState(() => _current--);
+      _loadStory(_current);
+    }
+  }
+
+  void _pause() {
+    if (_paused) return;
+    _paused = true;
+    _progressCtrl.stop();
+    _videoCtrl?.pause();
+  }
+
+  void _resume() {
+    if (!_paused) return;
+    _paused = false;
+    _progressCtrl.forward();
+    _videoCtrl?.play();
+  }
+
+  // ── Like = stocké dans stories.liked_by[], jamais envoyé en message ──
+  Future<void> _likeStory(StoryModel story) async {
+    if (story.userId == _myUid) return;
+    final uid = _myUid;
+    if (uid == null) return;
+    final alreadyLiked = _likedStoryIds.contains(story.id);
+    // Toggle local immédiat
+    setState(() {
+      if (alreadyLiked) {
+        _likedStoryIds.remove(story.id);
+      } else {
+        _likedStoryIds.add(story.id);
+      }
+    });
+    try {
+      final row = await Supabase.instance.client
+          .from('stories')
+          .select('liked_by')
+          .eq('id', story.id)
+          .maybeSingle();
+      if (row == null) return;
+      final List<String> liked = List<String>.from(row['liked_by'] ?? []);
+      if (alreadyLiked) {
+        liked.remove(uid);
+      } else if (!liked.contains(uid)) {
+        liked.add(uid);
+      }
+      await Supabase.instance.client
+          .from('stories')
+          .update({'liked_by': liked}).eq('id', story.id);
+    } catch (e) {
+      // Rollback si erreur
+      setState(() {
+        if (alreadyLiked) {
+          _likedStoryIds.add(story.id);
+        } else {
+          _likedStoryIds.remove(story.id);
+        }
+      });
+      debugPrint('_likeStory error: $e');
+    }
+  }
+
+  // Charge si l'utilisateur a déjà liké cette story
+  Future<void> _loadLikes(StoryModel story) async {
+    final uid = _myUid;
+    if (uid == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('stories')
+          .select('liked_by')
+          .eq('id', story.id)
+          .maybeSingle();
+      if (row == null) return;
+      final List<String> liked = List<String>.from(row['liked_by'] ?? []);
+      if (liked.contains(uid) && mounted)
+        setState(() => _likedStoryIds.add(story.id));
+    } catch (_) {}
+  }
+
+  // ✅ FIX BUG 2 : route corrigée '/profile/view' (était '/profil/detail')
+  Future<void> _openProfile(StoryModel story) async {
+    if (_replyFocused) return;
+    if (story.userId == _myUid) return;
+
+    try {
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', story.userId)
+          .maybeSingle();
+      if (data == null) return;
+
+      int age = 0;
+      final birthdate = data['birthdate'] ?? data['birth_date'];
+      if (birthdate != null) {
+        try {
+          DateTime birth;
+          if (birthdate.toString().contains('/')) {
+            final parts = birthdate.toString().split('/');
+            birth = DateTime(
+                int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          } else {
+            birth = DateTime.parse(birthdate.toString());
+          }
+          final now = DateTime.now();
+          age = now.year - birth.year;
+          if (now.month < birth.month ||
+              (now.month == birth.month && now.day < birth.day)) age--;
+        } catch (_) {
+          age = data['age'] ?? 0;
+        }
+      } else {
+        age = data['age'] ?? 0;
+      }
+
+      final user = UserModel(
+        id: data['id'] ?? story.userId,
+        name: data['name'] ?? story.userName,
+        age: age,
+        bio: data['bio'],
+        photoUrl: data['photo_url'] ?? story.userPhotoUrl,
+        photoUrls: List<String>.from(data['photo_urls'] ?? []),
+        interests: List<String>.from(data['interests'] ?? []),
+        latitude: data['latitude']?.toDouble(),
+        longitude: data['longitude']?.toDouble(),
+        gender: data['gender'],
+        lookingFor: data['looking_for'],
+        isOnline: data['is_online'] ?? false,
+        followersCount: data['followers_count'] ?? 0,
+        followingCount: data['following_count'] ?? 0,
+        matchesCount: data['matches_count'] ?? 0,
+      );
+
+      // ✅ Route correcte
+      Get.toNamed('/profile/view', arguments: user);
+    } catch (e) {
+      debugPrint('_openProfile from story error: $e');
+    }
+  }
+
+  Future<void> _deleteStory(StoryModel story) async {
+    if (story.userId != _myUid) return;
+    final confirmed = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: const Color(0xFF11111C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Supprimer cette story ?',
+          style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Syne',
+              fontWeight: FontWeight.w800,
+              fontSize: 17)),
+      content: const Text('Cette story sera définitivement supprimée.',
+          style: TextStyle(color: Color(0xFF5A5A78), fontSize: 13)),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Annuler',
+                style: TextStyle(
+                    color: Color(0xFF5A5A78), fontWeight: FontWeight.w600))),
+        GestureDetector(
+          onTap: () => Get.back(result: true),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+            decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(12)),
+            child: const Text('Supprimer',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ),
+      ],
+    ));
+
+    if (confirmed != true) {
+      _resume(); // annulé → on reprend la story
+      return;
+    }
+    try {
+      // Suppression — on filtre uniquement par id (la RLS vérifie user_id côté Supabase)
+      await Supabase.instance.client
+          .from('stories')
+          .delete()
+          .eq('id', story.id);
+
+      // Mettre à jour le HomeController
+      if (Get.isRegistered<HomeController>()) {
+        await Get.find<HomeController>().loadStories();
+      }
+
+      // Fermer l'écran viewer (toujours — qu'il reste d'autres stories ou pas)
+      if (mounted) {
+        Get.back();
+        Get.snackbar(
+          'Story supprimée',
+          '',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    } catch (e) {
+      debugPrint('_deleteStory error: $e');
+      if (mounted) {
+        Get.snackbar(
+          'Erreur',
+          "Impossible de supprimer la story",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.stories[_current];
+    final bool isOwner = s.userId == _myUid;
+    final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false,
+      body: GestureDetector(
+        onLongPressStart: (_) {
+          _pause();
+          setState(() => _longPressing = true);
+        },
+        onLongPressEnd: (_) {
+          _resume();
+          setState(() => _longPressing = false);
+        },
+        onTapUp: (d) {
+          if (_replyFocused) {
+            FocusScope.of(context).unfocus();
+            setState(() => _replyFocused = false);
+            return;
+          }
+          final x = d.globalPosition.dx;
+          final w = MediaQuery.of(context).size.width;
+          if (x < w * 0.35) {
+            _prev();
+          } else {
+            _next();
+          }
+        },
+        child: Stack(fit: StackFit.expand, children: [
+          _buildMedia(s),
+          const DecoratedBox(
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.center,
+                      colors: [Color(0xCC000000), Colors.transparent]))),
+          const Align(
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                  height: 200,
+                  child: DecoratedBox(
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.center,
+                              colors: [
+                        Color(0xBB000000),
+                        Colors.transparent
+                      ]))))),
+
+          // Barres de progression
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 12,
+            right: 12,
+            child: Row(
+                children: List.generate(widget.stories.length, (i) {
+              return Expanded(
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: i == _current
+                              ? AnimatedBuilder(
+                                  animation: _progressCtrl,
+                                  builder: (_, __) => LinearProgressIndicator(
+                                      value: _progressCtrl.value,
+                                      backgroundColor: Colors.white30,
+                                      valueColor: const AlwaysStoppedAnimation(
+                                          Colors.white),
+                                      minHeight: 2.5))
+                              : LinearProgressIndicator(
+                                  value: i < _current ? 1.0 : 0.0,
+                                  backgroundColor: Colors.white30,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                      Colors.white),
+                                  minHeight: 2.5))));
+            })),
+          ),
+
+          if (_paused)
+            Center(
+                child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24)),
+                    child: const Icon(Icons.pause_rounded,
+                        color: Colors.white, size: 36))),
+
+          // Header
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 20,
+            left: 12,
+            right: 12,
+            child: Row(children: [
+              GestureDetector(
+                  onTap: () => _openProfile(s),
+                  child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2)),
+                      child: ClipOval(
+                          child: s.userPhotoUrl != null &&
+                                  s.userPhotoUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
+                              : Container(
+                                  color: AppColors.accent2,
+                                  child: Center(
+                                      child: Text(s.userName[0].toUpperCase(),
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 16))))))),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: GestureDetector(
+                      onTap: () => _openProfile(s),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(s.userName,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700)),
+                            Text(_ago(s.createdAt),
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 11)),
+                          ]))),
+              if (isOwner)
+                GestureDetector(
+                    onTap: () {
+                      _pause();
+                      _deleteStory(s);
+                    },
+                    child: Container(
+                        width: 34,
+                        height: 34,
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.3),
+                            shape: BoxShape.circle,
+                            border:
+                                Border.all(color: Colors.red.withOpacity(0.5))),
+                        child: const Icon(Icons.delete_outline_rounded,
+                            color: Colors.white, size: 17))),
+              GestureDetector(
+                  onTap: () => Get.back(),
+                  child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                          color: Colors.black38,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24)),
+                      child: const Icon(Icons.close_rounded,
+                          color: Colors.white, size: 18))),
+            ]),
+          ),
+
+          // Zone basse — masquée pendant le maintien long
+          if (!_longPressing)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              bottom: keyboardH > 0 ? keyboardH + 8 : bottomPad + 52,
+              left: 0,
+              right: 0,
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (s.caption != null &&
+                            s.caption!.isNotEmpty &&
+                            !_replyFocused)
+                          Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(12)),
+                                  child: Text(s.caption!,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          height: 1.4)))),
+                        if (isOwner && !_replyFocused) ...[
+                          GestureDetector(
+                              onTap: () => _showViewers(s),
+                              child: Row(children: [
+                                const Icon(Icons.remove_red_eye_outlined,
+                                    color: Colors.white70, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                    '${s.viewedBy.length} vue${s.viewedBy.length != 1 ? 's' : ''}',
+                                    style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.chevron_right_rounded,
+                                    color: Colors.white38, size: 16),
+                              ])),
+                          const SizedBox(height: 10),
+                        ],
+                        if (!isOwner)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              // ❤️ Bouton like
+                              GestureDetector(
+                                onTap: () => _likeStory(s),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: _likedStoryIds.contains(s.id)
+                                        ? Colors.pink.withOpacity(0.3)
+                                        : Colors.black54,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: _likedStoryIds.contains(s.id)
+                                          ? Colors.pink
+                                          : Colors.white24,
+                                      width: _likedStoryIds.contains(s.id)
+                                          ? 1.5
+                                          : 1,
+                                    ),
+                                  ),
+                                  child: Center(
+                                      child: Text(
+                                    _likedStoryIds.contains(s.id) ? '❤️' : '🤍',
+                                    style: const TextStyle(fontSize: 20),
+                                  )),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // 💬 Champ réponse
+                              Expanded(
+                                  child: _ReplyBar(
+                                      story: s,
+                                      onFocusChanged: (focused) {
+                                        setState(() => _replyFocused = focused);
+                                        if (focused) {
+                                          _pause();
+                                        } else {
+                                          _resume();
+                                        }
+                                      })),
+                            ],
+                          ),
+                      ])),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildMedia(StoryModel s) {
+    if (s.isVideo) {
+      if (!_videoReady || _videoCtrl == null) {
+        return const Center(
+            child:
+                CircularProgressIndicator(color: Colors.white, strokeWidth: 2));
+      }
+      return Center(
+          child: AspectRatio(
+              aspectRatio: _videoCtrl!.value.aspectRatio,
+              child: VideoPlayer(_videoCtrl!)));
+    }
+    return CachedNetworkImage(
+        imageUrl: s.mediaUrl,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => const Center(
+            child:
+                CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+        errorWidget: (_, __, ___) => const Center(
+            child: Icon(Icons.broken_image_outlined,
+                color: Colors.white38, size: 48)));
+  }
+
+  void _showViewers(StoryModel s) {
+    if (s.userId != _myUid) return;
+    final viewers = s.viewedBy;
+    // Récupère les liked_by depuis Supabase (async, best effort)
+    // On passe story.id pour que _ViewerTile puisse vérifier
+    final storyId = s.id;
+    final freeCount = viewers.length.clamp(0, _freeViewersLimit);
+    final lockedCount = (viewers.length - _freeViewersLimit).clamp(0, 999);
+
+    Get.bottomSheet(Container(
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(Get.context!).size.height * 0.65),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      decoration: const BoxDecoration(
+          color: Color(0xFF11111C),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+                child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFF252538),
+                        borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Row(children: [
+              const Icon(Icons.remove_red_eye_outlined,
+                  color: AppColors.textMuted, size: 18),
+              const SizedBox(width: 8),
+              Text('${viewers.length} vue${viewers.length != 1 ? 's' : ''}',
+                  style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 12),
+            if (viewers.isEmpty)
+              const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                      child: Text("Personne n'a encore vu cette story",
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 14))))
+            else
+              Flexible(
+                  child: ListView(shrinkWrap: true, children: [
+                ...viewers.take(freeCount).map((uid) => _ViewerTileWithLike(
+                    uid: uid, storyId: storyId, key: ValueKey(uid))),
+                if (lockedCount > 0) ...[
+                  const SizedBox(height: 8),
+                  Stack(children: [
+                    Column(
+                        children: List.generate(
+                            lockedCount.clamp(0, 3),
+                            (_) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 6),
+                                child: Row(children: [
+                                  Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: AppColors.surface2
+                                              .withOpacity(0.5))),
+                                  const SizedBox(width: 10),
+                                  Container(
+                                      width: 120,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                          color: AppColors.surface2
+                                              .withOpacity(0.5),
+                                          borderRadius:
+                                              BorderRadius.circular(6))),
+                                ])))),
+                    Positioned.fill(
+                        child: Container(
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                            Colors.transparent,
+                            const Color(0xFF11111C).withOpacity(0.9),
+                            const Color(0xFF11111C)
+                          ])),
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: AppColors.gradientPink),
+                                child: const Icon(Icons.lock_rounded,
+                                    color: Colors.white, size: 22)),
+                            const SizedBox(height: 10),
+                            Text(
+                                '+$lockedCount profil${lockedCount > 1 ? 's' : ''} masqué${lockedCount > 1 ? 's' : ''}',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14)),
+                            const SizedBox(height: 6),
+                            const Text('Passe en Premium pour tout voir',
+                                style: TextStyle(
+                                    color: AppColors.textMuted, fontSize: 12)),
+                            const SizedBox(height: 14),
+                            GestureDetector(
+                                onTap: () {
+                                  Get.back();
+                                  Get.snackbar(
+                                      '⭐ Premium', 'Bientôt disponible !',
+                                      snackPosition: SnackPosition.TOP,
+                                      backgroundColor: const Color(0xFF13131A),
+                                      colorText: Colors.white);
+                                },
+                                child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 24, vertical: 10),
+                                    decoration: BoxDecoration(
+                                        gradient: AppColors.gradientPink,
+                                        borderRadius:
+                                            BorderRadius.circular(20)),
+                                    child: const Text('Débloquer',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13)))),
+                          ]),
+                    )),
+                  ]),
+                ],
+              ])),
+          ]),
+    )).then((_) => _resume()); // ← reprend quand le sheet est fermé
+  }
+
+  String _ago(DateTime d) {
+    final diff = DateTime.now().difference(d);
+    if (diff.inDays > 0) return 'il y a ${diff.inDays}j';
+    if (diff.inHours > 0) return 'il y a ${diff.inHours}h';
+    if (diff.inMinutes > 0) return 'il y a ${diff.inMinutes}min';
+    return "à l'instant";
+  }
+}
+
+// ─── TUILE VIEWER — cliquable → ouvre le profil ──────────────────
+class _ViewerTile extends StatefulWidget {
+  final String uid;
+  const _ViewerTile({required this.uid, super.key});
+  @override
+  State<_ViewerTile> createState() => _ViewerTileState();
+}
+
+class _ViewerTileState extends State<_ViewerTile> {
+  String _name = '';
+  String? _photoUrl;
+  bool _loading = true;
+  Map<String, dynamic>? _fullData;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', widget.uid)
+          .maybeSingle();
+      if (mounted && data != null) {
+        setState(() {
+          _name = data['name'] ?? 'Utilisateur';
+          _photoUrl = data['photo_url'];
+          _fullData = data;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _openProfile() {
+    if (_fullData == null) return;
+    Get.back(); // ferme le bottomSheet
+    int age = 0;
+    final birthdate = _fullData!['birthdate'] ?? _fullData!['birth_date'];
+    if (birthdate != null) {
+      try {
+        DateTime birth;
+        if (birthdate.toString().contains('/')) {
+          final p = birthdate.toString().split('/');
+          birth = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+        } else {
+          birth = DateTime.parse(birthdate.toString());
+        }
+        final now = DateTime.now();
+        age = now.year - birth.year;
+        if (now.month < birth.month ||
+            (now.month == birth.month && now.day < birth.day)) age--;
+      } catch (_) {
+        age = _fullData!['age'] ?? 0;
+      }
+    } else {
+      age = _fullData!['age'] ?? 0;
+    }
+
+    final user = UserModel(
+      id: _fullData!['id'] ?? widget.uid,
+      name: _fullData!['name'] ?? 'Utilisateur',
+      age: age,
+      bio: _fullData!['bio'],
+      photoUrl: _fullData!['photo_url'],
+      photoUrls: List<String>.from(_fullData!['photo_urls'] ?? []),
+      interests: List<String>.from(_fullData!['interests'] ?? []),
+      latitude: _fullData!['latitude']?.toDouble(),
+      longitude: _fullData!['longitude']?.toDouble(),
+      gender: _fullData!['gender'],
+      lookingFor: _fullData!['looking_for'],
+      isOnline: _fullData!['is_online'] ?? false,
+      followersCount: _fullData!['followers_count'] ?? 0,
+      followingCount: _fullData!['following_count'] ?? 0,
+      matchesCount: _fullData!['matches_count'] ?? 0,
+    );
+    Get.toNamed('/profile/view', arguments: user);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _loading ? null : _openProfile,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle, gradient: AppColors.gradientPink),
+              child: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : ClipOval(
+                      child: _photoUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: _photoUrl!, fit: BoxFit.cover)
+                          : Center(
+                              child: Text(
+                                  _name.isNotEmpty
+                                      ? _name[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16))))),
+          const SizedBox(width: 12),
+          Expanded(
+              child: _loading
+                  ? Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                          color: AppColors.surface2,
+                          borderRadius: BorderRadius.circular(5)))
+                  : Text(_name,
+                      style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600))),
+          if (!_loading)
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: AppColors.textMuted, size: 14),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── TUILE VIEWER AVEC INDICATEUR LIKE ───────────────────────────
+class _ViewerTileWithLike extends StatefulWidget {
+  final String uid;
+  final String storyId;
+  const _ViewerTileWithLike(
+      {required this.uid, required this.storyId, super.key});
+  @override
+  State<_ViewerTileWithLike> createState() => _ViewerTileWithLikeState();
+}
+
+class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
+  String _name = '';
+  String? _photoUrl;
+  bool _loading = true;
+  bool _hasLiked = false;
+  Map<String, dynamic>? _fullData;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      // Charger profil + vérifier like en parallèle
+      final results = await Future.wait([
+        Supabase.instance.client
+            .from('profiles')
+            .select()
+            .eq('id', widget.uid)
+            .maybeSingle(),
+        Supabase.instance.client
+            .from('stories')
+            .select('liked_by')
+            .eq('id', widget.storyId)
+            .maybeSingle(),
+      ]);
+      final profileData = results[0] as Map<String, dynamic>?;
+      final storyData = results[1] as Map<String, dynamic>?;
+      if (mounted) {
+        final liked = List<String>.from(storyData?['liked_by'] ?? []);
+        setState(() {
+          if (profileData != null) {
+            _name = profileData['name'] ?? 'Utilisateur';
+            _photoUrl = profileData['photo_url'];
+            _fullData = profileData;
+          }
+          _hasLiked = liked.contains(widget.uid);
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _openProfile() {
+    if (_fullData == null) return;
+    Get.back();
+    int age = 0;
+    final birthdate = _fullData!['birthdate'] ?? _fullData!['birth_date'];
+    if (birthdate != null) {
+      try {
+        DateTime birth;
+        if (birthdate.toString().contains('/')) {
+          final p = birthdate.toString().split('/');
+          birth = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+        } else {
+          birth = DateTime.parse(birthdate.toString());
+        }
+        final now = DateTime.now();
+        age = now.year - birth.year;
+        if (now.month < birth.month ||
+            (now.month == birth.month && now.day < birth.day)) age--;
+      } catch (_) {
+        age = _fullData!['age'] ?? 0;
+      }
+    } else {
+      age = _fullData!['age'] ?? 0;
+    }
+    final user = UserModel(
+      id: _fullData!['id'] ?? widget.uid,
+      name: _fullData!['name'] ?? 'Utilisateur',
+      age: age,
+      bio: _fullData!['bio'],
+      photoUrl: _fullData!['photo_url'],
+      photoUrls: List<String>.from(_fullData!['photo_urls'] ?? []),
+      interests: List<String>.from(_fullData!['interests'] ?? []),
+      latitude: _fullData!['latitude']?.toDouble(),
+      longitude: _fullData!['longitude']?.toDouble(),
+      gender: _fullData!['gender'],
+      lookingFor: _fullData!['looking_for'],
+      isOnline: _fullData!['is_online'] ?? false,
+      followersCount: _fullData!['followers_count'] ?? 0,
+      followingCount: _fullData!['following_count'] ?? 0,
+      matchesCount: _fullData!['matches_count'] ?? 0,
+    );
+    Get.toNamed('/profile/view', arguments: user);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _loading ? null : _openProfile,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          // Avatar
+          Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle, gradient: AppColors.gradientPink),
+              child: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : ClipOval(
+                      child: _photoUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: _photoUrl!, fit: BoxFit.cover)
+                          : Center(
+                              child: Text(
+                                  _name.isNotEmpty
+                                      ? _name[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16))))),
+          const SizedBox(width: 12),
+          // Nom
+          Expanded(
+              child: _loading
+                  ? Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                          color: AppColors.surface2,
+                          borderRadius: BorderRadius.circular(5)))
+                  : Text(_name,
+                      style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600))),
+          // ❤️ si a liké
+          if (!_loading && _hasLiked) ...[
+            const Text('❤️', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+          ],
+          if (!_loading)
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: AppColors.textMuted, size: 14),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ReplyBar extends StatefulWidget {
+  final StoryModel story;
+  final ValueChanged<bool> onFocusChanged;
+  const _ReplyBar({required this.story, required this.onFocusChanged});
+  @override
+  State<_ReplyBar> createState() => _ReplyBarState();
+}
+
+class _ReplyBarState extends State<_ReplyBar> {
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+  bool _sending = false, _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => widget.onFocusChanged(_focus.hasFocus));
+    _ctrl.addListener(() {
+      final h = _ctrl.text.trim().isNotEmpty;
+      if (h != _hasText) setState(() => _hasText = h);
+    });
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty || _sending) return;
+
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    if (uid == widget.story.userId) {
+      Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white);
+      return;
+    }
+
+    setState(() => _sending = true);
+
+    try {
+      // 1. Trouver ou créer la conversation
+      final res = await Supabase.instance.client
+          .from('conversations')
+          .select('id')
+          .or('and(user1_id.eq.$uid,user2_id.eq.${widget.story.userId}),'
+              'and(user1_id.eq.${widget.story.userId},user2_id.eq.$uid)')
+          .maybeSingle();
+
+      final String convId;
+      if (res != null) {
+        convId = res['id'] as String;
+      } else {
+        final created = await Supabase.instance.client
+            .from('conversations')
+            .insert({'user1_id': uid, 'user2_id': widget.story.userId})
+            .select('id')
+            .single();
+        convId = created['id'] as String;
+      }
+
+      // 2. Construire le StoryReplyData pour le ConversationController
+      final storyData = StoryReplyData(
+        storyId: widget.story.id,
+        storyPreviewUrl: widget.story.mediaUrl,
+        storyIsVideo: widget.story.isVideo,
+        storyOwnerName: widget.story.userName,
+      );
+
+      // 3. Déléguer l'envoi au ConversationController (s'il est ouvert)
+      //    sinon envoyer directement via Supabase
+      final safeContent = text.substring(0, text.length.clamp(0, 500));
+
+      if (Get.isRegistered<ConversationController>(tag: convId)) {
+        // La conv est déjà ouverte — le controller gère tout
+        await Get.find<ConversationController>(tag: convId).sendStoryReply(
+          conversationId: convId,
+          text: safeContent,
+          storyData: storyData,
+        );
+      } else {
+        // Envoi direct sans ouvrir la conv
+        bool sent = false;
+        try {
+          await Supabase.instance.client.from('messages').insert({
+            'conversation_id': convId,
+            'sender_id': uid,
+            'type': 'text',
+            'content': safeContent,
+            'status': 'sent',
+            'story_id': widget.story.id,
+            'story_preview_url': widget.story.mediaUrl,
+            'story_is_video': widget.story.isVideo,
+            'topic': '📸 Story de ${widget.story.userName}',
+          });
+          sent = true;
+        } catch (_) {}
+
+        if (!sent) {
+          await Supabase.instance.client.from('messages').insert({
+            'conversation_id': convId,
+            'sender_id': uid,
+            'type': 'text',
+            'content': safeContent,
+            'status': 'sent',
+          });
+        }
+
+        await Supabase.instance.client.from('conversations').update(
+            {'updated_at': DateTime.now().toIso8601String()}).eq('id', convId);
+      }
+
+      _ctrl.clear();
+      _focus.unfocus();
+      widget.onFocusChanged(false);
+
+      if (mounted) {
+        Get.snackbar('Réponse envoyée ✓', '',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: const Color(0xFF13131A),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2));
+      }
+    } catch (e) {
+      debugPrint('replyStory error: $e');
+      if (mounted) {
+        Get.snackbar('Erreur', "Impossible d'envoyer le message",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: const Color(0xFF13131A),
+            colorText: Colors.white);
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Champ de saisie + bouton envoyer ─────────────────
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+              child: Container(
+            constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: _focus.hasFocus
+                    ? AppColors.accent.withOpacity(0.6)
+                    : Colors.white24,
+                width: _focus.hasFocus ? 1.5 : 1,
+              ),
+            ),
+            child: TextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              maxLines: 4,
+              minLines: 1,
+              maxLength: 500,
+              buildCounter: (_,
+                      {required currentLength,
+                      required isFocused,
+                      maxLength}) =>
+                  null,
+              textInputAction: TextInputAction.newline,
+              decoration: const InputDecoration(
+                hintText: 'Répondre à la story...',
+                hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          )),
+          const SizedBox(width: 8),
+          AnimatedOpacity(
+            opacity: _hasText ? 1.0 : 0.4,
+            duration: const Duration(milliseconds: 200),
+            child: GestureDetector(
+              onTap: _hasText && !_sending ? _send : null,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                    gradient: AppColors.gradientPink, shape: BoxShape.circle),
+                child: _sending
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send_rounded,
+                        color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ]),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  ADD STORY SCREEN
+// ─────────────────────────────────────────────────────────────────
 
 class AddStoryScreen extends StatefulWidget {
   const AddStoryScreen({super.key});
@@ -16,722 +1276,492 @@ class AddStoryScreen extends StatefulWidget {
 }
 
 class _AddStoryScreenState extends State<AddStoryScreen> {
-  File? _media;
-  bool _isVideo = false;
-  bool _isUploading = false;
-  final _captionCtrl = TextEditingController();
   final _picker = ImagePicker();
+  bool _uploading = false;
+  double _progress = 0;
+  String? _previewPath;
+  bool _isVideo = false;
+  final _captionCtrl = TextEditingController();
+  bool _showCaption = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showPicker());
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    final picked = await _picker.pickImage(
-      source: source, maxWidth: 1080, maxHeight: 1920, imageQuality: 85);
-    if (picked != null) setState(() { _media = File(picked.path); _isVideo = false; });
-  }
-
-  Future<void> _pickVideo(ImageSource source) async {
-    final picked = await _picker.pickVideo(
-      source: source, maxDuration: const Duration(seconds: 30));
-    if (picked != null) setState(() { _media = File(picked.path); _isVideo = true; });
-  }
-
-  void _showPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        decoration: BoxDecoration(
-          color: const Color(0xFF13131A),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: AppColors.border)),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: AppColors.border,
-              borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          ShaderMask(
-            shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-            child: const Text('Ma Story', style: TextStyle(
-              fontFamily: 'Syne', fontSize: 20,
-              fontWeight: FontWeight.w900, color: Colors.white))),
-          const SizedBox(height: 24),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _PickerBtn(icon: Icons.camera_alt_rounded, label: 'Camera',
-              color: AppColors.accent,
-              onTap: () async {
-                Navigator.pop(context);
-                final result = await Get.to(() => const CustomCameraScreen(),
-                  transition: Transition.fadeIn);
-                if (result is File) {
-                  setState(() { _media = result; _isVideo = false; });
-                } else if (result == 'gallery') {
-                  _pickImage(ImageSource.gallery);
-                }
-              }),
-            _PickerBtn(icon: Icons.photo_library_rounded, label: 'Galerie',
-              color: AppColors.accent2,
-              onTap: () { Navigator.pop(context); _pickImage(ImageSource.gallery); }),
-            _PickerBtn(icon: Icons.videocam_rounded, label: 'Video',
-              color: AppColors.accent3,
-              onTap: () { Navigator.pop(context); _pickVideo(ImageSource.camera); }),
-          ]),
-          const SizedBox(height: 8),
-        ]),
-      ),
-    );
-  }
-
-  Future<void> _upload() async {
-    if (_media == null) return;
-    setState(() => _isUploading = true);
+  Future<void> _pickMedia(ImageSource source, {bool video = false}) async {
     try {
-      final supabase = Supabase.instance.client;
-      final uid = supabase.auth.currentUser!.id;
-      final ext = _isVideo ? 'mp4' : 'jpg';
-      final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final bytes = await _media!.readAsBytes();
-
-      await supabase.storage.from('stories').uploadBinary(
-        path, bytes,
-        fileOptions: FileOptions(
-          contentType: _isVideo ? 'video/mp4' : 'image/jpeg',
-          upsert: true));
-
-      final url = supabase.storage.from('stories').getPublicUrl(path);
-
-      await supabase.from('stories').insert({
-        'user_id': uid,
-        'media_url': url,
-        'is_video': _isVideo,
-        'caption': _captionCtrl.text.trim().isEmpty
-          ? null : _captionCtrl.text.trim(),
-        'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-        'viewed_by': [],
+      XFile? file;
+      if (video) {
+        file = await _picker.pickVideo(
+            source: source, maxDuration: const Duration(seconds: 30));
+      } else {
+        file = await _picker.pickImage(
+            source: source, maxWidth: 1080, maxHeight: 1920, imageQuality: 85);
+      }
+      if (file == null) return;
+      setState(() {
+        _previewPath = file!.path;
+        _isVideo = video;
       });
-
-      Get.back(result: true);
-      Get.snackbar('Story publiee !', '',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF1A1A2E),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2));
-    } catch (e) {
-      debugPrint('STORY ERROR: $e');
-      Get.snackbar('Erreur upload', e.toString().length > 100
-        ? e.toString().substring(0, 100) : e.toString(),
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red.shade900,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 6));
-    } finally {
-      setState(() => _isUploading = false);
+    } catch (_) {
+      _snack('Erreur lors de la sélection');
     }
   }
 
+  Future<void> _publish() async {
+    if (_previewPath == null) return;
+    setState(() {
+      _uploading = true;
+      _progress = 0;
+    });
+    try {
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid == null) {
+        _snack('Tu dois être connecté');
+        setState(() => _uploading = false);
+        return;
+      }
+
+      final file = File(_previewPath!);
+      if (!await file.exists()) {
+        _snack('Fichier introuvable');
+        setState(() => _uploading = false);
+        return;
+      }
+
+      final ext = _previewPath!.split('.').last.toLowerCase();
+      const allowedImg = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
+      const allowedVid = ['mp4', 'mov', 'avi', 'mkv'];
+      if (!(_isVideo ? allowedVid : allowedImg).contains(ext)) {
+        _snack('Format non supporté');
+        setState(() => _uploading = false);
+        return;
+      }
+
+      final fileName = '${uid}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final storagePath = 'stories/$uid/$fileName';
+      setState(() => _progress = 0.2);
+
+      await Supabase.instance.client.storage.from('stories').upload(
+          storagePath, file,
+          fileOptions: const FileOptions(upsert: true));
+      setState(() => _progress = 0.65);
+
+      final mediaUrl = Supabase.instance.client.storage
+          .from('stories')
+          .getPublicUrl(storagePath);
+      final caption = _captionCtrl.text.trim();
+      final safeCaption = caption.isNotEmpty
+          ? caption.substring(0, caption.length.clamp(0, 200))
+          : null;
+
+      await Supabase.instance.client.from('stories').insert({
+        'user_id': uid,
+        'media_url': mediaUrl,
+        'is_video': _isVideo,
+        'caption': safeCaption,
+        'created_at': DateTime.now().toIso8601String(),
+        'expires_at':
+            DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+        'viewed_by': [],
+      });
+
+      setState(() => _progress = 1.0);
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (Get.isRegistered<HomeController>())
+        await Get.find<HomeController>().loadStories();
+
+      Get.back(result: true);
+      Get.snackbar('Story publiée ✓', 'Visible pendant 24h',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2));
+    } catch (e) {
+      debugPrint('publish story error: $e');
+      _snack('Erreur lors de la publication : $e');
+      setState(() => _uploading = false);
+    }
+  }
+
+  void _snack(String msg) => Get.snackbar('Erreur', msg,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: const Color(0xFF13131A),
+      colorText: Colors.white);
+
+  void _showSourcePicker({required bool video}) {
+    showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (ctx) => SafeArea(
+            child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                      decoration: BoxDecoration(
+                          color: const Color(0xFF11111C),
+                          borderRadius: BorderRadius.circular(16)),
+                      child: Column(children: [
+                        _SourceOption(
+                            icon: Icons.camera_alt_rounded,
+                            label: video
+                                ? 'Filmer une vidéo'
+                                : 'Prendre une photo',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _pickMedia(ImageSource.camera, video: video);
+                            },
+                            showDivider: true),
+                        _SourceOption(
+                            icon: Icons.photo_library_rounded,
+                            label: 'Choisir dans la galerie',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _pickMedia(ImageSource.gallery, video: video);
+                            },
+                            showDivider: false),
+                      ])),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFF11111C),
+                              borderRadius: BorderRadius.circular(16)),
+                          child: const Text('Annuler',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: AppColors.accent,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700)))),
+                ]))));
+  }
+
+  @override
+  void dispose() {
+    _captionCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Get.back(),
-          child: Container(margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.black54,
-              shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
-            child: const Icon(Icons.close_rounded, color: Colors.white, size: 20))),
-        title: ShaderMask(
-          shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-          child: const Text('Ma Story', style: TextStyle(
-            fontFamily: 'Syne', fontSize: 18,
-            fontWeight: FontWeight.w900, color: Colors.white))),
-        centerTitle: true,
+        backgroundColor: Colors.black,
+        title: const Text('Nouvelle story',
+            style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'Syne',
+                fontWeight: FontWeight.w800)),
+        leading: IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            onPressed: () => Get.back(result: false)),
         actions: [
-          if (_media != null)
+          if (_previewPath != null && !_uploading)
             GestureDetector(
-              onTap: _showPicker,
-              child: Container(margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.black54,
-                  shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
-                child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20))),
+                onTap: _publish,
+                child: Container(
+                    margin: const EdgeInsets.only(right: 16),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                        gradient: AppColors.gradientPink,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: const Text('Publier',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14))))
         ],
       ),
-      body: Stack(fit: StackFit.expand, children: [
-        // Fond
-        _media == null
-          ? _buildEmpty()
-          : _isVideo
-            ? _buildVideoPreview()
-            : Image.file(_media!, fit: BoxFit.cover,
-                width: double.infinity, height: double.infinity),
-
-        // Gradient bas
-        if (_media != null)
-          Positioned(bottom: 0, left: 0, right: 0,
-            child: Container(height: 260,
-              decoration: const BoxDecoration(gradient: LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black])))),
-
-        // Controles
-        Positioned(bottom: 0, left: 0, right: 0,
-          child: SafeArea(child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (_media != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white24)),
-                  child: TextField(
-                    controller: _captionCtrl,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    maxLength: 100,
-                    decoration: const InputDecoration(
-                      hintText: 'Legende...',
-                      hintStyle: TextStyle(color: Colors.white38),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                      counterStyle: TextStyle(color: Colors.white30, fontSize: 10)))),
-
-              GestureDetector(
-                onTap: _isUploading ? null
-                  : _media == null ? _showPicker : _upload,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 17),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.gradientPink,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [BoxShadow(
-                      color: AppColors.accent.withValues(alpha: 0.35),
-                      blurRadius: 20, offset: const Offset(0, 6))]),
-                  child: _isUploading
-                    ? const Center(child: SizedBox(width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5)))
-                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(_media == null
-                          ? Icons.add_photo_alternate_rounded
-                          : Icons.send_rounded,
-                          color: Colors.white, size: 20),
-                        const SizedBox(width: 10),
-                        Text(_media == null
-                          ? 'Choisir une photo / video'
-                          : 'Publier ma story',
-                          style: const TextStyle(fontSize: 16,
-                            fontWeight: FontWeight.w800, color: Colors.white)),
-                      ])),
-              ),
-            ]),
-          ))),
-      ]),
+      body: _uploading
+          ? _buildUploading()
+          : _previewPath == null
+              ? _buildPicker()
+              : _buildPreview(),
     );
   }
 
-  Widget _buildEmpty() => Container(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFF0D0D1A), Color(0xFF1A0A2E), Color(0xFF0A1628)],
-        begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-    child: Center(child: Column(
-      mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(width: 100, height: 100,
-          decoration: BoxDecoration(
-            gradient: AppColors.gradientPink,
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(
-              color: AppColors.accent.withValues(alpha: 0.4), blurRadius: 30)]),
-          child: const Icon(Icons.add_photo_alternate_rounded,
-            color: Colors.white, size: 48)),
+  Widget _buildPicker() => Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+                gradient: AppColors.gradientPink, shape: BoxShape.circle),
+            child: const Icon(Icons.add_a_photo_rounded,
+                color: Colors.white, size: 40)),
         const SizedBox(height: 24),
-        const Text('Ta Story', style: TextStyle(
-          fontFamily: 'Syne', fontSize: 24,
-          fontWeight: FontWeight.w900, color: Colors.white)),
+        const Text('Ajouter une story',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontFamily: 'Syne',
+                fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        const Text('Partage un moment de ta journee',
-          style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
-      ])));
+        const Text('Photo ou vidéo • Visible 24h',
+            style: TextStyle(color: Colors.white54, fontSize: 14)),
+        const SizedBox(height: 48),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          _BigBtn(
+              icon: Icons.photo_library_rounded,
+              label: 'Photo',
+              onTap: () => _showSourcePicker(video: false)),
+          const SizedBox(width: 16),
+          _BigBtn(
+              icon: Icons.videocam_rounded,
+              label: 'Vidéo',
+              onTap: () => _showSourcePicker(video: true)),
+        ]),
+      ]));
 
-  Widget _buildVideoPreview() => Container(
-    color: Colors.black,
-    child: Center(child: Column(
-      mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(width: 80, height: 80,
-          decoration: BoxDecoration(color: Colors.white12,
-            shape: BoxShape.circle),
-          child: const Icon(Icons.play_circle_outline_rounded,
-            color: Colors.white, size: 48)),
-        const SizedBox(height: 12),
-        const Text('Video selectionnee',
-          style: TextStyle(color: Colors.white70, fontSize: 14)),
-      ])));
+  Widget _buildPreview() => Stack(fit: StackFit.expand, children: [
+        _isVideo
+            ? _VideoPreview(path: _previewPath!)
+            : Image.file(File(_previewPath!), fit: BoxFit.contain),
+        if (_showCaption)
+          Positioned(
+              bottom: 110,
+              left: 16,
+              right: 16,
+              child: Container(
+                  decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white24)),
+                  child: TextField(
+                      controller: _captionCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      maxLines: 3,
+                      maxLength: 200,
+                      autofocus: true,
+                      buildCounter: (_,
+                              {required currentLength,
+                              required isFocused,
+                              maxLength}) =>
+                          Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: Text('$currentLength/200',
+                                  style: const TextStyle(
+                                      color: Colors.white38, fontSize: 10))),
+                      decoration: const InputDecoration(
+                          hintText: 'Ajouter une légende...',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(14))))),
+        Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+                top: false,
+                child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Row(children: [
+                      GestureDetector(
+                          onTap: () =>
+                              setState(() => _showCaption = !_showCaption),
+                          child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                  color: _showCaption
+                                      ? AppColors.accent.withOpacity(0.2)
+                                      : Colors.black54,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color: _showCaption
+                                          ? AppColors.accent
+                                          : Colors.white24)),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.text_fields_rounded,
+                                        color: _showCaption
+                                            ? AppColors.accent
+                                            : Colors.white,
+                                        size: 16),
+                                    const SizedBox(width: 6),
+                                    Text('Légende',
+                                        style: TextStyle(
+                                            color: _showCaption
+                                                ? AppColors.accent
+                                                : Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                  ]))),
+                      const Spacer(),
+                      GestureDetector(
+                          onTap: () => setState(() => _previewPath = null),
+                          child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.white24)),
+                              child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.refresh_rounded,
+                                        color: Colors.white, size: 16),
+                                    SizedBox(width: 6),
+                                    Text('Changer',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                  ]))),
+                    ])))),
+      ]);
+
+  Widget _buildUploading() => Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+                gradient: AppColors.gradientPink, shape: BoxShape.circle),
+            child: const Icon(Icons.cloud_upload_rounded,
+                color: Colors.white, size: 36)),
+        const SizedBox(height: 24),
+        const Text('Publication en cours...',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700)),
+        const SizedBox(height: 24),
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                    value: _progress > 0 ? _progress : null,
+                    backgroundColor: Colors.white12,
+                    valueColor: AlwaysStoppedAnimation(AppColors.accent),
+                    minHeight: 4))),
+      ]));
 }
 
-// ─── STORY VIEWER ─────────────────────────────────────────────────
-
-class StoryViewerScreen extends StatefulWidget {
-  final List<StoryModel> stories;
-  final int initialIndex;
-  const StoryViewerScreen({
-    super.key, required this.stories, this.initialIndex = 0});
+// ─── PREVIEW VIDÉO LOCALE (avant publication) ────────────────────
+class _VideoPreview extends StatefulWidget {
+  final String path;
+  const _VideoPreview({required this.path});
   @override
-  State<StoryViewerScreen> createState() => _StoryViewerState();
+  State<_VideoPreview> createState() => _VideoPreviewState();
 }
 
-class _StoryViewerState extends State<StoryViewerScreen>
-    with SingleTickerProviderStateMixin {
-  late int _i;
-  late AnimationController _prog;
-  final _replyCtrl = TextEditingController();
-  bool _showReply = false;
+class _VideoPreviewState extends State<_VideoPreview> {
+  VideoPlayerController? _ctrl;
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    _i = widget.initialIndex;
-    _prog = AnimationController(
-      vsync: this, duration: const Duration(seconds: 5))
-      ..addStatusListener((s) { if (s == AnimationStatus.completed) _next(); })
-      ..forward();
-    _markSeen();
+    _init();
   }
 
-  void _next() {
-    if (_i < widget.stories.length - 1) {
-      setState(() => _i++);
-      _prog.reset(); _prog.forward(); _markSeen();
-    } else { Get.back(); }
-  }
-
-  void _prev() {
-    if (_i > 0) { setState(() => _i--); _prog.reset(); _prog.forward(); }
-  }
-
-  void _markSeen() async {
-    try {
-      final story = widget.stories[_i];
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      if (uid == null || story.viewedBy.contains(uid)) return;
-      await Supabase.instance.client.from('stories')
-        .update({'viewed_by': [...story.viewedBy, uid]})
-        .eq('id', story.id);
-    } catch (_) {}
+  Future<void> _init() async {
+    final ctrl = VideoPlayerController.file(File(widget.path));
+    _ctrl = ctrl;
+    await ctrl.initialize();
+    if (!mounted) return;
+    ctrl.setLooping(true);
+    ctrl.play();
+    setState(() => _ready = true);
   }
 
   @override
-  void dispose() { _prog.dispose(); _replyCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.stories[_i];
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTapUp: (d) {
-          if (d.localPosition.dx < MediaQuery.of(context).size.width / 2.5)
-            _prev(); else _next();
-        },
-        child: Stack(fit: StackFit.expand, children: [
-          CachedNetworkImage(imageUrl: s.mediaUrl, fit: BoxFit.cover,
-            placeholder: (_, __) => const Center(
-              child: CircularProgressIndicator(color: AppColors.accent)),
-            errorWidget: (_, __, ___) => Container(
-              color: const Color(0xFF1A1A2E),
-              child: const Center(child: Icon(Icons.broken_image_rounded,
-                color: Colors.white38, size: 60)))),
-
-          Positioned(top: 0, left: 0, right: 0,
-            child: Container(height: 160,
-              decoration: const BoxDecoration(gradient: LinearGradient(
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Colors.black87, Colors.transparent])))),
-
-          SafeArea(
-            child: Column(children: [
-              // Progress bars
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                child: Row(
-                  children: List.generate(widget.stories.length, (i) =>
-                    Expanded(
-                      child: Container(
-                        height: 2.5,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(2)),
-                        child: i < _i
-                          ? Container(decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(2)))
-                          : i == _i
-                            ? AnimatedBuilder(
-                                animation: _prog,
-                                builder: (_, __) => FractionallySizedBox(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: _prog.value,
-                                  child: Container(decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(2)))))
-                            : const SizedBox(),
-                      ),
-                    )),
-                ),
-              ),
-              // User info
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                child: Row(children: [
-                  Container(
-                    width: 38, height: 38,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2)),
-                    child: ClipOval(
-                      child: s.userPhotoUrl != null
-                        ? CachedNetworkImage(imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
-                        : Container(color: AppColors.accent,
-                            child: Center(child: Text(s.userName[0].toUpperCase(),
-                              style: const TextStyle(color: Colors.white,
-                                fontWeight: FontWeight.w800)))))),
-                  const SizedBox(width: 10),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(s.userName, style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-                    Text(_ago(s.createdAt), style: const TextStyle(
-                      fontSize: 11, color: Colors.white60)),
-                  ]),
-                  const Spacer(),
-                  // Menu 3 points
-                  GestureDetector(
-                    onTap: () {
-                      final uid = Supabase.instance.client.auth.currentUser?.id;
-                      final isOwner = uid == s.userId;
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => Container(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF13131A),
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(24)),
-                            border: Border.all(color: const Color(0xFF2A2A3A))),
-                          child: Column(mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(width: 40, height: 4,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2A2A3A),
-                                  borderRadius: BorderRadius.circular(2))),
-                              const SizedBox(height: 20),
-                              if (isOwner) ...[
-                                _MenuOption(
-                                  icon: Icons.delete_outline_rounded,
-                                  label: 'Supprimer cette story',
-                                  color: Colors.red,
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                        backgroundColor: const Color(0xFF1A1A2E),
-                                        title: const Text('Supprimer ?',
-                                          style: TextStyle(color: Colors.white)),
-                                        content: const Text(
-                                          'Cette story sera supprimée définitivement.',
-                                          style: TextStyle(color: Colors.white70)),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context),
-                                            child: const Text('Annuler',
-                                              style: TextStyle(color: Colors.white54))),
-                                          TextButton(
-                                            onPressed: () async {
-                                              Navigator.pop(context);
-                                              final ctrl = Get.find<HomeController>();
-                                              await ctrl.deleteStory(s.id);
-                                              Get.back();
-                                            },
-                                            child: const Text('Supprimer',
-                                              style: TextStyle(color: Colors.red))),
-                                        ],
-                                      ));
-                                  }),
-                                const SizedBox(height: 4),
-                              ],
-                              _MenuOption(
-                                icon: Icons.flag_outlined,
-                                label: 'Signaler',
-                                color: Colors.orange,
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Get.snackbar('Signalement envoyé', '',
-                                    snackPosition: SnackPosition.TOP,
-                                    backgroundColor: const Color(0xFF1A1A2E),
-                                    colorText: Colors.white);
-                                }),
-                              const SizedBox(height: 4),
-                              _MenuOption(
-                                icon: Icons.close_rounded,
-                                label: 'Fermer',
-                                color: Colors.white54,
-                                onTap: () => Navigator.pop(context)),
-                            ]),
-                        ));
-                    },
-                    child: Container(width: 34, height: 34,
-                      decoration: const BoxDecoration(
-                        color: Colors.black38, shape: BoxShape.circle),
-                      child: const Icon(Icons.more_vert_rounded,
-                        color: Colors.white, size: 18))),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => Get.back(),
-                    child: Container(width: 34, height: 34,
-                      decoration: const BoxDecoration(
-                        color: Colors.black38, shape: BoxShape.circle),
-                      child: const Icon(Icons.close_rounded,
-                        color: Colors.white, size: 17))),
-                ]),
-              ),
-            ]),
-          ),
-
-          Positioned(bottom: 0, left: 0, right: 0,
-            child: SafeArea(child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16,
-                MediaQuery.of(context).viewInsets.bottom + 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Légende
-                  if (s.caption != null && s.caption!.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12)),
-                      child: Text(s.caption!,
-                        style: const TextStyle(
-                          color: Colors.white, fontSize: 14,
-                          fontWeight: FontWeight.w500))),
-
-                  Row(children: [
-                    // Vues
-                    const Icon(Icons.remove_red_eye_rounded,
-                      color: Colors.white60, size: 15),
-                    const SizedBox(width: 5),
-                    Text('\${s.viewedBy.length} vues',
-                      style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
-                    const Spacer(),
-                  ]),
-                  const SizedBox(height: 10),
-
-                  // Barre de réponse (cachée pour sa propre story)
-                  Builder(builder: (ctx) {
-                    final uid = Supabase.instance.client.auth.currentUser?.id;
-                    if (uid == s.userId) return const SizedBox.shrink();
-                    return Row(children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() => _showReply = true);
-                            _prog.stop();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.white30)),
-                            child: _showReply
-                              ? TextField(
-                                  controller: _replyCtrl,
-                                  autofocus: true,
-                                  style: const TextStyle(
-                                    color: Colors.white, fontSize: 14),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Répondre...',
-                                    hintStyle: TextStyle(color: Colors.white38),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero),
-                                )
-                              : const Text('Répondre à cette story...',
-                                  style: TextStyle(
-                                    color: Colors.white54, fontSize: 14)),
-                          ),
-                        ),
-                      ),
-                      if (_showReply) ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () async {
-                            final msg = _replyCtrl.text.trim();
-                            if (msg.isEmpty) return;
-                            _replyCtrl.clear();
-                            setState(() => _showReply = false);
-                            _prog.forward();
-                            // Envoie via le chat controller
-                            try {
-                              final myId = Supabase.instance.client
-                                .auth.currentUser!.id;
-                              // Cherche ou crée la conversation
-                              final convRes = await Supabase.instance.client
-                                .from('conversations')
-                                .select('id')
-                                .or('user1_id.eq.\$myId,user2_id.eq.\$myId')
-                                .or('user1_id.eq.\${s.userId},user2_id.eq.\${s.userId}')
-                                .maybeSingle();
-                              String convId;
-                              if (convRes != null) {
-                                convId = convRes['id'];
-                              } else {
-                                final newConv = await Supabase.instance.client
-                                  .from('conversations')
-                                  .insert({
-                                    'user1_id': myId,
-                                    'user2_id': s.userId,
-                                  }).select('id').single();
-                                convId = newConv['id'];
-                              }
-                              await Supabase.instance.client
-                                .from('messages')
-                                .insert({
-                                  'conversation_id': convId,
-                                  'sender_id': myId,
-                                  'text': '📸 Story : \$msg',
-                                  'created_at': DateTime.now().toIso8601String(),
-                                });
-                              Get.snackbar('Réponse envoyée ✅', '',
-                                snackPosition: SnackPosition.TOP,
-                                backgroundColor: const Color(0xFF1A1A2E),
-                                colorText: Colors.white,
-                                duration: const Duration(seconds: 2));
-                            } catch (e) {
-                              debugPrint('reply error: \$e');
-                            }
-                          },
-                          child: Container(
-                            width: 44, height: 44,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.gradientPink,
-                              shape: BoxShape.circle),
-                            child: const Icon(Icons.send_rounded,
-                              color: Colors.white, size: 18))),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _showReply = false);
-                            _replyCtrl.clear();
-                            _prog.forward();
-                          },
-                          child: Container(
-                            width: 36, height: 36,
-                            decoration: const BoxDecoration(
-                              color: Colors.black38, shape: BoxShape.circle),
-                            child: const Icon(Icons.close_rounded,
-                              color: Colors.white54, size: 16))),
-                      ] else ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _showReply = true);
-                            _prog.stop();
-                          },
-                          child: Container(
-                            width: 44, height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white12,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white24)),
-                            child: const Icon(Icons.reply_rounded,
-                              color: Colors.white, size: 20))),
-                      ],
-                    ]);
-                  }),
-                ],
-              ),
-            ))),
-        ]),
-      ),
+    if (!_ready || _ctrl == null) {
+      return const Center(
+          child:
+              CircularProgressIndicator(color: Colors.white, strokeWidth: 2));
+    }
+    return GestureDetector(
+      onTap: () {
+        if (_ctrl!.value.isPlaying) {
+          _ctrl!.pause();
+        } else {
+          _ctrl!.play();
+        }
+        setState(() {});
+      },
+      child: Stack(fit: StackFit.expand, children: [
+        Center(
+            child: AspectRatio(
+                aspectRatio: _ctrl!.value.aspectRatio,
+                child: VideoPlayer(_ctrl!))),
+        if (!_ctrl!.value.isPlaying)
+          const Center(
+              child: Icon(Icons.play_circle_filled_rounded,
+                  color: Colors.white54, size: 72)),
+      ]),
     );
   }
-
-  String _ago(DateTime dt) {
-    final d = DateTime.now().difference(dt);
-    if (d.inHours > 0) return 'il y a ${d.inHours}h';
-    if (d.inMinutes > 0) return 'il y a ${d.inMinutes}min';
-    return "a l'instant";
-  }
 }
 
-// ─── HELPER ───────────────────────────────────────────────────────
-
-class _PickerBtn extends StatelessWidget {
+class _BigBtn extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
   final VoidCallback onTap;
-  const _PickerBtn({required this.icon, required this.label,
-    required this.color, required this.onTap});
-
+  const _BigBtn({required this.icon, required this.label, required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Column(children: [
-      Container(width: 64, height: 64,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12), shape: BoxShape.circle,
-          border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5)),
-        child: Icon(icon, color: color, size: 28)),
-      const SizedBox(height: 8),
-      Text(label, style: TextStyle(fontSize: 12,
-        color: color, fontWeight: FontWeight.w700)),
-    ]));
+      onTap: onTap,
+      child: Container(
+          width: 130,
+          height: 56,
+          decoration: BoxDecoration(
+              gradient: AppColors.gradientPink,
+              borderRadius: BorderRadius.circular(16)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15)),
+          ])));
 }
 
-// ─── MENU OPTION ──────────────────────────────────────────────────
-
-class _MenuOption extends StatelessWidget {
+class _SourceOption extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
   final VoidCallback onTap;
-  const _MenuOption({required this.icon, required this.label,
-    required this.color, required this.onTap});
-
+  final bool showDivider;
+  const _SourceOption(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      required this.showDivider});
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.2))),
-      child: Row(children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 12),
-        Text(label, style: TextStyle(
-          color: color, fontSize: 15, fontWeight: FontWeight.w600)),
-      ])));
+  Widget build(BuildContext context) => Column(children: [
+        GestureDetector(
+            onTap: onTap,
+            child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                child: Row(children: [
+                  Icon(icon, color: Colors.white, size: 22),
+                  const SizedBox(width: 14),
+                  Text(label,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500))
+                ]))),
+        if (showDivider)
+          const Divider(
+              height: 1, color: Color(0xFF252538), indent: 20, endIndent: 20),
+      ]);
 }

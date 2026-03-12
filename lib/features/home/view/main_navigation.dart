@@ -91,7 +91,6 @@ class _EcranCarteState extends State<_EcranCarte> {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium);
       setState(() => _myPosition = LatLng(pos.latitude, pos.longitude));
-      // Met à jour position dans Supabase
       final uid = Supabase.instance.client.auth.currentUser?.id;
       if (uid != null) {
         await Supabase.instance.client.from('profiles').update({
@@ -124,13 +123,12 @@ class _EcranCarteState extends State<_EcranCarte> {
 
   @override
   Widget build(BuildContext context) {
-    final center = _myPosition ?? const LatLng(5.3599517, -4.0082563); // Abidjan par défaut
+    final center = _myPosition ?? const LatLng(5.3599517, -4.0082563);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
-          // Carte
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -138,15 +136,12 @@ class _EcranCarteState extends State<_EcranCarte> {
               initialZoom: 13,
             ),
             children: [
-              // Tuiles OpenStreetMap (gratuit)
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.rencontre',
               ),
-              // Marqueurs profils
               MarkerLayer(
                 markers: [
-                  // Ma position
                   if (_myPosition != null)
                     Marker(
                       point: _myPosition!,
@@ -164,7 +159,6 @@ class _EcranCarteState extends State<_EcranCarte> {
                           color: Colors.white, size: 24),
                       ),
                     ),
-                  // Autres profils
                   ..._profiles.where((p) =>
                     p['latitude'] != null && p['longitude'] != null
                   ).map((p) => Marker(
@@ -204,7 +198,6 @@ class _EcranCarteState extends State<_EcranCarte> {
                                           fontSize: 18)))),
                             ),
                           ),
-                          // Petite flèche
                           Container(
                             width: 8, height: 8,
                             decoration: BoxDecoration(
@@ -252,7 +245,6 @@ class _EcranCarteState extends State<_EcranCarte> {
                           color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
                     ),
                   const SizedBox(width: 8),
-                  // Recentrer
                   GestureDetector(
                     onTap: () {
                       if (_myPosition != null) {
@@ -274,7 +266,6 @@ class _EcranCarteState extends State<_EcranCarte> {
             ),
           ),
 
-          // Loading
           if (_loading)
             Container(
               color: AppColors.bg,
@@ -345,12 +336,8 @@ class _EcranCarteState extends State<_EcranCarte> {
                 ],
               ),
             ),
-            // Bouton message
             GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: naviguer vers le chat
-              },
+              onTap: () => Navigator.pop(context),
               child: Container(
                 width: 46, height: 46,
                 decoration: BoxDecoration(
@@ -370,7 +357,7 @@ class _EcranCarteState extends State<_EcranCarte> {
   }
 }
 
-// ─── BARRE DE NAVIGATION ───────────────────────────────────────
+// ─── BARRE DE NAVIGATION ─────────────────────────────────────────
 
 class _BarreNavigation extends StatelessWidget {
   final int currentIndex;
@@ -394,10 +381,13 @@ class _BarreNavigation extends StatelessWidget {
                 index: 0, currentIndex: currentIndex, onTap: onTap),
               _NavItem(icon: Icons.location_on_rounded, label: 'Carte',
                 index: 1, currentIndex: currentIndex, onTap: onTap),
-              _NavItem(icon: Icons.campaign_rounded, label: 'Annonces',
-                index: 2, currentIndex: currentIndex, onTap: onTap),
-              // Badge dynamique sur Messages
-              _NavItemBadge(index: 3, currentIndex: currentIndex, onTap: onTap),
+
+              // ── Annonces avec badge ──
+              _NavItemAnnonces(index: 2, currentIndex: currentIndex, onTap: onTap),
+
+              // ── Messages avec badge ──
+              _NavItemMessages(index: 3, currentIndex: currentIndex, onTap: onTap),
+
               _NavItem(icon: Icons.person_rounded, label: 'Profil',
                 index: 4, currentIndex: currentIndex, onTap: onTap),
             ],
@@ -408,12 +398,87 @@ class _BarreNavigation extends StatelessWidget {
   }
 }
 
-// ─── NAV ITEM AVEC BADGE DYNAMIQUE ────────────────────────────
+// ─── NAV ITEM ANNONCES (badge jaune annonces non vues) ───────────
 
-class _NavItemBadge extends StatelessWidget {
+class _NavItemAnnonces extends StatelessWidget {
   final int index, currentIndex;
   final ValueChanged<int> onTap;
-  const _NavItemBadge({required this.index, required this.currentIndex,
+  const _NavItemAnnonces({required this.index, required this.currentIndex,
+    required this.onTap});
+
+  bool get isActive => currentIndex == index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isActive
+                      ? AppColors.accent.withOpacity(0.12) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.campaign_rounded, size: 22,
+                    color: isActive ? AppColors.accent : AppColors.textMuted),
+                ),
+                // Badge annonces non vues (jaune)
+                Obx(() {
+                  if (!Get.isRegistered<AnnoncesController>()) {
+                    return const SizedBox.shrink();
+                  }
+                  final unseen = Get.find<AnnoncesController>().unseenCount.value;
+                  if (unseen == 0) return const SizedBox.shrink();
+                  return Positioned(
+                    top: -2, right: -6,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 16),
+                      height: 16,
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD700),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.black, width: 1),
+                        boxShadow: [BoxShadow(
+                          color: const Color(0xFFFFD700).withOpacity(0.6),
+                          blurRadius: 4)],
+                      ),
+                      child: Center(child: Text(
+                        unseen > 9 ? '9+' : '$unseen',
+                        style: const TextStyle(fontSize: 8,
+                          fontWeight: FontWeight.w900, color: Colors.black))),
+                    ),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text('ANNONCES',
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: isActive ? AppColors.accent : AppColors.textMuted)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── NAV ITEM MESSAGES (badge rose messages non lus) ─────────────
+
+class _NavItemMessages extends StatelessWidget {
+  final int index, currentIndex;
+  final ValueChanged<int> onTap;
+  const _NavItemMessages({required this.index, required this.currentIndex,
     required this.onTap});
 
   bool get isActive => currentIndex == index;
@@ -441,7 +506,7 @@ class _NavItemBadge extends StatelessWidget {
                   child: Icon(Icons.chat_bubble_rounded, size: 22,
                     color: isActive ? AppColors.accent : AppColors.textMuted),
                 ),
-                // Badge dynamique
+                // Badge messages non lus (rose)
                 GetBuilder<ChatListController>(
                   builder: (ctrl) {
                     final total = ctrl.conversations
@@ -450,16 +515,18 @@ class _NavItemBadge extends StatelessWidget {
                     return Positioned(
                       top: -2, right: -6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
+                        constraints: const BoxConstraints(minWidth: 16),
+                        height: 16,
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
                         decoration: BoxDecoration(
                           gradient: AppColors.gradientPink,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white, width: 1),
                         ),
-                        child: Text(
+                        child: Center(child: Text(
                           total > 99 ? '99+' : '$total',
-                          style: const TextStyle(fontSize: 9,
-                            fontWeight: FontWeight.w800, color: Colors.white)),
+                          style: const TextStyle(fontSize: 8,
+                            fontWeight: FontWeight.w900, color: Colors.white))),
                       ),
                     );
                   },
@@ -478,7 +545,7 @@ class _NavItemBadge extends StatelessWidget {
   }
 }
 
-// ─── NAV ITEM STANDARD ────────────────────────────────────────
+// ─── NAV ITEM STANDARD ───────────────────────────────────────────
 
 class _NavItem extends StatelessWidget {
   final IconData icon;

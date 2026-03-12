@@ -1,3 +1,5 @@
+// lib/features/annonces/model/annonce_model.dart
+
 class AnnonceModel {
   final String id;
   final String userId;
@@ -13,9 +15,11 @@ class AnnonceModel {
   final bool isLiked;
   final bool isBoosted;
   final DateTime? boostedUntil;
-  final bool isAnonyme;      // ← nouveau
-  final String? mediaUrl;    // ← nouveau
-  final bool isVideo;        // ← nouveau
+  final bool isAnonyme;
+  final String? mediaUrl;
+  final bool isVideo;
+  final int reponsesCount;
+  final bool commentsEnabled;
 
   const AnnonceModel({
     required this.id,
@@ -35,8 +39,10 @@ class AnnonceModel {
     this.isAnonyme = false,
     this.mediaUrl,
     this.isVideo = false,
+    this.reponsesCount = 0,
+    this.commentsEnabled = true,
   });
 
   bool get isActive =>
-    boostedUntil == null || DateTime.now().isBefore(boostedUntil!);
+      boostedUntil == null || DateTime.now().isBefore(boostedUntil!);
 }

@@ -3,43 +3,176 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
-import 'package:rencontre/features/annonces/view/annonces_screen.dart';
-import 'package:rencontre/features/annonces/view/annonces_screen.dart';
-import 'package:rencontre/features/annonces/view/annonces_screen.dart';
-import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/widget/stories_row.dart';
 import 'package:rencontre/shared/models/user_model.dart';
+
+// ─── CONTROLLER MESSAGES NON LUS ─────────────────────────────────
+
+class UnreadMessagesController extends GetxController {
+  final _sb = Supabase.instance.client;
+  final RxMap<String, int> unreadByUser = <String, int>{}.obs;
+  RealtimeChannel? _channel;
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadUnread();
+    _listenRealtime();
+  }
+
+  Future<void> loadUnread() async {
+    final myId = _sb.auth.currentUser?.id;
+    if (myId == null) return;
+    try {
+      final data = await _sb
+          .from('messages')
+          .select('sender_id')
+          .eq('receiver_id', myId)
+          .eq('is_read', false);
+
+      final Map<String, int> counts = {};
+      if (data != null) {
+        for (final msg in (data as List)) {
+          final senderId = msg['sender_id'] as String;
+          counts[senderId] = (counts[senderId] ?? 0) + 1;
+        }
+      }
+      unreadByUser.assignAll(counts);
+    } catch (e) {
+      debugPrint('loadUnread error: $e');
+    }
+  }
+
+  void _listenRealtime() {
+    final myId = _sb.auth.currentUser?.id;
+    if (myId == null) return;
+    _channel = _sb
+        .channel('public:messages:unread')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'receiver_id',
+            value: myId,
+          ),
+          callback: (payload) => loadUnread(),
+        )
+        .subscribe();
+  }
+
+  int unreadFrom(String userId) => unreadByUser[userId] ?? 0;
+
+  @override
+  void onClose() {
+    _channel?.unsubscribe();
+    super.onClose();
+  }
+}
+
+// ─── ÉCRAN ACCUEIL ───────────────────────────────────────────────
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    if (!Get.isRegistered<UnreadMessagesController>()) {
+      Get.put(UnreadMessagesController(), permanent: true);
+    }
+
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarBrightness: Brightness.dark,
       statusBarIconBrightness: Brightness.light,
       statusBarColor: Colors.transparent,
     ));
+
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _TopBar(),
-            const StoriesRow(),
-            const _FilterChips(),
-            const SizedBox(height: 4),
-            const Expanded(child: _UsersGrid()),
-          ],
-        ),
-      ),
+      body: SafeArea(child: _HomeBody()),
     );
   }
 }
 
-// ─── TOP BAR ───────────────────────────────────────────────────
+class _HomeBody extends StatefulWidget {
+  @override
+  State<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<_HomeBody> {
+  final ScrollController _scrollCtrl = ScrollController();
+  bool _storiesVisible = true;
+  bool _showScrollTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final offset = _scrollCtrl.offset;
+    final newStoriesVisible = offset < 80;
+    final newShowTop = offset > 400;
+
+    if (newStoriesVisible != _storiesVisible || newShowTop != _showScrollTop) {
+      setState(() {
+        _storiesVisible = newStoriesVisible;
+        _showScrollTop = newShowTop;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            const _TopBar(),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              height: _storiesVisible ? 110 : 0,
+              child: ClipRect(
+                child: _storiesVisible
+                    ? const StoriesRow()
+                    : const SizedBox.shrink(),
+              ),
+            ),
+            const _FilterChips(),
+            const SizedBox(height: 8),
+            Expanded(child: _UsersGridScrollable(scrollCtrl: _scrollCtrl)),
+          ],
+        ),
+        if (_showScrollTop)
+          Positioned(
+            bottom: 20,
+            right: 16,
+            child: FloatingActionButton.small(
+              onPressed: () => _scrollCtrl.animateTo(0,
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.fastOutSlowIn),
+              backgroundColor: AppColors.accent,
+              child: const Icon(Icons.arrow_upward, color: Colors.white),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─── TOP BAR ─────────────────────────────────────────────────────
 
 class _TopBar extends GetView<HomeController> {
   const _TopBar();
@@ -47,36 +180,61 @@ class _TopBar extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
       child: Row(
         children: [
           ShaderMask(
             shaderCallback: (b) => AppColors.gradientPink.createShader(b),
             child: const Text('SnapMeet',
-              style: TextStyle(fontFamily: 'Syne', fontSize: 24,
-                fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.8)),
           ),
           const Spacer(),
-          // Icône localisation
           Obx(() => controller.locationError.value
-            ? GestureDetector(
-                onTap: controller.openLocationSettings,
-                child: Container(
-                  width: 38, height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.location_off_rounded,
-                    size: 18, color: AppColors.accent),
-                ),
-              )
-            : const SizedBox.shrink(),
-          ),
+              ? _IconBtn(
+                  icon: Icons.location_off_rounded,
+                  onTap: controller.openLocationSettings,
+                  color: AppColors.accent.withOpacity(0.1),
+                  iconColor: AppColors.accent,
+                )
+              : const SizedBox.shrink()),
           const SizedBox(width: 8),
           _IconBtn(icon: Icons.search_rounded, onTap: () {}),
           const SizedBox(width: 8),
-          const BoostProfilWidget(),
+          // Bouton Boost
+          GestureDetector(
+            onTap: () {
+              Get.snackbar('Boost', 'Profil boosté pour 30 minutes !',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.orange,
+                  colorText: Colors.white);
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.orangeAccent,
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  )
+                ],
+              ),
+              child:
+                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
+            ),
+          ),
         ],
       ),
     );
@@ -86,29 +244,29 @@ class _TopBar extends GetView<HomeController> {
 class _IconBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final bool gradient;
-  const _IconBtn({required this.icon, required this.onTap, this.gradient = false});
+  final Color? color, iconColor;
+  const _IconBtn(
+      {required this.icon, required this.onTap, this.color, this.iconColor});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40, height: 40,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: gradient ? AppColors.gradientPink : null,
-          color: gradient ? null : AppColors.surface2,
-          border: gradient ? null : Border.all(color: AppColors.border),
+          color: color ?? AppColors.surface2,
+          border: Border.all(color: AppColors.border.withOpacity(0.5)),
         ),
-        child: Icon(icon, size: 20,
-          color: gradient ? Colors.white : AppColors.textPrimary),
+        child: Icon(icon, size: 20, color: iconColor ?? AppColors.textPrimary),
       ),
     );
   }
 }
 
-// ─── FILTRES ───────────────────────────────────────────────────
+// ─── FILTRES ─────────────────────────────────────────────────────
 
 class _FilterChips extends GetView<HomeController> {
   const _FilterChips();
@@ -116,296 +274,84 @@ class _FilterChips extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 42,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          Obx(() => _Chip(label: 'Tous', icon: '⚡', mode: 'all',
-            isActive: controller.filterMode.value == 'all',
-            onTap: () => controller.setFilter('all'))),
+          Obx(() => _Chip(
+              label: 'Tous',
+              icon: '⚡',
+              isActive: controller.filterMode.value == 'all',
+              onTap: () => controller.setFilter('all'))),
           const SizedBox(width: 8),
-          Obx(() => _Chip(label: 'En ligne', icon: '🟢', mode: 'online',
-            isActive: controller.filterMode.value == 'online',
-            onTap: () => controller.setFilter('online'))),
+          Obx(() => _Chip(
+              label: 'En ligne',
+              icon: '🟢',
+              isActive: controller.filterMode.value == 'online',
+              onTap: () => controller.setFilter('online'))),
           const SizedBox(width: 8),
-          Obx(() => _Chip(label: '< 500m', icon: '📍', mode: 'nearby',
-            isActive: controller.filterMode.value == 'nearby',
-            onTap: () => controller.setFilter('nearby'))),
+          Obx(() => _Chip(
+              label: 'Proches',
+              icon: '📍',
+              isActive: controller.filterMode.value == 'nearby',
+              onTap: () => controller.setFilter('nearby'))),
           const SizedBox(width: 8),
-          // Bouton filtres avancés
-          Obx(() {
-            final hasFilter = controller.filterGender.value != 'tous' ||
-              controller.filterMinAge.value != 18 ||
-              controller.filterMaxAge.value != 50 ||
-              controller.filterDistance.value != 50.0;
-            return GestureDetector(
-              onTap: () => _showFilterPanel(context, controller),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: hasFilter ? AppColors.gradientPink : null,
-                  color: hasFilter ? null : AppColors.surface2,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: hasFilter ? Colors.transparent : AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.tune_rounded, size: 14,
-                      color: hasFilter ? Colors.white : AppColors.textMuted),
-                    const SizedBox(width: 5),
-                    Text('Filtres', style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: hasFilter ? Colors.white : AppColors.textMuted)),
-                    if (hasFilter) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        width: 6, height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          }),
+          const _AdvancedFilterBtn(),
         ],
       ),
     );
   }
 }
 
-// ─── FILTER PANEL ────────────────────────────────────────────────
-
-void _showFilterPanel(BuildContext context, HomeController controller) {
-  // Variables locales temporaires
-  String tempGender = controller.filterGender.value;
-  double tempMinAge = controller.filterMinAge.value.toDouble();
-  double tempMaxAge = controller.filterMaxAge.value.toDouble();
-  double tempDistance = controller.filterDistance.value;
-
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (_) => StatefulBuilder(
-      builder: (ctx, setState) => Container(
-        padding: EdgeInsets.fromLTRB(24, 20, 24,
-          MediaQuery.of(ctx).viewInsets.bottom + 32),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Titre
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text('Filtres', style: TextStyle(
-                    fontFamily: 'Syne', fontSize: 22,
-                    fontWeight: FontWeight.w900, color: Colors.white)),
-                ),
-                // Reset
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      tempGender = 'tous';
-                      tempMinAge = 18;
-                      tempMaxAge = 50;
-                      tempDistance = 50;
-                    });
-                  },
-                  child: const Text('Réinitialiser',
-                    style: TextStyle(fontSize: 13,
-                      color: AppColors.accent, fontWeight: FontWeight.w600)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // ── SEXE ──
-            const Text('Je cherche', style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textMuted, letterSpacing: 0.5)),
-            const SizedBox(height: 10),
-            Row(
-              children: ['tous', 'femme', 'homme'].map((g) {
-                final labels = {'tous': '👥 Tout le monde',
-                  'femme': '👩 Femmes', 'homme': '👨 Hommes'};
-                final isSelected = tempGender == g;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => tempGender = g),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: isSelected ? AppColors.gradientPink : null,
-                        color: isSelected ? null : AppColors.surface2,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                            ? Colors.transparent : AppColors.border),
-                      ),
-                      child: Text(labels[g]!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w700,
-                          color: isSelected
-                            ? Colors.white : AppColors.textMuted)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-
-            // ── ÂGE ──
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("Tranche d'age", style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted, letterSpacing: 0.5)),
-                Text('${tempMinAge.toInt()} - ${tempMaxAge.toInt()} ans',
-                  style: const TextStyle(fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            RangeSlider(
-              values: RangeValues(tempMinAge, tempMaxAge),
-              min: 18, max: 60,
-              divisions: 42,
-              activeColor: AppColors.accent,
-              inactiveColor: AppColors.border,
-              onChanged: (v) => setState(() {
-                tempMinAge = v.start;
-                tempMaxAge = v.end;
-              }),
-            ),
-            const SizedBox(height: 16),
-
-            // ── DISTANCE ──
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Distance max', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted, letterSpacing: 0.5)),
-                Text(tempDistance >= 100
-                  ? '100+ km' : '${tempDistance.toInt()} km',
-                  style: const TextStyle(fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Slider(
-              value: tempDistance,
-              min: 1, max: 100,
-              divisions: 99,
-              activeColor: AppColors.accent2,
-              inactiveColor: AppColors.border,
-              onChanged: (v) => setState(() => tempDistance = v),
-            ),
-            const SizedBox(height: 24),
-
-            // Bouton Appliquer
-            GestureDetector(
-              onTap: () {
-                controller.applyFilters(
-                  gender: tempGender,
-                  minAge: tempMinAge.toInt(),
-                  maxAge: tempMaxAge.toInt(),
-                  distance: tempDistance,
-                );
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradientPink,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(
-                    color: AppColors.accent.withValues(alpha: 0.4),
-                    blurRadius: 16, offset: const Offset(0, 4))],
-                ),
-                child: const Text('Appliquer les filtres',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16,
-                    fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-// ─── CHIP ─────────────────────────────────────────────────────────
-
-class _Chip extends StatelessWidget {
-  final String label, icon, mode;
-  final bool isActive;
-  final VoidCallback onTap;
-  const _Chip({required this.label, required this.icon, required this.mode,
-    required this.isActive, required this.onTap});
+class _AdvancedFilterBtn extends GetView<HomeController> {
+  const _AdvancedFilterBtn();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: isActive ? AppColors.gradientPink : null,
-          color: isActive ? null : AppColors.surface2,
-          borderRadius: BorderRadius.circular(20),
-          border: isActive ? null : Border.all(color: AppColors.border),
+    return Obx(() {
+      final hasActiveFilters = controller.filterGender.value != 'tous' ||
+          controller.filterDistance.value < 50;
+      return GestureDetector(
+        onTap: () {},
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: hasActiveFilters
+                ? AppColors.accent.withOpacity(0.1)
+                : AppColors.surface2,
+            border: Border.all(
+                color: hasActiveFilters ? AppColors.accent : AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.tune_rounded,
+                  size: 16,
+                  color: hasActiveFilters
+                      ? AppColors.accent
+                      : AppColors.textMuted),
+              const SizedBox(width: 6),
+              Text('Filtres',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: hasActiveFilters
+                          ? AppColors.accent
+                          : AppColors.textMuted)),
+            ],
+          ),
         ),
-        child: Row(
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 13)),
-            const SizedBox(width: 5),
-            Text(label, style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700,
-              color: isActive ? Colors.white : AppColors.textMuted)),
-          ],
-        ),
-      ),
-    );
+      );
+    });
   }
 }
 
-// ─── GRILLE UTILISATEURS ───────────────────────────────────────
+// ─── GRILLE UTILISATEURS ─────────────────────────────────────────
 
-class _UsersGrid extends GetView<HomeController> {
-  const _UsersGrid();
+class _UsersGridScrollable extends GetView<HomeController> {
+  final ScrollController scrollCtrl;
+  const _UsersGridScrollable({required this.scrollCtrl});
 
   @override
   Widget build(BuildContext context) {
@@ -413,24 +359,39 @@ class _UsersGrid extends GetView<HomeController> {
       if (controller.isLoadingUsers.value) return _buildShimmer();
       final users = controller.filteredUsers;
       if (users.isEmpty) return _buildEmpty();
+
       return RefreshIndicator(
         onRefresh: controller.loadProfiles,
         color: AppColors.accent,
-        backgroundColor: AppColors.surface,
         child: GridView.builder(
-          padding: const EdgeInsets.fromLTRB(6, 4, 6, 16),
-          physics: const AlwaysScrollableScrollPhysics(),
+          controller: scrollCtrl,
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 100),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            crossAxisSpacing: 3,
-            mainAxisSpacing: 3,
-            childAspectRatio: 0.72,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.75,
           ),
           itemCount: users.length,
-          itemBuilder: (_, i) => _UserCard(
-            user: users[i],
-            onTap: () => controller.openProfile(users[i]),
-          ),
+          itemBuilder: (_, i) {
+            final user = users[i];
+            return Obx(() {
+              final unreadCount =
+                  Get.find<UnreadMessagesController>().unreadFrom(user.id);
+
+              // ✅ Story active : anneau dégradé si non vue, gris si vue
+              final hasStory = controller.userHasActiveStory(user.id);
+              final storyIsSeen = controller.userStoryIsSeen(user.id);
+
+              return _UserCard(
+                user: user,
+                unreadCount: unreadCount,
+                hasActiveStory: hasStory,
+                storyIsSeen: storyIsSeen,
+                onTap: () => controller.openProfile(user),
+              );
+            });
+          },
         ),
       );
     });
@@ -438,142 +399,225 @@ class _UsersGrid extends GetView<HomeController> {
 
   Widget _buildShimmer() {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(6, 4, 6, 16),
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, crossAxisSpacing: 3, mainAxisSpacing: 3,
-        childAspectRatio: 0.72,
-      ),
+          crossAxisCount: 3,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 0.75),
       itemCount: 12,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: AppColors.surface2,
         highlightColor: AppColors.border,
         child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface2,
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
+            decoration: BoxDecoration(
+                color: Colors.white, borderRadius: BorderRadius.circular(12))),
       ),
     );
   }
 
   Widget _buildEmpty() {
-    return RefreshIndicator(
-      onRefresh: controller.loadProfiles,
-      color: AppColors.accent,
-      backgroundColor: AppColors.surface,
-      child: ListView(
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(height: MediaQuery.of(Get.context!).size.height * 0.2),
-          Center(
-            child: Column(
-              children: [
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Icon(Icons.people_outline_rounded,
-                    size: 64, color: Colors.white),
-                ),
-                const SizedBox(height: 16),
-                const Text('Aucun profil pour l\'instant',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-                const SizedBox(height: 8),
-                const Text('Tire vers le bas pour actualiser',
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-              ],
-            ),
-          ),
+          Icon(Icons.person_search_rounded,
+              size: 64, color: AppColors.textMuted.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          const Text('Personne à proximité',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          TextButton(
+              onPressed: controller.loadProfiles,
+              child: const Text('Réessayer')),
         ],
       ),
     );
   }
 }
 
-// ─── CARTE UTILISATEUR (style Grindr) ──────────────────────────
+// ─── CARTE UTILISATEUR ───────────────────────────────────────────
 
 class _UserCard extends StatelessWidget {
   final UserModel user;
   final VoidCallback onTap;
-  final bool hasNewMessage;
-  const _UserCard({required this.user, required this.onTap, this.hasNewMessage = false});
+  final int unreadCount;
+
+  /// ✅ Story active — anneau autour de la carte
+  final bool hasActiveStory;
+
+  /// ✅ true → anneau gris (déjà vue), false → anneau dégradé (non vue)
+  final bool storyIsSeen;
+
+  const _UserCard({
+    required this.user,
+    required this.onTap,
+    this.unreadCount = 0,
+    this.hasActiveStory = false,
+    this.storyIsSeen = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bool hasUnread = unreadCount > 0;
+
+    // ✅ Couleur de la bordure extérieure :
+    //   priorité 1 : messages non lus → or
+    //   priorité 2 : story non vue  → dégradé simulé via accent
+    //   priorité 3 : story vue      → gris discret
+    //   par défaut  : aucune bordure
+    final bool showUnreadBorder = hasUnread;
+    final bool showStoryBorder = !hasUnread && hasActiveStory;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: hasNewMessage ? const LinearGradient(
-            colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ) : null,
+          // Bordure messages non lus (or) > story
+          border: showUnreadBorder
+              ? Border.all(color: const Color(0xFFFFD700), width: 2)
+              : showStoryBorder
+                  ? Border.all(
+                      color: storyIsSeen ? AppColors.border : AppColors.accent,
+                      width: 2)
+                  : null,
+          boxShadow: showUnreadBorder
+              ? [
+                  BoxShadow(
+                      color: const Color(0xFFFFD700).withOpacity(0.3),
+                      blurRadius: 8)
+                ]
+              : showStoryBorder && !storyIsSeen
+                  ? [
+                      BoxShadow(
+                          color: AppColors.accent.withOpacity(0.35),
+                          blurRadius: 10,
+                          spreadRadius: 0)
+                    ]
+                  : null,
         ),
-        padding: hasNewMessage ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(hasNewMessage ? 10 : 12),
+          borderRadius: BorderRadius.circular(10),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Photo ou gradient
+              // ── Photo ──────────────────────────────────────
               user.photoUrl != null && user.photoUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: user.photoUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => _GradientAvatar(name: user.name),
-                    errorWidget: (_, __, ___) => _GradientAvatar(name: user.name),
-                  )
-                : _GradientAvatar(name: user.name),
+                  ? CachedNetworkImage(
+                      imageUrl: user.photoUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _GradientAvatar(name: user.name),
+                      errorWidget: (_, __, ___) =>
+                          _GradientAvatar(name: user.name),
+                    )
+                  : _GradientAvatar(name: user.name),
 
-              // Gradient bas
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: Container(
-                  height: 70,
+              // ── Gradient bas ───────────────────────────────
+              Positioned.fill(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.85)],
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.8)
+                      ],
+                      stops: const [0.6, 1.0],
                     ),
                   ),
                 ),
               ),
 
-              // Infos bas
+              // ── Nom + distance ─────────────────────────────
               Positioned(
-                bottom: 6, left: 7, right: 7,
+                bottom: 8,
+                left: 8,
+                right: 8,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '${user.name}, ${user.age}',
-                      style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text('${user.name}, ${user.age}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis),
                     if (user.distanceMeters != null)
-                      Text(user.distanceLabel,
-                        style: const TextStyle(fontSize: 10, color: Colors.white70)),
+                      Text(HomeController.formatDistance(user.distanceMeters),
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 9)),
                   ],
                 ),
               ),
 
-              // Badge online
+              // ── Dot online ─────────────────────────────────
               if (user.isOnline)
                 Positioned(
-                  top: 6, right: 6,
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                            color: Colors.green, shape: BoxShape.circle))),
+
+              // ✅ Icône story — en haut à droite si story active
+              // Remplace visuellement la même position que le badge unread
+              // quand il n'y a pas de message non lu.
+              if (hasActiveStory && !hasUnread)
+                Positioned(
+                  top: 6,
+                  right: 6,
                   child: Container(
-                    width: 10, height: 10,
+                    width: 22,
+                    height: 22,
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: AppColors.online,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black, width: 1.5),
+                      gradient: storyIsSeen
+                          ? null
+                          : const LinearGradient(
+                              colors: [
+                                AppColors.accent,
+                                AppColors.accent2,
+                                AppColors.accent3,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                      color: storyIsSeen ? AppColors.border : null,
                     ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withOpacity(0.3),
+                      ),
+                      child: const Icon(
+                        Icons.play_circle_filled_rounded,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── Badge messages non lus ─────────────────────
+              if (hasUnread)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                        color: Color(0xFFFFD700), shape: BoxShape.circle),
+                    child: Text(unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900)),
                   ),
                 ),
             ],
@@ -584,30 +628,84 @@ class _UserCard extends StatelessWidget {
   }
 }
 
+// ─── WIDGETS COMMUNS ─────────────────────────────────────────────
+
 class _GradientAvatar extends StatelessWidget {
   final String name;
   const _GradientAvatar({required this.name});
 
+  static const _palettes = [
+    [Color(0xFFFF6B6B), Color(0xFFFECA57)],
+    [Color(0xFF48DBFB), Color(0xFFFF9FF3)],
+    [Color(0xFFFF9F43), Color(0xFFEE5A24)],
+    [Color(0xFFA29BFE), Color(0xFF6C5CE7)],
+    [Color(0xFFFD79A8), Color(0xFFE84393)],
+    [Color(0xFF55EFC4), Color(0xFF00B894)],
+    [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
+    [Color(0xFF7B2FFF), Color(0xFF00F5D4)],
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final colors = [
-      [const Color(0xFFFF3CAC), const Color(0xFF7B2FFF)],
-      [const Color(0xFF7B2FFF), const Color(0xFF00F5D4)],
-      [const Color(0xFFFF6B6B), const Color(0xFFFF3CAC)],
-      [const Color(0xFF00F5D4), const Color(0xFF7B2FFF)],
-    ];
-    final idx = name.codeUnitAt(0) % colors.length;
+    final idx = name.isNotEmpty ? name.codeUnitAt(0) % _palettes.length : 0;
+    final colors = _palettes[idx];
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: colors[idx],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
       child: Center(
-        child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900,
-            color: Colors.white)),
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label, icon;
+  final bool isActive;
+  final VoidCallback onTap;
+  const _Chip(
+      {required this.label,
+      required this.icon,
+      required this.isActive,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.accent : AppColors.surface2,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 12)),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      color: isActive ? Colors.white : AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "894643165430",
+    "project_id": "snapmeet-2b1ca",
+    "storage_bucket": "snapmeet-2b1ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894643165430:android:40dc5c0144c9e0d28e34d7",
+        "android_client_info": {
+          "package_name": "com.example.rencontre"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq55TR6rCDuTRFw7qj1fB84IGvodNz0eI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

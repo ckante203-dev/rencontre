@@ -13,6 +13,10 @@ dependencies:
   # ── State management ─────────────────────────────────────────
   get: ^4.6.6
 
+  # ── Cloud & Messaging (Firebase) ─────────────────────────────
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+
   # ── Supabase ──────────────────────────────────────────────────
   supabase_flutter: ^2.5.6
 
@@ -25,7 +29,7 @@ dependencies:
   shimmer: ^3.0.0
   flutter_staggered_animations: ^1.1.1
 
-  # ── Géolocalisation ───────────────────────────────────────────
+  # ── Géolocalisation & Notifications ───────────────────────────
   geolocator: ^10.1.0
   awesome_notifications: ^0.10.0
   camera: ^0.11.0
@@ -47,6 +51,12 @@ dependencies:
   # ── Utilitaires ───────────────────────────────────────────────
   timeago: ^3.6.0
 
+  # ── Mise à jour ───────────────────────────────────────────────
+  package_info_plus: ^8.0.0
+  url_launcher: ^6.3.0
+  video_player: ^2.11.0
+  visibility_detector: ^0.4.0+2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -55,7 +65,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/
 

@@ -9,6 +9,7 @@ class UserModel {
   final double? latitude;
   final double? longitude;
   final String? gender;
+  final String? lookingFor; // ✅ 'male', 'female', 'all'
   final bool isOnline;
   final DateTime? lastSeen;
   final double? distanceMeters;
@@ -27,6 +28,7 @@ class UserModel {
     this.latitude,
     this.longitude,
     this.gender,
+    this.lookingFor,
     this.isOnline = false,
     this.lastSeen,
     this.distanceMeters,
@@ -35,23 +37,43 @@ class UserModel {
     this.matchesCount = 0,
   });
 
-  UserModel copyWith({double? distanceMeters, bool? isOnline, String? gender}) => UserModel(
-        id: id,
-        name: name,
-        age: age,
-        bio: bio,
-        photoUrl: photoUrl,
-        photoUrls: photoUrls,
-        interests: interests,
-        latitude: latitude,
-        longitude: longitude,
+  UserModel copyWith({
+    String? id,
+    String? name,
+    int? age,
+    String? bio,
+    String? photoUrl,
+    List<String>? photoUrls,
+    List<String>? interests,
+    double? latitude,
+    double? longitude,
+    String? gender,
+    String? lookingFor,
+    bool? isOnline,
+    DateTime? lastSeen,
+    double? distanceMeters,
+    int? followersCount,
+    int? followingCount,
+    int? matchesCount,
+  }) =>
+      UserModel(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        age: age ?? this.age,
+        bio: bio ?? this.bio,
+        photoUrl: photoUrl ?? this.photoUrl,
+        photoUrls: photoUrls ?? this.photoUrls,
+        interests: interests ?? this.interests,
+        latitude: latitude ?? this.latitude,
+        longitude: longitude ?? this.longitude,
         gender: gender ?? this.gender,
+        lookingFor: lookingFor ?? this.lookingFor,
         isOnline: isOnline ?? this.isOnline,
-        lastSeen: lastSeen,
+        lastSeen: lastSeen ?? this.lastSeen,
         distanceMeters: distanceMeters ?? this.distanceMeters,
-        followersCount: followersCount,
-        followingCount: followingCount,
-        matchesCount: matchesCount,
+        followersCount: followersCount ?? this.followersCount,
+        followingCount: followingCount ?? this.followingCount,
+        matchesCount: matchesCount ?? this.matchesCount,
       );
 
   String get distanceLabel {
