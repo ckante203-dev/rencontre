@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -6,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:package_info_plus/package_info_plus.dart'; // ✅ AJOUT
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
@@ -14,14 +16,11 @@ import 'package:rencontre/core/services/notification_service.dart';
 const String _supabaseUrl = 'https://hccdxchznkpxlfgsoufs.supabase.co';
 const String _supabaseAnon = 'sb_publishable_j4U12Xsnk1nVXwG0kaRZSQ_Vhp-dUFV';
 
-// ── Handler notifications en arrière-plan (OBLIGATOIRE top-level) ──
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  // Affiche la notification via awesome_notifications
   final data = message.data;
   final notification = message.notification;
-
   await AwesomeNotifications().createNotification(
     content: NotificationContent(
       id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
@@ -42,63 +41,109 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Supabase ──────────────────────────────────────────────────
-  await Supabase.initialize(
-    url: _supabaseUrl,
-    anonKey: _supabaseAnon,
-  );
+  // ✅ Barre de statut transparente dès le départ
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+  ));
 
-  // ── Firebase ──────────────────────────────────────────────────
-  await Firebase.initializeApp();
+  // ✅ Supabase + Firebase en PARALLÈLE — obligatoires avant runApp
+  await Future.wait([
+    Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnon),
+    Firebase.initializeApp(),
+  ]);
 
-  // ── Notifications locales (awesome_notifications) ─────────────
-  await NotificationService.initialize();
-  NotificationService.listenToNotifications();
-
-  // ── Firebase Messaging ────────────────────────────────────────
-  await _setupFirebaseMessaging();
-
-  // ── Timeago French ────────────────────────────────────────────
+  // ✅ Timeago — synchrone, instantané
   timeago.setLocaleMessages('fr', timeago.FrMessages());
 
-  // ── Permissions au démarrage ──────────────────────────────────
-  await _demanderPermissions();
-
-  // ── AuthController global ─────────────────────────────────────
+  // ✅ AuthController enregistré AVANT runApp
   Get.put(AuthController(), permanent: true);
 
+  // ✅ On lance l'app IMMÉDIATEMENT
   runApp(const SnapMeetApp());
+
+  // ✅ Tout le reste EN ARRIÈRE-PLAN après runApp
+  // L'utilisateur voit déjà l'UI pendant que ça charge
+  _initEnArrierePlan();
+}
+
+Future<void> _initEnArrierePlan() async {
+  try {
+    await NotificationService.initialize();
+    NotificationService.listenToNotifications();
+  } catch (e) {
+    debugPrint('NotificationService error: $e');
+  }
+
+  try {
+    await _setupFirebaseMessaging();
+  } catch (e) {
+    debugPrint('Firebase Messaging error: $e');
+  }
+
+  try {
+    // ✅ NOUVEAU — Sauvegarde la version de l'app en arrière-plan
+    // Permet à l'admin de voir qui a mis à jour ou non
+    // Aucun impact sur les perfs : lecture locale + 1 seul UPDATE Supabase
+    await _saveAppVersion();
+  } catch (e) {
+    debugPrint('AppVersion error: $e');
+  }
+
+  try {
+    _demanderPermissions(); // pas de await intentionnel
+  } catch (e) {
+    debugPrint('Permissions error: $e');
+  }
+}
+
+// ✅ Sauvegarde la version actuelle de l'app dans profiles.app_version
+// - PackageInfo.fromPlatform() = lecture locale depuis pubspec.yaml, ~1ms
+// - UPDATE Supabase en arrière-plan, ne bloque rien
+Future<void> _saveAppVersion() async {
+  try {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null)
+      return; // Pas connecté — sera mis à jour à la prochaine ouverture
+
+    final packageInfo = await PackageInfo.fromPlatform();
+    final version = packageInfo.version; // ex: "1.0.3"
+
+    await Supabase.instance.client
+        .from('profiles')
+        .update({'app_version': version}).eq('id', uid);
+
+    debugPrint('✅ App version sauvegardée: $version');
+  } catch (e) {
+    debugPrint('saveAppVersion error: $e');
+  }
 }
 
 Future<void> _setupFirebaseMessaging() async {
-  // Handler quand app est complètement fermée
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   final messaging = FirebaseMessaging.instance;
 
-  // Demande permission iOS (Android 13+ géré par awesome_notifications)
-  await messaging.requestPermission(
+  // Permission iOS
+  messaging.requestPermission(
     alert: true,
     badge: true,
     sound: true,
   );
 
-  // Récupère le token FCM et le sauvegarde dans Supabase
-  final token = await messaging.getToken();
-  if (token != null) {
-    await _saveFcmToken(token);
-  }
+  // Token FCM — en arrière-plan
+  messaging.getToken().then((token) {
+    if (token != null) _saveFcmToken(token);
+  });
 
-  // Si le token change (ex: réinstallation)
   messaging.onTokenRefresh.listen(_saveFcmToken);
 
-  // Notification reçue quand app est EN PREMIER PLAN
+  // Message reçu en premier plan
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final data = message.data;
     final convId = data['conversationId'] ?? '';
     final senderName = data['senderName'] ?? 'Quelqu\'un';
     final msg = data['message'] ?? message.notification?.body ?? '';
-
     NotificationService.showMessageNotification(
       senderName: senderName,
       message: msg,
@@ -106,7 +151,7 @@ Future<void> _setupFirebaseMessaging() async {
     );
   });
 
-  // Notification cliquée quand app est en ARRIÈRE-PLAN (pas fermée)
+  // Clic sur la notification — ouvre la conversation
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     final convId = message.data['conversationId'];
     final senderName = message.data['senderName'] ?? '';
@@ -118,18 +163,19 @@ Future<void> _setupFirebaseMessaging() async {
     }
   });
 
-  // App ouverte DEPUIS une notification (app était fermée)
-  final initialMessage = await messaging.getInitialMessage();
-  if (initialMessage != null) {
-    final convId = initialMessage.data['conversationId'];
-    final senderName = initialMessage.data['senderName'] ?? '';
-    if (convId != null && convId.isNotEmpty) {
-      Future.delayed(const Duration(seconds: 1), () {
-        Get.toNamed('/chat/conversation',
-            arguments: {'id': convId, 'userName': senderName});
-      });
+  // Message initial — app lancée depuis une notification
+  messaging.getInitialMessage().then((initialMessage) {
+    if (initialMessage != null) {
+      final convId = initialMessage.data['conversationId'];
+      final senderName = initialMessage.data['senderName'] ?? '';
+      if (convId != null && convId.isNotEmpty) {
+        Future.delayed(const Duration(seconds: 1), () {
+          Get.toNamed('/chat/conversation',
+              arguments: {'id': convId, 'userName': senderName});
+        });
+      }
     }
-  }
+  });
 }
 
 Future<void> _saveFcmToken(String token) async {
@@ -146,15 +192,19 @@ Future<void> _saveFcmToken(String token) async {
 }
 
 Future<void> _demanderPermissions() async {
-  await [
-    Permission.camera,
-    Permission.microphone,
-    Permission.location,
-    Permission.locationWhenInUse,
-    Permission.notification,
-    Permission.photos,
-    Permission.storage,
-  ].request();
+  try {
+    await [
+      Permission.camera,
+      Permission.microphone,
+      Permission.location,
+      Permission.locationWhenInUse,
+      Permission.notification,
+      Permission.photos,
+      Permission.storage,
+    ].request();
+  } catch (e) {
+    debugPrint('Permissions error: $e');
+  }
 }
 
 class SnapMeetApp extends StatelessWidget {

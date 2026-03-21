@@ -10,8 +10,9 @@ class StoryModel {
   final DateTime expiresAt;
   final List<String> viewedBy;
   final bool isSeen;
-  final double? distanceKm; // Nouveau
-  final bool hasChatted; // Nouveau
+  final double? distanceKm;
+  final bool hasChatted;
+  final bool isPinned; // ✅ NOUVEAU
 
   const StoryModel({
     required this.id,
@@ -27,12 +28,13 @@ class StoryModel {
     this.isSeen = false,
     this.distanceKm,
     this.hasChatted = false,
+    this.isPinned = false, // ✅ NOUVEAU
   });
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool get isActive => !isExpired;
 
-  StoryModel copyWith({bool? isSeen}) {
+  StoryModel copyWith({bool? isSeen, bool? isPinned}) {
     return StoryModel(
       id: id,
       userId: userId,
@@ -47,6 +49,7 @@ class StoryModel {
       isSeen: isSeen ?? this.isSeen,
       distanceKm: distanceKm,
       hasChatted: hasChatted,
+      isPinned: isPinned ?? this.isPinned, // ✅ NOUVEAU
     );
   }
 }

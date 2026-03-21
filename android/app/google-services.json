@@ -12,7 +12,12 @@
           "package_name": "com.example.rencontre"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "894643165430-pk4p5jitoov8qisi3s98rbk6eg8h4984.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDq55TR6rCDuTRFw7qj1fB84IGvodNz0eI"
@@ -20,7 +25,41 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "894643165430-pk4p5jitoov8qisi3s98rbk6eg8h4984.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894643165430:android:57bf89c3e3ede4798e34d7",
+        "android_client_info": {
+          "package_name": "com.snapmeet.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "894643165430-pk4p5jitoov8qisi3s98rbk6eg8h4984.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq55TR6rCDuTRFw7qj1fB84IGvodNz0eI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "894643165430-pk4p5jitoov8qisi3s98rbk6eg8h4984.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

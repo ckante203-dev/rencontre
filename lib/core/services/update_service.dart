@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class UpdateService {
-  static const String _currentVersion = '1.0.0';
-
+  // ✅ Version lue automatiquement depuis pubspec.yaml
+  // Plus besoin de changer manuellement _currentVersion à chaque build !
   static Future<void> checkForUpdate() async {
     try {
+      // Lit la version réelle installée sur le téléphone
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version; // ex: "1.0.1"
+
+      debugPrint('📱 Version installée: $currentVersion');
+
       final data = await Supabase.instance.client
           .from('app_config')
           .select('latest_version, download_url, release_notes, force_update')
@@ -20,8 +26,11 @@ class UpdateService {
       final releaseNotes = data['release_notes'] as String? ?? '';
       final forceUpdate = data['force_update'] as bool? ?? false;
 
-      if (_isNewerVersion(latestVersion, _currentVersion)) {
+      debugPrint('🌐 Version Supabase: $latestVersion');
+
+      if (_isNewerVersion(latestVersion, currentVersion)) {
         _showUpdateDialog(
+          currentVersion: currentVersion,
           latestVersion: latestVersion,
           downloadUrl: downloadUrl,
           releaseNotes: releaseNotes,
@@ -46,6 +55,7 @@ class UpdateService {
   }
 
   static void _showUpdateDialog({
+    required String currentVersion,
     required String latestVersion,
     required String downloadUrl,
     required String releaseNotes,
@@ -58,13 +68,13 @@ class UpdateService {
           backgroundColor: const Color(0xFF1A1A2E),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
+          title: const Row(
             children: [
-              const Text('🚀 ', style: TextStyle(fontSize: 24)),
-              const SizedBox(width: 8),
+              Text('🚀 ', style: TextStyle(fontSize: 24)),
+              SizedBox(width: 8),
               Text(
                 'Mise à jour disponible',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -80,6 +90,11 @@ class UpdateService {
                 'Version $latestVersion disponible',
                 style: const TextStyle(
                     color: Color(0xFFFF3CAC), fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Installée : $currentVersion',
+                style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
               ),
               if (releaseNotes.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -126,9 +141,24 @@ class UpdateService {
   }
 
   static Future<void> _downloadUpdate(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(url);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      debugPrint('Download error: $e');
+      Get.snackbar(
+        'Erreur',
+        'Impossible d\'ouvrir le lien de téléchargement',
+        backgroundColor: const Color(0xFFFF3B30),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 }

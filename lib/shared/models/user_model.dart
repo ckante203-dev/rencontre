@@ -1,3 +1,5 @@
+// lib/shared/models/user_model.dart
+
 class UserModel {
   final String id;
   final String name;
@@ -9,13 +11,18 @@ class UserModel {
   final double? latitude;
   final double? longitude;
   final String? gender;
-  final String? lookingFor; // ✅ 'male', 'female', 'all'
+  final String? lookingFor;
   final bool isOnline;
   final DateTime? lastSeen;
   final double? distanceMeters;
   final int followersCount;
   final int followingCount;
   final int matchesCount;
+  // ✅ Nouveaux champs v1.0.3
+  final int? taille;
+  final int? poids;
+  final String? morphologie;
+  final String? lieuRencontre;
 
   const UserModel({
     required this.id,
@@ -35,6 +42,10 @@ class UserModel {
     this.followersCount = 0,
     this.followingCount = 0,
     this.matchesCount = 0,
+    this.taille,
+    this.poids,
+    this.morphologie,
+    this.lieuRencontre,
   });
 
   UserModel copyWith({
@@ -43,6 +54,7 @@ class UserModel {
     int? age,
     String? bio,
     String? photoUrl,
+    bool clearPhoto = false,
     List<String>? photoUrls,
     List<String>? interests,
     double? latitude,
@@ -55,13 +67,17 @@ class UserModel {
     int? followersCount,
     int? followingCount,
     int? matchesCount,
+    int? taille,
+    int? poids,
+    String? morphologie,
+    String? lieuRencontre,
   }) =>
       UserModel(
         id: id ?? this.id,
         name: name ?? this.name,
         age: age ?? this.age,
         bio: bio ?? this.bio,
-        photoUrl: photoUrl ?? this.photoUrl,
+        photoUrl: clearPhoto ? null : (photoUrl ?? this.photoUrl),
         photoUrls: photoUrls ?? this.photoUrls,
         interests: interests ?? this.interests,
         latitude: latitude ?? this.latitude,
@@ -74,7 +90,19 @@ class UserModel {
         followersCount: followersCount ?? this.followersCount,
         followingCount: followingCount ?? this.followingCount,
         matchesCount: matchesCount ?? this.matchesCount,
+        taille: taille ?? this.taille,
+        poids: poids ?? this.poids,
+        morphologie: morphologie ?? this.morphologie,
+        lieuRencontre: lieuRencontre ?? this.lieuRencontre,
       );
+
+  /// "175cm · 70kg"
+  String get corpsMesures {
+    final parts = <String>[];
+    if (taille != null) parts.add('${taille}cm');
+    if (poids != null) parts.add('${poids}kg');
+    return parts.join(' · ');
+  }
 
   String get distanceLabel {
     if (distanceMeters == null) return '';

@@ -1,14 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 
-class HomeController extends GetxController {
+class HomeController extends GetxController with WidgetsBindingObserver {
   final _service = SupabaseService();
 
+  final RxList<UserModel> _allUsers = <UserModel>[].obs;
   final RxList<UserModel> profiles = <UserModel>[].obs;
   final RxBool isLoading = false.obs;
   RxBool get isLoadingUsers => isLoading;
@@ -19,7 +22,15 @@ class HomeController extends GetxController {
   final RxList<StoryModel> _allStories = <StoryModel>[].obs;
   final Set<String> _viewedStoryIds = {};
 
-  // ── Une seule story par utilisateur (la plus récente) ──
+  Timer? _heartbeatTimer;
+
+  // ✅ Heartbeat toutes les 60 secondes
+  // → last_seen mis à jour toutes les 60s
+  // → Si l'app crashe ou est fermée, last_seen > 3min → affiché HORS LIGNE automatiquement
+  static const _heartbeatInterval = Duration(seconds: 60);
+
+  RealtimeChannel? _onlineChannel;
+
   List<StoryModel> get stories {
     final seen = <String>{};
     final result = <StoryModel>[];
@@ -51,14 +62,94 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     _init();
   }
 
   Future<void> _init() async {
     await _loadMyProfile();
     await _locateMe();
+    // ✅ setOnline(true) dès le démarrage
+    await _service.setOnline(true);
+    _startHeartbeat();
+    _subscribeToOnlineChanges();
+    await _ensureFcmToken();
     await loadProfiles();
     await loadStories();
+  }
+
+  // ✅ Écoute Realtime les changements is_online + last_seen des autres profils
+  void _subscribeToOnlineChanges() {
+    _onlineChannel = Supabase.instance.client
+        .channel('profiles:online')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'profiles',
+          callback: (payload) {
+            final updated = payload.newRecord;
+            final userId = updated['id'] as String?;
+            if (userId == null || userId == _myUid) return;
+
+            // ✅ Utiliser isReallyOnline — pas juste le booléen brut
+            final isOnline = SupabaseService.isReallyOnline(
+                updated['is_online'], updated['last_seen']);
+
+            final idx = profiles.indexWhere((u) => u.id == userId);
+            if (idx != -1) {
+              profiles[idx] = profiles[idx].copyWith(isOnline: isOnline);
+            }
+            final idx2 = _allUsers.indexWhere((u) => u.id == userId);
+            if (idx2 != -1) {
+              _allUsers[idx2] = _allUsers[idx2].copyWith(isOnline: isOnline);
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _ensureFcmToken() async {
+    try {
+      final uid = _myUid;
+      if (uid == null) return;
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'fcm_token': token}).eq('id', uid);
+      debugPrint('✅ FCM token mis à jour: ${token.substring(0, 20)}...');
+    } catch (e) {
+      debugPrint('_ensureFcmToken error: $e');
+    }
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) async {
+      // ✅ heartbeat() = update last_seen uniquement — plus léger que setOnline()
+      await _service.heartbeat();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // ✅ App au premier plan → en ligne IMMÉDIATEMENT
+        _service.setOnline(true);
+        _startHeartbeat();
+        _ensureFcmToken();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // ✅ App en arrière-plan → hors ligne IMMÉDIATEMENT
+        // Plus de délai — avec last_seen la règle des 3 min gère le reste
+        _heartbeatTimer?.cancel();
+        _service.setOnline(false);
+        break;
+    }
   }
 
   Future<void> _loadMyProfile() async {
@@ -72,7 +163,6 @@ class HomeController extends GetxController {
         locationError.value = true;
         return;
       }
-
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
@@ -85,7 +175,6 @@ class HomeController extends GetxController {
         locationError.value = true;
         return;
       }
-
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.medium,
         timeLimit: const Duration(seconds: 5),
@@ -104,17 +193,23 @@ class HomeController extends GetxController {
     isLoading.value = true;
     try {
       final myProfile = _myProfile.value;
-      profiles.value = await _service.fetchProfiles(
+      final fetched = await _service.fetchProfiles(
         genderFilter: myProfile?.lookingFor,
-        lookingFor: myProfile?.gender,
         myLat: _myLat,
         myLng: _myLng,
       );
+      _allUsers.value = fetched;
+      profiles.value = fetched;
     } catch (e) {
       debugPrint('loadProfiles error: $e');
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void removeUser(String userId) {
+    _allUsers.removeWhere((u) => u.id == userId);
+    profiles.removeWhere((u) => u.id == userId);
   }
 
   void setFilter(String mode) => filterMode.value = mode;
@@ -126,8 +221,15 @@ class HomeController extends GetxController {
         final dist = u.distanceMeters;
         if (dist == null || dist > filterDistance.value * 1000) return false;
       }
-      if (filterGender.value != 'tous' && u.gender != filterGender.value)
-        return false;
+      if (filterGender.value != 'tous') {
+        final g = u.gender?.toLowerCase();
+        if (g != filterGender.value.toLowerCase() &&
+            g != null &&
+            g != 'non précisé' &&
+            g.isNotEmpty) {
+          return false;
+        }
+      }
       if (filterMode.value != 'nearby') {
         final dist = u.distanceMeters;
         if (dist != null && dist > filterDistance.value * 1000) return false;
@@ -142,13 +244,12 @@ class HomeController extends GetxController {
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  // ✅ FIX BUG 1 : route corrigée '/profile/view' (était '/profile')
   void openProfile(UserModel user) =>
       Get.toNamed('/profile/view', arguments: user);
 
   void openLocationSettings() => Geolocator.openLocationSettings();
 
-  // ─── STORIES ─────────────────────────────────────────────────
+  // ─── STORIES ────────────────────────────────────────────────────
 
   Future<void> loadStories() async {
     final uid = _myUid;
@@ -293,7 +394,6 @@ class HomeController extends GetxController {
     return userStories.every((s) => s.isSeen || _viewedStoryIds.contains(s.id));
   }
 
-  // ✅ Toutes les stories d'un user (pour le viewer qui défile)
   List<StoryModel> storiesForUser(String userId) =>
       _allStories.where((s) => s.userId == userId && s.isActive).toList();
 
@@ -301,7 +401,9 @@ class HomeController extends GetxController {
 
   @override
   void onClose() {
-    setOnline(false);
+    WidgetsBinding.instance.removeObserver(this);
+    _heartbeatTimer?.cancel();
+    _onlineChannel?.unsubscribe();
     super.onClose();
   }
 }

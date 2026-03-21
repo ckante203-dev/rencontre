@@ -5,10 +5,10 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/annonces/model/annonce_comment_model.dart';
 import 'package:rencontre/features/annonces/model/annonce_model.dart';
-import 'package:rencontre/core/services/notification_service.dart';
+import 'package:rencontre/features/annonces/controller/annonces_controller.dart';
 
 class AnnonceCommentController extends GetxController {
-  final AnnonceModel annonce; // ← on garde la publication complète
+  final AnnonceModel annonce;
   AnnonceCommentController({required this.annonce});
 
   String get annonceId => annonce.id;
@@ -23,17 +23,69 @@ class AnnonceCommentController extends GetxController {
   final RxString replyingToId = ''.obs;
   final RxString replyingToName = ''.obs;
 
+  // ✅ Debounce likes commentaires
+  final Set<String> _likingCommentIds = {};
+
+  // ✅ Realtime commentaires
+  RealtimeChannel? _commentsChannel;
+
   @override
   void onInit() {
     super.onInit();
     loadComments();
+    _subscribeRealtime();
   }
 
   @override
   void onClose() {
     textCtrl.dispose();
+    _commentsChannel?.unsubscribe();
     super.onClose();
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // REALTIME COMMENTAIRES
+  // ═══════════════════════════════════════════════════════════════
+
+  // ✅ Flag pour ignorer le prochain INSERT realtime (le nôtre)
+  bool _ignoreNextInsert = false;
+
+  void _subscribeRealtime() {
+    _commentsChannel = _db
+        .channel('comments_$annonceId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'annonce_comments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'annonce_id',
+            value: annonceId,
+          ),
+          callback: (payload) async {
+            // ✅ Ignorer notre propre INSERT — déjà ajouté en optimiste
+            if (_ignoreNextInsert) {
+              _ignoreNextInsert = false;
+              return;
+            }
+            // Commentaire d'un autre utilisateur → recharger
+            await loadComments();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'annonce_comments',
+          callback: (payload) async {
+            await loadComments();
+          },
+        )
+        .subscribe();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CHARGEMENT
+  // ═══════════════════════════════════════════════════════════════
 
   Future<void> loadComments() async {
     loading.value = true;
@@ -75,6 +127,10 @@ class AnnonceCommentController extends GetxController {
     replyingToName.value = '';
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ENVOYER COMMENTAIRE
+  // ═══════════════════════════════════════════════════════════════
+
   Future<void> sendComment() async {
     final texte = textCtrl.text.trim();
     if (texte.isEmpty || sending.value) return;
@@ -83,7 +139,6 @@ class AnnonceCommentController extends GetxController {
 
     sending.value = true;
     try {
-      // Récupérer le profil de l'expéditeur
       final profile = await _db
           .from('profiles')
           .select('name, photo_url')
@@ -94,72 +149,112 @@ class AnnonceCommentController extends GetxController {
       final senderPhoto = profile?['photo_url'];
       final parentId =
           replyingToId.value.isNotEmpty ? replyingToId.value : null;
+      final now = DateTime.now();
 
-      // ── Insérer le commentaire ──
+      // ✅ Ajout optimiste immédiat — pas de rechargement
+      final optimistic = AnnonceCommentModel(
+        id: 'temp_${now.millisecondsSinceEpoch}',
+        annonceId: annonceId,
+        userId: uid,
+        userName: senderName,
+        userPhotoUrl: senderPhoto,
+        isAnonyme: false,
+        texte: texte,
+        createdAt: now,
+        likes: 0,
+        isLiked: false,
+        parentId: parentId,
+        replies: const [],
+      );
+
+      if (parentId == null) {
+        // Commentaire racine → ajouter à la fin
+        comments.add(optimistic);
+      } else {
+        // Réponse → ajouter dans les replies du parent
+        final parentIdx = comments.indexWhere((c) => c.id == parentId);
+        if (parentIdx != -1) {
+          final parent = comments[parentIdx];
+          comments[parentIdx] = parent.copyWith(
+            replies: [...parent.replies, optimistic],
+          );
+          comments.refresh();
+        }
+      }
+
+      textCtrl.clear();
+      cancelReply();
+
+      // ✅ Marquer pour ignorer notre propre INSERT realtime
+      _ignoreNextInsert = true;
+
+      // Envoyer en BDD
       await _db.from('annonce_comments').insert({
         'annonce_id': annonceId,
         'user_id': uid,
         'user_name': senderName,
         'user_photo_url': senderPhoto,
-        'is_anonyme': false, // le commentateur n'est jamais anonyme
+        'is_anonyme': false,
         'texte': texte,
         'parent_id': parentId,
         'liked_by': [],
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': now.toIso8601String(),
       });
 
-      // ── Incrémenter reponses_count si commentaire racine ──
-      if (parentId == null) {
-        try {
-          await _db.rpc('increment_annonce_reponses',
-              params: {'p_annonce_id': annonceId});
-        } catch (_) {
-          // Fallback manuel
-          final row = await _db
-              .from('annonces')
-              .select('reponses_count')
-              .eq('id', annonceId)
-              .maybeSingle();
-          final current = (row?['reponses_count'] ?? 0) as int;
-          await _db
-              .from('annonces')
-              .update({'reponses_count': current + 1}).eq('id', annonceId);
-        }
-      }
+      // ✅ Recharger silencieusement pour remplacer le commentaire temp_ par le vrai
+      // (sans passer loading=true pour ne pas flasher)
+      final data = await _db
+          .from('annonce_comments')
+          .select()
+          .eq('annonce_id', annonceId)
+          .order('created_at', ascending: true);
 
-      // ── Notification au propriétaire de l'annonce ──
+      final all = (data as List)
+          .map((m) => AnnonceCommentModel.fromMap(m as Map<String, dynamic>,
+              myUid: _myUid))
+          .toList();
+      final parents = all.where((c) => c.parentId == null).toList();
+      final result = parents.map((parent) {
+        final replies = all.where((c) => c.parentId == parent.id).toList();
+        return parent.copyWith(replies: replies);
+      }).toList();
+      comments.value = result;
+
+      // Notification
       if (annonce.userId != uid) {
-        _sendNotification(
+        await _sendNotificationIfEnabled(
           toUserId: annonce.userId,
           title: '💬 Nouveau commentaire',
           body: '$senderName a commenté ton annonce : "$texte"',
           type: 'comment',
         );
       }
-
-      textCtrl.clear();
-      cancelReply();
-      await loadComments();
     } catch (e) {
       debugPrint('sendComment error: $e');
-      Get.snackbar(
-        'Erreur',
-        'Impossible d\'envoyer : $e',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF1A0A0A),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
+      // Rollback — retirer le commentaire optimiste
+      comments.removeWhere((c) => c.id.startsWith('temp_'));
+      _ignoreNextInsert = false;
+      Get.snackbar('Erreur', 'Impossible d\'envoyer : $e',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF1A0A0A),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4));
     } finally {
       sending.value = false;
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // LIKES COMMENTAIRES
+  // ═══════════════════════════════════════════════════════════════
+
   Future<void> toggleLike(AnnonceCommentModel comment) async {
     final uid = _myUid;
     if (uid == null) return;
+    if (_likingCommentIds.contains(comment.id)) return;
+    _likingCommentIds.add(comment.id);
 
-    // Optimiste
+    // Mise à jour optimiste
     _updateCommentInList(
       comment.id,
       comment.isLiked
@@ -177,11 +272,11 @@ class AnnonceCommentController extends GetxController {
 
       final liked = List<String>.from(row['liked_by'] ?? []);
       final wasLiked = liked.contains(uid);
+
       if (wasLiked) {
         liked.remove(uid);
       } else {
         liked.add(uid);
-        // Notifier le propriétaire du commentaire
         if (comment.userId != uid) {
           final myProfile = await _db
               .from('profiles')
@@ -189,7 +284,7 @@ class AnnonceCommentController extends GetxController {
               .eq('id', uid)
               .maybeSingle();
           final myName = myProfile?['name'] ?? 'Quelqu\'un';
-          _sendNotification(
+          await _sendNotificationIfEnabled(
             toUserId: comment.userId,
             title: '❤️ Ton commentaire a été aimé',
             body: '$myName a aimé ton commentaire',
@@ -204,20 +299,49 @@ class AnnonceCommentController extends GetxController {
     } catch (e) {
       debugPrint('toggleLike comment error: $e');
       await loadComments(); // rollback
+    } finally {
+      _likingCommentIds.remove(comment.id);
     }
   }
 
-  // ── Notification like sur l'annonce elle-même ──
-  Future<void> notifyAnnonceLike({required String likerName}) async {
+  // ═══════════════════════════════════════════════════════════════
+  // ÉPINGLER COMMENTAIRE
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> epinglerOuDesepingler(AnnonceCommentModel comment) async {
     final uid = _myUid;
-    if (uid == null || annonce.userId == uid) return;
-    _sendNotification(
-      toUserId: annonce.userId,
-      title: '❤️ Quelqu\'un aime ton annonce',
-      body: '$likerName a aimé ton annonce "${annonce.titre}"',
-      type: 'like_annonce',
-    );
+    if (uid == null || annonce.userId != uid) return;
+
+    final isPinned = annonce.pinnedCommentId == comment.id;
+    // Si déjà épinglé → désépingler, sinon épingler
+    final newPinnedId = isPinned ? null : comment.id;
+
+    if (Get.isRegistered<AnnoncesController>()) {
+      await Get.find<AnnoncesController>()
+          .epinglerCommentaire(annonce, newPinnedId);
+    }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SUPPRIMER
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> deleteComment(AnnonceCommentModel comment) async {
+    final uid = _myUid;
+    if (uid == null) return;
+    final canDelete = comment.userId == uid || annonce.userId == uid;
+    if (!canDelete) return;
+    try {
+      await _db.from('annonce_comments').delete().eq('id', comment.id);
+      // ✅ Le trigger sync reponses_count + realtime recharge
+    } catch (e) {
+      debugPrint('deleteComment error: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════
 
   void _updateCommentInList(String id, AnnonceCommentModel updated) {
     final idx = comments.indexWhere((c) => c.id == id);
@@ -238,22 +362,7 @@ class AnnonceCommentController extends GetxController {
     }
   }
 
-  Future<void> deleteComment(AnnonceCommentModel comment) async {
-    final uid = _myUid;
-    if (uid == null) return;
-    // Autorisé si : auteur du commentaire OU propriétaire de l'annonce
-    final canDelete = comment.userId == uid || annonce.userId == uid;
-    if (!canDelete) return;
-    try {
-      await _db.from('annonce_comments').delete().eq('id', comment.id);
-      await loadComments();
-    } catch (e) {
-      debugPrint('deleteComment error: $e');
-    }
-  }
-
-  // ── Envoyer une notification locale + FCM ──────────────────────
-  Future<void> _sendNotification({
+  Future<void> _sendNotificationIfEnabled({
     required String toUserId,
     required String title,
     required String body,
@@ -261,36 +370,31 @@ class AnnonceCommentController extends GetxController {
   }) async {
     try {
       final myUid = _myUid;
-      // Ne pas notifier soi-même
       if (toUserId == myUid) return;
 
-      // 1. Notification locale (si l'app est en premier plan sur l'appareil)
-      await NotificationService.showAnnonceNotification(
-        title: title,
-        body: body,
-      );
-
-      // 2. Notification push via Edge Function (si l'app est fermée/background)
-      final row = await _db
+      final profile = await _db
           .from('profiles')
-          .select('fcm_token')
+          .select('fcm_token, notif_messages, notif_annonces')
           .eq('id', toUserId)
           .maybeSingle();
+      if (profile == null) return;
 
-      final token = row?['fcm_token'] as String?;
+      final notifsEnabled = type == 'comment' || type == 'like_annonce'
+          ? (profile['notif_annonces'] ?? true)
+          : (profile['notif_messages'] ?? true);
+      if (!notifsEnabled) return;
+
+      final token = profile['fcm_token'] as String?;
       if (token == null || token.isEmpty) return;
 
       await _db.functions.invoke('send-notification', body: {
         'token': token,
         'title': title,
         'body': body,
-        'data': {
-          'type': type,
-          'annonceId': annonceId,
-        },
+        'data': {'type': type, 'annonceId': annonceId},
       });
     } catch (e) {
-      debugPrint('_sendNotification error (non bloquant): $e');
+      debugPrint('_sendNotificationIfEnabled error: $e');
     }
   }
 }

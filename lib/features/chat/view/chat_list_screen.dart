@@ -12,15 +12,14 @@ class ChatListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIX Bug 1 : Ne PAS faire Get.put ici — le controller est déjà
-    // enregistré permanent dans MainNavigation.initState()
-    // Get.put ici causait un reload complet à chaque retour sur l'écran
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(
           children: [
             _buildTopBar(),
+            // ✅ Barre de recherche
+            const _SearchBar(),
             const _FilterBar(),
             const Expanded(child: _ConversationList()),
           ],
@@ -64,6 +63,52 @@ class ChatListScreen extends StatelessWidget {
   }
 }
 
+// ─── SEARCH BAR ───────────────────────────────────────────────────
+
+class _SearchBar extends GetView<ChatListController> {
+  const _SearchBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final isSearching = controller.isSearching.value;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: isSearching ? 48 : 0,
+        child: isSearching
+            ? Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: TextField(
+                    autofocus: true,
+                    style: const TextStyle(
+                        fontSize: 14, color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      hintText: 'Rechercher une conversation...',
+                      hintStyle:
+                          TextStyle(color: AppColors.textMuted, fontSize: 14),
+                      prefixIcon: Icon(Icons.search_rounded,
+                          color: AppColors.textMuted, size: 18),
+                      border: InputBorder.none,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    ),
+                    onChanged: (v) => controller.searchQuery.value = v,
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      );
+    });
+  }
+}
+
 // ─── FILTER BAR ───────────────────────────────────────────────────
 
 class _FilterBar extends GetView<ChatListController> {
@@ -77,6 +122,40 @@ class _FilterBar extends GetView<ChatListController> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
+              // ✅ Bouton loupe pour activer/désactiver la recherche
+              GestureDetector(
+                onTap: () {
+                  controller.isSearching.toggle();
+                  if (!controller.isSearching.value) {
+                    controller.searchQuery.value = '';
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
+                  width: 36,
+                  decoration: BoxDecoration(
+                    gradient: controller.isSearching.value
+                        ? AppColors.gradientPink
+                        : null,
+                    color: controller.isSearching.value
+                        ? null
+                        : AppColors.surface2,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: controller.isSearching.value
+                            ? Colors.transparent
+                            : AppColors.border),
+                  ),
+                  child: Icon(
+                    controller.isSearching.value
+                        ? Icons.close_rounded
+                        : Icons.search_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
               _FilterChip(
                 label: 'Tous',
                 icon: Icons.chat_bubble_outline_rounded,
@@ -191,18 +270,49 @@ class _ConversationList extends GetView<ChatListController> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      if (controller.isLoading.value) return _buildShimmer();
+    return GetBuilder<ChatListController>(
+      builder: (ctrl) => Obx(() {
+        if (ctrl.isLoading.value) return _buildShimmer();
 
-      final list = controller.filteredConversations;
-      if (list.isEmpty) return _buildEmpty();
+        final list = ctrl.filteredConversations;
 
-      return ListView.builder(
-        physics: const BouncingScrollPhysics(),
-        itemCount: list.length,
-        itemBuilder: (_, i) => _ConversationTile(conv: list[i]),
-      );
-    });
+        // ✅ Message spécial si recherche active mais aucun résultat
+        if (list.isEmpty) {
+          if (ctrl.searchQuery.value.isNotEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.search_off_rounded,
+                      size: 48, color: AppColors.textMuted),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Aucun résultat pour "${ctrl.searchQuery.value}"',
+                    style: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+          return _buildEmpty();
+        }
+
+        return ListView.separated(
+          physics: const BouncingScrollPhysics(),
+          itemCount: list.length,
+          separatorBuilder: (_, __) => Divider(
+            height: 1,
+            thickness: 0.5,
+            indent: 80,
+            endIndent: 16,
+            color: AppColors.border.withValues(alpha: 0.6),
+          ),
+          itemBuilder: (_, i) => _ConversationTile(conv: list[i]),
+        );
+      }),
+    );
   }
 
   Widget _buildShimmer() {
@@ -326,12 +436,15 @@ class _ConversationTile extends GetView<ChatListController> {
                 children: [
                   Row(
                     children: [
-                      Text(conv.userName,
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
-                      const Spacer(),
+                      Expanded(
+                        child: Text(conv.userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary)),
+                      ),
                       if (conv.isPinned)
                         const Padding(
                           padding: EdgeInsets.only(right: 4),

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.rencontre"
+    namespace = "com.snapmeet.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.rencontre"
+        applicationId = "com.snapmeet.app"
         // Note: Assure-toi que cet ID correspond exactement à celui 
         // configuré dans ta console Firebase.
         minSdk = flutter.minSdkVersion

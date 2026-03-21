@@ -1,4 +1,4 @@
-package com.example.rencontre
+package com.snapmeet.app
 
 import io.flutter.embedding.android.FlutterActivity
 

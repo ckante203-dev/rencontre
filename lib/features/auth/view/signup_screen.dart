@@ -5,20 +5,41 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/auth/widget/auth_widgets.dart';
 
-// ✅ GetView résout le problème Obx automatiquement
-class SignupScreen extends GetView<AuthController> {
+class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
   @override
+  State<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends State<SignupScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // ✅ FIX 4 : Vider tous les champs à chaque ouverture
+    // pour éviter que les anciennes infos restent après déconnexion
+    final ctrl = Get.find<AuthController>();
+    ctrl.nameController.clear();
+    ctrl.birthdateController.clear();
+    ctrl.emailController.clear();
+    ctrl.passwordController.clear();
+    ctrl.confirmPasswordController.clear();
+    ctrl.phoneController.clear();
+    ctrl.clearError();
+    ctrl.showEmailOtp.value = false;
+    ctrl.passwordStrength.value = 0;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ctrl = Get.find<AuthController>();
     return Scaffold(
       backgroundColor: AppColors.bg,
-      // ✅ Obx au niveau body - controller bien accessible via GetView
       body: Obx(() {
-        if (controller.showEmailOtp.value) {
-          return _EmailOtpScreen(ctrl: controller);
+        if (ctrl.showEmailOtp.value) {
+          return _EmailOtpScreen(ctrl: ctrl);
         }
-        return _SignupForm(ctrl: controller);
+        return _SignupForm(ctrl: ctrl);
       }),
     );
   }
@@ -44,30 +65,35 @@ class _SignupForm extends StatelessWidget {
               GestureDetector(
                 onTap: () => Get.back(),
                 child: Container(
-                  width: 40, height: 40,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.surface2, shape: BoxShape.circle,
+                    color: AppColors.surface2,
+                    shape: BoxShape.circle,
                     border: Border.all(color: AppColors.border),
                   ),
                   child: const Icon(Icons.arrow_back_ios_rounded,
-                    size: 18, color: AppColors.textPrimary),
+                      size: 18, color: AppColors.textPrimary),
                 ),
               ),
               const SizedBox(height: 28),
 
-              // Header
               ShaderMask(
                 shaderCallback: (b) => AppColors.gradientPink.createShader(b),
                 child: const Text('Crée ton\ncompte 🚀',
-                  style: TextStyle(fontFamily: 'Syne', fontSize: 30,
-                    fontWeight: FontWeight.w900, color: Colors.white, height: 1.2)),
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.2)),
               ),
               const SizedBox(height: 8),
               const Text('Rejoins des milliers de personnes autour de toi',
-                style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
               const SizedBox(height: 32),
 
-              // Prénom
+              // ── Prénom ──────────────────────────────────────
               AuthInputField(
                 label: 'Prénom',
                 hint: 'Ton prénom',
@@ -77,14 +103,14 @@ class _SignupForm extends StatelessWidget {
               ),
               const SizedBox(height: 14),
 
-              // Date de naissance
+              // ── Date de naissance ───────────────────────────
               _DateField(
                 controller: ctrl.birthdateController,
                 onChanged: (_) => ctrl.clearError(),
               ),
               const SizedBox(height: 14),
 
-              // Email
+              // ── Email ───────────────────────────────────────
               AuthInputField(
                 label: 'Email',
                 hint: 'ton@email.com',
@@ -95,26 +121,24 @@ class _SignupForm extends StatelessWidget {
               ),
               const SizedBox(height: 14),
 
-              // Mot de passe
+              // ── Mot de passe ────────────────────────────────
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ✅ Obx séparé juste pour le champ password
                   Obx(() => AuthInputField(
-                    label: 'Mot de passe',
-                    hint: 'Min. 8 caractères',
-                    icon: '🔒',
-                    controller: ctrl.passwordController,
-                    isPassword: true,
-                    showPassword: ctrl.showPassword.value,
-                    onTogglePassword: () => ctrl.showPassword.toggle(),
-                    onChanged: (v) {
-                      ctrl.updatePasswordStrength(v);
-                      ctrl.clearError();
-                    },
-                  )),
-                  const SizedBox(height: 8),
-                  // ✅ Obx séparé juste pour la barre de force
+                        label: 'Mot de passe',
+                        hint: 'Min. 8 caractères',
+                        icon: '🔒',
+                        controller: ctrl.passwordController,
+                        isPassword: true,
+                        showPassword: ctrl.showPassword.value,
+                        onTogglePassword: () => ctrl.showPassword.toggle(),
+                        onChanged: (v) {
+                          ctrl.updatePasswordStrength(v);
+                          ctrl.clearError();
+                        },
+                      )),
+                  const SizedBox(height: 6),
                   Obx(() {
                     final s = ctrl.passwordStrength.value;
                     if (s == 0) return const SizedBox.shrink();
@@ -126,7 +150,14 @@ class _SignupForm extends StatelessWidget {
                   }),
                 ],
               ),
+              const SizedBox(height: 14),
+
+              // ── Confirmer mot de passe ──────────────────────
+              _ConfirmPasswordField(ctrl: ctrl),
               const SizedBox(height: 16),
+
+              // ✅ FIX 1 : Champ téléphone RETIRÉ
+              // Le numéro sera proposé séparément après vérification email
 
               // Erreur
               Obx(() => AuthErrorMessage(message: ctrl.errorMessage.value)),
@@ -134,49 +165,51 @@ class _SignupForm extends StatelessWidget {
 
               // Bouton inscription
               Obx(() => AuthPrimaryButton(
-                label: 'Créer mon compte →',
-                onTap: ctrl.signUpWithEmail,
-                isLoading: ctrl.isLoading.value,
-              )),
+                    label: 'Créer mon compte →',
+                    onTap: ctrl.signUpWithEmail,
+                    isLoading: ctrl.isLoading.value,
+                  )),
               const SizedBox(height: 20),
 
               const AuthDivider(),
               const SizedBox(height: 20),
 
-              // Google
               AuthSocialButton(
                 label: 'Continuer avec Google',
                 icon: 'G',
                 onTap: ctrl.signInWithGoogle,
               ),
-              const SizedBox(height: 12),
-
-// Téléphone retiré
               const SizedBox(height: 20),
 
-              // Déjà un compte
               Center(
                 child: GestureDetector(
                   onTap: () => Get.toNamed('/login'),
                   child: RichText(
                     text: const TextSpan(
                       text: 'Déjà un compte ? ',
-                      style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-                      children: [TextSpan(
-                        text: 'Se connecter',
-                        style: TextStyle(color: AppColors.accent,
-                          fontWeight: FontWeight.w700))],
+                      style:
+                          TextStyle(fontSize: 14, color: AppColors.textMuted),
+                      children: [
+                        TextSpan(
+                          text: 'Se connecter',
+                          style: TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Center(
                 child: Text(
                   'En créant un compte, tu acceptes nos Conditions\nd\'utilisation et notre Politique de confidentialité',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11,
-                    color: AppColors.textMuted.withOpacity(0.6), height: 1.5),
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted.withOpacity(0.6),
+                      height: 1.5),
                 ),
               ),
               const SizedBox(height: 32),
@@ -188,7 +221,83 @@ class _SignupForm extends StatelessWidget {
   }
 }
 
+// ─── CONFIRMER MOT DE PASSE (StatefulWidget ✅) ───────────────────
+
+class _ConfirmPasswordField extends StatefulWidget {
+  final AuthController ctrl;
+  const _ConfirmPasswordField({required this.ctrl});
+
+  @override
+  State<_ConfirmPasswordField> createState() => _ConfirmPasswordFieldState();
+}
+
+class _ConfirmPasswordFieldState extends State<_ConfirmPasswordField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.ctrl.passwordController.addListener(_rebuild);
+    widget.ctrl.confirmPasswordController.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.ctrl.passwordController.removeListener(_rebuild);
+    widget.ctrl.confirmPasswordController.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final password = widget.ctrl.passwordController.text;
+    final confirm = widget.ctrl.confirmPasswordController.text;
+    final hasError = confirm.isNotEmpty && confirm != password;
+    final isSuccess = confirm.isNotEmpty && confirm == password;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Obx(() => AuthInputField(
+              label: 'Confirmer le mot de passe',
+              hint: 'Répète ton mot de passe',
+              icon: '🔐',
+              controller: widget.ctrl.confirmPasswordController,
+              isPassword: true,
+              showPassword: widget.ctrl.showConfirmPassword.value,
+              onTogglePassword: () => widget.ctrl.showConfirmPassword.toggle(),
+              hasError: hasError,
+              isSuccess: isSuccess,
+              onChanged: (_) => widget.ctrl.clearError(),
+            )),
+        if (confirm.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 2),
+            child: Row(children: [
+              Icon(
+                isSuccess ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                size: 14,
+                color: isSuccess ? AppColors.online : AppColors.error,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isSuccess
+                    ? 'Les mots de passe correspondent'
+                    : 'Les mots de passe ne correspondent pas',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: isSuccess ? AppColors.online : AppColors.error,
+                    fontWeight: FontWeight.w500),
+              ),
+            ]),
+          ),
+      ],
+    );
+  }
+}
+
 // ─── EMAIL OTP SCREEN ─────────────────────────────────────────────
+// ✅ FIX 3 : Vérification OBLIGATOIRE — pas de bouton "Passer"
 
 class _EmailOtpScreen extends StatelessWidget {
   final AuthController ctrl;
@@ -200,91 +309,121 @@ class _EmailOtpScreen extends StatelessWidget {
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () => ctrl.showEmailOtp.value = false,
-              child: Container(
-                width: 40, height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 24),
+              // Retour vers le formulaire seulement (pas vers l'app)
+              GestureDetector(
+                onTap: () => ctrl.showEmailOtp.value = false,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border)),
+                  child: const Icon(Icons.arrow_back_ios_rounded,
+                      size: 18, color: AppColors.textPrimary),
+                ),
+              ),
+              const SizedBox(height: 40),
+              Container(
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.surface2, shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.border)),
-                child: const Icon(Icons.arrow_back_ios_rounded,
-                  size: 18, color: AppColors.textPrimary),
+                  shape: BoxShape.circle,
+                  gradient: AppColors.gradientPink,
+                  boxShadow: [
+                    BoxShadow(
+                        color: AppColors.accent.withOpacity(0.4),
+                        blurRadius: 24,
+                        spreadRadius: 2)
+                  ],
+                ),
+                child: const Center(
+                    child: Text('📧', style: TextStyle(fontSize: 36))),
               ),
-            ),
-            const SizedBox(height: 40),
-
-            // Icône email
-            Container(
-              width: 80, height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.gradientPink,
-                boxShadow: [BoxShadow(
-                  color: AppColors.accent.withOpacity(0.4),
-                  blurRadius: 24, spreadRadius: 2)],
+              const SizedBox(height: 28),
+              ShaderMask(
+                shaderCallback: (b) => AppColors.gradientPink.createShader(b),
+                child: const Text('Vérifie\nton email',
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.1)),
               ),
-              child: const Center(
-                child: Text('📧', style: TextStyle(fontSize: 36))),
-            ),
-            const SizedBox(height: 28),
-
-            ShaderMask(
-              shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-              child: const Text('Vérifie\nton email',
-                style: TextStyle(fontFamily: 'Syne', fontSize: 34,
-                  fontWeight: FontWeight.w900, color: Colors.white, height: 1.1)),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'On a envoyé un code à 6 chiffres à\n${ctrl.emailController.text.trim()}',
-              style: const TextStyle(fontSize: 14,
-                color: AppColors.textMuted, height: 1.6),
-            ),
-            const SizedBox(height: 40),
-
-            // 6 cases OTP
-            _OtpEmailInput(controller: ctrl.emailOtpController),
-            const SizedBox(height: 16),
-
-            Obx(() => AuthErrorMessage(message: ctrl.errorMessage.value)),
-            const SizedBox(height: 24),
-
-            Obx(() => AuthPrimaryButton(
-              label: 'Confirmer mon compte →',
-              onTap: ctrl.verifyEmailOtp,
-              isLoading: ctrl.isLoading.value,
-            )),
-            const SizedBox(height: 24),
-
-            // Renvoyer
-            Center(
-              child: GestureDetector(
-                onTap: ctrl.resendEmailOtp,
-                child: RichText(
-                  text: const TextSpan(
-                    text: 'Pas reçu le code ? ',
-                    style: TextStyle(fontSize: 14, color: AppColors.textMuted),
-                    children: [TextSpan(
-                      text: 'Renvoyer',
-                      style: TextStyle(color: AppColors.accent,
-                        fontWeight: FontWeight.w700, fontSize: 14))],
+              const SizedBox(height: 12),
+              Text(
+                'On a envoyé un code à 6 chiffres à\n${ctrl.emailController.text.trim()}',
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textMuted, height: 1.6),
+              ),
+              const SizedBox(height: 10),
+              // Badge obligatoire
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.accent.withOpacity(0.25)),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.lock_rounded, size: 14, color: AppColors.accent),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'La vérification est obligatoire pour accéder à l\'application.',
+                      style: TextStyle(
+                          fontSize: 11, color: AppColors.accent, height: 1.4),
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 32),
+              _OtpEmailInput(controller: ctrl.emailOtpController),
+              const SizedBox(height: 16),
+              Obx(() => AuthErrorMessage(message: ctrl.errorMessage.value)),
+              const SizedBox(height: 24),
+              Obx(() => AuthPrimaryButton(
+                    label: 'Confirmer mon compte →',
+                    onTap: ctrl.verifyEmailOtp,
+                    isLoading: ctrl.isLoading.value,
+                  )),
+              const SizedBox(height: 24),
+              Center(
+                child: GestureDetector(
+                  onTap: ctrl.resendEmailOtp,
+                  child: RichText(
+                    text: const TextSpan(
+                      text: 'Pas reçu le code ? ',
+                      style:
+                          TextStyle(fontSize: 14, color: AppColors.textMuted),
+                      children: [
+                        TextSpan(
+                          text: 'Renvoyer',
+                          style: TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Center(
-              child: Text('Vérifie aussi tes spams 🗂️',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text('Vérifie aussi tes spams 🗂️',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -303,7 +442,7 @@ class _OtpEmailInput extends StatefulWidget {
 
 class _OtpEmailInputState extends State<_OtpEmailInput> {
   final List<TextEditingController> _ctrls =
-    List.generate(6, (_) => TextEditingController());
+      List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _nodes = List.generate(6, (_) => FocusNode());
 
   @override
@@ -315,7 +454,7 @@ class _OtpEmailInputState extends State<_OtpEmailInput> {
 
   void _onChanged(int i, String v) {
     if (v.length == 1 && i < 5) _nodes[i + 1].requestFocus();
-    else if (v.isEmpty && i > 0) _nodes[i - 1].requestFocus();
+    if (v.isEmpty && i > 0) _nodes[i - 1].requestFocus();
     widget.controller.text = _ctrls.map((c) => c.text).join();
   }
 
@@ -323,35 +462,44 @@ class _OtpEmailInputState extends State<_OtpEmailInput> {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(6, (i) => SizedBox(
-        width: 48,
-        child: TextField(
-          controller: _ctrls[i], focusNode: _nodes[i],
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.number,
-          maxLength: 1,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            counterText: '',
-            filled: true, fillColor: AppColors.surface2,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.border, width: 1.5)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.accent, width: 2.5)),
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+      children: List.generate(
+        6,
+        (i) => SizedBox(
+          width: 48,
+          child: TextField(
+            controller: _ctrls[i],
+            focusNode: _nodes[i],
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            maxLength: 1,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              counterText: '',
+              filled: true,
+              fillColor: AppColors.surface2,
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: AppColors.border, width: 1.5)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: AppColors.accent, width: 2.5)),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            onChanged: (v) => _onChanged(i, v),
           ),
-          onChanged: (v) => _onChanged(i, v),
         ),
-      )),
+      ),
     );
   }
 }
 
-// ─── DATE FIELD avec formatage automatique JJ/MM/AAAA ─────────────
+// ─── DATE FIELD ───────────────────────────────────────────────────
 
 class _DateField extends StatelessWidget {
   final TextEditingController controller;
@@ -364,8 +512,11 @@ class _DateField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('DATE DE NAISSANCE',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-            color: AppColors.textMuted, letterSpacing: 1.2)),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+                letterSpacing: 1.2)),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -373,34 +524,34 @@ class _DateField extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border, width: 1.5),
           ),
-          child: Row(
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 16),
-                child: Text('🎂', style: TextStyle(fontSize: 20)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    _DateInputFormatter(),
-                  ],
-                  style: const TextStyle(fontSize: 15,
-                    color: AppColors.textPrimary, letterSpacing: 1),
-                  decoration: const InputDecoration(
-                    hintText: 'JJ / MM / AAAA',
-                    hintStyle: TextStyle(color: AppColors.textMuted),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onChanged: onChanged,
+          child: Row(children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: Text('🎂', style: TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  _DateInputFormatter(),
+                ],
+                style: const TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                    letterSpacing: 1),
+                decoration: const InputDecoration(
+                  hintText: 'JJ / MM / AAAA',
+                  hintStyle: TextStyle(color: AppColors.textMuted),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 16),
                 ),
+                onChanged: onChanged,
               ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ],
     );

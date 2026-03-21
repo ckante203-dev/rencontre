@@ -33,7 +33,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   final String? _myUid = Supabase.instance.client.auth.currentUser?.id;
   bool _replyFocused = false;
   bool _paused = false;
-  bool _longPressing = false; // vrai pendant le maintien → masque l'UI
+  bool _longPressing = false;
   final Set<String> _likedStoryIds = {};
 
   static const Duration _imageDuration = Duration(seconds: 5);
@@ -43,12 +43,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    _current = widget.initialIndex.clamp(0, widget.stories.length - 1);
+    // ✅ FIX CRASH : protection liste vide
+    _current = widget.stories.isEmpty
+        ? 0
+        : widget.initialIndex.clamp(0, widget.stories.length - 1);
     _progressCtrl = AnimationController(vsync: this);
     _progressCtrl.addStatusListener((status) {
       if (status == AnimationStatus.completed) _next();
     });
-    _loadStory(_current);
+    if (widget.stories.isNotEmpty) {
+      _loadStory(_current);
+    }
   }
 
   @override
@@ -79,7 +84,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
     _progressCtrl.forward();
     if (mounted) setState(() {});
-    _loadLikes(s); // charge si déjà liké
+    _loadLikes(s);
   }
 
   void _next() {
@@ -112,13 +117,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _videoCtrl?.play();
   }
 
-  // ── Like = stocké dans stories.liked_by[], jamais envoyé en message ──
   Future<void> _likeStory(StoryModel story) async {
     if (story.userId == _myUid) return;
     final uid = _myUid;
     if (uid == null) return;
     final alreadyLiked = _likedStoryIds.contains(story.id);
-    // Toggle local immédiat
     setState(() {
       if (alreadyLiked) {
         _likedStoryIds.remove(story.id);
@@ -143,7 +146,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           .from('stories')
           .update({'liked_by': liked}).eq('id', story.id);
     } catch (e) {
-      // Rollback si erreur
       setState(() {
         if (alreadyLiked) {
           _likedStoryIds.add(story.id);
@@ -155,7 +157,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
-  // Charge si l'utilisateur a déjà liké cette story
   Future<void> _loadLikes(StoryModel story) async {
     final uid = _myUid;
     if (uid == null) return;
@@ -172,11 +173,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     } catch (_) {}
   }
 
-  // ✅ FIX BUG 2 : route corrigée '/profile/view' (était '/profil/detail')
   Future<void> _openProfile(StoryModel story) async {
     if (_replyFocused) return;
     if (story.userId == _myUid) return;
-
     try {
       final data = await Supabase.instance.client
           .from('profiles')
@@ -184,7 +183,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           .eq('id', story.userId)
           .maybeSingle();
       if (data == null) return;
-
       int age = 0;
       final birthdate = data['birthdate'] ?? data['birth_date'];
       if (birthdate != null) {
@@ -207,7 +205,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       } else {
         age = data['age'] ?? 0;
       }
-
       final user = UserModel(
         id: data['id'] ?? story.userId,
         name: data['name'] ?? story.userName,
@@ -225,8 +222,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         followingCount: data['following_count'] ?? 0,
         matchesCount: data['matches_count'] ?? 0,
       );
-
-      // ✅ Route correcte
       Get.toNamed('/profile/view', arguments: user);
     } catch (e) {
       debugPrint('_openProfile from story error: $e');
@@ -266,51 +261,160 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         ),
       ],
     ));
-
     if (confirmed != true) {
-      _resume(); // annulé → on reprend la story
+      _resume();
       return;
     }
     try {
-      // Suppression — on filtre uniquement par id (la RLS vérifie user_id côté Supabase)
       await Supabase.instance.client
           .from('stories')
           .delete()
           .eq('id', story.id);
-
-      // Mettre à jour le HomeController
       if (Get.isRegistered<HomeController>()) {
         await Get.find<HomeController>().loadStories();
       }
-
-      // Fermer l'écran viewer (toujours — qu'il reste d'autres stories ou pas)
       if (mounted) {
         Get.back();
-        Get.snackbar(
-          'Story supprimée',
-          '',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-        );
+        Get.snackbar('Story supprimée', '',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: const Color(0xFF13131A),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2));
       }
     } catch (e) {
       debugPrint('_deleteStory error: $e');
       if (mounted) {
-        Get.snackbar(
-          'Erreur',
-          "Impossible de supprimer la story",
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
-          colorText: Colors.white,
-        );
+        Get.snackbar('Erreur', "Impossible de supprimer la story",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: const Color(0xFF13131A),
+            colorText: Colors.white);
       }
     }
   }
 
+  // ✅ NOUVEAU — Toggle épingler depuis le viewer
+  Future<void> _togglePin(StoryModel story) async {
+    final newVal = !story.isPinned;
+    try {
+      await Supabase.instance.client
+          .from('stories')
+          .update({'is_pinned': newVal}).eq('id', story.id);
+      Get.snackbar(
+        newVal ? '📌 Publiée sur ton profil' : '📌 Retirée du profil',
+        '',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFF13131A),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    } catch (e) {
+      debugPrint('_togglePin error: $e');
+      Get.snackbar('Erreur', 'Impossible de modifier',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white);
+    }
+  }
+
+  // ✅ NOUVEAU — Menu style Telegram (3 points)
+  void _showStoryOptions(StoryModel story) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(0, 12, 0, 32),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // ── Publier / retirer du profil ──────────────────
+          _OptionTile(
+            icon: story.isPinned
+                ? Icons.push_pin_outlined
+                : Icons.push_pin_rounded,
+            label:
+                story.isPinned ? 'Retirer du profil' : 'Publier sur le profil',
+            color: story.isPinned ? Colors.red : Colors.white,
+            onTap: () async {
+              Get.back();
+              await _togglePin(story);
+              _resume();
+            },
+          ),
+          const _OptionDivider(),
+
+          // ── Vues ─────────────────────────────────────────
+          _OptionTile(
+            icon: Icons.remove_red_eye_rounded,
+            label:
+                '${story.viewedBy.length} vue${story.viewedBy.length != 1 ? 's' : ''}',
+            color: Colors.white,
+            onTap: () {
+              Get.back();
+              Future.delayed(
+                  const Duration(milliseconds: 200), () => _showViewers(story));
+            },
+          ),
+          const _OptionDivider(),
+
+          // ── Supprimer ─────────────────────────────────────
+          _OptionTile(
+            icon: Icons.delete_outline_rounded,
+            label: 'Supprimer',
+            color: Colors.red,
+            onTap: () {
+              Get.back();
+              Future.delayed(
+                  const Duration(milliseconds: 200), () => _deleteStory(story));
+            },
+          ),
+        ]),
+      ),
+    ).then((_) => _resume());
+  }
+
   @override
   Widget build(BuildContext context) {
+    // ✅ FIX CRASH : protection liste vide
+    if (widget.stories.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.photo_library_outlined,
+                color: Colors.white38, size: 48),
+            const SizedBox(height: 12),
+            const Text('Aucune story',
+                style: TextStyle(color: Colors.white54, fontSize: 14)),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: () => Get.back(),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(20)),
+                child: const Text('Retour',
+                    style: TextStyle(color: Colors.white70)),
+              ),
+            ),
+          ]),
+        ),
+      );
+    }
+
     final s = widget.stories[_current];
     final bool isOwner = s.userId == _myUid;
     final keyboardH = MediaQuery.of(context).viewInsets.bottom;
@@ -364,7 +468,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         Colors.transparent
                       ]))))),
 
-          // Barres de progression
+          // ── Barres de progression ──────────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 12,
@@ -405,12 +509,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     child: const Icon(Icons.pause_rounded,
                         color: Colors.white, size: 36))),
 
-          // Header
+          // ── Header ────────────────────────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 20,
             left: 12,
             right: 12,
             child: Row(children: [
+              // Avatar
               GestureDetector(
                   onTap: () => _openProfile(s),
                   child: Container(
@@ -427,12 +532,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                               : Container(
                                   color: AppColors.accent2,
                                   child: Center(
-                                      child: Text(s.userName[0].toUpperCase(),
+                                      child: Text(
+                                          s.userName.isNotEmpty
+                                              ? s.userName[0].toUpperCase()
+                                              : '?',
                                           style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w800,
                                               fontSize: 16))))))),
               const SizedBox(width: 10),
+              // Nom + heure
               Expanded(
                   child: GestureDetector(
                       onTap: () => _openProfile(s),
@@ -449,23 +558,28 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                 style: const TextStyle(
                                     color: Colors.white70, fontSize: 11)),
                           ]))),
-              if (isOwner)
+
+              // ✅ Bouton ⋯ options (owner seulement) + bouton fermer
+              if (isOwner) ...[
                 GestureDetector(
-                    onTap: () {
-                      _pause();
-                      _deleteStory(s);
-                    },
-                    child: Container(
-                        width: 34,
-                        height: 34,
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.3),
-                            shape: BoxShape.circle,
-                            border:
-                                Border.all(color: Colors.red.withOpacity(0.5))),
-                        child: const Icon(Icons.delete_outline_rounded,
-                            color: Colors.white, size: 17))),
+                  onTap: () {
+                    _pause();
+                    _showStoryOptions(s);
+                  },
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                        color: Colors.black38,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24)),
+                    child: const Icon(Icons.more_vert_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                ),
+              ],
+              // Bouton fermer
               GestureDetector(
                   onTap: () => Get.back(),
                   child: Container(
@@ -480,7 +594,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             ]),
           ),
 
-          // Zone basse — masquée pendant le maintien long
+          // ── Zone basse ────────────────────────────────────
           if (!_longPressing)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
@@ -533,7 +647,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              // ❤️ Bouton like
                               GestureDetector(
                                 onTap: () => _likeStory(s),
                                 child: AnimatedContainer(
@@ -562,7 +675,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // 💬 Champ réponse
                               Expanded(
                                   child: _ReplyBar(
                                       story: s,
@@ -609,8 +721,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   void _showViewers(StoryModel s) {
     if (s.userId != _myUid) return;
     final viewers = s.viewedBy;
-    // Récupère les liked_by depuis Supabase (async, best effort)
-    // On passe story.id pour que _ViewerTile puisse vérifier
     final storyId = s.id;
     final freeCount = viewers.length.clamp(0, _freeViewersLimit);
     final lockedCount = (viewers.length - _freeViewersLimit).clamp(0, 999);
@@ -744,7 +854,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 ],
               ])),
           ]),
-    )).then((_) => _resume()); // ← reprend quand le sheet est fermé
+    )).then((_) => _resume());
   }
 
   String _ago(DateTime d) {
@@ -756,7 +866,49 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 }
 
-// ─── TUILE VIEWER — cliquable → ouvre le profil ──────────────────
+// ─── OPTION TILE ─────────────────────────────────────────────────
+
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _OptionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 16),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 16, fontWeight: FontWeight.w500)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _OptionDivider extends StatelessWidget {
+  const _OptionDivider();
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(
+        height: 1, color: Colors.white10, indent: 20, endIndent: 20);
+  }
+}
+
+// ─── TUILE VIEWER ────────────────────────────────────────────────
+
 class _ViewerTile extends StatefulWidget {
   final String uid;
   const _ViewerTile({required this.uid, super.key});
@@ -798,7 +950,7 @@ class _ViewerTileState extends State<_ViewerTile> {
 
   void _openProfile() {
     if (_fullData == null) return;
-    Get.back(); // ferme le bottomSheet
+    Get.back();
     int age = 0;
     final birthdate = _fullData!['birthdate'] ?? _fullData!['birth_date'];
     if (birthdate != null) {
@@ -820,7 +972,6 @@ class _ViewerTileState extends State<_ViewerTile> {
     } else {
       age = _fullData!['age'] ?? 0;
     }
-
     final user = UserModel(
       id: _fullData!['id'] ?? widget.uid,
       name: _fullData!['name'] ?? 'Utilisateur',
@@ -893,7 +1044,8 @@ class _ViewerTileState extends State<_ViewerTile> {
   }
 }
 
-// ─── TUILE VIEWER AVEC INDICATEUR LIKE ───────────────────────────
+// ─── TUILE VIEWER AVEC LIKE ───────────────────────────────────────
+
 class _ViewerTileWithLike extends StatefulWidget {
   final String uid;
   final String storyId;
@@ -918,7 +1070,6 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
 
   Future<void> _load() async {
     try {
-      // Charger profil + vérifier like en parallèle
       final results = await Future.wait([
         Supabase.instance.client
             .from('profiles')
@@ -1001,7 +1152,6 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(children: [
-          // Avatar
           Container(
               width: 42,
               height: 42,
@@ -1026,7 +1176,6 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16))))),
           const SizedBox(width: 12),
-          // Nom
           Expanded(
               child: _loading
                   ? Container(
@@ -1039,7 +1188,6 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
                           color: AppColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600))),
-          // ❤️ si a liké
           if (!_loading && _hasLiked) ...[
             const Text('❤️', style: TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
@@ -1052,6 +1200,8 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
     );
   }
 }
+
+// ─── REPLY BAR ────────────────────────────────────────────────────
 
 class _ReplyBar extends StatefulWidget {
   final StoryModel story;
@@ -1079,7 +1229,6 @@ class _ReplyBarState extends State<_ReplyBar> {
   Future<void> _send() async {
     final text = _ctrl.text.trim();
     if (text.isEmpty || _sending) return;
-
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
     if (uid == widget.story.userId) {
@@ -1089,18 +1238,14 @@ class _ReplyBarState extends State<_ReplyBar> {
           colorText: Colors.white);
       return;
     }
-
     setState(() => _sending = true);
-
     try {
-      // 1. Trouver ou créer la conversation
       final res = await Supabase.instance.client
           .from('conversations')
           .select('id')
           .or('and(user1_id.eq.$uid,user2_id.eq.${widget.story.userId}),'
               'and(user1_id.eq.${widget.story.userId},user2_id.eq.$uid)')
           .maybeSingle();
-
       final String convId;
       if (res != null) {
         convId = res['id'] as String;
@@ -1112,28 +1257,20 @@ class _ReplyBarState extends State<_ReplyBar> {
             .single();
         convId = created['id'] as String;
       }
-
-      // 2. Construire le StoryReplyData pour le ConversationController
       final storyData = StoryReplyData(
         storyId: widget.story.id,
         storyPreviewUrl: widget.story.mediaUrl,
         storyIsVideo: widget.story.isVideo,
         storyOwnerName: widget.story.userName,
       );
-
-      // 3. Déléguer l'envoi au ConversationController (s'il est ouvert)
-      //    sinon envoyer directement via Supabase
       final safeContent = text.substring(0, text.length.clamp(0, 500));
-
       if (Get.isRegistered<ConversationController>(tag: convId)) {
-        // La conv est déjà ouverte — le controller gère tout
         await Get.find<ConversationController>(tag: convId).sendStoryReply(
           conversationId: convId,
           text: safeContent,
           storyData: storyData,
         );
       } else {
-        // Envoi direct sans ouvrir la conv
         bool sent = false;
         try {
           await Supabase.instance.client.from('messages').insert({
@@ -1149,7 +1286,6 @@ class _ReplyBarState extends State<_ReplyBar> {
           });
           sent = true;
         } catch (_) {}
-
         if (!sent) {
           await Supabase.instance.client.from('messages').insert({
             'conversation_id': convId,
@@ -1159,15 +1295,12 @@ class _ReplyBarState extends State<_ReplyBar> {
             'status': 'sent',
           });
         }
-
         await Supabase.instance.client.from('conversations').update(
             {'updated_at': DateTime.now().toIso8601String()}).eq('id', convId);
       }
-
       _ctrl.clear();
       _focus.unfocus();
       widget.onFocusChanged(false);
-
       if (mounted) {
         Get.snackbar('Réponse envoyée ✓', '',
             snackPosition: SnackPosition.TOP,
@@ -1197,71 +1330,60 @@ class _ReplyBarState extends State<_ReplyBar> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Champ de saisie + bouton envoyer ─────────────────
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-              child: Container(
-            constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: _focus.hasFocus
-                    ? AppColors.accent.withOpacity(0.6)
-                    : Colors.white24,
-                width: _focus.hasFocus ? 1.5 : 1,
-              ),
-            ),
-            child: TextField(
-              controller: _ctrl,
-              focusNode: _focus,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              maxLines: 4,
-              minLines: 1,
-              maxLength: 500,
-              buildCounter: (_,
-                      {required currentLength,
-                      required isFocused,
-                      maxLength}) =>
-                  null,
-              textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
-                hintText: 'Répondre à la story...',
-                hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
-                border: InputBorder.none,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-            ),
-          )),
-          const SizedBox(width: 8),
-          AnimatedOpacity(
-            opacity: _hasText ? 1.0 : 0.4,
-            duration: const Duration(milliseconds: 200),
-            child: GestureDetector(
-              onTap: _hasText && !_sending ? _send : null,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                    gradient: AppColors.gradientPink, shape: BoxShape.circle),
-                child: _sending
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send_rounded,
-                        color: Colors.white, size: 20),
-              ),
-            ),
+    return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      Expanded(
+          child: Container(
+        constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: _focus.hasFocus
+                ? AppColors.accent.withOpacity(0.6)
+                : Colors.white24,
+            width: _focus.hasFocus ? 1.5 : 1,
           ),
-        ]),
-      ],
-    );
+        ),
+        child: TextField(
+          controller: _ctrl,
+          focusNode: _focus,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          maxLines: 4,
+          minLines: 1,
+          maxLength: 500,
+          buildCounter: (_,
+                  {required currentLength, required isFocused, maxLength}) =>
+              null,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            hintText: 'Répondre à la story...',
+            hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      )),
+      const SizedBox(width: 8),
+      AnimatedOpacity(
+        opacity: _hasText ? 1.0 : 0.4,
+        duration: const Duration(milliseconds: 200),
+        child: GestureDetector(
+          onTap: _hasText && !_sending ? _send : null,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+                gradient: AppColors.gradientPink, shape: BoxShape.circle),
+            child: _sending
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+          ),
+        ),
+      ),
+    ]);
   }
 }
 
@@ -1317,14 +1439,12 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         setState(() => _uploading = false);
         return;
       }
-
       final file = File(_previewPath!);
       if (!await file.exists()) {
         _snack('Fichier introuvable');
         setState(() => _uploading = false);
         return;
       }
-
       final ext = _previewPath!.split('.').last.toLowerCase();
       const allowedImg = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
       const allowedVid = ['mp4', 'mov', 'avi', 'mkv'];
@@ -1333,16 +1453,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         setState(() => _uploading = false);
         return;
       }
-
       final fileName = '${uid}_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final storagePath = 'stories/$uid/$fileName';
       setState(() => _progress = 0.2);
-
       await Supabase.instance.client.storage.from('stories').upload(
           storagePath, file,
           fileOptions: const FileOptions(upsert: true));
       setState(() => _progress = 0.65);
-
       final mediaUrl = Supabase.instance.client.storage
           .from('stories')
           .getPublicUrl(storagePath);
@@ -1350,7 +1467,6 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       final safeCaption = caption.isNotEmpty
           ? caption.substring(0, caption.length.clamp(0, 200))
           : null;
-
       await Supabase.instance.client.from('stories').insert({
         'user_id': uid,
         'media_url': mediaUrl,
@@ -1361,13 +1477,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
         'viewed_by': [],
       });
-
       setState(() => _progress = 1.0);
       await Future.delayed(const Duration(milliseconds: 300));
-
       if (Get.isRegistered<HomeController>())
         await Get.find<HomeController>().loadStories();
-
       Get.back(result: true);
       Get.snackbar('Story publiée ✓', 'Visible pendant 24h',
           snackPosition: SnackPosition.TOP,
@@ -1644,7 +1757,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       ]));
 }
 
-// ─── PREVIEW VIDÉO LOCALE (avant publication) ────────────────────
+// ─── VIDEO PREVIEW ────────────────────────────────────────────────
+
 class _VideoPreview extends StatefulWidget {
   final String path;
   const _VideoPreview({required this.path});
@@ -1707,6 +1821,8 @@ class _VideoPreviewState extends State<_VideoPreview> {
     );
   }
 }
+
+// ─── WIDGETS UTILITAIRES ─────────────────────────────────────────
 
 class _BigBtn extends StatelessWidget {
   final IconData icon;

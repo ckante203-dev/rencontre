@@ -19,28 +19,39 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+
+    // ✅ Animation réduite à 600ms au lieu de 1200ms
     _ctrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1200));
+        vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _scaleAnim = Tween<double>(begin: 0.85, end: 1.0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
+    _scaleAnim = Tween<double>(begin: 0.9, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _ctrl.forward();
-    // ✅ Vérifie session après animation
-    Future.delayed(const Duration(milliseconds: 1500), _checkSession);
+
+    // ✅ Vérification session EN PARALLÈLE de l'animation
+    // On n'attend plus que l'animation finisse
+    _checkSession();
   }
 
   Future<void> _checkSession() async {
     final authCtrl = Get.find<AuthController>();
+
+    // ✅ Attente minimale pour que l'UI soit visible (200ms au lieu de 1500ms)
+    await Future.delayed(const Duration(milliseconds: 200));
+
     final user = authCtrl.currentUser.value;
     if (user != null) {
-      // Utilisateur déjà connecté → vérifie onboarding
+      // Utilisateur connecté → navigation immédiate
       authCtrl.checkOnboardingFromSplash(user.id);
     }
     // Sinon reste sur splash avec les boutons
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,27 +59,37 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: AppColors.bg,
       body: Stack(
         children: [
-          // Ambient glow background
+          // Ambient glow
           Positioned(
-            top: -100, left: -100,
+            top: -100,
+            left: -100,
             child: Container(
-              width: 400, height: 400,
+              width: 400,
+              height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [AppColors.accent.withOpacity(0.15), Colors.transparent],
+                  colors: [
+                    AppColors.accent.withOpacity(0.15),
+                    Colors.transparent
+                  ],
                 ),
               ),
             ),
           ),
           Positioned(
-            bottom: -80, right: -80,
+            bottom: -80,
+            right: -80,
             child: Container(
-              width: 350, height: 350,
+              width: 350,
+              height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [AppColors.accent2.withOpacity(0.12), Colors.transparent],
+                  colors: [
+                    AppColors.accent2.withOpacity(0.12),
+                    Colors.transparent
+                  ],
                 ),
               ),
             ),
@@ -89,33 +110,37 @@ class _SplashScreenState extends State<SplashScreen>
                       scale: _scaleAnim,
                       child: Column(
                         children: [
-                          // Vrai logo
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
                                   color: AppColors.accent.withOpacity(0.45),
-                                  blurRadius: 40, spreadRadius: 5,
+                                  blurRadius: 40,
+                                  spreadRadius: 5,
                                 ),
                               ],
                             ),
                             child: ClipOval(
                               child: Image.asset(
                                 'assets/images/logo.png',
-                                width: 130, height: 130,
+                                width: 130,
+                                height: 130,
                                 fit: BoxFit.cover,
                               ),
                             ),
                           ),
                           const SizedBox(height: 28),
                           ShaderMask(
-                            shaderCallback: (b) => AppColors.gradientPink.createShader(b),
+                            shaderCallback: (b) =>
+                                AppColors.gradientPink.createShader(b),
                             child: const Text(
                               'SnapMeet',
                               style: TextStyle(
-                                fontFamily: 'Syne', fontSize: 40,
-                                fontWeight: FontWeight.w900, color: Colors.white,
+                                fontFamily: 'Syne',
+                                fontSize: 40,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
                                 letterSpacing: -1.5,
                               ),
                             ),
@@ -124,7 +149,8 @@ class _SplashScreenState extends State<SplashScreen>
                           const Text(
                             'Rencontre. Connecte. Vis.',
                             style: TextStyle(
-                              fontSize: 15, color: AppColors.textMuted,
+                              fontSize: 15,
+                              color: AppColors.textMuted,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -134,50 +160,55 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const Spacer(flex: 2),
 
-                    // Buttons
+                    // Boutons
                     Column(
                       children: [
-                        // Sign up
                         GestureDetector(
                           onTap: () => Get.toNamed('/signup'),
                           child: Container(
-                            width: double.infinity, height: 54,
+                            width: double.infinity,
+                            height: 54,
                             decoration: BoxDecoration(
                               gradient: AppColors.gradientPink,
                               borderRadius: BorderRadius.circular(18),
                               boxShadow: [
                                 BoxShadow(
                                   color: AppColors.accent.withOpacity(0.35),
-                                  blurRadius: 24, offset: const Offset(0, 8),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 8),
                                 ),
                               ],
                             ),
                             child: const Center(
                               child: Text('Créer un compte',
-                                style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700,
-                                  color: Colors.white, letterSpacing: 0.3,
-                                )),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 0.3,
+                                  )),
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
-                        // Sign in
                         GestureDetector(
                           onTap: () => Get.toNamed('/login'),
                           child: Container(
-                            width: double.infinity, height: 54,
+                            width: double.infinity,
+                            height: 54,
                             decoration: BoxDecoration(
                               color: Colors.transparent,
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: AppColors.border, width: 1.5),
+                              border: Border.all(
+                                  color: AppColors.border, width: 1.5),
                             ),
                             child: const Center(
                               child: Text('Se connecter',
-                                style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                )),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  )),
                             ),
                           ),
                         ),
@@ -185,13 +216,12 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
 
                     const SizedBox(height: 24),
-
-                    // Terms
                     Text(
                       'En continuant, tu acceptes nos Conditions d\'utilisation\net notre Politique de confidentialité',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 11, color: AppColors.textMuted.withOpacity(0.7),
+                        fontSize: 11,
+                        color: AppColors.textMuted.withOpacity(0.7),
                         height: 1.6,
                       ),
                     ),

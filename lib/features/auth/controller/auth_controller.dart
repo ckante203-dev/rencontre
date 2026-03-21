@@ -12,17 +12,17 @@ class AuthController extends GetxController {
   final Rx<User?> currentUser = Rx<User?>(null);
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
-  final RxBool codeSent = false.obs;
   final RxBool showEmailOtp = false.obs;
   final RxBool showPassword = false.obs;
+  final RxBool showConfirmPassword = false.obs;
   final RxInt passwordStrength = 0.obs;
 
   final emailOtpController = TextEditingController();
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
   final phoneController = TextEditingController();
-  final otpController = TextEditingController();
   final birthdateController = TextEditingController();
 
   @override
@@ -41,11 +41,41 @@ class AuthController extends GetxController {
 
   void _handleAuthChange(AuthChangeEvent event, User? user) {
     if (event == AuthChangeEvent.signedIn && user != null) {
+      // ✅ setOnline(true) EN PREMIER avec last_seen — avant tout le reste
+      // Sans ça, la page profil et la liste de conversation affichent "Hors ligne"
+      _setOnlineNow(user.id);
       _saveFcmToken();
       _checkOnboarding(user.id);
     } else if (event == AuthChangeEvent.signedOut) {
+      // ✅ setOnline(false) + last_seen à la déconnexion
+      _setOfflineNow();
       Get.offAllNamed('/splash');
     }
+  }
+
+  // ✅ Marquer EN LIGNE immédiatement à la connexion
+  // Met is_online=true ET last_seen=now() en une seule requête
+  Future<void> _setOnlineNow(String uid) async {
+    try {
+      await supabase.from('profiles').update({
+        'is_online': true,
+        'last_seen': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', uid);
+    } catch (e) {
+      debugPrint('_setOnlineNow error: $e');
+    }
+  }
+
+  // ✅ Marquer HORS LIGNE à la déconnexion
+  Future<void> _setOfflineNow() async {
+    try {
+      final uid = supabase.auth.currentUser?.id;
+      if (uid == null) return;
+      await supabase.from('profiles').update({
+        'is_online': false,
+        'last_seen': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', uid);
+    } catch (_) {}
   }
 
   Future<void> _saveFcmToken() async {
@@ -57,7 +87,7 @@ class AuthController extends GetxController {
       await supabase
           .from('profiles')
           .update({'fcm_token': token}).eq('id', uid);
-      debugPrint('✅ FCM Token sauvegardé: ${token.substring(0, 20)}...');
+      debugPrint('✅ FCM token mis à jour: ${token.substring(0, 20)}...');
     } catch (e) {
       debugPrint('FCM token save error: $e');
     }
@@ -67,20 +97,33 @@ class AuthController extends GetxController {
     try {
       final row = await supabase
           .from('profiles')
-          .select('onboarding_complete')
+          .select('onboarding_complete, birthdate, gender')
           .eq('id', uid)
           .maybeSingle();
 
+      debugPrint('📋 Profile: $row');
+
       if (row == null || row['onboarding_complete'] != true) {
-        Get.offAllNamed('/onboarding/photo');
+        final hasBirthdate = row != null &&
+            row['birthdate'] != null &&
+            (row['birthdate'] as String).isNotEmpty;
+
+        final identities = supabase.auth.currentUser?.identities ?? [];
+        final isGoogleUser = identities.any((i) => i.provider == 'google');
+
+        if (isGoogleUser && !hasBirthdate) {
+          Get.offAllNamed('/onboarding/birthdate');
+        } else {
+          Get.offAllNamed('/onboarding/photo');
+        }
       } else {
         Get.offAllNamed('/main');
-        // ✅ Vérifie la mise à jour 2 secondes après le chargement
         Future.delayed(const Duration(seconds: 2), () {
           UpdateService.checkForUpdate();
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('_checkOnboarding error: $e');
       Get.offAllNamed('/onboarding/photo');
     }
   }
@@ -184,13 +227,10 @@ class AuthController extends GetxController {
     _setLoading(true);
     try {
       await supabase.auth.resetPasswordForEmail(emailController.text.trim());
-      Get.snackbar(
-        'Email envoyé 📧',
-        'Vérifie ta boîte mail',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF13131A),
-        colorText: Colors.white,
-      );
+      Get.snackbar('Email envoyé 📧', 'Vérifie ta boîte mail',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white);
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
     } finally {
@@ -204,9 +244,12 @@ class AuthController extends GetxController {
     _setLoading(true);
     try {
       const webClientId =
-          'REMPLACE_PAR_TON_WEB_CLIENT_ID.apps.googleusercontent.com';
+          '894643165430-pk4p5jitoov8qisi3s98rbk6eg8h4984.apps.googleusercontent.com';
       final GoogleSignIn googleSignIn =
           GoogleSignIn(serverClientId: webClientId);
+
+      await googleSignIn.signOut();
+
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         _setLoading(false);
@@ -233,75 +276,36 @@ class AuthController extends GetxController {
             .eq('id', res.user!.id)
             .maybeSingle();
         if (existing == null) {
-          await _createProfile(
-            res.user!,
-            name: googleUser.displayName,
-            photoUrl: googleUser.photoUrl,
-          );
+          await _createProfile(res.user!,
+              name: googleUser.displayName, photoUrl: googleUser.photoUrl);
         }
       }
       errorMessage.value = '';
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
       errorMessage.value = 'Connexion Google échouée. Réessaie.';
     } finally {
       _setLoading(false);
     }
   }
 
-  // ─── PHONE OTP ─────────────────────────────────────────────────
+  // ─── TÉLÉPHONE ─────────────────────────────────────────────────
 
-  Future<void> sendOtp() async {
-    final phone = phoneController.text.trim();
-    if (phone.isEmpty) {
-      errorMessage.value = 'Entre ton numéro de téléphone';
-      return;
-    }
-    _setLoading(true);
+  Future<void> savePhoneNumberOnly(String phone) async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
     try {
-      await supabase.auth.signInWithOtp(phone: phone);
-      codeSent.value = true;
-      Get.snackbar(
-        'Code envoyé 📱',
-        'Vérifie tes SMS',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF13131A),
-        colorText: Colors.white,
-      );
-      errorMessage.value = '';
-    } on AuthException catch (e) {
-      errorMessage.value = _errorMsg(e.message);
-    } finally {
-      _setLoading(false);
+      await supabase.from('profiles').update({
+        'phone': phone,
+        'phone_verified': false,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', uid);
+    } catch (e) {
+      debugPrint('savePhoneNumberOnly error: $e');
     }
   }
 
-  Future<void> verifyOtp() async {
-    if (otpController.text.trim().length != 6) {
-      errorMessage.value = 'Entre le code à 6 chiffres';
-      return;
-    }
-    _setLoading(true);
-    try {
-      final res = await supabase.auth.verifyOTP(
-        phone: phoneController.text.trim(),
-        token: otpController.text.trim(),
-        type: OtpType.sms,
-      );
-      if (res.user != null) {
-        final existing = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', res.user!.id)
-            .maybeSingle();
-        if (existing == null) await _createProfile(res.user!);
-      }
-      errorMessage.value = '';
-    } on AuthException catch (e) {
-      errorMessage.value = _errorMsg(e.message);
-    } finally {
-      _setLoading(false);
-    }
-  }
+  void skipPhoneVerify() => Get.offAllNamed('/main');
 
   // ─── ONBOARDING ────────────────────────────────────────────────
 
@@ -311,6 +315,8 @@ class AuthController extends GetxController {
 
   Future<void> saveOnboardingData({
     String? photoUrl,
+    String? gender,
+    String? lookingFor,
     List<String>? interests,
     int? age,
     String? bio,
@@ -323,6 +329,8 @@ class AuthController extends GetxController {
       'updated_at': DateTime.now().toIso8601String(),
     };
     if (photoUrl != null) updates['photo_url'] = photoUrl;
+    if (gender != null) updates['gender'] = gender;
+    if (lookingFor != null) updates['looking_for'] = lookingFor;
     if (interests != null) updates['interests'] = interests;
     if (age != null) updates['age'] = age;
     if (bio != null) updates['bio'] = bio;
@@ -334,6 +342,11 @@ class AuthController extends GetxController {
   // ─── SIGN OUT ──────────────────────────────────────────────────
 
   Future<void> signOut() async {
+    await _setOfflineNow();
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+    } catch (_) {}
     await supabase.auth.signOut();
   }
 
@@ -349,10 +362,15 @@ class AuthController extends GetxController {
       'photo_urls': [],
       'interests': [],
       'bio': '',
-      'birthdate': birthdateController.text.trim(),
+      'birthdate': null,
       'age': 18,
+      'gender': 'non précisé',
+      'looking_for': null,
       'is_online': true,
+      // ✅ last_seen dès la création du profil
+      'last_seen': DateTime.now().toUtc().toIso8601String(),
       'onboarding_complete': false,
+      'phone_verified': false,
       'followers_count': 0,
       'following_count': 0,
       'matches_count': 0,
@@ -463,6 +481,10 @@ class AuthController extends GetxController {
       errorMessage.value = 'Mot de passe trop court (min. 8 caractères)';
       return false;
     }
+    if (confirmPasswordController.text != passwordController.text) {
+      errorMessage.value = 'Les mots de passe ne correspondent pas';
+      return false;
+    }
     return true;
   }
 
@@ -485,8 +507,6 @@ class AuthController extends GetxController {
       return 'Confirme ton email avant de te connecter';
     if (msg.contains('Password should be'))
       return 'Mot de passe trop court (min. 6 caractères)';
-    if (msg.contains('invalid')) return 'Code SMS incorrect';
-    if (msg.contains('Phone')) return 'Numéro de téléphone invalide';
     if (msg.contains('network') || msg.contains('Network'))
       return 'Pas de connexion internet';
     if (msg.contains('rate limit'))
@@ -499,11 +519,12 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
+    emailOtpController.dispose();
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     phoneController.dispose();
-    otpController.dispose();
     birthdateController.dispose();
     super.onClose();
   }
