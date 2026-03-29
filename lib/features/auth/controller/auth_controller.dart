@@ -1,3 +1,5 @@
+// lib/features/auth/controller/auth_controller.dart
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,6 +35,14 @@ class AuthController extends GetxController {
       currentUser.value = data.session?.user;
       _handleAuthChange(data.event, data.session?.user);
     });
+
+    // ✅ Si déjà connecté au démarrage → redirige directement
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkOnboarding(user.id);
+      });
+    }
   }
 
   Future<void> checkOnboardingFromSplash(String userId) async {
@@ -41,20 +51,16 @@ class AuthController extends GetxController {
 
   void _handleAuthChange(AuthChangeEvent event, User? user) {
     if (event == AuthChangeEvent.signedIn && user != null) {
-      // ✅ setOnline(true) EN PREMIER avec last_seen — avant tout le reste
-      // Sans ça, la page profil et la liste de conversation affichent "Hors ligne"
       _setOnlineNow(user.id);
       _saveFcmToken();
       _checkOnboarding(user.id);
     } else if (event == AuthChangeEvent.signedOut) {
-      // ✅ setOnline(false) + last_seen à la déconnexion
       _setOfflineNow();
-      Get.offAllNamed('/splash');
+      // ✅ Après déconnexion → page LOGIN (pas splash)
+      Get.offAllNamed('/login');
     }
   }
 
-  // ✅ Marquer EN LIGNE immédiatement à la connexion
-  // Met is_online=true ET last_seen=now() en une seule requête
   Future<void> _setOnlineNow(String uid) async {
     try {
       await supabase.from('profiles').update({
@@ -66,7 +72,6 @@ class AuthController extends GetxController {
     }
   }
 
-  // ✅ Marquer HORS LIGNE à la déconnexion
   Future<void> _setOfflineNow() async {
     try {
       final uid = supabase.auth.currentUser?.id;
@@ -101,7 +106,7 @@ class AuthController extends GetxController {
           .eq('id', uid)
           .maybeSingle();
 
-      debugPrint('📋 Profile: $row');
+      debugPrint('📋 Profile onboarding: $row');
 
       if (row == null || row['onboarding_complete'] != true) {
         final hasBirthdate = row != null &&
@@ -117,6 +122,7 @@ class AuthController extends GetxController {
           Get.offAllNamed('/onboarding/photo');
         }
       } else {
+        // ✅ Onboarding terminé → /main directement
         Get.offAllNamed('/main');
         Future.delayed(const Duration(seconds: 2), () {
           UpdateService.checkForUpdate();
@@ -128,7 +134,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // ─── EMAIL / PASSWORD ──────────────────────────────────────────
+  // ─── EMAIL / PASSWORD ──────────────────────────────────────
 
   Future<void> signUpWithEmail() async {
     if (!_validateSignUp()) return;
@@ -142,7 +148,12 @@ class AuthController extends GetxController {
       );
       errorMessage.value = '';
       if (res.session != null && res.user != null) {
-        await _createProfile(res.user!);
+        final parsed = _parseBirthdate(birthdateController.text);
+        await _createProfile(
+          res.user!,
+          birthdate: parsed['iso'],
+          age: parsed['age'],
+        );
       } else {
         showEmailOtp.value = true;
       }
@@ -169,7 +180,12 @@ class AuthController extends GetxController {
         type: OtpType.signup,
       );
       if (res.user != null) {
-        await _createProfile(res.user!);
+        final parsed = _parseBirthdate(birthdateController.text);
+        await _createProfile(
+          res.user!,
+          birthdate: parsed['iso'],
+          age: parsed['age'],
+        );
         showEmailOtp.value = false;
         errorMessage.value = '';
       }
@@ -212,6 +228,7 @@ class AuthController extends GetxController {
         password: passwordController.text,
       );
       errorMessage.value = '';
+      // ✅ La navigation est gérée par _handleAuthChange (signedIn)
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
     } finally {
@@ -238,7 +255,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // ─── GOOGLE SIGN-IN ────────────────────────────────────────────
+  // ─── GOOGLE SIGN-IN ────────────────────────────────────────
 
   Future<void> signInWithGoogle() async {
     _setLoading(true);
@@ -281,6 +298,7 @@ class AuthController extends GetxController {
         }
       }
       errorMessage.value = '';
+      // ✅ Navigation gérée par _handleAuthChange
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
       errorMessage.value = 'Connexion Google échouée. Réessaie.';
@@ -289,7 +307,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // ─── TÉLÉPHONE ─────────────────────────────────────────────────
+  // ─── TÉLÉPHONE ─────────────────────────────────────────────
 
   Future<void> savePhoneNumberOnly(String phone) async {
     final uid = supabase.auth.currentUser?.id;
@@ -307,7 +325,7 @@ class AuthController extends GetxController {
 
   void skipPhoneVerify() => Get.offAllNamed('/main');
 
-  // ─── ONBOARDING ────────────────────────────────────────────────
+  // ─── ONBOARDING ────────────────────────────────────────────
 
   Future<void> updateProfile({String? photoUrl}) async {
     await saveOnboardingData(photoUrl: photoUrl);
@@ -339,7 +357,7 @@ class AuthController extends GetxController {
     await supabase.from('profiles').update(updates).eq('id', uid);
   }
 
-  // ─── SIGN OUT ──────────────────────────────────────────────────
+  // ─── SIGN OUT ──────────────────────────────────────────────
 
   Future<void> signOut() async {
     await _setOfflineNow();
@@ -348,12 +366,48 @@ class AuthController extends GetxController {
       await googleSignIn.signOut();
     } catch (_) {}
     await supabase.auth.signOut();
+    // ✅ _handleAuthChange gère la navigation vers /login
   }
 
-  // ─── HELPERS ───────────────────────────────────────────────────
+  // ─── HELPERS ───────────────────────────────────────────────
 
-  Future<void> _createProfile(User user,
-      {String? name, String? photoUrl}) async {
+  Map<String, dynamic> _parseBirthdate(String dateText) {
+    try {
+      final digits = dateText.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.length != 8) return {'iso': null, 'age': 18};
+
+      final day = int.parse(digits.substring(0, 2));
+      final month = int.parse(digits.substring(2, 4));
+      final year = int.parse(digits.substring(4, 8));
+
+      final isoDate = '${year.toString().padLeft(4, '0')}-'
+          '${month.toString().padLeft(2, '0')}-'
+          '${day.toString().padLeft(2, '0')}';
+
+      final now = DateTime.now();
+      final birth = DateTime(year, month, day);
+      int age = now.year - birth.year;
+      if (now.month < birth.month ||
+          (now.month == birth.month && now.day < birth.day)) {
+        age--;
+      }
+
+      debugPrint('✅ Birthdate: $isoDate (age: $age)');
+      return {'iso': isoDate, 'age': age};
+    } catch (e) {
+      debugPrint('_parseBirthdate error: $e');
+      return {'iso': null, 'age': 18};
+    }
+  }
+
+  Future<void> _createProfile(
+    User user, {
+    String? name,
+    String? photoUrl,
+    String? birthdate,
+    int? age,
+  }) async {
+    final now = DateTime.now();
     await supabase.from('profiles').upsert({
       'id': user.id,
       'name': name ?? user.userMetadata?['name'] ?? 'Utilisateur',
@@ -362,21 +416,22 @@ class AuthController extends GetxController {
       'photo_urls': [],
       'interests': [],
       'bio': '',
-      'birthdate': null,
-      'age': 18,
+      'birthdate': birthdate,
+      'age': age ?? 18,
       'gender': 'non précisé',
       'looking_for': null,
       'is_online': true,
-      // ✅ last_seen dès la création du profil
-      'last_seen': DateTime.now().toUtc().toIso8601String(),
+      'last_seen': now.toUtc().toIso8601String(),
       'onboarding_complete': false,
       'phone_verified': false,
       'followers_count': 0,
       'following_count': 0,
       'matches_count': 0,
-      'created_at': DateTime.now().toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
+      'app_version': '1.0.3',
+      'created_at': now.toIso8601String(),
+      'updated_at': now.toIso8601String(),
     });
+    debugPrint('✅ Profil créé — birthdate: $birthdate, age: ${age ?? 18}');
   }
 
   void updatePasswordStrength(String password) {

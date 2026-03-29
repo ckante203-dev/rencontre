@@ -7,7 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
-import 'package:package_info_plus/package_info_plus.dart'; // ✅ AJOUT
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
@@ -41,29 +41,53 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Barre de statut transparente dès le départ
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
 
-  // ✅ Supabase + Firebase en PARALLÈLE — obligatoires avant runApp
   await Future.wait([
     Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnon),
     Firebase.initializeApp(),
   ]);
 
-  // ✅ Timeago — synchrone, instantané
   timeago.setLocaleMessages('fr', timeago.FrMessages());
 
-  // ✅ AuthController enregistré AVANT runApp
+  // ✅ String (pas final) avec valeur par défaut
+  String startRoute = AppRoutes.login;
+
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user != null) {
+    try {
+      final row = await Supabase.instance.client
+          .from('profiles')
+          .select('onboarding_complete, birthdate')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (row != null && row['onboarding_complete'] == true) {
+        startRoute = AppRoutes.main;
+      } else {
+        final hasBirthdate = row != null &&
+            row['birthdate'] != null &&
+            (row['birthdate'] as String).isNotEmpty;
+        final identities = user.identities ?? [];
+        final isGoogle = identities.any((i) => i.provider == 'google');
+        if (isGoogle && !hasBirthdate) {
+          startRoute = AppRoutes.onboardBirthdate;
+        } else {
+          startRoute = AppRoutes.onboardPhoto;
+        }
+      }
+    } catch (_) {
+      startRoute = AppRoutes.onboardPhoto;
+    }
+  }
+
   Get.put(AuthController(), permanent: true);
 
-  // ✅ On lance l'app IMMÉDIATEMENT
-  runApp(const SnapMeetApp());
+  runApp(SnapMeetApp(initialRoute: startRoute));
 
-  // ✅ Tout le reste EN ARRIÈRE-PLAN après runApp
-  // L'utilisateur voit déjà l'UI pendant que ça charge
   _initEnArrierePlan();
 }
 
@@ -82,37 +106,27 @@ Future<void> _initEnArrierePlan() async {
   }
 
   try {
-    // ✅ NOUVEAU — Sauvegarde la version de l'app en arrière-plan
-    // Permet à l'admin de voir qui a mis à jour ou non
-    // Aucun impact sur les perfs : lecture locale + 1 seul UPDATE Supabase
     await _saveAppVersion();
   } catch (e) {
     debugPrint('AppVersion error: $e');
   }
 
   try {
-    _demanderPermissions(); // pas de await intentionnel
+    _demanderPermissions();
   } catch (e) {
     debugPrint('Permissions error: $e');
   }
 }
 
-// ✅ Sauvegarde la version actuelle de l'app dans profiles.app_version
-// - PackageInfo.fromPlatform() = lecture locale depuis pubspec.yaml, ~1ms
-// - UPDATE Supabase en arrière-plan, ne bloque rien
 Future<void> _saveAppVersion() async {
   try {
     final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == null)
-      return; // Pas connecté — sera mis à jour à la prochaine ouverture
-
+    if (uid == null) return;
     final packageInfo = await PackageInfo.fromPlatform();
-    final version = packageInfo.version; // ex: "1.0.3"
-
+    final version = packageInfo.version;
     await Supabase.instance.client
         .from('profiles')
         .update({'app_version': version}).eq('id', uid);
-
     debugPrint('✅ App version sauvegardée: $version');
   } catch (e) {
     debugPrint('saveAppVersion error: $e');
@@ -124,21 +138,14 @@ Future<void> _setupFirebaseMessaging() async {
 
   final messaging = FirebaseMessaging.instance;
 
-  // Permission iOS
-  messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  messaging.requestPermission(alert: true, badge: true, sound: true);
 
-  // Token FCM — en arrière-plan
   messaging.getToken().then((token) {
     if (token != null) _saveFcmToken(token);
   });
 
   messaging.onTokenRefresh.listen(_saveFcmToken);
 
-  // Message reçu en premier plan
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final data = message.data;
     final convId = data['conversationId'] ?? '';
@@ -151,7 +158,6 @@ Future<void> _setupFirebaseMessaging() async {
     );
   });
 
-  // Clic sur la notification — ouvre la conversation
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     final convId = message.data['conversationId'];
     final senderName = message.data['senderName'] ?? '';
@@ -163,7 +169,6 @@ Future<void> _setupFirebaseMessaging() async {
     }
   });
 
-  // Message initial — app lancée depuis une notification
   messaging.getInitialMessage().then((initialMessage) {
     if (initialMessage != null) {
       final convId = initialMessage.data['conversationId'];
@@ -208,7 +213,8 @@ Future<void> _demanderPermissions() async {
 }
 
 class SnapMeetApp extends StatelessWidget {
-  const SnapMeetApp({super.key});
+  final String initialRoute;
+  const SnapMeetApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +223,7 @@ class SnapMeetApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       themeMode: ThemeMode.dark,
-      initialRoute: AppRoutes.splash,
+      initialRoute: initialRoute,
       getPages: AppRoutes.pages,
       defaultTransition: Transition.cupertino,
       transitionDuration: const Duration(milliseconds: 280),

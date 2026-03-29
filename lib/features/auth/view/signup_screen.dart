@@ -1,8 +1,11 @@
+// lib/features/auth/view/signup_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
+import 'package:rencontre/features/auth/view/cgu_screen.dart';
 import 'package:rencontre/features/auth/widget/auth_widgets.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -16,8 +19,6 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ FIX 4 : Vider tous les champs à chaque ouverture
-    // pour éviter que les anciennes infos restent après déconnexion
     final ctrl = Get.find<AuthController>();
     ctrl.nameController.clear();
     ctrl.birthdateController.clear();
@@ -25,9 +26,12 @@ class _SignupScreenState extends State<SignupScreen> {
     ctrl.passwordController.clear();
     ctrl.confirmPasswordController.clear();
     ctrl.phoneController.clear();
-    ctrl.clearError();
-    ctrl.showEmailOtp.value = false;
-    ctrl.passwordStrength.value = 0;
+    // ✅ Les .obs doivent être modifiés APRÈS le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ctrl.clearError();
+      ctrl.showEmailOtp.value = false;
+      ctrl.passwordStrength.value = 0;
+    });
   }
 
   @override
@@ -50,6 +54,14 @@ class _SignupScreenState extends State<SignupScreen> {
 class _SignupForm extends StatelessWidget {
   final AuthController ctrl;
   const _SignupForm({required this.ctrl});
+
+  // ✅ Ouvrir les CGU
+  Future<void> _openCgu(BuildContext context) async {
+    await Get.to(
+      () => const CguScreen(showAcceptButton: false),
+      transition: Transition.cupertino,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,9 +168,6 @@ class _SignupForm extends StatelessWidget {
               _ConfirmPasswordField(ctrl: ctrl),
               const SizedBox(height: 16),
 
-              // ✅ FIX 1 : Champ téléphone RETIRÉ
-              // Le numéro sera proposé séparément après vérification email
-
               // Erreur
               Obx(() => AuthErrorMessage(message: ctrl.errorMessage.value)),
               const SizedBox(height: 16),
@@ -201,15 +210,54 @@ class _SignupForm extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // ✅ CGU cliquable
               Center(
-                child: Text(
-                  'En créant un compte, tu acceptes nos Conditions\nd\'utilisation et notre Politique de confidentialité',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted.withOpacity(0.6),
-                      height: 1.5),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    Text(
+                      'En créant un compte, tu acceptes nos ',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted.withOpacity(0.7),
+                          height: 1.6),
+                    ),
+                    GestureDetector(
+                      onTap: () => _openCgu(context),
+                      child: const Text(
+                        "Conditions d'utilisation",
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w600,
+                            height: 1.6,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppColors.accent),
+                      ),
+                    ),
+                    Text(
+                      ' et notre ',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted.withOpacity(0.7),
+                          height: 1.6),
+                    ),
+                    GestureDetector(
+                      onTap: () => _openCgu(context),
+                      child: const Text(
+                        'Politique de confidentialité',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w600,
+                            height: 1.6,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppColors.accent),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 32),
@@ -221,7 +269,7 @@ class _SignupForm extends StatelessWidget {
   }
 }
 
-// ─── CONFIRMER MOT DE PASSE (StatefulWidget ✅) ───────────────────
+// ─── CONFIRMER MOT DE PASSE ───────────────────────────────────────
 
 class _ConfirmPasswordField extends StatefulWidget {
   final AuthController ctrl;
@@ -297,7 +345,6 @@ class _ConfirmPasswordFieldState extends State<_ConfirmPasswordField> {
 }
 
 // ─── EMAIL OTP SCREEN ─────────────────────────────────────────────
-// ✅ FIX 3 : Vérification OBLIGATOIRE — pas de bouton "Passer"
 
 class _EmailOtpScreen extends StatelessWidget {
   final AuthController ctrl;
@@ -314,7 +361,6 @@ class _EmailOtpScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              // Retour vers le formulaire seulement (pas vers l'app)
               GestureDetector(
                 onTap: () => ctrl.showEmailOtp.value = false,
                 child: Container(
@@ -363,7 +409,6 @@ class _EmailOtpScreen extends StatelessWidget {
                     fontSize: 14, color: AppColors.textMuted, height: 1.6),
               ),
               const SizedBox(height: 10),
-              // Badge obligatoire
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

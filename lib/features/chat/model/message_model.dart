@@ -2,7 +2,7 @@
 //  ENUMS
 // ═══════════════════════════════════════════════════════════════════
 
-enum MessageType { text, image, snap, audio, location }
+enum MessageType { text, image, snap, audio, location, annonceReply }
 
 enum MessageStatus { sending, sent, delivered, read }
 
@@ -25,6 +25,51 @@ class StoryReplyData {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  ANNONCE REPLY DATA — comme répondre à un statut WhatsApp
+// ═══════════════════════════════════════════════════════════════════
+
+class AnnonceReplyData {
+  final String annonceId;
+  final String annonceTitre;
+  final String annonceDescription;
+  final String? annonceMediaUrl;
+  final bool annonceIsVideo;
+  final String annonceAuteur;
+  final String annonceCategorie;
+
+  const AnnonceReplyData({
+    required this.annonceId,
+    required this.annonceTitre,
+    required this.annonceDescription,
+    this.annonceMediaUrl,
+    this.annonceIsVideo = false,
+    required this.annonceAuteur,
+    required this.annonceCategorie,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'annonceId': annonceId,
+        'annonceTitre': annonceTitre,
+        'annonceDescription': annonceDescription,
+        'annonceMediaUrl': annonceMediaUrl,
+        'annonceIsVideo': annonceIsVideo,
+        'annonceAuteur': annonceAuteur,
+        'annonceCategorie': annonceCategorie,
+      };
+
+  factory AnnonceReplyData.fromJson(Map<String, dynamic> json) =>
+      AnnonceReplyData(
+        annonceId: json['annonceId'] ?? '',
+        annonceTitre: json['annonceTitre'] ?? '',
+        annonceDescription: json['annonceDescription'] ?? '',
+        annonceMediaUrl: json['annonceMediaUrl'],
+        annonceIsVideo: json['annonceIsVideo'] ?? false,
+        annonceAuteur: json['annonceAuteur'] ?? '',
+        annonceCategorie: json['annonceCategorie'] ?? 'rencontre',
+      );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  MESSAGE MODEL
 // ═══════════════════════════════════════════════════════════════════
 
@@ -40,19 +85,13 @@ class MessageModel {
   final DateTime? disappearsAt;
   final bool isOpened;
   final int? audioDurationSec;
-
-  /// Durée d'affichage du snap après ouverture (en secondes)
-  /// 0 = vue unique, null = 10s par défaut
   final int? snapDurationSec;
-
-  /// Réactions : { emoji: [userId, ...] }
   final Map<String, List<String>> reactions;
-
-  /// Réponse à un message normal
   final MessageModel? replyTo;
-
-  /// Réponse à une story
   final StoryReplyData? storyReply;
+
+  // ✅ Nouveau : réponse à une annonce (style WhatsApp statut)
+  final AnnonceReplyData? annonceReply;
 
   const MessageModel({
     required this.id,
@@ -70,6 +109,7 @@ class MessageModel {
     this.reactions = const {},
     this.replyTo,
     this.storyReply,
+    this.annonceReply,
   });
 
   bool get isSnap => type == MessageType.snap;
@@ -78,6 +118,7 @@ class MessageModel {
       disappearsAt != null && DateTime.now().isAfter(disappearsAt!);
   bool get isMine => senderId == 'me';
   bool get isStoryReply => storyReply != null;
+  bool get isAnnonceReply => annonceReply != null;
   bool get hasReactions =>
       reactions.isNotEmpty && reactions.values.any((v) => v.isNotEmpty);
 
@@ -100,6 +141,7 @@ class MessageModel {
     Map<String, List<String>>? reactions,
     MessageModel? replyTo,
     StoryReplyData? storyReply,
+    AnnonceReplyData? annonceReply,
     bool clearPhoto = false,
   }) {
     return MessageModel(
@@ -118,6 +160,7 @@ class MessageModel {
       reactions: reactions ?? this.reactions,
       replyTo: replyTo ?? this.replyTo,
       storyReply: storyReply ?? this.storyReply,
+      annonceReply: annonceReply ?? this.annonceReply,
     );
   }
 }

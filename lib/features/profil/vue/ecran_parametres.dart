@@ -62,6 +62,129 @@ class EcranParametres extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
+            // ════ IDENTITÉ ══════════════════════════════════════
+            const _Titre('Mon identité'),
+            const SizedBox(height: 10),
+
+            // ✅ Sélecteur de genre
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border)),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [
+                      Text('♂️', style: TextStyle(fontSize: 14)),
+                      SizedBox(width: 6),
+                      Text('MON GENRE',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.8)),
+                    ]),
+                    const SizedBox(height: 12),
+                    Obx(() => Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: ControleurProfil.genders.map((genre) {
+                            final isSelected =
+                                ctrl.selectedGender.value == genre;
+                            return GestureDetector(
+                              onTap: () => ctrl.setGender(genre),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 9),
+                                decoration: BoxDecoration(
+                                  gradient: isSelected
+                                      ? AppColors.gradientPink
+                                      : null,
+                                  color: isSelected ? null : AppColors.surface2,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                      color: isSelected
+                                          ? Colors.transparent
+                                          : AppColors.border),
+                                ),
+                                child: Text(genre.capitalize!,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.textMuted)),
+                              ),
+                            );
+                          }).toList(),
+                        )),
+                  ]),
+            ),
+            const SizedBox(height: 10),
+
+            // ✅ Je recherche (looking_for) dans les paramètres aussi
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border)),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [
+                      Text('💞', style: TextStyle(fontSize: 14)),
+                      SizedBox(width: 6),
+                      Text('JE RECHERCHE',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.8)),
+                    ]),
+                    const SizedBox(height: 12),
+                    Obx(() => Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children:
+                              ControleurProfil.lookingForOptions.map((opt) {
+                            final isSelected =
+                                ctrl.selectedLookingFor.value == opt;
+                            return GestureDetector(
+                              onTap: () => ctrl.setLookingFor(opt),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 9),
+                                decoration: BoxDecoration(
+                                  gradient: isSelected
+                                      ? AppColors.gradientPink
+                                      : null,
+                                  color: isSelected ? null : AppColors.surface2,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                      color: isSelected
+                                          ? Colors.transparent
+                                          : AppColors.border),
+                                ),
+                                child: Text(opt.capitalize!,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.textMuted)),
+                              ),
+                            );
+                          }).toList(),
+                        )),
+                  ]),
+            ),
+            const SizedBox(height: 28),
+
             // ════ CONFIDENTIALITÉ ════════════════════════════════
             const _Titre('Confidentialité'),
             const SizedBox(height: 10),
@@ -134,7 +257,6 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ PROFILS BLOQUÉS ════════════════════════════════
-            // ✅ Bouton simple → ouvre page dédiée
             const _Titre('Profils bloqués'),
             const SizedBox(height: 10),
             Obx(() {
@@ -180,7 +302,6 @@ class EcranParametres extends StatelessWidget {
                             ),
                           ]),
                     ),
-                    // ✅ Badge rouge si profils bloqués
                     if (count > 0) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(

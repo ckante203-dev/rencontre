@@ -23,13 +23,24 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   final Set<String> _viewedStoryIds = {};
 
   Timer? _heartbeatTimer;
-
-  // ✅ Heartbeat toutes les 60 secondes
-  // → last_seen mis à jour toutes les 60s
-  // → Si l'app crashe ou est fermée, last_seen > 3min → affiché HORS LIGNE automatiquement
   static const _heartbeatInterval = Duration(seconds: 60);
 
+  // ✅ Timer pour différer le passage hors ligne
+  Timer? _offlineTimer;
+
   RealtimeChannel? _onlineChannel;
+
+  double? _myLat;
+  double? _myLng;
+
+  final RxBool locationError = false.obs;
+  final RxString filterMode = 'all'.obs;
+  final RxString filterGender = 'tous'.obs;
+  final RxDouble filterDistance = 50.0.obs;
+
+  static const double _storyRadiusKm = 50.0;
+
+  String? get _myUid => _service.currentUserId;
 
   List<StoryModel> get stories {
     final seen = <String>{};
@@ -47,18 +58,6 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   StoryModel? get myActiveStory =>
       _allStories.where((s) => s.userId == _myUid && s.isActive).firstOrNull;
 
-  double? _myLat;
-  double? _myLng;
-
-  final RxBool locationError = false.obs;
-  final RxString filterMode = 'all'.obs;
-  final RxString filterGender = 'tous'.obs;
-  final RxDouble filterDistance = 50.0.obs;
-
-  static const double _storyRadiusKm = 50.0;
-
-  String? get _myUid => _service.currentUserId;
-
   @override
   void onInit() {
     super.onInit();
@@ -67,18 +66,30 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
+    // ── ÉTAPE 1 : profil utilisateur
     await _loadMyProfile();
-    await _locateMe();
-    // ✅ setOnline(true) dès le démarrage
-    await _service.setOnline(true);
+
+    isLoading.value = true;
+
+    // ── ÉTAPE 2 : localisation + setOnline en parallèle
+    // On attend la localisation pour avoir les distances dès le premier chargement
+    await Future.wait([
+      _locateMe(),
+      _service.setOnline(true),
+    ]);
+
+    // ── ÉTAPE 3 : profils + stories avec localisation disponible
+    await Future.wait([
+      loadProfiles(),
+      loadStories(),
+    ]);
+
+    // ── ÉTAPE 4 : tâches non critiques en arrière-plan
     _startHeartbeat();
     _subscribeToOnlineChanges();
-    await _ensureFcmToken();
-    await loadProfiles();
-    await loadStories();
+    _ensureFcmToken();
   }
 
-  // ✅ Écoute Realtime les changements is_online + last_seen des autres profils
   void _subscribeToOnlineChanges() {
     _onlineChannel = Supabase.instance.client
         .channel('profiles:online')
@@ -91,7 +102,6 @@ class HomeController extends GetxController with WidgetsBindingObserver {
             final userId = updated['id'] as String?;
             if (userId == null || userId == _myUid) return;
 
-            // ✅ Utiliser isReallyOnline — pas juste le booléen brut
             final isOnline = SupabaseService.isReallyOnline(
                 updated['is_online'], updated['last_seen']);
 
@@ -117,7 +127,6 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       await Supabase.instance.client
           .from('profiles')
           .update({'fcm_token': token}).eq('id', uid);
-      debugPrint('✅ FCM token mis à jour: ${token.substring(0, 20)}...');
     } catch (e) {
       debugPrint('_ensureFcmToken error: $e');
     }
@@ -126,7 +135,6 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) async {
-      // ✅ heartbeat() = update last_seen uniquement — plus léger que setOnline()
       await _service.heartbeat();
     });
   }
@@ -135,21 +143,45 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        // ✅ App au premier plan → en ligne IMMÉDIATEMENT
+        // ✅ Annule le timer hors ligne si l'utilisateur revient rapidement
+        _offlineTimer?.cancel();
+        _offlineTimer = null;
         _service.setOnline(true);
         _startHeartbeat();
         _ensureFcmToken();
+        _silentRefresh();
         break;
+
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        // ✅ App en arrière-plan → hors ligne IMMÉDIATEMENT
-        // Plus de délai — avec last_seen la règle des 3 min gère le reste
+        // ✅ Arrête le heartbeat immédiatement
         _heartbeatTimer?.cancel();
-        _service.setOnline(false);
+        // ✅ Attend 5 minutes avant de passer hors ligne
+        // Si l'utilisateur revient dans les 5 min → reste en ligne
+        // Utile quand peu d'utilisateurs ou pour éviter les faux "hors ligne"
+        _offlineTimer?.cancel();
+        _offlineTimer = Timer(const Duration(minutes: 5), () {
+          _service.setOnline(false);
+        });
         break;
     }
+  }
+
+  // ✅ Refresh sans spinner — met à jour en arrière-plan
+  Future<void> _silentRefresh() async {
+    try {
+      final myProfile = _myProfile.value;
+      final fetched = await _service.fetchProfiles(
+        genderFilter: myProfile?.lookingFor,
+        myLat: _myLat,
+        myLng: _myLng,
+      );
+      _allUsers.value = fetched;
+      profiles.value = fetched;
+      await loadStories();
+    } catch (_) {}
   }
 
   Future<void> _loadMyProfile() async {
@@ -182,7 +214,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       _myLat = pos.latitude;
       _myLng = pos.longitude;
       locationError.value = false;
-      await _service.updateLocation(pos.latitude, pos.longitude);
+      _service.updateLocation(pos.latitude, pos.longitude);
     } catch (e) {
       locationError.value = true;
       debugPrint('_locateMe error: $e');
@@ -249,7 +281,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   void openLocationSettings() => Geolocator.openLocationSettings();
 
-  // ─── STORIES ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // STORIES
+  // ═══════════════════════════════════════════════════════════════
 
   Future<void> loadStories() async {
     final uid = _myUid;
@@ -261,26 +295,49 @@ class HomeController extends GetxController with WidgetsBindingObserver {
           .gt('expires_at', DateTime.now().toIso8601String())
           .order('created_at', ascending: false);
 
-      final Set<String> chattedUserIds = await _fetchChattedUserIds(uid);
+      // ✅ MODE CROISSANCE — Stories visibles par TOUT LE MONDE
+      // Aucun filtrage → idéal quand la communauté est petite
+      // Quand tu auras beaucoup d'utilisateurs, décommenter l'ALGO ORIGINAL ci-dessous
       final stories = <StoryModel>[];
+      for (final row in (data as List)) {
+        final profile = row['profiles'] as Map<String, dynamic>?;
+        stories.add(_rowToStory(row, profile, hasChatted: true));
+      }
+      _allStories.value = stories;
+
+      // ══════════════════════════════════════════════════════════════
+      // ✅ ALGO ORIGINAL — À DÉCOMMENTER QUAND LA COMMUNAUTÉ EST GRANDE
+      //
+      // Conditions pour voir une story :
+      //   1. Avoir échangé au moins un message avec l'auteur
+      //   2. L'auteur doit être à moins de 50km
+      //
+      // Pour réactiver :
+      //   1. Commenter le bloc "MODE CROISSANCE" ci-dessus
+      //   2. Décommenter ce bloc
+      // ══════════════════════════════════════════════════════════════
+      /*
+      final Set<String> chattedUserIds = await _fetchChattedUserIds(uid);
+      final storiesFiltered = <StoryModel>[];
 
       for (final row in (data as List)) {
         final profile = row['profiles'] as Map<String, dynamic>?;
         final authorId = row['user_id'] as String? ?? '';
 
         if (authorId == uid) {
-          stories.add(_rowToStory(row, profile));
+          storiesFiltered.add(_rowToStory(row, profile));
           continue;
         }
 
         final bool hasChatted = chattedUserIds.contains(authorId);
         final bool isNearby = _isNearby(profile);
         if (hasChatted && isNearby) {
-          stories.add(_rowToStory(row, profile, hasChatted: true));
+          storiesFiltered.add(_rowToStory(row, profile, hasChatted: true));
         }
       }
 
-      _allStories.value = stories;
+      _allStories.value = storiesFiltered;
+      */
     } catch (e) {
       debugPrint('loadStories error: $e');
     }
@@ -403,6 +460,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     _heartbeatTimer?.cancel();
+    _offlineTimer?.cancel();
     _onlineChannel?.unsubscribe();
     super.onClose();
   }

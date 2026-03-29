@@ -12,19 +12,16 @@ class SupabaseService {
 
   // ══════════════════════════════════════════════════════════════════
   // ✅ ALGORITHME EN LIGNE
-  // Une personne est EN LIGNE si :
-  //   - is_online = true
-  //   - ET last_seen < 3 minutes
-  // Sinon elle est HORS LIGNE, même si is_online=true en BDD
-  // (protection contre les crashs / heartbeat manqué)
+  // Une personne est EN LIGNE si last_seen < 30 minutes
+  //
+  // ⚠️ Quand tu auras beaucoup d'utilisateurs actifs,
+  //    réduis ce seuil à 5 minutes pour plus de précision.
   // ══════════════════════════════════════════════════════════════════
   static bool isReallyOnline(dynamic isOnline, dynamic lastSeen) {
-    if (isOnline != true) return false;
     if (lastSeen == null) return false;
     final dt = DateTime.tryParse(lastSeen.toString());
     if (dt == null) return false;
-    // En ligne = last_seen il y a moins de 3 minutes
-    return DateTime.now().toUtc().difference(dt.toUtc()).inMinutes < 3;
+    return DateTime.now().toUtc().difference(dt.toUtc()).inMinutes < 30;
   }
 
   // ─── PROFILS ────────────────────────────────────────────────────
@@ -54,7 +51,6 @@ class SupabaseService {
 
     final allExcluded = <String>{uid, ...myBlockedIds, ...blockedMeIds};
 
-    // ✅ Inclure last_seen dans la query
     final data = await supabase
         .from('profiles')
         .select()
@@ -78,17 +74,49 @@ class SupabaseService {
       }).toList();
     }
 
-    if (maxDistanceKm != null && myLat != null && myLng != null) {
-      users = users.where((u) {
-        if (u.latitude == null || u.longitude == null) return false;
-        final dist = _distanceKm(myLat, myLng, u.latitude!, u.longitude!);
-        return dist <= maxDistanceKm;
-      }).toList();
+    if (myLat != null && myLng != null) {
+      // Calculer les distances
+      for (int i = 0; i < users.length; i++) {
+        final u = users[i];
+        if (u.latitude != null && u.longitude != null) {
+          final dist = _distanceKm(myLat, myLng, u.latitude!, u.longitude!);
+          users[i] = u.copyWith(distanceMeters: dist * 1000);
+        }
+      }
 
+      if (maxDistanceKm != null) {
+        users = users.where((u) {
+          if (u.distanceMeters == null) return false;
+          return u.distanceMeters! <= maxDistanceKm * 1000;
+        }).toList();
+      }
+
+      // ✅ Tri intelligent :
+      // 1. En ligne en premier
+      // 2. Nouveaux membres (< 7 jours) en second
+      // 3. Puis par distance croissante
       users.sort((a, b) {
-        final da = _distanceKm(myLat, myLng, a.latitude ?? 0, a.longitude ?? 0);
-        final db = _distanceKm(myLat, myLng, b.latitude ?? 0, b.longitude ?? 0);
+        // En ligne avant hors ligne
+        if (a.isOnline && !b.isOnline) return -1;
+        if (!a.isOnline && b.isOnline) return 1;
+
+        // Nouveaux membres avant les anciens
+        if (a.isNewMember && !b.isNewMember) return -1;
+        if (!a.isNewMember && b.isNewMember) return 1;
+
+        // Puis par distance
+        final da = a.distanceMeters ?? double.infinity;
+        final db = b.distanceMeters ?? double.infinity;
         return da.compareTo(db);
+      });
+    } else {
+      // Sans localisation : en ligne d'abord, puis nouveaux membres
+      users.sort((a, b) {
+        if (a.isOnline && !b.isOnline) return -1;
+        if (!a.isOnline && b.isOnline) return 1;
+        if (a.isNewMember && !b.isNewMember) return -1;
+        if (!a.isNewMember && b.isNewMember) return 1;
+        return 0;
       });
     }
 
@@ -115,7 +143,6 @@ class SupabaseService {
     return _profileToUser(data);
   }
 
-  // ✅ setOnline met à jour is_online ET last_seen ensemble
   Future<void> setOnline(bool isOnline) async {
     final uid = currentUserId;
     if (uid == null) return;
@@ -127,7 +154,6 @@ class SupabaseService {
     } catch (_) {}
   }
 
-  // ✅ Heartbeat — met juste à jour last_seen pour confirmer qu'on est actif
   Future<void> heartbeat() async {
     final uid = currentUserId;
     if (uid == null) return;
@@ -187,7 +213,6 @@ class SupabaseService {
 
     final allExcluded = <String>{...myBlockedIds, ...blockedMeIds};
 
-    // ✅ Inclure last_seen dans la query des profils liés aux conversations
     final data = await supabase
         .from('conversations')
         .select('''
@@ -357,7 +382,6 @@ class SupabaseService {
   }
 
   UserModel _profileToUser(Map<String, dynamic> row) {
-    // ✅ isOnline calculé avec la règle is_online + last_seen < 3 min
     final online = isReallyOnline(row['is_online'], row['last_seen']);
     return UserModel(
       id: row['id'] ?? '',
@@ -374,6 +398,10 @@ class SupabaseService {
       isOnline: online,
       lastSeen: row['last_seen'] != null
           ? DateTime.tryParse(row['last_seen'].toString())
+          : null,
+      // ✅ createdAt pour le badge "Nouveau membre"
+      createdAt: row['created_at'] != null
+          ? DateTime.tryParse(row['created_at'].toString())
           : null,
       followersCount: row['followers_count'] ?? 0,
       followingCount: row['following_count'] ?? 0,

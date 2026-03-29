@@ -6,25 +6,36 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 class UpdateService {
   // ✅ Version lue automatiquement depuis pubspec.yaml
-  // Plus besoin de changer manuellement _currentVersion à chaque build !
   static Future<void> checkForUpdate() async {
     try {
-      // Lit la version réelle installée sur le téléphone
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version; // ex: "1.0.1"
+      final currentVersion = packageInfo.version;
 
       debugPrint('📱 Version installée: $currentVersion');
 
+      // ✅ maybeSingle() au lieu de single() — ne crashe pas si pas de ligne
       final data = await Supabase.instance.client
           .from('app_config')
           .select('latest_version, download_url, release_notes, force_update')
           .eq('id', 'config')
-          .single();
+          .maybeSingle();
 
-      final latestVersion = data['latest_version'] as String;
-      final downloadUrl = data['download_url'] as String;
+      // ✅ Sortir proprement si la table est vide ou la ligne absente
+      if (data == null) {
+        debugPrint('⚠️ app_config: aucune config trouvée, skip update check.');
+        return;
+      }
+
+      final latestVersion = data['latest_version'] as String? ?? '';
+      final downloadUrl = data['download_url'] as String? ?? '';
       final releaseNotes = data['release_notes'] as String? ?? '';
       final forceUpdate = data['force_update'] as bool? ?? false;
+
+      // ✅ Vérification que les champs critiques sont bien renseignés
+      if (latestVersion.isEmpty || downloadUrl.isEmpty) {
+        debugPrint('⚠️ app_config: latest_version ou download_url vide.');
+        return;
+      }
 
       debugPrint('🌐 Version Supabase: $latestVersion');
 
@@ -36,22 +47,30 @@ class UpdateService {
           releaseNotes: releaseNotes,
           forceUpdate: forceUpdate,
         );
+      } else {
+        debugPrint('✅ App à jour ($currentVersion).');
       }
     } catch (e) {
+      // ✅ On logge mais on ne crash jamais l'app pour une vérif de MAJ
       debugPrint('Update check error: $e');
     }
   }
 
+  // ✅ Comparaison sémantique : "1.0.3" > "1.0.2" → true
   static bool _isNewerVersion(String latest, String current) {
-    final l = latest.split('.').map(int.parse).toList();
-    final c = current.split('.').map(int.parse).toList();
-    for (int i = 0; i < 3; i++) {
-      final lv = i < l.length ? l[i] : 0;
-      final cv = i < c.length ? c[i] : 0;
-      if (lv > cv) return true;
-      if (lv < cv) return false;
+    try {
+      final l = latest.trim().split('.').map(int.parse).toList();
+      final c = current.trim().split('.').map(int.parse).toList();
+      for (int i = 0; i < 3; i++) {
+        final lv = i < l.length ? l[i] : 0;
+        final cv = i < c.length ? c[i] : 0;
+        if (lv > cv) return true;
+        if (lv < cv) return false;
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
-    return false;
   }
 
   static void _showUpdateDialog({
@@ -61,9 +80,13 @@ class UpdateService {
     required String releaseNotes,
     required bool forceUpdate,
   }) {
+    // ✅ Évite d'empiler plusieurs dialogs si appelé plusieurs fois
+    if (Get.isDialogOpen ?? false) return;
+
     Get.dialog(
-      WillPopScope(
-        onWillPop: () async => !forceUpdate,
+      PopScope(
+        // ✅ WillPopScope déprécié → PopScope (Flutter 3.12+)
+        canPop: !forceUpdate,
         child: AlertDialog(
           backgroundColor: const Color(0xFF1A1A2E),
           shape:
@@ -72,12 +95,14 @@ class UpdateService {
             children: [
               Text('🚀 ', style: TextStyle(fontSize: 24)),
               SizedBox(width: 8),
-              Text(
-                'Mise à jour disponible',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  'Mise à jour disponible',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -154,7 +179,7 @@ class UpdateService {
       debugPrint('Download error: $e');
       Get.snackbar(
         'Erreur',
-        'Impossible d\'ouvrir le lien de téléchargement',
+        "Impossible d'ouvrir le lien de téléchargement",
         backgroundColor: const Color(0xFFFF3B30),
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,

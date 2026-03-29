@@ -205,7 +205,6 @@ class _TopBar extends GetView<HomeController> {
           const SizedBox(width: 8),
           _IconBtn(icon: Icons.search_rounded, onTap: () {}),
           const SizedBox(width: 8),
-          // Bouton Boost
           GestureDetector(
             onTap: () {
               Get.snackbar('Boost', 'Profil boosté pour 30 minutes !',
@@ -297,6 +296,12 @@ class _FilterChips extends GetView<HomeController> {
               isActive: controller.filterMode.value == 'nearby',
               onTap: () => controller.setFilter('nearby'))),
           const SizedBox(width: 8),
+          Obx(() => _Chip(
+              label: 'Nouveaux',
+              icon: '✨',
+              isActive: controller.filterMode.value == 'new',
+              onTap: () => controller.setFilter('new'))),
+          const SizedBox(width: 8),
           const _AdvancedFilterBtn(),
         ],
       ),
@@ -378,8 +383,6 @@ class _UsersGridScrollable extends GetView<HomeController> {
             return Obx(() {
               final unreadCount =
                   Get.find<UnreadMessagesController>().unreadFrom(user.id);
-
-              // ✅ Story active : anneau dégradé si non vue, gris si vue
               final hasStory = controller.userHasActiveStory(user.id);
               final storyIsSeen = controller.userStoryIsSeen(user.id);
 
@@ -417,6 +420,15 @@ class _UsersGridScrollable extends GetView<HomeController> {
   }
 
   Widget _buildEmpty() {
+    final filter = controller.filterMode.value;
+    final msg = filter == 'new'
+        ? 'Aucun nouveau membre'
+        : filter == 'online'
+            ? 'Personne en ligne'
+            : filter == 'nearby'
+                ? 'Personne à proximité'
+                : 'Aucun profil disponible';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -424,8 +436,11 @@ class _UsersGridScrollable extends GetView<HomeController> {
           Icon(Icons.person_search_rounded,
               size: 64, color: AppColors.textMuted.withOpacity(0.5)),
           const SizedBox(height: 16),
-          const Text('Personne à proximité',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(msg,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppColors.textPrimary)),
           TextButton(
               onPressed: controller.loadProfiles,
               child: const Text('Réessayer')),
@@ -441,11 +456,7 @@ class _UserCard extends StatelessWidget {
   final UserModel user;
   final VoidCallback onTap;
   final int unreadCount;
-
-  /// ✅ Story active — anneau autour de la carte
   final bool hasActiveStory;
-
-  /// ✅ true → anneau gris (déjà vue), false → anneau dégradé (non vue)
   final bool storyIsSeen;
 
   const _UserCard({
@@ -459,12 +470,6 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasUnread = unreadCount > 0;
-
-    // ✅ Couleur de la bordure extérieure :
-    //   priorité 1 : messages non lus → or
-    //   priorité 2 : story non vue  → dégradé simulé via accent
-    //   priorité 3 : story vue      → gris discret
-    //   par défaut  : aucune bordure
     final bool showUnreadBorder = hasUnread;
     final bool showStoryBorder = !hasUnread && hasActiveStory;
 
@@ -473,7 +478,6 @@ class _UserCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          // Bordure messages non lus (or) > story
           border: showUnreadBorder
               ? Border.all(color: const Color(0xFFFFD700), width: 2)
               : showStoryBorder
@@ -523,7 +527,7 @@ class _UserCard extends StatelessWidget {
                         Colors.transparent,
                         Colors.black.withOpacity(0.8)
                       ],
-                      stops: const [0.6, 1.0],
+                      stops: const [0.5, 1.0],
                     ),
                   ),
                 ),
@@ -553,8 +557,68 @@ class _UserCard extends StatelessWidget {
                 ),
               ),
 
-              // ── Dot online ─────────────────────────────────
-              if (user.isOnline)
+              // ── Badge "Nouveau" hors ligne ─────────────────
+              if (user.isNewMember && !user.isOnline)
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      // ✅ Même gradient que l'app (rose → violet)
+                      gradient: AppColors.gradientPink,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Nouveau',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 7,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3),
+                    ),
+                  ),
+                ),
+
+              // ── Badge "Nouveau" + dot en ligne ────────────
+              if (user.isNewMember && user.isOnline)
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                            color: Colors.green, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          // ✅ Même gradient que l'app (rose → violet)
+                          gradient: AppColors.gradientPink,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Nouveau',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 7,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ── Dot online seul (sans badge nouveau) ───────
+              if (user.isOnline && !user.isNewMember)
                 Positioned(
                     top: 8,
                     left: 8,
@@ -564,9 +628,7 @@ class _UserCard extends StatelessWidget {
                         decoration: const BoxDecoration(
                             color: Colors.green, shape: BoxShape.circle))),
 
-              // ✅ Icône story — en haut à droite si story active
-              // Remplace visuellement la même position que le badge unread
-              // quand il n'y a pas de message non lu.
+              // ── Icône story ────────────────────────────────
               if (hasActiveStory && !hasUnread)
                 Positioned(
                   top: 6,

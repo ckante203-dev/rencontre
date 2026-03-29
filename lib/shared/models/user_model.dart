@@ -18,11 +18,12 @@ class UserModel {
   final int followersCount;
   final int followingCount;
   final int matchesCount;
-  // ✅ Nouveaux champs v1.0.3
   final int? taille;
   final int? poids;
   final String? morphologie;
   final String? lieuRencontre;
+  // ✅ Nouveau — date d'inscription pour le badge "Nouveau membre"
+  final DateTime? createdAt;
 
   const UserModel({
     required this.id,
@@ -46,7 +47,14 @@ class UserModel {
     this.poids,
     this.morphologie,
     this.lieuRencontre,
+    this.createdAt,
   });
+
+  // ✅ Nouveau membre = inscrit depuis moins de 7 jours
+  bool get isNewMember {
+    if (createdAt == null) return false;
+    return DateTime.now().difference(createdAt!).inDays < 7;
+  }
 
   UserModel copyWith({
     String? id,
@@ -71,6 +79,7 @@ class UserModel {
     int? poids,
     String? morphologie,
     String? lieuRencontre,
+    DateTime? createdAt,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -94,6 +103,7 @@ class UserModel {
         poids: poids ?? this.poids,
         morphologie: morphologie ?? this.morphologie,
         lieuRencontre: lieuRencontre ?? this.lieuRencontre,
+        createdAt: createdAt ?? this.createdAt,
       );
 
   /// "175cm · 70kg"

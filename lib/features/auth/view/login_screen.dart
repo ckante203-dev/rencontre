@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
+import 'package:rencontre/features/auth/view/cgu_screen.dart';
 import 'package:rencontre/features/auth/widget/auth_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,13 +16,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ FIX : vider les champs à chaque ouverture
-    // évite le conflit avec SignupScreen qui partage les mêmes controllers
     final ctrl = Get.find<AuthController>();
     ctrl.emailController.clear();
     ctrl.passwordController.clear();
-    ctrl.clearError();
-    ctrl.showPassword.value = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ctrl.clearError();
+      ctrl.showPassword.value = false;
+    });
   }
 
   @override
@@ -38,42 +39,74 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () => Get.back(),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Icon(Icons.arrow_back_ios_rounded,
-                        size: 18, color: AppColors.textPrimary),
-                  ),
-                ),
                 const SizedBox(height: 28),
 
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text('Content de te\nrevoir 👋',
-                      style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1.2,
-                      )),
+                // ── HEADER : Logo + Nom ──
+                Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withOpacity(0.4),
+                            blurRadius: 24,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 46,
+                          height: 46,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ShaderMask(
+                      shaderCallback: (b) =>
+                          AppColors.gradientPink.createShader(b),
+                      child: const Text(
+                        'SnapMeet',
+                        style: TextStyle(
+                          fontFamily: 'Syne',
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+
+                const SizedBox(height: 40),
+
+                // ── Titre ──
+                const Text(
+                  'Bon retour 👋',
+                  style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 const Text(
                   'Connecte-toi pour retrouver tes matchs',
-                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF9999BB),
+                    height: 1.4,
+                  ),
                 ),
+
                 const SizedBox(height: 32),
 
-                // Email
+                // ── Email ──
                 AuthInputField(
                   label: 'Email',
                   hint: 'ton@email.com',
@@ -84,8 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // Mot de passe
-                // ✅ FIX : Obx correct — showPassword est bien un RxBool
+                // ── Mot de passe ──
                 Obx(() => AuthInputField(
                       label: 'Mot de passe',
                       hint: '••••••••',
@@ -97,71 +129,127 @@ class _LoginScreenState extends State<LoginScreen> {
                       onChanged: (_) => ctrl.clearError(),
                     )),
 
-                // Mot de passe oublié
+                // ── Mot de passe oublié ──
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
                     onTap: () => _showForgotPassword(context, ctrl),
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Text('Mot de passe oublié ?',
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600)),
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'Mot de passe oublié ?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
 
-                // Erreur
+                // ── Erreur ──
                 Obx(() => AuthErrorMessage(message: ctrl.errorMessage.value)),
                 const SizedBox(height: 16),
 
-                // Bouton connexion
+                // ── Bouton Se connecter ──
                 Obx(() => AuthPrimaryButton(
                       label: 'Se connecter →',
                       onTap: ctrl.signInWithEmail,
                       isLoading: ctrl.isLoading.value,
                     )),
-                const SizedBox(height: 20),
 
-                const AuthDivider(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                AuthSocialButton(
+                // ── Séparateur ──
+                Row(
+                  children: [
+                    Expanded(
+                        child: Container(height: 1, color: AppColors.border)),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        'ou',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9999BB),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                        child: Container(height: 1, color: AppColors.border)),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // ── Continuer avec Google ──
+                _GradientBorderButton(
                   icon: 'G',
                   label: 'Continuer avec Google',
                   onTap: ctrl.signInWithGoogle,
                 ),
-                const SizedBox(height: 10),
-                AuthSocialButton(
+                const SizedBox(height: 12),
+
+                // ── Continuer avec le téléphone ──
+                _GradientBorderButton(
                   icon: '📱',
                   label: 'Continuer avec le téléphone',
                   onTap: () => Get.toNamed('/login/phone'),
                 ),
-                const SizedBox(height: 28),
 
+                const SizedBox(height: 32),
+
+                // ── Pas de compte ──
                 GestureDetector(
-                  onTap: () => Get.offNamed('/signup'),
+                  onTap: () => Get.toNamed('/signup'),
                   child: Center(
                     child: RichText(
                       text: const TextSpan(
-                        text: 'Pas encore de compte ? ',
-                        style:
-                            TextStyle(fontSize: 14, color: AppColors.textMuted),
+                        text: 'Pas encore de compte ?  ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF9999BB),
+                        ),
                         children: [
                           TextSpan(
                             text: 'S\'inscrire',
                             style: TextStyle(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w700),
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+
+                const SizedBox(height: 20),
+
+                // ── CGU ──
+                Center(
+                  child: GestureDetector(
+                    onTap: () => Get.to(
+                      () => const CguScreen(showAcceptButton: false),
+                      transition: Transition.cupertino,
+                    ),
+                    child: const Text(
+                      "Conditions d'utilisation · Politique de confidentialité",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF6B6B8A),
+                        height: 1.5,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Color(0xFF6B6B8A),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 36),
               ],
             ),
           ),
@@ -171,17 +259,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPassword(BuildContext context, AuthController ctrl) {
-    // ✅ FIX : TextEditingController local pour éviter conflit avec emailController
-    final forgotEmailCtrl = TextEditingController(
-      text: ctrl.emailController.text,
-    );
+    final forgotEmailCtrl =
+        TextEditingController(text: ctrl.emailController.text);
 
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => Padding(
         padding: EdgeInsets.fromLTRB(
             24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
@@ -190,24 +277,31 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-                child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2)))),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
-            const Text('Mot de passe oublié ?',
-                style: TextStyle(
-                    fontFamily: 'Syne',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
+            const Text(
+              'Mot de passe oublié ?',
+              style: TextStyle(
+                fontFamily: 'Syne',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 6),
-            const Text('On t\'envoie un lien de réinitialisation par email.',
-                style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            const Text(
+              'On t\'envoie un lien de réinitialisation par email.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF9999BB)),
+            ),
             const SizedBox(height: 20),
-            // ✅ FIX : controller local — pas de Obx ici
             AuthInputField(
               label: 'Email',
               hint: 'ton@email.com',
@@ -216,7 +310,6 @@ class _LoginScreenState extends State<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
-            // ✅ FIX : pas de Obx dans le bottomSheet — bouton simple
             AuthPrimaryButton(
               label: 'Envoyer le lien',
               onTap: () {
@@ -227,6 +320,65 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 8),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bouton avec bordure dégradée rose/violet ──────────────────────────────────
+class _GradientBorderButton extends StatelessWidget {
+  final String icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _GradientBorderButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 52,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: AppColors.gradientPink,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(1.5), // épaisseur de la bordure
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface2,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  icon,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

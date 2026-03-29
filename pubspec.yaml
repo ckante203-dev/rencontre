@@ -1,7 +1,7 @@
 name: rencontre
 description: App de rencontre + réseau social (Grindr x Snapchat)
 publish_to: 'none'
-version: 1.0.2+2005
+version: 1.0.3+2006
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

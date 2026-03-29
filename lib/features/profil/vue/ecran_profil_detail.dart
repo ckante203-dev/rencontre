@@ -28,9 +28,21 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
   List<StoryModel> _stories = [];
   bool _loadingStories = true;
   late TabController _tabCtrl;
+  int _currentPhotoIndex = 0;
 
   List<StoryModel> get _publications =>
       _stories.where((s) => s.isPinned).toList();
+
+  List<String> get _allPhotos {
+    final photos = <String>[];
+    if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+      photos.add(user.photoUrl!);
+    }
+    for (final url in user.photoUrls) {
+      if (url.isNotEmpty && !photos.contains(url)) photos.add(url);
+    }
+    return photos;
+  }
 
   @override
   void initState() {
@@ -40,12 +52,27 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     _loadActiveStory();
     _loadStories();
+    _recordProfileView();
   }
 
   @override
   void dispose() {
     _tabCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _recordProfileView() async {
+    try {
+      final myUid = Supabase.instance.client.auth.currentUser?.id;
+      if (myUid == null || myUid == user.id) return;
+      await Supabase.instance.client.from('profile_views').upsert({
+        'viewer_id': myUid,
+        'viewed_id': user.id,
+        'created_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'viewer_id,viewed_id');
+    } catch (e) {
+      debugPrint('_recordProfileView error: $e');
+    }
   }
 
   Future<void> _loadActiveStory() async {
@@ -157,6 +184,19 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
     }
   }
 
+  String _lastSeenLabel() {
+    if (user.isOnline) return '';
+    final lastSeen = user.lastSeen;
+    if (lastSeen == null) return 'Hors ligne';
+    final diff = DateTime.now().difference(lastSeen);
+    if (diff.inMinutes < 1) return 'Vu à l\'instant';
+    if (diff.inMinutes < 60) return 'Vu il y a ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Vu il y a ${diff.inHours}h';
+    if (diff.inDays < 7)
+      return 'Vu il y a ${diff.inDays} jour${diff.inDays > 1 ? 's' : ''}';
+    return 'Hors ligne';
+  }
+
   void _showOptions() {
     Get.bottomSheet(
       Container(
@@ -174,7 +214,6 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 20),
-          // ── Bloquer ──────────────────────────────────────────
           GestureDetector(
             onTap: () async {
               Get.back();
@@ -239,7 +278,6 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
             ),
           ),
           const SizedBox(height: 10),
-          // ── Signaler ─────────────────────────────────────────
           GestureDetector(
             onTap: () {
               Get.back();
@@ -266,7 +304,6 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
             ),
           ),
           const SizedBox(height: 10),
-          // ── Annuler ──────────────────────────────────────────
           GestureDetector(
             onTap: () => Get.back(),
             child: Container(
@@ -360,16 +397,24 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
     );
   }
 
+  void _openPhoto(String url) {
+    Get.to(
+      () => _FullScreenPhoto(url: url),
+      transition: Transition.fadeIn,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final photos = _allPhotos;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D1A),
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
-            expandedHeight: size.height * 0.52,
+            expandedHeight: size.height * 0.55,
             pinned: true,
             backgroundColor: const Color(0xFF0D0D1A),
             leading: GestureDetector(
@@ -405,18 +450,24 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // ── Photo principale ────────────────────────
-                  user.photoUrl != null && user.photoUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: user.photoUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => _GradientBg(name: user.name),
-                          errorWidget: (_, __, ___) =>
-                              _GradientBg(name: user.name),
+                  photos.isNotEmpty
+                      ? PageView.builder(
+                          itemCount: photos.length,
+                          onPageChanged: (i) =>
+                              setState(() => _currentPhotoIndex = i),
+                          itemBuilder: (_, i) => GestureDetector(
+                            onTap: () => _openPhoto(photos[i]),
+                            child: CachedNetworkImage(
+                              imageUrl: photos[i],
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) =>
+                                  _GradientBg(name: user.name),
+                              errorWidget: (_, __, ___) =>
+                                  _GradientBg(name: user.name),
+                            ),
+                          ),
                         )
                       : _GradientBg(name: user.name),
-
-                  // ── Gradient bas ────────────────────────────
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -432,8 +483,56 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                       ),
                     ),
                   ),
-
-                  // ── Story miniature ─────────────────────────
+                  if (photos.length > 1)
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 54,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          photos.length,
+                          (i) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            width: i == _currentPhotoIndex ? 20 : 6,
+                            height: 4,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              color: i == _currentPhotoIndex
+                                  ? Colors.white
+                                  : Colors.white38,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (user.isNewMember)
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 54,
+                      left: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.gradientPink,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star_rounded,
+                                size: 11, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text('Nouveau membre',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                    ),
                   if (!_loadingStory && _activeStory != null)
                     Positioned(
                       top: MediaQuery.of(context).padding.top + 52,
@@ -503,12 +602,10 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                         ),
                       ),
                     ),
-
-                  // ── Nom + statut ────────────────────────────
                   Positioned(
                     bottom: 20,
                     left: 20,
-                    right: 20,
+                    right: 80,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -516,13 +613,15 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                         Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text('${user.name}, ${user.age}',
-                                  style: const TextStyle(
-                                      fontFamily: 'Syne',
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                      letterSpacing: -0.5)),
+                              Flexible(
+                                child: Text('${user.name}, ${user.age}',
+                                    style: const TextStyle(
+                                        fontFamily: 'Syne',
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        letterSpacing: -0.5)),
+                              ),
                               if (user.isOnline) ...[
                                 const SizedBox(width: 8),
                                 Container(
@@ -547,7 +646,19 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                                 ),
                               ],
                             ]),
-                        if (user.distanceMeters != null)
+                        if (!user.isOnline) ...[
+                          const SizedBox(height: 4),
+                          Row(children: [
+                            const Icon(Icons.access_time_rounded,
+                                size: 11, color: Colors.white54),
+                            const SizedBox(width: 4),
+                            Text(_lastSeenLabel(),
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.white54)),
+                          ]),
+                        ],
+                        if (user.distanceMeters != null) ...[
+                          const SizedBox(height: 2),
                           Row(children: [
                             const Icon(Icons.location_on_rounded,
                                 size: 12, color: Colors.white54),
@@ -556,20 +667,36 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                                 style: const TextStyle(
                                     fontSize: 12, color: Colors.white54)),
                           ]),
+                        ],
                       ],
                     ),
                   ),
+                  if (photos.length > 1)
+                    Positioned(
+                      bottom: 22,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Text(
+                            '${_currentPhotoIndex + 1}/${photos.length}',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
-
-          // ── Barre d'actions ──────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(children: [
-                // ── Bouton message ────────────────────────────
                 Expanded(
                   child: GestureDetector(
                     onTap: _ouvrirChat,
@@ -608,8 +735,6 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                   ),
                 ),
                 const SizedBox(width: 10),
-
-                // ── Bouton snap ───────────────────────────────
                 _ActionBtn(
                     emoji: '📸',
                     onTap: () => Get.snackbar('📸 Snap', 'Bientôt !',
@@ -617,8 +742,6 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                         backgroundColor: const Color(0xFF13131A),
                         colorText: Colors.white)),
                 const SizedBox(width: 10),
-
-                // ✅ BOUTON LIKE — remplace l'ancien emoji ❤️
                 SizedBox(
                   width: 50,
                   height: 50,
@@ -633,6 +756,38 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
           publications: _publications,
           loadingStories: _loadingStories,
           tabCtrl: _tabCtrl,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PHOTO PLEIN ÉCRAN ────────────────────────────────────────────
+
+class _FullScreenPhoto extends StatelessWidget {
+  final String url;
+  const _FullScreenPhoto({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Get.back()),
+      ),
+      body: InteractiveViewer(
+        child: Center(
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.contain,
+            placeholder: (_, __) =>
+                const CircularProgressIndicator(color: Colors.white),
+            errorWidget: (_, __, ___) => const Icon(Icons.broken_image_rounded,
+                color: Colors.white38, size: 48),
+          ),
         ),
       ),
     );
@@ -661,49 +816,58 @@ class _CorpsProfil extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Infos de base ─────────────────────────────────────
+          // ── Infos de base (sans genre ni recherche) ───────────
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border)),
-            child: Column(children: [
-              Row(children: [
-                _InfoTile(icon: '🎂', label: 'Âge', value: '${user.age} ans'),
-                _InfoTile(
-                    icon: '📍',
-                    label: 'Distance',
-                    value: user.distanceMeters != null
-                        ? user.distanceLabel
-                        : 'Inconnue'),
-                _InfoTile(
-                    icon: '🟢',
-                    label: 'Statut',
-                    value: user.isOnline ? 'En ligne' : 'Hors ligne'),
-              ]),
-              if (user.gender != null || user.lookingFor != null) ...[
-                const SizedBox(height: 12),
-                Row(children: [
-                  if (user.gender != null)
-                    _InfoTile(
-                        icon: user.gender == 'femme' ? '♀️' : '♂️',
-                        label: 'Genre',
-                        value: user.gender!.capitalize!),
-                  if (user.lookingFor != null)
-                    _InfoTile(
-                        icon: '💞',
-                        label: 'Cherche',
-                        value: user.lookingFor!.capitalize!),
-                  if (user.gender != null && user.lookingFor == null)
-                    const Expanded(child: SizedBox()),
-                  if (user.gender == null && user.lookingFor != null)
-                    const Expanded(child: SizedBox()),
-                ]),
-              ],
+            child: Row(children: [
+              _InfoTile(icon: '🎂', label: 'Âge', value: '${user.age} ans'),
+              _InfoTile(
+                  icon: '📍',
+                  label: 'Distance',
+                  value: user.distanceMeters != null
+                      ? user.distanceLabel
+                      : 'Inconnue'),
+              _InfoTile(
+                  icon: '🟢',
+                  label: 'Statut',
+                  value: user.isOnline ? 'En ligne' : 'Hors ligne'),
             ]),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // ── Morphologie, taille, poids, lieu de rencontre ─────
+          if (user.taille != null ||
+              user.poids != null ||
+              user.morphologie != null ||
+              user.lieuRencontre != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border)),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (user.taille != null)
+                    _PhysiqueBadge(icon: '📏', label: '${user.taille} cm'),
+                  if (user.poids != null)
+                    _PhysiqueBadge(icon: '⚖️', label: '${user.poids} kg'),
+                  if (user.morphologie != null)
+                    _PhysiqueBadge(icon: '💪', label: user.morphologie!),
+                  if (user.lieuRencontre != null)
+                    _PhysiqueBadge(
+                        icon: '📍', label: 'Rencontre : ${user.lieuRencontre}'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // ── Bio ───────────────────────────────────────────────
           if (user.bio != null && user.bio!.isNotEmpty) ...[
@@ -793,6 +957,34 @@ class _CorpsProfil extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+// ── Badge physique ────────────────────────────────────────────────
+
+class _PhysiqueBadge extends StatelessWidget {
+  final String icon, label;
+  const _PhysiqueBadge({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(icon, style: const TextStyle(fontSize: 14)),
+        const SizedBox(width: 6),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary)),
+      ]),
     );
   }
 }

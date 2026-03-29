@@ -742,6 +742,8 @@ class _MessageBubble extends StatelessWidget {
         return _MediaBubble(msg: msg, isMine: isMine, isVideo: false);
       case MessageType.location:
         return _LocationBubble(msg: msg, isMine: isMine);
+      case MessageType.annonceReply:
+        return _AnnonceReplyBubble(msg: msg, isMine: isMine);
       default:
         return _TextBubble(
             msg: msg, isMine: isMine, isFirst: isFirst, isLast: isLast);
@@ -2310,6 +2312,173 @@ class _AttachItem extends StatelessWidget {
                   color: color.withOpacity(0.9),
                   fontWeight: FontWeight.w500)),
         ]));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ANNONCE REPLY BUBBLE — style WhatsApp statut
+// ═══════════════════════════════════════════════════════════════════
+
+class _AnnonceReplyBubble extends StatelessWidget {
+  final MessageModel msg;
+  final bool isMine;
+  const _AnnonceReplyBubble({required this.msg, required this.isMine});
+
+  String get _catEmoji {
+    final cat = msg.annonceReply?.annonceCategorie ?? '';
+    const m = {
+      'rencontre': '💕',
+      'amitie': '🤝',
+      'sortie': '🎉',
+      'voyage': '✈️',
+    };
+    return m[cat] ?? '📢';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reply = msg.annonceReply;
+    final hasText = msg.text != null &&
+        msg.text!.isNotEmpty &&
+        msg.text != '📢 A répondu à une annonce';
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.75,
+      ),
+      child: Column(
+        crossAxisAlignment:
+            isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          // ── Preview annonce (comme WhatsApp statut) ──
+          Container(
+            decoration: BoxDecoration(
+              color:
+                  isMine ? Colors.white.withOpacity(0.12) : AppColors.surface2,
+              borderRadius: BorderRadius.circular(14),
+              border: Border(
+                left: BorderSide(
+                  color: isMine ? Colors.white38 : AppColors.accent,
+                  width: 3,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Auteur annonce
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$_catEmoji ',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Text(
+                              reply?.annonceAuteur ?? 'Annonce',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isMine ? Colors.white70 : AppColors.accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        // Titre
+                        Text(
+                          reply?.annonceTitre ?? 'Annonce',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isMine ? Colors.white : AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        // Description
+                        if (reply?.annonceDescription.isNotEmpty == true)
+                          Text(
+                            reply!.annonceDescription,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color:
+                                  isMine ? Colors.white54 : AppColors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Miniature photo
+                if (reply?.annonceMediaUrl != null &&
+                    reply?.annonceIsVideo == false)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: reply!.annonceMediaUrl!,
+                      width: 56,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  )
+                else if (reply?.annonceIsVideo == true)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(14),
+                      bottomRight: Radius.circular(14),
+                    ),
+                    child: Container(
+                      width: 56,
+                      height: 64,
+                      color: Colors.white.withOpacity(0.08),
+                      child: const Center(
+                        child: Icon(Icons.videocam_rounded,
+                            color: AppColors.accent, size: 20),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ── Message texte en dessous (si présent) ──
+          if (hasText)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: isMine ? AppColors.gradientPink : null,
+                color: isMine ? null : AppColors.surface2,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                msg.text!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isMine ? Colors.white : AppColors.textPrimary,
+                  height: 1.35,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

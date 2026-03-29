@@ -9,7 +9,7 @@ import 'package:rencontre/features/profil/vue/ecran_profil.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/annonces/view/annonces_screen.dart';
 import 'package:rencontre/features/annonces/controller/annonces_controller.dart';
-import 'package:rencontre/features/map/view/map_screen.dart'; // ✅ nouveau
+import 'package:rencontre/features/likes/likes_screen.dart';
 import 'package:rencontre/features/likes/like_controller.dart';
 
 class NavigationController extends GetxController {
@@ -42,7 +42,6 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!Get.isRegistered<HomeController>()) {
       Get.put(HomeController(), permanent: true);
     }
-
     if (!Get.isRegistered<LikeController>()) {
       Get.put(LikeController(), permanent: true);
     }
@@ -52,7 +51,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    MapScreen(), // ✅ remplace _EcranCarte
+    LikesScreen(), // ✅ Remplace MapScreen
     AnnoncesScreen(),
     ChatListScreen(),
     EcranProfil(),
@@ -92,28 +91,120 @@ class _BarreNavigation extends StatelessWidget {
           height: 60,
           child: Row(children: [
             _NavItem(
-                icon: Icons.grid_view_rounded,
-                label: 'Accueil',
-                index: 0,
-                currentIndex: currentIndex,
-                onTap: onTap),
-            _NavItem(
-                icon: Icons.location_on_rounded,
-                label: 'Carte',
-                index: 1,
-                currentIndex: currentIndex,
-                onTap: onTap),
+              icon: Icons.grid_view_rounded,
+              label: 'Accueil',
+              index: 0,
+              currentIndex: currentIndex,
+              onTap: onTap,
+            ),
+            _NavItemLikes(
+              index: 1,
+              currentIndex: currentIndex,
+              onTap: onTap,
+            ),
             _NavItemAnnonces(
-                index: 2, currentIndex: currentIndex, onTap: onTap),
+              index: 2,
+              currentIndex: currentIndex,
+              onTap: onTap,
+            ),
             _NavItemMessages(
-                index: 3, currentIndex: currentIndex, onTap: onTap),
+              index: 3,
+              currentIndex: currentIndex,
+              onTap: onTap,
+            ),
             _NavItem(
-                icon: Icons.person_rounded,
-                label: 'Profil',
-                index: 4,
-                currentIndex: currentIndex,
-                onTap: onTap),
+              icon: Icons.person_rounded,
+              label: 'Profil',
+              index: 4,
+              currentIndex: currentIndex,
+              onTap: onTap,
+            ),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── NAV ITEM LIKES ──────────────────────────────────────────────
+
+class _NavItemLikes extends StatelessWidget {
+  final int index, currentIndex;
+  final ValueChanged<int> onTap;
+  const _NavItemLikes(
+      {required this.index, required this.currentIndex, required this.onTap});
+
+  bool get isActive => currentIndex == index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(clipBehavior: Clip.none, children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.accent.withOpacity(0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.favorite_rounded,
+                  size: 22,
+                  color: isActive ? AppColors.accent : AppColors.textMuted,
+                ),
+              ),
+              // Badge nombre de likes reçus
+              Obx(() {
+                if (!Get.isRegistered<LikeController>()) {
+                  return const SizedBox.shrink();
+                }
+                final count = Get.find<LikeController>().likedUserIds.length;
+                if (count == 0) return const SizedBox.shrink();
+                return Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 16),
+                    height: 16,
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradientPink,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white, width: 1),
+                    ),
+                    child: Center(
+                      child: Text(
+                        count > 9 ? '9+' : '$count',
+                        style: const TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ]),
+            const SizedBox(height: 2),
+            Text(
+              'LIKES',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: isActive ? AppColors.accent : AppColors.textMuted,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -172,13 +263,15 @@ class _NavItemAnnonces extends StatelessWidget {
                       border: Border.all(color: Colors.black, width: 1),
                     ),
                     child: Center(
-                        child: Text(
-                      unseen > 9 ? '9+' : '$unseen',
-                      style: const TextStyle(
+                      child: Text(
+                        unseen > 9 ? '9+' : '$unseen',
+                        style: const TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w900,
-                          color: Colors.black),
-                    )),
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
                   ),
                 );
               }),
@@ -248,13 +341,15 @@ class _NavItemMessages extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 1),
                       ),
                       child: Center(
-                          child: Text(
-                        total > 99 ? '99+' : '$total',
-                        style: const TextStyle(
+                        child: Text(
+                          total > 99 ? '99+' : '$total',
+                          style: const TextStyle(
                             fontSize: 8,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white),
-                      )),
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -281,12 +376,13 @@ class _NavItem extends StatelessWidget {
   final String label;
   final int index, currentIndex;
   final ValueChanged<int> onTap;
-  const _NavItem(
-      {required this.icon,
-      required this.label,
-      required this.index,
-      required this.currentIndex,
-      required this.onTap});
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.index,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   bool get isActive => currentIndex == index;
 

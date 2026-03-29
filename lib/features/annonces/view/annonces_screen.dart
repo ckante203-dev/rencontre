@@ -1,6 +1,7 @@
 // lib/features/annonces/view/annonces_screen.dart
 
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -15,15 +16,1355 @@ import 'package:rencontre/features/annonces/controller/annonce_comment_controlle
 import 'package:rencontre/features/annonces/model/annonce_model.dart';
 import 'package:rencontre/features/annonces/model/annonce_comment_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/features/chat/model/message_model.dart';
 
-// ─── SKELETON LOADING ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+//  ECRAN PRINCIPAL
+// ══════════════════════════════════════════════════════════════════
 
-class _AnnoncesSkeletonList extends StatefulWidget {
+class AnnoncesScreen extends StatelessWidget {
+  const AnnoncesScreen({super.key});
+
   @override
-  State<_AnnoncesSkeletonList> createState() => _AnnoncesSkeletonListState();
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<AnnoncesController>()) {
+      Get.put(AnnoncesController(), permanent: true);
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.find<AnnoncesController>().refreshSilent();
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.find<AnnoncesController>().markAnnoncesAsSeen();
+    });
+    return const _AnnoncesView();
+  }
 }
 
-class _AnnoncesSkeletonListState extends State<_AnnoncesSkeletonList>
+// ══════════════════════════════════════════════════════════════════
+//  VUE PRINCIPALE — TIKTOK STYLE
+// ══════════════════════════════════════════════════════════════════
+
+class _AnnoncesView extends GetView<AnnoncesController> {
+  const _AnnoncesView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // ── Feed TikTok ──
+          Obx(() {
+            if (controller.isLoading.value && controller.annonces.isEmpty) {
+              return const _TikTokSkeleton();
+            }
+            final list = controller.filtered;
+            if (list.isEmpty) {
+              return _buildEmptyState();
+            }
+            return PageView.builder(
+              scrollDirection: Axis.vertical,
+              itemCount: list.length,
+              onPageChanged: (i) {
+                if (i >= list.length - 3) {
+                  controller.loadMore();
+                }
+              },
+              itemBuilder: (_, i) => _TikTokCard(annonce: list[i]),
+            );
+          }),
+
+          // ── Header flottant ──
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _FloatingHeader(),
+          ),
+        ],
+      ),
+
+      // ── FAB Publier ──
+      floatingActionButton: _PublierFAB(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ShaderMask(
+              shaderCallback: (b) => AppColors.gradientPink.createShader(b),
+              child: const Icon(Icons.campaign_rounded,
+                  size: 80, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Aucune annonce',
+              style: TextStyle(
+                fontFamily: 'Syne',
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Sois le premier à publier !',
+              style: TextStyle(fontSize: 14, color: Colors.white60),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  HEADER FLOTTANT
+// ══════════════════════════════════════════════════════════════════
+
+class _FloatingHeader extends GetView<AnnoncesController> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          16, MediaQuery.of(context).padding.top + 8, 16, 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.7),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: Row(
+        children: [
+          // ── Filtres catégories ──
+          Expanded(
+            child: Obx(() => SizedBox(
+                  height: 32,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      'toutes',
+                      'rencontre',
+                      'amitie',
+                      'sortie',
+                      'voyage'
+                    ].map((cat) {
+                      final sel = controller.filterCategorie.value == cat;
+                      final label = _catLabel(cat);
+                      return GestureDetector(
+                        onTap: () => controller.filterCategorie.value = cat,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: sel ? AppColors.gradientPink : null,
+                            color: sel ? null : Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(16),
+                            border: sel
+                                ? null
+                                : Border.all(
+                                    color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: sel
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                )),
+          ),
+
+          // ── Mes annonces ──
+          GestureDetector(
+            onTap: () => _showMesAnnonces(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
+              ),
+              child: const Icon(Icons.person_outline_rounded,
+                  color: Colors.white, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _catLabel(String cat) {
+    const m = {
+      'toutes': '🔥 Toutes',
+      'rencontre': '💕 Rencontre',
+      'amitie': '🤝 Amitié',
+      'sortie': '🎉 Sortie',
+      'voyage': '✈️ Voyage',
+    };
+    return m[cat] ?? cat;
+  }
+
+  void _showMesAnnonces(BuildContext context) {
+    Get.find<AnnoncesController>().loadMesAnnonces();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _MesAnnoncesSheet(),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FAB PUBLIER
+// ══════════════════════════════════════════════════════════════════
+
+class _PublierFAB extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showPublierSheet(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: AppColors.gradientPink,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.accent.withOpacity(0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 6),
+            Text(
+              'Publier',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPublierSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _PublierSheet(),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CARTE TIKTOK — PLEIN ÉCRAN
+// ══════════════════════════════════════════════════════════════════
+
+class _TikTokCard extends GetView<AnnoncesController> {
+  final AnnonceModel annonce;
+  const _TikTokCard({required this.annonce});
+
+  String get _emoji {
+    const m = {
+      'rencontre': '💕',
+      'amitie': '🤝',
+      'sortie': '🎉',
+      'voyage': '✈️',
+    };
+    return m[annonce.categorie] ?? '📢';
+  }
+
+  String get _ago {
+    final d = DateTime.now().difference(annonce.createdAt);
+    if (d.inDays > 0) return '${d.inDays}j';
+    if (d.inHours > 0) return '${d.inHours}h';
+    if (d.inMinutes > 0) return '${d.inMinutes}min';
+    return 'maintenant';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.marquerVue(annonce);
+    });
+
+    return VisibilityDetector(
+      key: Key('tiktok_${annonce.id}'),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction > 0.8) {
+          controller.marquerVue(annonce);
+        }
+      },
+      child: GestureDetector(
+        // ✅ Double tap pour liker
+        onDoubleTap: () {
+          HapticFeedback.mediumImpact();
+          controller.toggleReaction(annonce, '❤️');
+        },
+        child: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // ── Background media ou couleur ──
+              _buildBackground(),
+
+              // ── Overlay dégradé ──
+              _buildOverlay(),
+
+              // ── Actions droite (TikTok style) ──
+              Positioned(
+                right: 12,
+                bottom: 120,
+                child: _ActionsSidebar(annonce: annonce),
+              ),
+
+              // ── Infos bas gauche ──
+              Positioned(
+                left: 16,
+                right: 80,
+                bottom: 80,
+                child: _AnnonceInfo(
+                  annonce: annonce,
+                  emoji: _emoji,
+                  ago: _ago,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackground() {
+    if (annonce.mediaUrl != null) {
+      if (annonce.isVideo) {
+        return _TikTokVideoPlayer(
+          url: annonce.mediaUrl!,
+          annonceId: annonce.id,
+        );
+      } else {
+        return CachedNetworkImage(
+          imageUrl: annonce.mediaUrl!,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(color: Colors.black),
+          errorWidget: (_, __, ___) => _buildColorBg(),
+        );
+      }
+    }
+    return _buildColorBg();
+  }
+
+  Widget _buildColorBg() {
+    final gradients = {
+      'rencontre': [const Color(0xFF1a0a2e), const Color(0xFF4a1a5e)],
+      'amitie': [const Color(0xFF0a1a2e), const Color(0xFF1a3a5e)],
+      'sortie': [const Color(0xFF1a1a0a), const Color(0xFF3a3a0a)],
+      'voyage': [const Color(0xFF0a1a1a), const Color(0xFF0a3a3a)],
+    };
+    final colors = gradients[annonce.categorie] ??
+        [const Color(0xFF0a0a1a), const Color(0xFF1a1a3a)];
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('$_emoji', style: const TextStyle(fontSize: 80)),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                annonce.titre,
+                style: const TextStyle(
+                  fontFamily: 'Syne',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlay() {
+    return IgnorePointer(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.4, 0.7, 1.0],
+            colors: [
+              Colors.black.withOpacity(0.4),
+              Colors.transparent,
+              Colors.black.withOpacity(0.3),
+              Colors.black.withOpacity(0.85),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SIDEBAR ACTIONS (droite, style TikTok)
+// ══════════════════════════════════════════════════════════════════
+
+class _ActionsSidebar extends GetView<AnnoncesController> {
+  final AnnonceModel annonce;
+  const _ActionsSidebar({required this.annonce});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Avatar auteur ──
+        _AvatarFollow(annonce: annonce),
+        const SizedBox(height: 24),
+
+        // ── Like / Réaction ──
+        _LikeAction(annonce: annonce),
+        const SizedBox(height: 20),
+
+        // ── Commentaire ──
+        _SidebarAction(
+          icon: Icons.chat_bubble_rounded,
+          count: annonce.reponsesCount,
+          label: 'Commenter',
+          onTap: annonce.commentsEnabled
+              ? () => AnnonceCommentsSheet.show(context, annonce: annonce)
+              : null,
+          disabled: !annonce.commentsEnabled,
+        ),
+        const SizedBox(height: 20),
+
+        // ── Répondre en PV ──
+        _SidebarAction(
+          icon: Icons.send_rounded,
+          count: 0,
+          label: 'Répondre',
+          showCount: false,
+          onTap: annonce.userId != Supabase.instance.client.auth.currentUser?.id
+              ? () => _repondreEnPV(context)
+              : null,
+          disabled:
+              annonce.userId == Supabase.instance.client.auth.currentUser?.id,
+        ),
+        const SizedBox(height: 20),
+
+        // ── Boost (si propriétaire) ──
+        _BoostSidebar(annonce: annonce),
+      ],
+    );
+  }
+
+  void _repondreEnPV(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RepondreEnPVSheet(annonce: annonce),
+    );
+  }
+}
+
+class _AvatarFollow extends StatelessWidget {
+  final AnnonceModel annonce;
+  const _AvatarFollow({required this.annonce});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.toNamed('/profile/view',
+          arguments: UserModel(
+            id: annonce.userId,
+            name: annonce.userName,
+            age: annonce.userAge,
+            photoUrl: annonce.userPhotoUrl,
+            isOnline: false,
+            interests: [],
+          )),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppColors.gradientPink,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: ClipOval(
+              child: annonce.isAnonyme
+                  ? Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF6C3FC5), Color(0xFF3B1F7A)],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.person_outline_rounded,
+                            color: Colors.white, size: 26),
+                      ),
+                    )
+                  : (annonce.userPhotoUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: annonce.userPhotoUrl!,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _initials(),
+                        )
+                      : _initials()),
+            ),
+          ),
+          Positioned(
+            bottom: -8,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    color: Colors.white, size: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _initials() => Container(
+        decoration: BoxDecoration(gradient: AppColors.gradientPink),
+        child: Center(
+          child: Text(
+            annonce.userName.isNotEmpty
+                ? annonce.userName[0].toUpperCase()
+                : '?',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 22,
+            ),
+          ),
+        ),
+      );
+}
+
+class _LikeAction extends GetView<AnnoncesController> {
+  final AnnonceModel annonce;
+  const _LikeAction({required this.annonce});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        controller.toggleReaction(annonce, '❤️');
+      },
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        _showReactionPicker(context);
+      },
+      child: Column(
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
+            child: Text(
+              annonce.myReaction.isNotEmpty ? annonce.myReaction : '🤍',
+              key: ValueKey(annonce.myReaction),
+              style: const TextStyle(fontSize: 36),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatCount(annonce.likes),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: annonce.isLiked ? AppColors.accent : Colors.white,
+              shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+            ),
+          ),
+          if (annonce.reactionCounts.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: annonce.reactionCounts.entries
+                    .where((e) => e.key != annonce.myReaction && e.key != '❤️')
+                    .take(2)
+                    .map((e) =>
+                        Text(e.key, style: const TextStyle(fontSize: 12)))
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCount(int n) {
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+
+  void _showReactionPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+        decoration: const BoxDecoration(
+          color: Color(0xFF13131A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              'Réagir',
+              style: TextStyle(
+                fontFamily: 'Syne',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: AnnoncesController.reactions.map((emoji) {
+                final isSelected = annonce.myReaction == emoji;
+                final count = annonce.reactionCounts[emoji] ?? 0;
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    controller.toggleReaction(annonce, emoji);
+                  },
+                  child: Column(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.accent.withOpacity(0.2)
+                              : Colors.white.withOpacity(0.08),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.accent
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Text(
+                          emoji,
+                          style: TextStyle(fontSize: isSelected ? 30 : 26),
+                        ),
+                      ),
+                      if (count > 0) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '$count',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color:
+                                isSelected ? AppColors.accent : Colors.white54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarAction extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final String label;
+  final VoidCallback? onTap;
+  final bool showCount;
+  final bool disabled;
+
+  const _SidebarAction({
+    required this.icon,
+    required this.count,
+    required this.label,
+    this.onTap,
+    this.showCount = true,
+    this.disabled = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: disabled
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.white.withOpacity(0.15),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withOpacity(disabled ? 0.1 : 0.3),
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: disabled ? Colors.white.withOpacity(0.3) : Colors.white,
+              size: 22,
+            ),
+          ),
+          if (showCount && count > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              '$count',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BoostSidebar extends GetView<AnnoncesController> {
+  final AnnonceModel annonce;
+  const _BoostSidebar({required this.annonce});
+
+  @override
+  Widget build(BuildContext context) {
+    final myId = Supabase.instance.client.auth.currentUser?.id;
+    if (myId != annonce.userId) return const SizedBox.shrink();
+
+    if (annonce.isBoosted) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFD700).withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.5)),
+        ),
+        child: const Text('⚡', style: TextStyle(fontSize: 20)),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => _confirmBoost(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.4),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: const Text('⚡', style: TextStyle(fontSize: 20)),
+      ),
+    );
+  }
+
+  void _confirmBoost(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF13131A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('⚡ Booster',
+            style: TextStyle(
+                fontFamily: 'Syne',
+                fontWeight: FontWeight.w900,
+                color: Colors.white)),
+        content: const Text('Ton annonce apparaîtra en tête pendant 24h.',
+            style: TextStyle(color: Colors.white54, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child:
+                const Text('Annuler', style: TextStyle(color: Colors.white38)),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              controller.boosterAnnonce(annonce);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('⚡ Booster !',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INFOS BAS GAUCHE
+// ══════════════════════════════════════════════════════════════════
+
+class _AnnonceInfo extends GetView<AnnoncesController> {
+  final AnnonceModel annonce;
+  final String emoji;
+  final String ago;
+
+  const _AnnonceInfo({
+    required this.annonce,
+    required this.emoji,
+    required this.ago,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Auteur
+        GestureDetector(
+          onTap: annonce.isAnonyme
+              ? null
+              : () => Get.toNamed('/profile/view',
+                  arguments: UserModel(
+                    id: annonce.userId,
+                    name: annonce.userName,
+                    age: annonce.userAge,
+                    photoUrl: annonce.userPhotoUrl,
+                    isOnline: false,
+                    interests: [],
+                  )),
+          child: Row(
+            children: [
+              Text(
+                annonce.isAnonyme ? '👤 Anonyme' : '@${annonce.userName}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (annonce.isBoosted)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('⚡ BOOST',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white)),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // Titre
+        if (annonce.titre != '📸')
+          Text(
+            annonce.titre,
+            style: const TextStyle(
+              fontFamily: 'Syne',
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              height: 1.2,
+              shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+        // Description
+        if (annonce.description.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            annonce.description,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.85),
+              height: 1.4,
+              shadows: const [Shadow(color: Colors.black87, blurRadius: 6)],
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+
+        const SizedBox(height: 10),
+
+        // ✅ FIX OVERFLOW — Wrap au lieu de Row
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _Tag('$emoji ${annonce.categorie}'),
+            if (annonce.ville != null && !annonce.isAnonyme)
+              _Tag('📍 ${annonce.ville!}'),
+            _Tag('🕐 $ago'),
+            _Tag('👁 ${annonce.viewsCount}'),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _menu(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.more_horiz_rounded, color: Colors.white, size: 16),
+                SizedBox(width: 4),
+                Text('Plus',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _menu(BuildContext context) {
+    final myId = Supabase.instance.client.auth.currentUser?.id;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        decoration: const BoxDecoration(
+          color: Color(0xFF13131A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            if (myId == annonce.userId) ...[
+              _MenuItem(Icons.delete_outline_rounded, 'Supprimer', Colors.red,
+                  () {
+                Navigator.pop(context);
+                controller.supprimerAnnonce(annonce.id);
+              }),
+              const SizedBox(height: 8),
+            ],
+            _MenuItem(Icons.flag_outlined, 'Signaler', Colors.orange, () {
+              Navigator.pop(context);
+              _showSignalement(context);
+            }),
+            const SizedBox(height: 8),
+            _MenuItem(Icons.close_rounded, 'Fermer', AppColors.textMuted,
+                () => Navigator.pop(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSignalement(BuildContext context) {
+    final reasons = [
+      '🔞 Contenu inapproprié',
+      '🚫 Spam ou arnaque',
+      '😡 Harcèlement',
+      '❌ Fausses informations',
+      '⚠️ Autre',
+    ];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+        decoration: const BoxDecoration(
+          color: Color(0xFF13131A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text('Pourquoi signaler ?',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+            const SizedBox(height: 16),
+            ...reasons.map((r) => GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    controller.signalerAnnonce(annonce.id, r);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Text(r,
+                        style:
+                            const TextStyle(fontSize: 14, color: Colors.white)),
+                  ),
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String text;
+  const _Tag(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 10,
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ✅ VIDEO PLAYER TIKTOK — FIX SON
+// ══════════════════════════════════════════════════════════════════
+
+class _TikTokVideoPlayer extends StatefulWidget {
+  final String url;
+  final String annonceId;
+  const _TikTokVideoPlayer({required this.url, required this.annonceId});
+
+  @override
+  State<_TikTokVideoPlayer> createState() => _TikTokVideoPlayerState();
+}
+
+class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
+  late VideoPlayerController _ctrl;
+  bool _initialized = false;
+  bool _muted = true; // Muet par défaut (comportement TikTok)
+  bool _paused = false;
+  bool _showMuteHint = true; // ✅ Affiche le hint "Appuie pour le son"
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    try {
+      await _ctrl.initialize();
+      if (mounted) {
+        setState(() => _initialized = true);
+        await _ctrl.setLooping(true);
+        // ✅ Commence muet — le volume sera changé par le bouton
+        await _ctrl.setVolume(0);
+        await _ctrl.play();
+        // ✅ Cache le hint après 3 secondes
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _showMuteHint = false);
+        });
+      }
+    } catch (e) {
+      debugPrint('Video init error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  // ✅ Toggle son corrigé — setVolume asynchrone propre
+  Future<void> _toggleMute() async {
+    setState(() {
+      _muted = !_muted;
+      _showMuteHint = false;
+    });
+    // ✅ setVolume sur le même controller — pas de recréation
+    await _ctrl.setVolume(_muted ? 0.0 : 1.0);
+    HapticFeedback.lightImpact();
+  }
+
+  void _togglePlay() {
+    setState(() => _paused = !_paused);
+    _paused ? _ctrl.pause() : _ctrl.play();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(
+              color: AppColors.accent, strokeWidth: 2),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _togglePlay,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Vidéo ──
+          FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _ctrl.value.size.width,
+              height: _ctrl.value.size.height,
+              child: VideoPlayer(_ctrl),
+            ),
+          ),
+
+          // ── Pause overlay ──
+          if (_paused)
+            Center(
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.play_arrow_rounded,
+                    color: Colors.white, size: 40),
+              ),
+            ),
+
+          // ✅ BOUTON SON — mieux positionné et plus visible
+          Positioned(
+            top: 100,
+            right: 16,
+            child: GestureDetector(
+              onTap: _toggleMute,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.65),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: Colors.white.withOpacity(0.4), width: 1.5),
+                ),
+                child: Icon(
+                  _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
+
+          // ✅ Hint "Appuie pour le son" — disparaît après 3s
+          if (_showMuteHint && _muted)
+            Positioned(
+              top: 108,
+              right: 66,
+              child: GestureDetector(
+                onTap: _toggleMute,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    '🔇 Son désactivé',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ✅ Barre de progression discrète en bas
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: VideoProgressIndicator(
+              _ctrl,
+              allowScrubbing: true,
+              colors: VideoProgressColors(
+                playedColor: AppColors.accent,
+                bufferedColor: Colors.white.withOpacity(0.3),
+                backgroundColor: Colors.white.withOpacity(0.1),
+              ),
+              padding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SKELETON LOADING
+// ══════════════════════════════════════════════════════════════════
+
+class _TikTokSkeleton extends StatefulWidget {
+  const _TikTokSkeleton();
+
+  @override
+  State<_TikTokSkeleton> createState() => _TikTokSkeletonState();
+}
+
+class _TikTokSkeletonState extends State<_TikTokSkeleton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
@@ -48,697 +1389,504 @@ class _AnnoncesSkeletonListState extends State<_AnnoncesSkeletonList>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 4,
-        itemBuilder: (_, i) => _SkeletonCard(opacity: _anim.value),
+      builder: (_, __) => Container(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: Colors.white.withOpacity(_anim.value * 0.05)),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.8),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 150,
+              child: Column(
+                children: List.generate(
+                    3,
+                    (i) => Container(
+                          width: 50,
+                          height: 50,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(_anim.value * 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                        )),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              bottom: 80,
+              right: 80,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 14,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(_anim.value * 0.3),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 18,
+                    width: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(_anim.value * 0.4),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 12,
+                    width: 250,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(_anim.value * 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SkeletonCard extends StatelessWidget {
-  final double opacity;
-  const _SkeletonCard({required this.opacity});
+// ══════════════════════════════════════════════════════════════════
+//  SHEET PUBLIER
+// ══════════════════════════════════════════════════════════════════
 
-  Widget _box({double w = double.infinity, double h = 14, double r = 8}) =>
-      Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(opacity * 0.15),
-          borderRadius: BorderRadius.circular(r),
-        ),
-      );
+class _PublierSheet extends StatefulWidget {
+  const _PublierSheet();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Header
-        Row(children: [
-          Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(opacity * 0.15))),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _box(w: 100, h: 12),
-            const SizedBox(height: 6),
-            _box(w: 70, h: 10),
-          ]),
-        ]),
-        const SizedBox(height: 14),
-        _box(h: 12),
-        const SizedBox(height: 8),
-        _box(w: 200, h: 12),
-        const SizedBox(height: 12),
-        // Image placeholder (1 sur 2)
-        if (opacity > 0.4)
-          Container(
-              height: 180,
-              decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(opacity * 0.1),
-                  borderRadius: BorderRadius.circular(12))),
-        const SizedBox(height: 12),
-        // Actions
-        Row(children: [
-          _box(w: 50, h: 12, r: 6),
-          const SizedBox(width: 20),
-          _box(w: 70, h: 12, r: 6),
-        ]),
-      ]),
-    );
-  }
+  State<_PublierSheet> createState() => _PublierSheetState();
 }
 
-// ─── ECRAN ANNONCES ───────────────────────────────────────────────
+class _PublierSheetState extends State<_PublierSheet> {
+  final _titreCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _villeCtrl = TextEditingController();
+  String _cat = 'rencontre';
+  bool _loading = false;
+  bool _anonyme = false;
+  bool _commentsEnabled = true;
+  XFile? _mediaFile;
+  bool _isVideo = false;
+  int _step = 0;
 
-class AnnoncesScreen extends StatelessWidget {
-  const AnnoncesScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    // ✅ Permanent = données gardées en mémoire entre les navigations
-    if (!Get.isRegistered<AnnoncesController>()) {
-      Get.put(AnnoncesController(), permanent: true);
-    } else {
-      // ✅ Déjà chargé → refresh silencieux en arrière-plan sans vider la liste
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.find<AnnoncesController>().refreshSilent();
-      });
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Get.find<AnnoncesController>().markAnnoncesAsSeen();
-    });
-    return const _AnnoncesView();
+  void dispose() {
+    _titreCtrl.dispose();
+    _descCtrl.dispose();
+    _villeCtrl.dispose();
+    super.dispose();
   }
-}
 
-class _AnnoncesView extends GetView<AnnoncesController> {
-  const _AnnoncesView();
-
-  String _catLabel(String cat) {
+  String _catLabel(String c) {
     const m = {
-      'toutes': '🔥 Toutes',
-      'rencontre': '💕 Rencontre',
-      'amitie': '🤝 Amitié',
-      'sortie': '🎉 Sortie',
-      'voyage': '✈️ Voyage',
+      'rencontre': '💕',
+      'amitie': '🤝',
+      'sortie': '🎉',
+      'voyage': '✈️',
     };
-    return m[cat] ?? cat;
+    return '${m[c]} $c';
   }
 
   @override
   Widget build(BuildContext context) {
-    final scrollCtrl = ScrollController();
-    final searchCtrl = TextEditingController();
-    scrollCtrl.addListener(() {
-      if (scrollCtrl.position.pixels >=
-          scrollCtrl.position.maxScrollExtent - 200) {
-        controller.loadMore();
-      }
-    });
-
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(children: [
-          // ── Header ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Row(children: [
-              ShaderMask(
-                shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                child: const Text('Annonces',
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white)),
-              ),
-              const Spacer(),
-              // ✅ Mes annonces
-              GestureDetector(
-                onTap: () => _showMesAnnonces(context),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(Icons.person_outline_rounded,
-                      color: AppColors.textMuted, size: 18),
-                ),
-              ),
-              // ✅ Publier
-              GestureDetector(
-                onTap: () => _showPublierSheet(context),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.gradientPink,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                          color: AppColors.accent.withOpacity(0.3),
-                          blurRadius: 12)
-                    ],
-                  ),
-                  child: const Row(children: [
-                    Icon(Icons.add_rounded, color: Colors.white, size: 16),
-                    SizedBox(width: 4),
-                    Text('Publier',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
-                  ]),
-                ),
-              ),
-            ]),
-          ),
-
-          // ✅ Barre de recherche
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Container(
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0D0D18),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: TextField(
-                controller: searchCtrl,
-                style:
-                    const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                onChanged: (v) => controller.searchQuery.value = v,
-                decoration: InputDecoration(
-                  hintText: 'Rechercher par titre, ville, auteur...',
-                  hintStyle:
-                      const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: AppColors.textMuted, size: 20),
-                  suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () {
-                            searchCtrl.clear();
-                            controller.searchQuery.value = '';
-                          },
-                          child: const Icon(Icons.close_rounded,
-                              color: AppColors.textMuted, size: 18))
-                      : const SizedBox.shrink()),
-                  border: InputBorder.none,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                ),
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Filtres catégories ──
-          SizedBox(
-            height: 36,
-            child: Obx(() {
-              final currentCat = controller.filterCategorie.value;
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: controller.categories.length,
-                itemBuilder: (_, i) {
-                  final cat = controller.categories[i];
-                  final sel = currentCat == cat;
-                  return GestureDetector(
-                    onTap: () => controller.filterCategorie.value = cat,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: sel ? AppColors.gradientPink : null,
-                        color: sel ? null : AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: sel ? Colors.transparent : AppColors.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  ShaderMask(
+                    shaderCallback: (b) =>
+                        AppColors.gradientPink.createShader(b),
+                    child: const Text(
+                      'Nouvelle annonce',
+                      style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
                       ),
-                      child: Text(_catLabel(cat),
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: sel ? Colors.white : AppColors.textMuted)),
                     ),
-                  );
-                },
-              );
-            }),
-          ),
-          const SizedBox(height: 12),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      '${_step + 1}/2',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                child: _step == 0 ? _buildStepMedia() : _buildStepDetails(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // ── Liste ──
-          Expanded(
-            child: Obx(() {
-              // ✅ Skeleton — seulement au tout premier chargement (liste vide)
-              if (controller.isLoading.value && controller.annonces.isEmpty) {
-                return _AnnoncesSkeletonList();
-              }
-              final list = controller.filtered;
-              if (list.isEmpty) {
-                return Center(
-                  child: Column(
+  Widget _buildStepMedia() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Ajoute une photo ou vidéo',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: _mediaFile == null ? _pickImage : null,
+          child: _mediaFile == null
+              ? Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border:
+                        Border.all(color: AppColors.accent.withOpacity(0.3)),
+                  ),
+                  child: Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ShaderMask(
                           shaderCallback: (b) =>
                               AppColors.gradientPink.createShader(b),
-                          child: const Icon(Icons.campaign_rounded,
-                              size: 64, color: Colors.white),
+                          child: const Icon(Icons.add_photo_alternate_rounded,
+                              size: 48, color: Colors.white),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          controller.searchQuery.value.isNotEmpty
-                              ? 'Aucun résultat pour "${controller.searchQuery.value}"'
-                              : 'Aucune annonce',
-                          style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text('Sois le premier à publier !',
-                            style: TextStyle(color: AppColors.textMuted)),
-                      ]),
-                );
-              }
-              return RefreshIndicator(
-                color: AppColors.accent,
-                backgroundColor: AppColors.surface,
-                onRefresh: controller.loadAnnonces,
-                child: ListView.builder(
-                  controller: scrollCtrl,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: list.length + 1,
-                  itemBuilder: (_, i) {
-                    if (i == list.length) {
-                      return Obx(() {
-                        if (!controller.hasMore.value) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                                child: Text('— Fin des annonces —',
-                                    style: TextStyle(
-                                        color: AppColors.textMuted,
-                                        fontSize: 12))),
-                          );
-                        }
-                        if (controller.isLoadingMore.value) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                                child: CircularProgressIndicator(
-                                    color: AppColors.accent, strokeWidth: 2)),
-                          );
-                        }
-                        return const SizedBox(height: 20);
-                      });
-                    }
-                    return _AnnonceCard(annonce: list[i]);
-                  },
-                ),
-              );
-            }),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  // ✅ Mes annonces
-  void _showMesAnnonces(BuildContext context) {
-    Get.find<AnnoncesController>().loadMesAnnonces();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _MesAnnoncesSheet(),
-    );
-  }
-
-  void _showPublierSheet(BuildContext context) {
-    final titreCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final villeCtrl = TextEditingController();
-    String cat = 'rencontre';
-    bool loading = false;
-    bool anonyme = false;
-    bool commentsEnabled = true;
-    XFile? mediaFile;
-    bool isVideo = false;
-
-    String cl(String c) {
-      const m = {
-        'rencontre': '💕 Rencontre',
-        'amitie': '🤝 Amitié',
-        'sortie': '🎉 Sortie',
-        'voyage': '✈️ Voyage'
-      };
-      return m[c] ?? c;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2))),
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text('Nouvelle annonce',
-                      style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white)),
-                ),
-                const SizedBox(height: 20),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: ['rencontre', 'amitie', 'sortie', 'voyage']
-                        .map<Widget>((c) => GestureDetector(
-                              onTap: () => setS(() => cat = c),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(
-                                  gradient:
-                                      cat == c ? AppColors.gradientPink : null,
-                                  color: cat == c ? null : AppColors.surface2,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                      color: cat == c
-                                          ? Colors.transparent
-                                          : AppColors.border),
-                                ),
-                                child: Text(cl(c),
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: cat == c
-                                            ? Colors.white
-                                            : AppColors.textMuted)),
-                              ),
-                            ))
-                        .toList(),
+                        const SizedBox(height: 12),
+                        const Text('Appuie pour ajouter',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted)),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _Field(
-                    controller: titreCtrl,
-                    hint: 'Titre (optionnel si photo/vidéo)',
-                    maxLines: 1),
-                const SizedBox(height: 12),
-                _Field(
-                    controller: descCtrl,
-                    hint: 'Description (optionnelle si photo/vidéo)',
-                    maxLines: 4),
-                const SizedBox(height: 12),
-                _Field(
-                    controller: villeCtrl,
-                    hint: 'Ville (optionnel)',
-                    maxLines: 1),
-                const SizedBox(height: 16),
-                Row(children: [
-                  Expanded(
-                      child: GestureDetector(
-                    onTap: () async {
-                      final f = await ImagePicker().pickImage(
-                          source: ImageSource.gallery, imageQuality: 80);
-                      if (f != null)
-                        setS(() {
-                          mediaFile = f;
-                          isVideo = false;
-                        });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: mediaFile != null && !isVideo
-                            ? AppColors.accent.withOpacity(0.15)
-                            : AppColors.surface2,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                            color: mediaFile != null && !isVideo
-                                ? AppColors.accent
-                                : AppColors.border),
-                      ),
-                      child: Column(children: [
-                        Icon(Icons.photo_outlined,
-                            color: mediaFile != null && !isVideo
-                                ? AppColors.accent
-                                : AppColors.textMuted,
-                            size: 22),
-                        const SizedBox(height: 4),
-                        Text('Photo',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: mediaFile != null && !isVideo
-                                    ? AppColors.accent
-                                    : AppColors.textMuted)),
-                      ]),
-                    ),
-                  )),
-                  const SizedBox(width: 10),
-                  Expanded(
-                      child: GestureDetector(
-                    onTap: () async {
-                      final f = await ImagePicker()
-                          .pickVideo(source: ImageSource.gallery);
-                      if (f != null)
-                        setS(() {
-                          mediaFile = f;
-                          isVideo = true;
-                        });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: mediaFile != null && isVideo
-                            ? AppColors.accent.withOpacity(0.15)
-                            : AppColors.surface2,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                            color: mediaFile != null && isVideo
-                                ? AppColors.accent
-                                : AppColors.border),
-                      ),
-                      child: Column(children: [
-                        Icon(Icons.videocam_outlined,
-                            color: mediaFile != null && isVideo
-                                ? AppColors.accent
-                                : AppColors.textMuted,
-                            size: 22),
-                        const SizedBox(height: 4),
-                        Text('Vidéo',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: mediaFile != null && isVideo
-                                    ? AppColors.accent
-                                    : AppColors.textMuted)),
-                      ]),
-                    ),
-                  )),
-                  if (mediaFile != null) ...[
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTap: () => setS(() => mediaFile = null),
-                      child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                  color: Colors.red.withOpacity(0.3))),
-                          child: const Icon(Icons.close_rounded,
-                              color: Colors.red, size: 20)),
-                    ),
-                  ],
-                ]),
-                if (mediaFile != null && !isVideo) ...[
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.file(File(mediaFile!.path),
-                          height: 160,
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: _isVideo
+                      ? Container(
+                          height: 220,
+                          color: AppColors.surface,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.videocam_rounded,
+                                    color: AppColors.accent, size: 48),
+                                SizedBox(height: 8),
+                                Text('Vidéo sélectionnée',
+                                    style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Image.file(
+                          File(_mediaFile!.path),
+                          height: 220,
                           width: double.infinity,
-                          fit: BoxFit.cover)),
-                ],
-                if (mediaFile != null && isVideo) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    height: 72,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                        color: AppColors.surface2,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                            color: AppColors.accent.withOpacity(0.4))),
-                    child: Row(children: [
-                      const Icon(Icons.videocam_rounded,
-                          color: AppColors.accent, size: 26),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: Text(mediaFile!.name,
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600),
-                              overflow: TextOverflow.ellipsis)),
-                    ]),
+                          fit: BoxFit.cover,
+                        ),
+                ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _MediaButton(
+                icon: Icons.photo_rounded,
+                label: 'Photo',
+                active: _mediaFile != null && !_isVideo,
+                onTap: _pickImage,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _MediaButton(
+                icon: Icons.videocam_rounded,
+                label: 'Vidéo',
+                active: _mediaFile != null && _isVideo,
+                onTap: _pickVideo,
+              ),
+            ),
+            if (_mediaFile != null) ...[
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => setState(() => _mediaFile = null),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
                   ),
-                ],
-                const SizedBox(height: 16),
-                // Toggle anonyme
-                _ToggleRow(
-                  active: anonyme,
-                  icon: Icons.visibility_off_rounded,
-                  activeColor: const Color(0xFF6C3FC5),
-                  label: 'Publier en anonyme',
-                  sub: 'Ton nom et photo seront masqués',
-                  onTap: () => setS(() => anonyme = !anonyme),
+                  child: const Icon(Icons.delete_outline_rounded,
+                      color: Colors.red, size: 22),
                 ),
-                const SizedBox(height: 10),
-                // Toggle commentaires
-                _ToggleRow(
-                  active: !commentsEnabled,
-                  icon: commentsEnabled
-                      ? Icons.chat_bubble_outline_rounded
-                      : Icons.comments_disabled_outlined,
-                  activeColor: Colors.orange,
-                  label: commentsEnabled
-                      ? 'Commentaires activés'
-                      : 'Commentaires désactivés',
-                  sub: commentsEnabled
-                      ? 'Les gens peuvent répondre'
-                      : 'Personne ne peut commenter',
-                  onTap: () => setS(() => commentsEnabled = !commentsEnabled),
-                  toggleActive: commentsEnabled,
-                ),
-                const SizedBox(height: 20),
-                GestureDetector(
-                  onTap: loading
-                      ? null
-                      : () async {
-                          final hasMedia = mediaFile != null;
-                          if (!hasMedia &&
-                              (titreCtrl.text.trim().isEmpty ||
-                                  descCtrl.text.trim().isEmpty)) {
-                            Get.snackbar('Champs requis',
-                                'Ajoute un titre et une description, ou joins une photo/vidéo',
-                                snackPosition: SnackPosition.TOP,
-                                backgroundColor: Colors.red.shade900,
-                                colorText: Colors.white);
-                            return;
-                          }
-                          final titre = titreCtrl.text.trim().isEmpty
-                              ? '📸'
-                              : titreCtrl.text.trim();
-                          setS(() => loading = true);
-                          final ok = await Get.find<AnnoncesController>()
-                              .publierAnnonce(
-                            titre: titre,
-                            description: descCtrl.text.trim(),
-                            categorie: cat,
-                            ville: villeCtrl.text.trim().isEmpty
-                                ? null
-                                : villeCtrl.text.trim(),
-                            anonyme: anonyme,
-                            mediaFile: mediaFile,
-                            isVideo: isVideo,
-                            commentsEnabled: commentsEnabled,
-                          );
-                          setS(() => loading = false);
-                          if (ok) {
-                            Navigator.pop(ctx);
-                            Get.snackbar('Annonce publiée ✅', '',
-                                snackPosition: SnackPosition.TOP,
-                                backgroundColor: AppColors.surface,
-                                colorText: Colors.white);
-                          }
-                        },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                        gradient: AppColors.gradientPink,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                              color: AppColors.accent.withOpacity(0.3),
-                              blurRadius: 16)
-                        ]),
-                    child: loading
-                        ? const Center(
-                            child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2.5)))
-                        : const Text('Publier mon annonce',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white)),
-                  ),
-                ),
-              ]),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: () => setState(() => _step = 1),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              gradient: AppColors.gradientPink,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                    color: AppColors.accent.withOpacity(0.3), blurRadius: 16)
+              ],
+            ),
+            child: const Center(
+              child: Text('Suivant →',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white)),
             ),
           ),
         ),
-      ),
+      ],
     );
+  }
+
+  Widget _buildStepDetails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _step = 0),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.arrow_back_ios_rounded,
+                  color: AppColors.textMuted, size: 14),
+              SizedBox(width: 4),
+              Text('Retour',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 36,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: ['rencontre', 'amitie', 'sortie', 'voyage']
+                .map((c) => GestureDetector(
+                      onTap: () => setState(() => _cat = c),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: _cat == c ? AppColors.gradientPink : null,
+                          color: _cat == c ? null : AppColors.surface2,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: _cat == c
+                                  ? Colors.transparent
+                                  : AppColors.border),
+                        ),
+                        child: Text(
+                          _catLabel(c),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                _cat == c ? Colors.white : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _InputField(
+            controller: _titreCtrl,
+            hint: 'Titre (optionnel si photo/vidéo)',
+            maxLines: 1),
+        const SizedBox(height: 12),
+        _InputField(
+            controller: _descCtrl, hint: 'Décris ton annonce...', maxLines: 4),
+        const SizedBox(height: 12),
+        _InputField(
+            controller: _villeCtrl, hint: '📍 Ville (optionnel)', maxLines: 1),
+        const SizedBox(height: 16),
+        _ToggleOption(
+          icon: Icons.visibility_off_rounded,
+          label: 'Anonyme',
+          active: _anonyme,
+          color: const Color(0xFF6C3FC5),
+          onToggle: () => setState(() => _anonyme = !_anonyme),
+        ),
+        const SizedBox(height: 10),
+        _ToggleOption(
+          icon: _commentsEnabled
+              ? Icons.chat_bubble_outline_rounded
+              : Icons.comments_disabled_outlined,
+          label: _commentsEnabled
+              ? 'Commentaires activés'
+              : 'Commentaires désactivés',
+          active: !_commentsEnabled,
+          color: Colors.orange,
+          onToggle: () => setState(() => _commentsEnabled = !_commentsEnabled),
+        ),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: _loading ? null : _publier,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              gradient: AppColors.gradientPink,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                    color: AppColors.accent.withOpacity(0.3), blurRadius: 16)
+              ],
+            ),
+            child: _loading
+                ? const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2.5),
+                    ),
+                  )
+                : const Center(
+                    child: Text('🚀 Publier mon annonce',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white)),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final f = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (f != null)
+      setState(() {
+        _mediaFile = f;
+        _isVideo = false;
+      });
+  }
+
+  Future<void> _pickVideo() async {
+    final f = await ImagePicker().pickVideo(source: ImageSource.gallery);
+    if (f != null)
+      setState(() {
+        _mediaFile = f;
+        _isVideo = true;
+      });
+  }
+
+  Future<void> _publier() async {
+    final hasMedia = _mediaFile != null;
+    if (!hasMedia &&
+        (_titreCtrl.text.trim().isEmpty || _descCtrl.text.trim().isEmpty)) {
+      Get.snackbar('Champs requis',
+          'Ajoute un titre et une description, ou une photo/vidéo',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red.shade900,
+          colorText: Colors.white);
+      return;
+    }
+    setState(() => _loading = true);
+    final ok = await Get.find<AnnoncesController>().publierAnnonce(
+      titre: _titreCtrl.text.trim().isEmpty ? '📸' : _titreCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      categorie: _cat,
+      ville: _villeCtrl.text.trim().isEmpty ? null : _villeCtrl.text.trim(),
+      anonyme: _anonyme,
+      mediaFile: _mediaFile,
+      isVideo: _isVideo,
+      commentsEnabled: _commentsEnabled,
+    );
+    setState(() => _loading = false);
+    if (ok && mounted) {
+      Navigator.pop(context);
+      Get.snackbar('✅ Annonce publiée !', '',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: Colors.white);
+    }
   }
 }
 
-// ─── MES ANNONCES ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+//  MES ANNONCES
+// ══════════════════════════════════════════════════════════════════
 
 class _MesAnnoncesSheet extends GetView<AnnoncesController> {
   const _MesAnnoncesSheet();
@@ -751,60 +1899,73 @@ class _MesAnnoncesSheet extends GetView<AnnoncesController> {
       minChildSize: 0.5,
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
-          color: AppColors.surface,
+          color: Color(0xFF0D0D18),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(children: [
-          Container(
+        child: Column(
+          children: [
+            Container(
               width: 40,
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2))),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              const Text('Mes annonces',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-              const Spacer(),
-              GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close_rounded,
-                      color: AppColors.textMuted)),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          Expanded(child: Obx(() {
-            if (controller.isLoadingMesAnnonces.value) {
-              return const Center(
-                  child: CircularProgressIndicator(color: AppColors.accent));
-            }
-            final list = controller.mesAnnonces;
-            if (list.isEmpty) {
-              return const Center(
-                  child: Column(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  const Text('Mes annonces',
+                      style: TextStyle(
+                          fontFamily: 'Syne',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close_rounded,
+                        color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: Obx(() {
+                if (controller.isLoadingMesAnnonces.value) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.accent),
+                  );
+                }
+                final list = controller.mesAnnonces;
+                if (list.isEmpty) {
+                  return const Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                    Icon(Icons.campaign_outlined,
-                        size: 48, color: AppColors.textMuted),
-                    SizedBox(height: 12),
-                    Text('Aucune annonce publiée',
-                        style: TextStyle(
-                            color: AppColors.textMuted, fontSize: 15)),
-                  ]));
-            }
-            return ListView.builder(
-              controller: scrollCtrl,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: list.length,
-              itemBuilder: (_, i) => _MesAnnoncesItem(annonce: list[i]),
-            );
-          })),
-        ]),
+                        Icon(Icons.campaign_outlined,
+                            size: 48, color: AppColors.textMuted),
+                        SizedBox(height: 12),
+                        Text('Aucune annonce publiée',
+                            style: TextStyle(
+                                color: AppColors.textMuted, fontSize: 15)),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  controller: scrollCtrl,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: list.length,
+                  itemBuilder: (_, i) => _MesAnnoncesItem(annonce: list[i]),
+                );
+              }),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -820,999 +1981,428 @@ class _MesAnnoncesItem extends GetView<AnnoncesController> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border)),
-      child: Row(children: [
-        // Media thumbnail
-        if (annonce.mediaUrl != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: CachedNetworkImage(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          if (annonce.mediaUrl != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: CachedNetworkImage(
                 imageUrl: annonce.mediaUrl!,
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Container(
-                    width: 60,
-                    height: 60,
-                    color: AppColors.surface,
-                    child: const Icon(Icons.broken_image_rounded,
-                        color: AppColors.textMuted))),
-          )
-        else
-          Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border)),
-              child: const Center(
-                  child: Icon(Icons.campaign_rounded,
-                      color: AppColors.textMuted, size: 28))),
-        const SizedBox(width: 12),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(annonce.titre,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Row(children: [
-            const Icon(Icons.favorite_rounded, size: 12, color: Colors.red),
-            const SizedBox(width: 3),
-            Text('${annonce.likes}',
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-            const SizedBox(width: 10),
-            const Icon(Icons.chat_bubble_outline_rounded,
-                size: 12, color: AppColors.textMuted),
-            const SizedBox(width: 3),
-            Text('${annonce.reponsesCount}',
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-            const SizedBox(width: 10),
-            const Icon(Icons.visibility_outlined,
-                size: 12, color: AppColors.textMuted),
-            const SizedBox(width: 3),
-            Text('${annonce.viewsCount}',
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-          ]),
-        ])),
-        // Actions
-        Column(children: [
-          GestureDetector(
-            onTap: () => _modifierAnnonce(context),
-            child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border:
-                        Border.all(color: AppColors.accent.withOpacity(0.3))),
-                child: const Icon(Icons.edit_outlined,
-                    color: AppColors.accent, size: 16)),
+                errorWidget: (_, __, ___) => _placeholder(),
+              ),
+            )
+          else
+            _placeholder(),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  annonce.titre == '📸' ? 'Annonce photo' : annonce.titre,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.favorite_rounded,
+                        size: 12, color: Colors.red),
+                    const SizedBox(width: 3),
+                    Text('${annonce.likes}',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.chat_bubble_outline_rounded,
+                        size: 12, color: AppColors.textMuted),
+                    const SizedBox(width: 3),
+                    Text('${annonce.reponsesCount}',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.visibility_outlined,
+                        size: 12, color: AppColors.textMuted),
+                    const SizedBox(width: 3),
+                    Text('${annonce.viewsCount}',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
           GestureDetector(
             onTap: () => controller.supprimerAnnonce(annonce.id),
             child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.3))),
-                child: const Icon(Icons.delete_outline_rounded,
-                    color: Colors.red, size: 16)),
-          ),
-        ]),
-      ]),
-    );
-  }
-
-  void _modifierAnnonce(BuildContext context) {
-    final titreCtrl =
-        TextEditingController(text: annonce.titre == '📸' ? '' : annonce.titre);
-    final descCtrl = TextEditingController(text: annonce.description);
-    final villeCtrl = TextEditingController(text: annonce.ville ?? '');
-    bool saving = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-                border: Border.all(color: AppColors.border)),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2))),
-              const Text('Modifier l\'annonce',
-                  style: TextStyle(
-                      fontFamily: 'Syne',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 20),
-              _Field(controller: titreCtrl, hint: 'Titre', maxLines: 1),
-              const SizedBox(height: 12),
-              _Field(controller: descCtrl, hint: 'Description', maxLines: 4),
-              const SizedBox(height: 12),
-              _Field(
-                  controller: villeCtrl,
-                  hint: 'Ville (optionnel)',
-                  maxLines: 1),
-              const SizedBox(height: 20),
-              GestureDetector(
-                onTap: saving
-                    ? null
-                    : () async {
-                        setS(() => saving = true);
-                        final ok = await Get.find<AnnoncesController>()
-                            .modifierAnnonce(
-                          id: annonce.id,
-                          titre: titreCtrl.text.trim().isEmpty
-                              ? '📸'
-                              : titreCtrl.text.trim(),
-                          description: descCtrl.text.trim(),
-                          ville: villeCtrl.text.trim().isEmpty
-                              ? null
-                              : villeCtrl.text.trim(),
-                        );
-                        setS(() => saving = false);
-                        if (ok) {
-                          Navigator.pop(ctx);
-                          Get.snackbar('✅ Annonce modifiée', '',
-                              snackPosition: SnackPosition.TOP,
-                              backgroundColor: AppColors.surface,
-                              colorText: Colors.white);
-                        }
-                      },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                      gradient: AppColors.gradientPink,
-                      borderRadius: BorderRadius.circular(16)),
-                  child: saving
-                      ? const Center(
-                          child: SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5)))
-                      : const Text('Sauvegarder',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
-                ),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
               ),
-            ]),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.red, size: 18),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
+
+  Widget _placeholder() => Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(
+          child: Icon(Icons.campaign_rounded,
+              color: AppColors.textMuted, size: 28),
+        ),
+      );
 }
 
-// ─── CARTE ANNONCE ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+//  RÉPONDRE EN PV
+// ══════════════════════════════════════════════════════════════════
 
-class _AnnonceCard extends GetView<AnnoncesController> {
+class _RepondreEnPVSheet extends StatefulWidget {
   final AnnonceModel annonce;
-  const _AnnonceCard({required this.annonce});
+  const _RepondreEnPVSheet({required this.annonce});
 
-  String get _emoji {
+  @override
+  State<_RepondreEnPVSheet> createState() => _RepondreEnPVSheetState();
+}
+
+class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
+  final _msgCtrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _msgCtrl.dispose();
+    super.dispose();
+  }
+
+  String get _catEmoji {
     const m = {
       'rencontre': '💕',
       'amitie': '🤝',
       'sortie': '🎉',
-      'voyage': '✈️'
+      'voyage': '✈️',
     };
-    return m[annonce.categorie] ?? '📢';
-  }
-
-  String get _ago {
-    final d = DateTime.now().difference(annonce.createdAt);
-    if (d.inDays > 0) return 'il y a ${d.inDays}j';
-    if (d.inHours > 0) return 'il y a ${d.inHours}h';
-    if (d.inMinutes > 0) return 'il y a ${d.inMinutes}min';
-    return "à l'instant";
+    return m[widget.annonce.categorie] ?? '📢';
   }
 
   @override
   Widget build(BuildContext context) {
-    return VisibilityDetector(
-      key: Key('annonce_${annonce.id}'),
-      onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0.5) {
-          controller.marquerVue(annonce);
-        }
-      },
-      child: GestureDetector(
-        onTap: () => _openDetail(context),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: annonce.isBoosted
-                    ? AppColors.accent.withOpacity(0.5)
-                    : AppColors.border,
-                width: annonce.isBoosted ? 1.5 : 1),
-            boxShadow: annonce.isBoosted
-                ? [
-                    BoxShadow(
-                        color: AppColors.accent.withOpacity(0.1),
-                        blurRadius: 16)
-                  ]
-                : null,
-          ),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Header ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-              child: Row(children: [
-                GestureDetector(
-                  onTap: annonce.isAnonyme ? null : () => _openProfil(annonce),
-                  child: Container(
-                    width: 44,
-                    height: 44,
+    final annonce = widget.annonce;
+
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0D0D18),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Répondre à l\'annonce',
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Preview annonce
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 80,
                     decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: annonce.isAnonyme
-                                ? const Color(0xFF6C3FC5).withOpacity(0.5)
-                                : AppColors.accent.withOpacity(0.4),
-                            width: 1.5)),
-                    child: ClipOval(
-                      child: annonce.isAnonyme
-                          ? Container(
-                              decoration: const BoxDecoration(
-                                  gradient: LinearGradient(colors: [
-                                Color(0xFF6C3FC5),
-                                Color(0xFF3B1F7A)
-                              ])),
-                              child: const Center(
-                                  child: Icon(Icons.person_outline_rounded,
-                                      color: Colors.white, size: 24)))
-                          : (annonce.userPhotoUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: annonce.userPhotoUrl!,
-                                  fit: BoxFit.cover)
-                              : Container(
-                                  decoration: const BoxDecoration(
-                                      gradient: LinearGradient(colors: [
-                                    AppColors.accent,
-                                    AppColors.accent2
-                                  ])),
-                                  child: Center(
-                                      child: Text(
-                                          annonce.userName[0].toUpperCase(),
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w800))))),
+                      gradient: AppColors.gradientPink,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GestureDetector(
-                    onTap:
-                        annonce.isAnonyme ? null : () => _openProfil(annonce),
-                    child: Column(
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(children: [
-                            if (annonce.isAnonyme)
-                              Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFF6C3FC5)
-                                        .withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: const Color(0xFF6C3FC5)
-                                            .withOpacity(0.4))),
-                                child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.visibility_off_rounded,
-                                          size: 10, color: Color(0xFF6C3FC5)),
-                                      SizedBox(width: 3),
-                                      Text('Anonyme',
-                                          style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF6C3FC5))),
-                                    ]),
-                              ),
-                            Flexible(
-                                child: Text(
-                                    annonce.isAnonyme
-                                        ? 'Utilisateur anonyme'
-                                        : annonce.userName,
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary),
-                                    overflow: TextOverflow.ellipsis)),
-                            if (!annonce.isAnonyme) ...[
-                              const SizedBox(width: 6),
-                              Text('${annonce.userAge} ans',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textMuted)),
-                            ],
+                            Text('$_catEmoji ',
+                                style: const TextStyle(fontSize: 13)),
+                            Text(
+                              annonce.isAnonyme ? 'Anonyme' : annonce.userName,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accent),
+                            ),
                           ]),
-                          Row(children: [
-                            if (annonce.ville != null &&
-                                !annonce.isAnonyme) ...[
-                              const Icon(Icons.location_on_rounded,
-                                  size: 11, color: AppColors.textMuted),
-                              Text(annonce.ville!,
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textMuted)),
-                              const SizedBox(width: 8),
-                            ],
-                            Text(_ago,
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.textMuted)),
-                            // ✅ Compteur de vues
-                            const SizedBox(width: 8),
-                            const Icon(Icons.visibility_outlined,
-                                size: 11, color: AppColors.textMuted),
-                            const SizedBox(width: 2),
-                            Text('${annonce.viewsCount}',
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.textMuted)),
-                          ]),
-                        ]),
+                          const SizedBox(height: 4),
+                          Text(
+                            annonce.titre == '📸'
+                                ? 'Annonce photo'
+                                : annonce.titre,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (annonce.description.isNotEmpty)
+                            Text(
+                              annonce.description,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withOpacity(0.6)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                if (annonce.isBoosted)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
-                        borderRadius: BorderRadius.circular(10)),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.bolt_rounded, size: 11, color: Colors.white),
-                      SizedBox(width: 2),
-                      Text('BOOST',
-                          style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white)),
-                    ]),
-                  ),
-                GestureDetector(
-                    onTap: () => _menu(context),
-                    child: const Icon(Icons.more_vert_rounded,
-                        color: AppColors.textMuted, size: 20)),
-              ]),
-            ),
-
-            // ── Titre + catégorie ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.border)),
-                  child: Text('$_emoji ${annonce.categorie}',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textMuted)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: Text(annonce.titre,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis)),
-              ]),
-            ),
-            const SizedBox(height: 8),
-
-            // ── Description ──
-            if (annonce.description.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Text(annonce.description,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textMuted, height: 1.5),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis),
-              ),
-            const SizedBox(height: 10),
-
-            // ── Media ──
-            if (annonce.mediaUrl != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: annonce.isVideo
-                    ? _AutoplayVideoPlayer(
-                        url: annonce.mediaUrl!, annonceId: annonce.id)
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: CachedNetworkImage(
-                            imageUrl: annonce.mediaUrl!,
-                            height: 320,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
-                                height: 320,
-                                color: AppColors.surface2,
-                                child: const Center(
-                                    child: CircularProgressIndicator(
-                                        color: AppColors.accent))),
-                            errorWidget: (_, __, ___) =>
-                                const SizedBox.shrink())),
-              ),
-              const SizedBox(height: 10),
-            ],
-
-            // ── Actions ──
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(20))),
-              child: Row(children: [
-                // ✅ Réactions
-                GestureDetector(
-                  onTap: () => controller.toggleReaction(annonce, '❤️'),
-                  onLongPress: () => _showReactionPicker(context),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: Row(key: ValueKey(annonce.myReaction), children: [
-                      Text(
-                          annonce.myReaction.isNotEmpty
-                              ? annonce.myReaction
-                              : '🤍',
-                          style: const TextStyle(fontSize: 20)),
-                      const SizedBox(width: 5),
-                      Text('${annonce.likes}',
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: annonce.isLiked
-                                  ? Colors.red
-                                  : AppColors.textMuted)),
-                    ]),
-                  ),
-                ),
-
-                // ✅ Mini réactions affichées
-                if (annonce.reactionCounts.length > 1) ...[
-                  const SizedBox(width: 6),
-                  ...annonce.reactionCounts.entries
-                      .where((e) =>
-                          e.key !=
-                          (annonce.myReaction.isNotEmpty
-                              ? annonce.myReaction
-                              : '❤️'))
-                      .take(2)
-                      .map((e) =>
-                          Text(e.key, style: const TextStyle(fontSize: 14))),
+                  if (annonce.mediaUrl != null && !annonce.isVideo)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(16),
+                          bottomRight: Radius.circular(16)),
+                      child: CachedNetworkImage(
+                        imageUrl: annonce.mediaUrl!,
+                        width: 70,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    )
+                  else if (annonce.isVideo && annonce.mediaUrl != null)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(16),
+                          bottomRight: Radius.circular(16)),
+                      child: Container(
+                        width: 70,
+                        height: 80,
+                        color: Colors.white.withOpacity(0.08),
+                        child: const Center(
+                          child: Icon(Icons.videocam_rounded,
+                              color: AppColors.accent, size: 28),
+                        ),
+                      ),
+                    ),
                 ],
-
-                const SizedBox(width: 16),
-
-                // 💬 Commentaires
-                GestureDetector(
-                  onTap: annonce.commentsEnabled
-                      ? () {
-                          HapticFeedback.lightImpact();
-                          _openComments(context);
-                        }
-                      : null,
-                  child: Row(children: [
-                    Icon(
-                        annonce.commentsEnabled
-                            ? Icons.chat_bubble_outline_rounded
-                            : Icons.comments_disabled_outlined,
-                        color: annonce.commentsEnabled
-                            ? AppColors.textMuted
-                            : AppColors.textMuted.withOpacity(0.4),
-                        size: 18),
-                    const SizedBox(width: 5),
-                    Text(
-                        !annonce.commentsEnabled
-                            ? '—'
-                            : annonce.reponsesCount > 0
-                                ? '${annonce.reponsesCount}'
-                                : 'Commenter',
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: annonce.commentsEnabled
-                                ? AppColors.textMuted
-                                : AppColors.textMuted.withOpacity(0.4),
-                            fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-
-                // ✅ Partager
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () => _showPartagerSheet(context),
-                  child: const Icon(Icons.send_outlined,
-                      color: AppColors.textMuted, size: 18),
-                ),
-
-                const Spacer(),
-                _BoostButton(annonce: annonce),
-              ]),
+              ),
             ),
-          ]),
+
+            const SizedBox(height: 16),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: TextField(
+                  controller: _msgCtrl,
+                  autofocus: true,
+                  maxLines: 4,
+                  minLines: 2,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: const InputDecoration(
+                    hintText: 'Écris ton message...',
+                    hintStyle:
+                        TextStyle(color: AppColors.textMuted, fontSize: 14),
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: GestureDetector(
+                onTap: _sending ? null : _envoyer,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradientPink,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppColors.accent.withOpacity(0.3),
+                          blurRadius: 16)
+                    ],
+                  ),
+                  child: _sending
+                      ? const Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2.5),
+                          ),
+                        )
+                      : const Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.send_rounded,
+                                  color: Colors.white, size: 18),
+                              SizedBox(width: 8),
+                              Text('Envoyer en privé',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ✅ Picker réactions — appui long
-  void _showReactionPicker(BuildContext context) {
-    HapticFeedback.mediumImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
-        decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border.all(color: AppColors.border)),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2))),
-          const Text('Réagir à cette annonce',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 20),
-          Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: AnnoncesController.reactions.map((emoji) {
-                final isSelected = annonce.myReaction == emoji;
-                final count = annonce.reactionCounts[emoji] ?? 0;
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    controller.toggleReaction(annonce, emoji);
-                  },
-                  child: Column(children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.accent.withOpacity(0.15)
-                              : AppColors.surface2,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: isSelected
-                                  ? AppColors.accent
-                                  : Colors.transparent)),
-                      child: Text(emoji, style: const TextStyle(fontSize: 26)),
-                    ),
-                    if (count > 0) ...[
-                      const SizedBox(height: 4),
-                      Text('$count',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: isSelected
-                                  ? AppColors.accent
-                                  : AppColors.textMuted,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ]),
-                );
-              }).toList()),
-        ]),
-      ),
-    );
-  }
-
-  // ✅ Partager une annonce
-  void _showPartagerSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _PartagerSheet(annonce: annonce),
-    );
-  }
-
-  void _openProfil(AnnonceModel annonce) {
-    Get.toNamed('/profil/detail',
-        arguments: UserModel(
-          id: annonce.userId,
-          name: annonce.userName,
-          age: annonce.userAge,
-          photoUrl: annonce.userPhotoUrl,
-          isOnline: false,
-          interests: [],
-        ));
-  }
-
-  void _openDetail(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AnnonceDetailSheet(annonce: annonce),
-    );
-  }
-
-  void _openComments(BuildContext context) {
-    AnnonceCommentsSheet.show(context, annonce: annonce);
-  }
-
-  void _menu(BuildContext context) {
-    final myId = Supabase.instance.client.auth.currentUser?.id;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border.all(color: AppColors.border)),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2))),
-          if (myId == annonce.userId) ...[
-            _MenuItem(Icons.delete_outline_rounded, 'Supprimer', Colors.red,
-                () {
-              Navigator.pop(context);
-              controller.supprimerAnnonce(annonce.id);
-            }),
-            const SizedBox(height: 8),
-          ],
-          _MenuItem(Icons.flag_outlined, 'Signaler', Colors.orange, () {
-            Navigator.pop(context);
-            _showSignalementSheet(context);
-          }),
-          const SizedBox(height: 8),
-          _MenuItem(Icons.close_rounded, 'Fermer', AppColors.textMuted,
-              () => Navigator.pop(context)),
-        ]),
-      ),
-    );
-  }
-
-  void _showSignalementSheet(BuildContext context) {
-    final reasons = [
-      '🔞 Contenu inapproprié',
-      '🚫 Spam ou arnaque',
-      '😡 Harcèlement',
-      '❌ Fausses informations',
-      '⚠️ Autre'
-    ];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
-        decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border.all(color: AppColors.border)),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2))),
-          const Text('Pourquoi signaler ?',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 16),
-          ...reasons.map((r) => GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.signalerAnnonce(annonce.id, r);
-                },
-                child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                        color: AppColors.surface2,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border)),
-                    child: Text(r,
-                        style: const TextStyle(
-                            fontSize: 14, color: AppColors.textPrimary))),
-              )),
-        ]),
-      ),
-    );
-  }
-}
-
-// ─── PARTAGER ANNONCE ─────────────────────────────────────────────
-
-class _PartagerSheet extends StatefulWidget {
-  final AnnonceModel annonce;
-  const _PartagerSheet({required this.annonce});
-  @override
-  State<_PartagerSheet> createState() => _PartagerSheetState();
-}
-
-class _PartagerSheetState extends State<_PartagerSheet> {
-  List<Map<String, dynamic>> _conversations = [];
-  bool _loading = true;
-  final Set<String> _sending = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadConversations();
-  }
-
-  Future<void> _loadConversations() async {
+  Future<void> _envoyer() async {
+    final texte = _msgCtrl.text.trim();
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
+
+    setState(() => _sending = true);
     try {
-      final data = await Supabase.instance.client
+      final annonce = widget.annonce;
+
+      final existing = await Supabase.instance.client
           .from('conversations')
-          .select('''
-        id, user1_id, user2_id,
-        user1_profile:profiles!conversations_user1_id_fkey(id, name, photo_url),
-        user2_profile:profiles!conversations_user2_id_fkey(id, name, photo_url)
-      ''')
-          .or('user1_id.eq.$uid,user2_id.eq.$uid')
-          .order('updated_at', ascending: false)
-          .limit(20);
+          .select('id')
+          .or('and(user1_id.eq.$uid,user2_id.eq.${annonce.userId}),'
+              'and(user1_id.eq.${annonce.userId},user2_id.eq.$uid)')
+          .maybeSingle();
 
-      setState(() {
-        _conversations = (data as List).map((row) {
-          final isUser1 = row['user1_id'] == uid;
-          final other = isUser1 ? row['user2_profile'] : row['user1_profile'];
-          return {
-            'convId': row['id'],
-            'userId': other?['id'] ?? '',
-            'name': other?['name'] ?? 'Utilisateur',
-            'photo': other?['photo_url'],
-          };
-        }).toList();
-        _loading = false;
+      String convId;
+      if (existing != null) {
+        convId = existing['id'] as String;
+      } else {
+        final created = await Supabase.instance.client
+            .from('conversations')
+            .insert({'user1_id': uid, 'user2_id': annonce.userId})
+            .select('id')
+            .single();
+        convId = created['id'] as String;
+      }
+
+      final now = DateTime.now().toIso8601String();
+
+      final annoncePayload = {
+        'annonceId': annonce.id,
+        'annonceTitre': annonce.titre == '📸' ? 'Annonce photo' : annonce.titre,
+        'annonceDescription': annonce.description.length > 100
+            ? '${annonce.description.substring(0, 100)}...'
+            : annonce.description,
+        'annonceMediaUrl': annonce.mediaUrl,
+        'annonceIsVideo': annonce.isVideo,
+        'annonceAuteur': annonce.isAnonyme ? 'Anonyme' : annonce.userName,
+        'annonceCategorie': annonce.categorie,
+      };
+
+      await Supabase.instance.client.from('messages').insert({
+        'conversation_id': convId,
+        'sender_id': uid,
+        'type': 'annonce_reply',
+        'content': texte.isEmpty ? '📢 A répondu à une annonce' : texte,
+        'payload': annoncePayload,
+        'status': 'sent',
+        'created_at': now,
       });
-    } catch (e) {
-      setState(() => _loading = false);
-    }
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      maxChildSize: 0.9,
-      minChildSize: 0.4,
-      builder: (_, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(children: [
-          Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2))),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              const Text('Partager l\'annonce',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
-              const Spacer(),
-              GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close_rounded,
-                      color: AppColors.textMuted)),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          // Preview annonce
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: AppColors.surface2,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border)),
-            child: Row(children: [
-              if (widget.annonce.mediaUrl != null && !widget.annonce.isVideo)
-                ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                        imageUrl: widget.annonce.mediaUrl!,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink()))
-              else
-                Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                        color: AppColors.accent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: const Center(
-                        child: Icon(Icons.campaign_rounded,
-                            color: AppColors.accent, size: 24))),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text(widget.annonce.titre,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    Text(widget.annonce.description,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textMuted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                  ])),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Envoyer à :',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600))),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.accent, strokeWidth: 2))
-                  : _conversations.isEmpty
-                      ? const Center(
-                          child: Text('Aucune conversation',
-                              style: TextStyle(color: AppColors.textMuted)))
-                      : ListView.builder(
-                          controller: scrollCtrl,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _conversations.length,
-                          itemBuilder: (_, i) {
-                            final conv = _conversations[i];
-                            final isSending = _sending.contains(conv['userId']);
-                            return GestureDetector(
-                              onTap: isSending
-                                  ? null
-                                  : () async {
-                                      setState(
-                                          () => _sending.add(conv['userId']));
-                                      await Get.find<AnnoncesController>()
-                                          .partagerAnnonce(
-                                              widget.annonce, conv['userId']);
-                                      setState(() =>
-                                          _sending.remove(conv['userId']));
-                                      if (mounted) Navigator.pop(context);
-                                    },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
-                                margin: const EdgeInsets.only(bottom: 6),
-                                decoration: BoxDecoration(
-                                    color: AppColors.surface2,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border:
-                                        Border.all(color: AppColors.border)),
-                                child: Row(children: [
-                                  CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor:
-                                          AppColors.accent.withOpacity(0.1),
-                                      backgroundImage: conv['photo'] != null
-                                          ? CachedNetworkImageProvider(
-                                              conv['photo'])
-                                          : null,
-                                      child: conv['photo'] == null
-                                          ? Text(conv['name'][0].toUpperCase(),
-                                              style: const TextStyle(
-                                                  color: AppColors.accent,
-                                                  fontWeight: FontWeight.w700))
-                                          : null),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                      child: Text(conv['name'],
-                                          style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary))),
-                                  isSending
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                              color: AppColors.accent,
-                                              strokeWidth: 2))
-                                      : const Icon(Icons.send_rounded,
-                                          color: AppColors.accent, size: 20),
-                                ]),
-                              ),
-                            );
-                          })),
-        ]),
-      ),
-    );
+      await Supabase.instance.client
+          .from('conversations')
+          .update({'updated_at': now}).eq('id', convId);
+
+      if (mounted) {
+        Navigator.pop(context);
+        Get.toNamed('/chat/conversation',
+            arguments: ConversationModel(
+              id: convId,
+              userId: annonce.userId,
+              userName: annonce.isAnonyme ? 'Anonyme' : annonce.userName,
+              userPhotoUrl: annonce.isAnonyme ? null : annonce.userPhotoUrl,
+              isOnline: false,
+              unreadCount: 0,
+            ));
+      }
+    } catch (e) {
+      debugPrint('_envoyer error: $e');
+      Get.snackbar('Erreur', 'Impossible d\'envoyer le message',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red.shade900,
+          colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 }
 
-// ─── SHEET COMMENTAIRES ───────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+//  COMMENTAIRES
+// ══════════════════════════════════════════════════════════════════
 
 class AnnonceCommentsSheet extends StatelessWidget {
   final AnnonceModel annonce;
@@ -1828,11 +2418,12 @@ class AnnonceCommentsSheet extends StatelessWidget {
       return;
     }
     showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        useSafeArea: true,
-        builder: (_) => AnnonceCommentsSheet(annonce: annonce));
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => AnnonceCommentsSheet(annonce: annonce),
+    );
   }
 
   @override
@@ -1844,28 +2435,35 @@ class AnnonceCommentsSheet extends StatelessWidget {
       maxChildSize: 0.95,
       minChildSize: 0.4,
       expand: false,
-      builder: (_, scrollCtrl) => _CommentsSheetContent(
-          annonce: annonce, ctrl: ctrl, tag: tag, scrollCtrl: scrollCtrl),
+      builder: (_, scrollCtrl) => _CommentsContent(
+        annonce: annonce,
+        ctrl: ctrl,
+        tag: tag,
+        scrollCtrl: scrollCtrl,
+      ),
     );
   }
 }
 
-class _CommentsSheetContent extends StatefulWidget {
+class _CommentsContent extends StatefulWidget {
   final AnnonceModel annonce;
   final AnnonceCommentController ctrl;
   final String tag;
   final ScrollController scrollCtrl;
-  const _CommentsSheetContent(
-      {required this.annonce,
-      required this.ctrl,
-      required this.tag,
-      required this.scrollCtrl});
+
+  const _CommentsContent({
+    required this.annonce,
+    required this.ctrl,
+    required this.tag,
+    required this.scrollCtrl,
+  });
+
   @override
-  State<_CommentsSheetContent> createState() => _CommentsSheetContentState();
+  State<_CommentsContent> createState() => _CommentsContentState();
 }
 
-class _CommentsSheetContentState extends State<_CommentsSheetContent> {
-  final FocusNode _focusNode = FocusNode();
+class _CommentsContentState extends State<_CommentsContent> {
+  final FocusNode _focus = FocusNode();
   String? _myPhotoUrl;
 
   @override
@@ -1889,282 +2487,266 @@ class _CommentsSheetContentState extends State<_CommentsSheetContent> {
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final annonce = widget.annonce;
-    final ctrl = widget.ctrl;
-    final tag = widget.tag;
-
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0D0D18),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(children: [
-        // ── Handle ──
-        Container(
-          width: 40,
-          height: 4,
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
               color: const Color(0xFF2E2E4A),
-              borderRadius: BorderRadius.circular(2)),
-        ),
-
-        // ── Header ──
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 16, 10),
-          child: Row(children: [
-            Obx(() {
-              final n =
-                  ctrl.comments.fold(0, (s, c) => s + 1 + c.replies.length);
-              return RichText(
-                  text: TextSpan(
-                children: [
-                  const TextSpan(
-                      text: 'Commentaires  ',
-                      style: TextStyle(
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 16, 10),
+            child: Row(
+              children: [
+                Obx(() {
+                  final n = widget.ctrl.comments
+                      .fold(0, (s, c) => s + 1 + c.replies.length);
+                  return Text('Commentaires  $n',
+                      style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          fontFamily: 'Syne')),
-                  TextSpan(
-                      text: '$n',
-                      style: const TextStyle(
-                          color: Color(0xFF6060A0),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500)),
-                ],
-              ));
-            }),
-            const Spacer(),
-            GestureDetector(
-              onTap: () {
-                Get.delete<AnnonceCommentController>(tag: tag);
-                Navigator.pop(context);
-              },
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E30), shape: BoxShape.circle),
-                child: const Icon(Icons.close_rounded,
-                    color: Color(0xFF8080B0), size: 16),
-              ),
+                          fontFamily: 'Syne'));
+                }),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    Get.delete<AnnonceCommentController>(tag: widget.tag);
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                        color: Color(0xFF1E1E30), shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded,
+                        color: Color(0xFF8080B0), size: 16),
+                  ),
+                ),
+              ],
             ),
-          ]),
-        ),
-
-        Container(height: 0.5, color: const Color(0xFF1E1E30)),
-
-        // ── Liste ──
-        Expanded(
-          child: Obx(() {
-            if (ctrl.loading.value) {
-              return const Center(
+          ),
+          Container(height: 0.5, color: const Color(0xFF1E1E30)),
+          Expanded(
+            child: Obx(() {
+              if (widget.ctrl.loading.value) {
+                return const Center(
                   child: CircularProgressIndicator(
-                      color: AppColors.accent, strokeWidth: 2));
-            }
-            final comments = ctrl.comments;
-            final pinnedId = annonce.pinnedCommentId;
-            AnnonceCommentModel? pinned;
-            List<AnnonceCommentModel> others = [];
-            for (final c in comments) {
-              if (c.id == pinnedId)
-                pinned = c;
-              else
-                others.add(c);
-            }
-
-            if (comments.isEmpty) {
-              return Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A2E), shape: BoxShape.circle),
-                    child: const Icon(Icons.chat_bubble_outline_rounded,
-                        color: Color(0xFF404070), size: 28)),
-                const SizedBox(height: 14),
-                const Text('Aucun commentaire',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                const Text('Sois le premier à commenter',
-                    style: TextStyle(color: Color(0xFF6060A0), fontSize: 13)),
-              ]));
-            }
-
-            return ListView(
-              controller: widget.scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              children: [
-                // ✅ Épinglé
-                if (pinned != null) ...[
-                  _PinnedBadge(),
-                  const SizedBox(height: 4),
-                  _CommentTile(
-                      comment: pinned,
-                      ctrl: ctrl,
-                      isReply: false,
-                      isPinned: true),
-                  Container(
+                      color: AppColors.accent, strokeWidth: 2),
+                );
+              }
+              final comments = widget.ctrl.comments;
+              final pinnedId = widget.annonce.pinnedCommentId;
+              if (comments.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('💬', style: TextStyle(fontSize: 48)),
+                      SizedBox(height: 12),
+                      Text('Aucun commentaire',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600)),
+                      SizedBox(height: 6),
+                      Text('Sois le premier à commenter',
+                          style: TextStyle(
+                              color: Color(0xFF6060A0), fontSize: 13)),
+                    ],
+                  ),
+                );
+              }
+              AnnonceCommentModel? pinned;
+              List<AnnonceCommentModel> others = [];
+              for (final c in comments) {
+                if (c.id == pinnedId)
+                  pinned = c;
+                else
+                  others.add(c);
+              }
+              return ListView(
+                controller: widget.scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                children: [
+                  if (pinned != null) ...[
+                    _PinnedBadge(),
+                    const SizedBox(height: 4),
+                    _CommentTile(
+                        comment: pinned,
+                        ctrl: widget.ctrl,
+                        isReply: false,
+                        isPinned: true),
+                    Container(
                       height: 0.5,
                       color: const Color(0xFF1E1E30),
-                      margin: const EdgeInsets.symmetric(vertical: 8)),
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ],
+                  ...others.map((c) => _CommentTile(
+                      comment: c,
+                      ctrl: widget.ctrl,
+                      isReply: false,
+                      isPinned: false)),
                 ],
-                // Autres
-                ...others.map((c) => _CommentTile(
-                    comment: c, ctrl: ctrl, isReply: false, isPinned: false)),
-              ],
+              );
+            }),
+          ),
+          Obx(() {
+            final name = widget.ctrl.replyingToName.value;
+            if (name.isEmpty) return const SizedBox.shrink();
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: const Color(0xFF111120),
+              child: Row(
+                children: [
+                  ShaderMask(
+                    shaderCallback: (b) =>
+                        AppColors.gradientPink.createShader(b),
+                    child: const Icon(Icons.reply_rounded,
+                        color: Colors.white, size: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Répondre à ',
+                      style: TextStyle(color: Color(0xFF8080B0), fontSize: 12)),
+                  Text(name,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: widget.ctrl.cancelReply,
+                    child: const Icon(Icons.close_rounded,
+                        color: Color(0xFF6060A0), size: 15),
+                  ),
+                ],
+              ),
             );
           }),
-        ),
-
-        // ── Répondre à ──
-        Obx(() {
-          final name = ctrl.replyingToName.value;
-          if (name.isEmpty) return const SizedBox.shrink();
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: const Color(0xFF111120),
-            child: Row(children: [
-              ShaderMask(
-                shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                child: const Icon(Icons.reply_rounded,
-                    color: Colors.white, size: 14),
-              ),
-              const SizedBox(width: 8),
-              Text('Répondre à ',
-                  style:
-                      const TextStyle(color: Color(0xFF8080B0), fontSize: 12)),
-              Text(name,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
-              const Spacer(),
-              GestureDetector(
-                onTap: ctrl.cancelReply,
-                child: const Icon(Icons.close_rounded,
-                    color: Color(0xFF6060A0), size: 15),
-              ),
-            ]),
-          );
-        }),
-
-        // ── Saisie ──
-        Container(
-          padding: EdgeInsets.only(
-            left: 14,
-            right: 14,
-            top: 10,
-            bottom: MediaQuery.of(context).viewInsets.bottom > 0
-                ? MediaQuery.of(context).viewInsets.bottom + 8
-                : MediaQuery.of(context).padding.bottom + 14,
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D0D18),
-            border: Border(top: BorderSide(color: const Color(0xFF1E1E30))),
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            // ✅ Avatar de l'utilisateur — chargé une seule fois dans initState
-            Container(
-              width: 34,
-              height: 34,
-              margin: const EdgeInsets.only(right: 10, bottom: 4),
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                      color: AppColors.accent.withOpacity(0.4), width: 1.5)),
-              child: ClipOval(
-                  child: _myPhotoUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: _myPhotoUrl!, fit: BoxFit.cover)
-                      : Container(
-                          color: AppColors.accent.withOpacity(0.2),
-                          child: const Icon(Icons.person_rounded,
-                              color: AppColors.accent, size: 18))),
+          Container(
+            padding: EdgeInsets.only(
+              left: 14,
+              right: 14,
+              top: 10,
+              bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                  ? MediaQuery.of(context).viewInsets.bottom + 8
+                  : MediaQuery.of(context).padding.bottom + 14,
             ),
-            // Champ texte
-            Expanded(
-                child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFF2A2A45)),
-              ),
-              child: TextField(
-                controller: ctrl.textCtrl,
-                focusNode: _focusNode,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                maxLines: 4,
-                minLines: 1,
-                maxLength: 500,
-                textCapitalization: TextCapitalization.sentences,
-                buildCounter: (_,
-                        {required currentLength,
-                        required isFocused,
-                        maxLength}) =>
-                    isFocused && currentLength > 400
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Text('$currentLength/500',
-                                style: const TextStyle(
-                                    color: Colors.white30, fontSize: 10)))
-                        : null,
-                decoration: const InputDecoration(
-                  hintText: 'Ajouter un commentaire...',
-                  hintStyle: TextStyle(color: Color(0xFF4A4A70), fontSize: 13),
-                  border: InputBorder.none,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-              ),
-            )),
-            const SizedBox(width: 8),
-            // Bouton envoyer
-            Obx(() => GestureDetector(
-                  onTap: ctrl.sending.value ? null : ctrl.sendComment,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 38,
-                    height: 38,
-                    margin: const EdgeInsets.only(bottom: 2),
-                    decoration: BoxDecoration(
-                        gradient:
-                            ctrl.sending.value ? null : AppColors.gradientPink,
-                        color:
-                            ctrl.sending.value ? const Color(0xFF1E1E30) : null,
-                        shape: BoxShape.circle),
-                    child: ctrl.sending.value
-                        ? const Center(
-                            child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2)))
-                        : const Icon(Icons.send_rounded,
-                            color: Colors.white, size: 17),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0D0D18),
+              border: Border(top: BorderSide(color: Color(0xFF1E1E30))),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  margin: const EdgeInsets.only(right: 10, bottom: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: AppColors.accent.withOpacity(0.4), width: 1.5),
                   ),
-                )),
-          ]),
-        ),
-      ]),
+                  child: ClipOval(
+                    child: _myPhotoUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: _myPhotoUrl!, fit: BoxFit.cover)
+                        : Container(
+                            color: AppColors.accent.withOpacity(0.2),
+                            child: const Icon(Icons.person_rounded,
+                                color: AppColors.accent, size: 18),
+                          ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A2E),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF2A2A45)),
+                    ),
+                    child: TextField(
+                      controller: widget.ctrl.textCtrl,
+                      focusNode: _focus,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      maxLines: 4,
+                      minLines: 1,
+                      maxLength: 500,
+                      buildCounter: (_,
+                              {required currentLength,
+                              required isFocused,
+                              maxLength}) =>
+                          null,
+                      decoration: const InputDecoration(
+                        hintText: 'Ajouter un commentaire...',
+                        hintStyle:
+                            TextStyle(color: Color(0xFF4A4A70), fontSize: 13),
+                        border: InputBorder.none,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Obx(() => GestureDetector(
+                      onTap: widget.ctrl.sending.value
+                          ? null
+                          : widget.ctrl.sendComment,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 38,
+                        height: 38,
+                        margin: const EdgeInsets.only(bottom: 2),
+                        decoration: BoxDecoration(
+                          gradient: widget.ctrl.sending.value
+                              ? null
+                              : AppColors.gradientPink,
+                          color: widget.ctrl.sending.value
+                              ? const Color(0xFF1E1E30)
+                              : null,
+                          shape: BoxShape.circle,
+                        ),
+                        child: widget.ctrl.sending.value
+                            ? const Center(
+                                child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2)))
+                            : const Icon(Icons.send_rounded,
+                                color: Colors.white, size: 17),
+                      ),
+                    )),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _PinnedBadge extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Row(children: const [
+  Widget build(BuildContext context) => const Row(children: [
         Icon(Icons.push_pin_rounded, size: 11, color: Color(0xFF8080B0)),
         SizedBox(width: 4),
         Text('Commentaire épinglé',
@@ -2175,18 +2757,18 @@ class _PinnedBadge extends StatelessWidget {
       ]);
 }
 
-// ─── TUILE COMMENTAIRE ────────────────────────────────────────────
-
 class _CommentTile extends StatelessWidget {
   final AnnonceCommentModel comment;
   final AnnonceCommentController ctrl;
   final bool isReply;
   final bool isPinned;
-  const _CommentTile(
-      {required this.comment,
-      required this.ctrl,
-      required this.isReply,
-      required this.isPinned});
+
+  const _CommentTile({
+    required this.comment,
+    required this.ctrl,
+    required this.isReply,
+    required this.isPinned,
+  });
 
   static String _ago(DateTime d) {
     final diff = DateTime.now().difference(d);
@@ -2197,18 +2779,6 @@ class _CommentTile extends StatelessWidget {
     if (diff.inHours >= 1) return '${diff.inHours}h';
     if (diff.inMinutes >= 1) return '${diff.inMinutes}min';
     return 'maintenant';
-  }
-
-  void _openProfile(BuildContext context) {
-    if (comment.isAnonyme) return;
-    Get.toNamed('/profil/detail',
-        arguments: UserModel(
-            id: comment.userId,
-            name: comment.userName,
-            age: 18,
-            photoUrl: comment.userPhotoUrl,
-            isOnline: false,
-            interests: []));
   }
 
   void _onLongPress(BuildContext context) {
@@ -2223,72 +2793,80 @@ class _CommentTile extends StatelessWidget {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
               width: 40,
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                   color: const Color(0xFF2E2E4A),
-                  borderRadius: BorderRadius.circular(2))),
-          if (isAnnonceOwner && !isReply)
-            ListTile(
-              leading: Container(
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            if (isAnnonceOwner && !isReply)
+              ListTile(
+                leading: Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
                       color: AppColors.accent.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10)),
                   child: Icon(
-                      ctrl.annonce.pinnedCommentId == comment.id
-                          ? Icons.push_pin_outlined
-                          : Icons.push_pin_rounded,
-                      color: AppColors.accent,
-                      size: 18)),
-              title: Text(
+                    ctrl.annonce.pinnedCommentId == comment.id
+                        ? Icons.push_pin_outlined
+                        : Icons.push_pin_rounded,
+                    color: AppColors.accent,
+                    size: 18,
+                  ),
+                ),
+                title: Text(
                   ctrl.annonce.pinnedCommentId == comment.id
                       ? 'Désépingler'
                       : 'Épingler',
                   style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
-                      fontSize: 14)),
-              onTap: () {
-                Navigator.pop(context);
-                ctrl.epinglerOuDesepingler(comment);
-              },
-            ),
-          ListTile(
-            leading: Container(
+                      fontSize: 14),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  ctrl.epinglerOuDesepingler(comment);
+                },
+              ),
+            ListTile(
+              leading: Container(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10)),
                 child: const Icon(Icons.delete_outline_rounded,
-                    color: Colors.red, size: 18)),
-            title: Text(
+                    color: Colors.red, size: 18),
+              ),
+              title: Text(
                 isAnnonceOwner && !isOwn
                     ? 'Supprimer (modération)'
                     : 'Supprimer',
                 style: const TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14)),
-            onTap: () {
-              Navigator.pop(context);
-              ctrl.deleteComment(comment);
-            },
-          ),
-          const SizedBox(height: 8),
-        ]),
+                    fontSize: 14),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                ctrl.deleteComment(comment);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Commentaire "temp" en cours d'envoi — légèrement transparent
     final isSending = comment.id.startsWith('temp_');
     final double avatarR = isReply ? 14 : 18;
 
@@ -2302,81 +2880,79 @@ class _CommentTile extends StatelessWidget {
             top: isReply ? 8 : 10,
             bottom: isReply ? 0 : 4,
           ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Avatar ──
-            GestureDetector(
-              onTap: () => _openProfile(context),
-              child: CircleAvatar(
-                radius: avatarR,
-                backgroundColor: const Color(0xFF1E1E30),
-                backgroundImage: comment.userPhotoUrl != null
-                    ? CachedNetworkImageProvider(comment.userPhotoUrl!)
-                    : null,
-                child: comment.userPhotoUrl == null
-                    ? Icon(
-                        comment.isAnonyme
-                            ? Icons.person_outline_rounded
-                            : Icons.person_rounded,
-                        color: const Color(0xFF4A4A70),
-                        size: avatarR)
-                    : null,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (comment.isAnonyme) return;
+                  Get.toNamed('/profile/view',
+                      arguments: UserModel(
+                        id: comment.userId,
+                        name: comment.userName,
+                        age: 18,
+                        photoUrl: comment.userPhotoUrl,
+                        isOnline: false,
+                        interests: [],
+                      ));
+                },
+                child: CircleAvatar(
+                  radius: avatarR,
+                  backgroundColor: const Color(0xFF1E1E30),
+                  backgroundImage: comment.userPhotoUrl != null
+                      ? CachedNetworkImageProvider(comment.userPhotoUrl!)
+                      : null,
+                  child: comment.userPhotoUrl == null
+                      ? Icon(
+                          comment.isAnonyme
+                              ? Icons.person_outline_rounded
+                              : Icons.person_rounded,
+                          color: const Color(0xFF4A4A70),
+                          size: avatarR)
+                      : null,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-
-            // ── Contenu ──
-            Expanded(
+              const SizedBox(width: 10),
+              Expanded(
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  // Pseudo + temps — inline compact
-                  Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                    GestureDetector(
-                      onTap: () => _openProfile(context),
-                      child: Text(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text(
                         comment.isAnonyme ? 'Anonyme' : comment.userName,
                         style: TextStyle(
-                          color: comment.isAnonyme
-                              ? const Color(0xFF6060A0)
-                              : Colors.white,
-                          fontSize: isReply ? 12 : 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.1,
-                        ),
+                            color: comment.isAnonyme
+                                ? const Color(0xFF6060A0)
+                                : Colors.white,
+                            fontSize: isReply ? 12 : 13,
+                            fontWeight: FontWeight.w700),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(_ago(comment.createdAt),
-                        style: TextStyle(
-                            color: const Color(0xFF4A4A70),
-                            fontSize: isReply ? 10 : 11)),
-                    if (isPinned) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.push_pin_rounded,
-                          size: 10, color: AppColors.accent),
-                    ],
-                    if (isSending) ...[
-                      const SizedBox(width: 6),
-                      const SizedBox(
+                      Text(_ago(comment.createdAt),
+                          style: const TextStyle(
+                              color: Color(0xFF4A4A70), fontSize: 11)),
+                      if (isPinned) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.push_pin_rounded,
+                            size: 10, color: AppColors.accent),
+                      ],
+                      if (isSending) ...[
+                        const SizedBox(width: 6),
+                        const SizedBox(
                           width: 10,
                           height: 10,
                           child: CircularProgressIndicator(
-                              color: AppColors.accent, strokeWidth: 1.5)),
-                    ],
-                  ]),
-
-                  // Texte commentaire
-                  const SizedBox(height: 3),
-                  Text(comment.texte,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.88),
-                        fontSize: isReply ? 13 : 14,
-                        height: 1.4,
-                      )),
-
-                  // ✅ Actions sous le texte — comme Instagram
-                  const SizedBox(height: 6),
-                  Row(children: [
+                              color: AppColors.accent, strokeWidth: 1.5),
+                        ),
+                      ],
+                    ]),
+                    const SizedBox(height: 3),
+                    Text(comment.texte,
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.88),
+                            fontSize: isReply ? 13 : 14,
+                            height: 1.4)),
+                    const SizedBox(height: 6),
                     if (!isReply)
                       GestureDetector(
                         onTap: () =>
@@ -2387,834 +2963,218 @@ class _CommentTile extends StatelessWidget {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600)),
                       ),
-                  ]),
-
-                  // Replies
-                  if (comment.replies.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    ...comment.replies.map((r) => _CommentTile(
-                        comment: r,
-                        ctrl: ctrl,
-                        isReply: true,
-                        isPinned: false)),
+                    if (comment.replies.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      ...comment.replies.map((r) => _CommentTile(
+                          comment: r,
+                          ctrl: ctrl,
+                          isReply: true,
+                          isPinned: false)),
+                    ],
                   ],
-                ])),
-
-            // ── Like à droite ── style TikTok
-            const SizedBox(width: 12),
-            if (!isSending)
-              GestureDetector(
-                onTap: () => ctrl.toggleLike(comment),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    transitionBuilder: (child, anim) =>
-                        ScaleTransition(scale: anim, child: child),
-                    child: Icon(
-                      comment.isLiked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      key: ValueKey(comment.isLiked),
-                      color: comment.isLiked
-                          ? const Color(0xFFFF3CAC)
-                          : const Color(0xFF4A4A70),
-                      size: isReply ? 14 : 16,
-                    ),
-                  ),
-                  if (comment.likes > 0) ...[
-                    const SizedBox(height: 2),
-                    Text('${comment.likes}',
-                        style: TextStyle(
-                            color: comment.isLiked
-                                ? const Color(0xFFFF3CAC)
-                                : const Color(0xFF4A4A70),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ]),
+                ),
               ),
-          ]),
+              const SizedBox(width: 12),
+              if (!isSending)
+                GestureDetector(
+                  onTap: () => ctrl.toggleLike(comment),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 150),
+                        transitionBuilder: (child, anim) =>
+                            ScaleTransition(scale: anim, child: child),
+                        child: Icon(
+                          comment.isLiked
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          key: ValueKey(comment.isLiked),
+                          color: comment.isLiked
+                              ? const Color(0xFFFF3CAC)
+                              : const Color(0xFF4A4A70),
+                          size: isReply ? 14 : 16,
+                        ),
+                      ),
+                      if (comment.likes > 0) ...[
+                        const SizedBox(height: 2),
+                        Text('${comment.likes}',
+                            style: TextStyle(
+                                color: comment.isLiked
+                                    ? const Color(0xFFFF3CAC)
+                                    : const Color(0xFF4A4A70),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─── VIDEO PREVIEW (commentaires) ────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+//  WIDGETS UTILITAIRES
+// ══════════════════════════════════════════════════════════════════
 
-class _AnnonceVideoPreview extends StatefulWidget {
-  final String url;
-  const _AnnonceVideoPreview({required this.url});
-  @override
-  State<_AnnonceVideoPreview> createState() => _AnnonceVideoPreviewState();
-}
-
-class _AnnonceVideoPreviewState extends State<_AnnonceVideoPreview> {
-  late VideoPlayerController _vpc;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _vpc = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize().then((_) {
-        if (mounted) setState(() => _ready = true);
-        _vpc.setLooping(true);
-        _vpc.play();
-      });
-  }
-
-  @override
-  void dispose() {
-    _vpc.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_ready)
-      return Container(
-          height: 180,
-          color: Colors.black,
-          child: const Center(
-              child: CircularProgressIndicator(
-                  color: AppColors.accent, strokeWidth: 2)));
-    return GestureDetector(
-      onTap: () => setState(() {
-        _vpc.value.isPlaying ? _vpc.pause() : _vpc.play();
-      }),
-      child: AspectRatio(
-          aspectRatio: _vpc.value.aspectRatio,
-          child: Stack(alignment: Alignment.center, children: [
-            VideoPlayer(_vpc),
-            ValueListenableBuilder(
-                valueListenable: _vpc,
-                builder: (_, VideoPlayerValue v, __) => AnimatedOpacity(
-                    opacity: v.isPlaying ? 0.0 : 0.7,
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                            color: Colors.black, shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 28)))),
-          ])),
-    );
-  }
-}
-
-// ─── DETAIL ANNONCE ───────────────────────────────────────────────
-
-class _AnnonceDetailSheet extends GetView<AnnoncesController> {
-  final AnnonceModel annonce;
-  const _AnnonceDetailSheet({required this.annonce});
-
-  String get _emoji {
-    const m = {
-      'rencontre': '💕',
-      'amitie': '🤝',
-      'sortie': '🎉',
-      'voyage': '✈️'
-    };
-    return m[annonce.categorie] ?? '📢';
-  }
-
-  String get _ago {
-    final d = DateTime.now().difference(annonce.createdAt);
-    if (d.inDays > 0) return 'il y a ${d.inDays}j';
-    if (d.inHours > 0) return 'il y a ${d.inHours}h';
-    if (d.inMinutes > 0) return 'il y a ${d.inMinutes}min';
-    return "à l'instant";
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      maxChildSize: 0.97,
-      minChildSize: 0.5,
-      builder: (_, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-            color: AppColors.bg,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(children: [
-          Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2))),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: annonce.isAnonyme
-                                      ? const Color(0xFF6C3FC5)
-                                      : AppColors.accent,
-                                  width: 2)),
-                          child: ClipOval(
-                              child: annonce.isAnonyme
-                                  ? Container(
-                                      decoration: const BoxDecoration(
-                                          gradient: LinearGradient(colors: [
-                                        Color(0xFF6C3FC5),
-                                        Color(0xFF3B1F7A)
-                                      ])),
-                                      child: const Center(
-                                          child: Icon(
-                                              Icons.person_outline_rounded,
-                                              color: Colors.white,
-                                              size: 28)))
-                                  : (annonce.userPhotoUrl != null
-                                      ? CachedNetworkImage(
-                                          imageUrl: annonce.userPhotoUrl!,
-                                          fit: BoxFit.cover)
-                                      : Container(
-                                          decoration: const BoxDecoration(
-                                              gradient:
-                                                  LinearGradient(colors: [AppColors.accent, AppColors.accent2])),
-                                          child: Center(child: Text(annonce.userName[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22))))))),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Text(
-                                annonce.isAnonyme
-                                    ? 'Utilisateur anonyme'
-                                    : annonce.userName,
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textPrimary)),
-                            Row(children: [
-                              if (annonce.ville != null &&
-                                  !annonce.isAnonyme) ...[
-                                const Icon(Icons.location_on_rounded,
-                                    size: 12, color: AppColors.textMuted),
-                                Text(annonce.ville!,
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textMuted)),
-                                const SizedBox(width: 8),
-                              ],
-                              Text(_ago,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textMuted)),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.visibility_outlined,
-                                  size: 12, color: AppColors.textMuted),
-                              const SizedBox(width: 2),
-                              Text('${annonce.viewsCount} vues',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textMuted)),
-                            ]),
-                          ])),
-                    ]),
-                    const SizedBox(height: 20),
-                    Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: AppColors.accent.withOpacity(0.3))),
-                        child: Text('$_emoji ${annonce.categorie}',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.accent))),
-                    const SizedBox(height: 12),
-                    Text(annonce.titre,
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            height: 1.2)),
-                    if (annonce.description.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Text(annonce.description,
-                          style: const TextStyle(
-                              fontSize: 15,
-                              color: AppColors.textMuted,
-                              height: 1.6)),
-                    ],
-                    const SizedBox(height: 20),
-                    if (annonce.mediaUrl != null) ...[
-                      annonce.isVideo
-                          ? _AutoplayVideoPlayer(
-                              url: annonce.mediaUrl!,
-                              annonceId: '${annonce.id}_detail')
-                          : GestureDetector(
-                              onTap: () => _openImage(context),
-                              child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: CachedNetworkImage(
-                                      imageUrl: annonce.mediaUrl!,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover))),
-                      const SizedBox(height: 20),
-                    ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                          border: Border(
-                              top: BorderSide(color: AppColors.border),
-                              bottom: BorderSide(color: AppColors.border))),
-                      child: Obx(() {
-                        final current = controller.annonces
-                                .firstWhereOrNull((a) => a.id == annonce.id) ??
-                            annonce;
-                        return Row(children: [
-                          // ✅ Réactions dans le detail
-                          GestureDetector(
-                            onTap: () =>
-                                controller.toggleReaction(current, '❤️'),
-                            child: Row(children: [
-                              Text(
-                                  current.myReaction.isNotEmpty
-                                      ? current.myReaction
-                                      : '🤍',
-                                  style: const TextStyle(fontSize: 22)),
-                              const SizedBox(width: 6),
-                              Text('${current.likes}',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: current.isLiked
-                                          ? Colors.red
-                                          : AppColors.textMuted)),
-                            ]),
-                          ),
-                          const SizedBox(width: 20),
-                          GestureDetector(
-                            onTap: annonce.commentsEnabled
-                                ? () => AnnonceCommentsSheet.show(context,
-                                    annonce: annonce)
-                                : null,
-                            child: Row(children: [
-                              const Icon(Icons.chat_bubble_outline_rounded,
-                                  color: AppColors.textMuted, size: 22),
-                              const SizedBox(width: 6),
-                              Text(
-                                  '${current.reponsesCount} commentaire${current.reponsesCount > 1 ? 's' : ''}',
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.textMuted,
-                                      fontWeight: FontWeight.w600)),
-                            ]),
-                          ),
-                        ]);
-                      }),
-                    ),
-                  ]),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  void _openImage(BuildContext context) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => Scaffold(
-                  backgroundColor: Colors.black,
-                  appBar: AppBar(
-                      backgroundColor: Colors.black,
-                      leading: IconButton(
-                          icon: const Icon(Icons.close_rounded,
-                              color: Colors.white),
-                          onPressed: () => Navigator.pop(context))),
-                  body: Center(
-                      child: InteractiveViewer(
-                          child:
-                              CachedNetworkImage(imageUrl: annonce.mediaUrl!))),
-                )));
-  }
-}
-
-// ─── AUTOPLAY VIDEO PLAYER ────────────────────────────────────────
-
-class _AutoplayVideoPlayer extends StatefulWidget {
-  final String url;
-  final String annonceId;
-  const _AutoplayVideoPlayer({required this.url, required this.annonceId});
-  @override
-  State<_AutoplayVideoPlayer> createState() => _AutoplayVideoPlayerState();
-}
-
-class _AutoplayVideoPlayerState extends State<_AutoplayVideoPlayer> {
-  late VideoPlayerController _ctrl;
-  bool _initialized = false;
-  bool _muted = true;
-  bool _visible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initPlayer();
-  }
-
-  Future<void> _initPlayer() async {
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url));
-    await _ctrl.initialize();
-    _ctrl.setLooping(true);
-    _ctrl.setVolume(0);
-    if (mounted) setState(() => _initialized = true);
-    if (_visible) _ctrl.play();
-  }
-
-  void _onVisibilityChanged(VisibilityInfo info) {
-    final isVisible = info.visibleFraction > 0.5;
-    if (isVisible != _visible) {
-      _visible = isVisible;
-      if (_initialized) {
-        if (isVisible)
-          _ctrl.play();
-        else
-          _ctrl.pause();
-      }
-    }
-  }
-
-  void _toggleSound() {
-    setState(() => _muted = !_muted);
-    _ctrl.setVolume(_muted ? 0 : 1);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return VisibilityDetector(
-      key: Key('video_${widget.annonceId}'),
-      onVisibilityChanged: _onVisibilityChanged,
-      child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(alignment: Alignment.bottomRight, children: [
-            _initialized
-                ? AspectRatio(
-                    aspectRatio: _ctrl.value.aspectRatio,
-                    child: VideoPlayer(_ctrl))
-                : Container(
-                    height: 220,
-                    color: AppColors.surface2,
-                    child: const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.accent))),
-            GestureDetector(
-                onTap: _toggleSound,
-                child: Container(
-                    margin: const EdgeInsets.all(10),
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        shape: BoxShape.circle,
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.2))),
-                    child: Icon(
-                        _muted
-                            ? Icons.volume_off_rounded
-                            : Icons.volume_up_rounded,
-                        color: Colors.white,
-                        size: 17))),
-            if (_initialized)
-              Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(8)),
-                      child:
-                          const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 12),
-                        SizedBox(width: 3),
-                        Text('Vidéo',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600)),
-                      ]))),
-          ])),
-    );
-  }
-}
-
-// ─── BOOST BUTTON ─────────────────────────────────────────────────
-
-class _BoostButton extends GetView<AnnoncesController> {
-  final AnnonceModel annonce;
-  const _BoostButton({required this.annonce});
-
-  @override
-  Widget build(BuildContext context) {
-    final myId = Supabase.instance.client.auth.currentUser?.id;
-    if (myId != annonce.userId) return const SizedBox.shrink();
-    if (annonce.isBoosted) {
-      return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: const Color(0xFFFFD700).withOpacity(0.4))),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.bolt_rounded, size: 13, color: Color(0xFFFFD700)),
-            SizedBox(width: 3),
-            Text('Boostée',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFFFFD700),
-                    fontWeight: FontWeight.w700)),
-          ]));
-    }
-    return Obx(() => GestureDetector(
-        onTap: controller.isBoosting.value ? null : () => _confirm(context),
-        child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                      color: const Color(0xFFFFD700).withOpacity(0.3),
-                      blurRadius: 8)
-                ]),
-            child: controller.isBoosting.value
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
-                : const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.bolt_rounded, size: 13, color: Colors.white),
-                    SizedBox(width: 3),
-                    Text('Booster',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
-                  ]))));
-  }
-
-  void _confirm(BuildContext context) {
-    showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              title: const Row(children: [
-                Icon(Icons.bolt_rounded, color: Color(0xFFFFD700), size: 22),
-                SizedBox(width: 8),
-                Text('Booster l\'annonce',
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary)),
-              ]),
-              content: const Text(
-                  'Ton annonce apparaîtra en tête de liste pendant 24h.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Annuler',
-                        style: TextStyle(color: AppColors.textMuted))),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    controller.boosterAnnonce(annonce);
-                  },
-                  child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                              colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: const Text('⚡ Booster !',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white))),
-                ),
-              ],
-            ));
-  }
-}
-
-// ─── BOOST PROFIL ────────────────────────────────────────────────
-
-class BoostProfilWidget extends StatelessWidget {
-  const BoostProfilWidget({super.key});
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-      onTap: () => _sheet(context),
-      child: Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFFFFD700), Color(0xFFFF8C00)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                    color: const Color(0xFFFFD700).withOpacity(0.4),
-                    blurRadius: 12)
-              ]),
-          child:
-              const Icon(Icons.bolt_rounded, color: Colors.white, size: 22)));
-
-  void _sheet(BuildContext context) {
-    showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) => Container(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
-              decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(28)),
-                  border: Border.all(color: AppColors.border)),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2))),
-                Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                              color: const Color(0xFFFFD700).withOpacity(0.4),
-                              blurRadius: 20)
-                        ]),
-                    child: const Icon(Icons.bolt_rounded,
-                        color: Colors.white, size: 42)),
-                const SizedBox(height: 20),
-                const Text('Booster ton profil',
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 8),
-                const Text(
-                    'Apparais en premier dans la liste\npendant 30 minutes',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-                const SizedBox(height: 24),
-                _Feat('🔝', 'Premier dans les résultats'),
-                const SizedBox(height: 8),
-                _Feat('👁️', 'Plus de vues sur ton profil'),
-                const SizedBox(height: 8),
-                _Feat('💬', 'Plus de messages reçus'),
-                const SizedBox(height: 28),
-                GestureDetector(
-                  onTap: () async {
-                    Navigator.pop(context);
-                    if (!Get.isRegistered<AnnoncesController>())
-                      Get.put(AnnoncesController());
-                    await Get.find<AnnoncesController>().boosterProfil();
-                  },
-                  child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                              colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                                color: const Color(0xFFFFD700).withOpacity(0.4),
-                                blurRadius: 16)
-                          ]),
-                      child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.bolt_rounded,
-                                color: Colors.white, size: 22),
-                            SizedBox(width: 8),
-                            Text('⚡ Activer le Boost — Gratuit',
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white)),
-                          ])),
-                ),
-                const SizedBox(height: 10),
-                const Text('Bientôt : Boost Premium 30min / 24h / 7j',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-              ]),
-            ));
-  }
-}
-
-class _Feat extends StatelessWidget {
-  final String emoji, text;
-  const _Feat(this.emoji, this.text);
-  @override
-  Widget build(BuildContext context) => Row(children: [
-        Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-                color: const Color(0xFFFFD700).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10)),
-            child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 18)))),
-        const SizedBox(width: 12),
-        Text(text,
-            style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600)),
-      ]);
-}
-
-// ─── HELPERS ─────────────────────────────────────────────────────
-
-class _ToggleRow extends StatelessWidget {
-  final bool active;
+class _MediaButton extends StatelessWidget {
   final IconData icon;
-  final Color activeColor;
   final String label;
-  final String sub;
+  final bool active;
   final VoidCallback onTap;
-  final bool? toggleActive;
-  const _ToggleRow(
-      {required this.active,
-      required this.icon,
-      required this.activeColor,
-      required this.label,
-      required this.sub,
-      required this.onTap,
-      this.toggleActive});
+
+  const _MediaButton({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveToggle = toggleActive ?? active;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: active ? activeColor.withOpacity(0.12) : AppColors.surface2,
+          color:
+              active ? AppColors.accent.withOpacity(0.15) : AppColors.surface2,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: active ? activeColor : AppColors.border),
+          border:
+              Border.all(color: active ? AppColors.accent : AppColors.border),
         ),
-        child: Row(children: [
-          Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                  color:
-                      active ? activeColor.withOpacity(0.2) : AppColors.surface,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                      color: active ? activeColor : AppColors.border)),
-              child: Icon(icon,
-                  size: 18, color: active ? activeColor : AppColors.textMuted)),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: active ? activeColor : AppColors.textPrimary)),
-                Text(sub,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted)),
-              ])),
-          AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 44,
-              height: 24,
-              decoration: BoxDecoration(
-                  color: effectiveToggle ? activeColor : AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: effectiveToggle ? activeColor : AppColors.border)),
-              child: AnimatedAlign(
-                  duration: const Duration(milliseconds: 200),
-                  alignment: effectiveToggle
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                      margin: const EdgeInsets.all(2),
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle)))),
-        ]),
+        child: Column(
+          children: [
+            Icon(icon,
+                color: active ? AppColors.accent : AppColors.textMuted,
+                size: 24),
+            const SizedBox(height: 4),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: active ? AppColors.accent : AppColors.textMuted)),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Field extends StatelessWidget {
+class _InputField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final int maxLines;
-  const _Field(
-      {required this.controller, required this.hint, required this.maxLines});
+
+  const _InputField({
+    required this.controller,
+    required this.hint,
+    required this.maxLines,
+  });
+
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    return Container(
       decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border)),
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
       child: TextField(
-          controller: controller,
-          maxLines: maxLines,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-          decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(color: AppColors.textMuted),
-              border: InputBorder.none,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12))));
+        controller: controller,
+        maxLines: maxLines,
+        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: AppColors.textMuted),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color color;
+  final VoidCallback onToggle;
+
+  const _ToggleOption({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.color,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: active ? color.withOpacity(0.12) : AppColors.surface2,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: active ? color : AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: active ? color.withOpacity(0.2) : AppColors.surface,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon,
+                  size: 18, color: active ? color : AppColors.textMuted),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: active ? color : AppColors.textPrimary)),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 44,
+              height: 24,
+              decoration: BoxDecoration(
+                color: active ? color : AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: active ? color : AppColors.border),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                alignment:
+                    active ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.all(2),
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                      color: Colors.white, shape: BoxShape.circle),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _MenuItem extends StatelessWidget {
@@ -3222,21 +3182,131 @@ class _MenuItem extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+
   const _MenuItem(this.icon, this.label, this.color, this.onTap);
+
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) {
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: color.withOpacity(0.2))),
-          child: Row(children: [
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(width: 12),
             Text(label,
                 style: TextStyle(
                     color: color, fontSize: 15, fontWeight: FontWeight.w600)),
-          ])));
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class BoostProfilWidget extends StatelessWidget {
+  const BoostProfilWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _sheet(context),
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: const Color(0xFFFFD700).withOpacity(0.4), blurRadius: 12)
+          ],
+        ),
+        child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
+      ),
+    );
+  }
+
+  void _sheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: const Color(0xFFFFD700).withOpacity(0.4),
+                      blurRadius: 20)
+                ],
+              ),
+              child:
+                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 42),
+            ),
+            const SizedBox(height: 20),
+            const Text('Booster ton profil',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () async {
+                Navigator.pop(context);
+                if (!Get.isRegistered<AnnoncesController>())
+                  Get.put(AnnoncesController());
+                await Get.find<AnnoncesController>().boosterProfil();
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Center(
+                  child: Text('⚡ Activer le Boost',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
