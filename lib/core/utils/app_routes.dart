@@ -12,7 +12,11 @@ import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/features/profil/vue/ecran_profil_detail.dart';
 import 'package:rencontre/features/profil/vue/ecran_modifier_infos.dart';
 import 'package:rencontre/features/profil/vue/ecran_parametres.dart';
-import 'package:rencontre/features/profil/vue/ecran_profils_bloques.dart'; // ✅ nouveau
+import 'package:rencontre/features/profil/vue/ecran_profils_bloques.dart';
+import 'package:rencontre/features/notifications/view/notifications_screen.dart';
+import 'package:rencontre/features/notifications/controller/notification_controller.dart';
+import 'package:rencontre/features/follow/view/followers_screen.dart';
+import 'package:rencontre/features/follow/controller/follow_controller.dart';
 
 class AppRoutes {
   static const splash = '/splash';
@@ -25,13 +29,14 @@ class AppRoutes {
   static const onboardIdentity = '/onboarding/identity';
   static const onboardInterests = '/onboarding/interests';
   static const onboardPermissions = '/onboarding/permissions';
-  static const onboardReady = '/onboarding/ready';
   static const main = '/main';
   static const chatConversation = '/chat/conversation';
   static const profilDetail = '/profile/view';
   static const profilEdit = '/profile/edit';
   static const profilSettings = '/profile/settings';
-  static const profilsBloques = '/profile/blocked'; // ✅ nouveau
+  static const profilsBloques = '/profile/blocked';
+  static const notifications = '/notifications'; // ✅ NOUVEAU
+  static const followers = '/followers'; // ✅ NOUVEAU
 
   static final pages = [
     GetPage(
@@ -66,10 +71,6 @@ class AppRoutes {
         page: () => const OnboardingPermissionsScreen(),
         transition: Transition.rightToLeft),
     GetPage(
-        name: onboardReady,
-        page: () => const OnboardingReadyScreen(),
-        transition: Transition.rightToLeft),
-    GetPage(
         name: main,
         page: () => const MainNavigation(),
         transition: Transition.fadeIn,
@@ -94,7 +95,24 @@ class AppRoutes {
         transition: Transition.cupertino),
     GetPage(
         name: profilsBloques,
-        page: () => const EcranProfilsBloques(), // ✅
+        page: () => const EcranProfilsBloques(),
         transition: Transition.cupertino),
+    // ✅ NOUVEAU
+    GetPage(
+        name: notifications,
+        page: () => const NotificationsScreen(),
+        transition: Transition.rightToLeft,
+        binding: BindingsBuilder(() {
+          Get.lazyPut<NotificationController>(() => NotificationController(),
+              fenix: true);
+        })),
+    // ✅ NOUVEAU
+    GetPage(
+        name: followers,
+        page: () => const FollowersScreen(),
+        transition: Transition.rightToLeft,
+        binding: BindingsBuilder(() {
+          Get.lazyPut<FollowController>(() => FollowController(), fenix: true);
+        })),
   ];
 }

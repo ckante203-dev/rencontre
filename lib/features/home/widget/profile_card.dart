@@ -95,7 +95,7 @@ class ProfileCard extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: storyIsSeen
                         ? null
-                        : const LinearGradient(
+                        :  LinearGradient(
                             colors: [
                               AppColors.accent,
                               AppColors.accent2,

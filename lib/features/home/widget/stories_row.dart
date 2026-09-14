@@ -83,7 +83,7 @@ class _MyStoryItem extends StatelessWidget {
                           ? CachedNetworkImage(
                               imageUrl: myPhotoUrl!, fit: BoxFit.cover)
                           : Container(
-                              decoration: const BoxDecoration(
+                              decoration:  BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [AppColors.accent, AppColors.accent2],
                                 ),
@@ -205,7 +205,7 @@ class _StoryItem extends StatelessWidget {
                       ? CachedNetworkImage(
                           imageUrl: story.userPhotoUrl!, fit: BoxFit.cover)
                       : Container(
-                          decoration: const BoxDecoration(
+                          decoration:  BoxDecoration(
                             gradient: LinearGradient(
                                 colors: [AppColors.accent, AppColors.accent2]),
                           ),

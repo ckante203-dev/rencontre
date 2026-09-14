@@ -90,7 +90,7 @@ class MessageModel {
   final MessageModel? replyTo;
   final StoryReplyData? storyReply;
 
-  // ✅ Nouveau : réponse à une annonce (style WhatsApp statut)
+  // Réponse à une annonce (style WhatsApp statut)
   final AnnonceReplyData? annonceReply;
 
   const MessageModel({
@@ -116,7 +116,15 @@ class MessageModel {
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
   bool get isDisappeared =>
       disappearsAt != null && DateTime.now().isAfter(disappearsAt!);
-  bool get isMine => senderId == 'me';
+
+  // ✅ FIX : "isMine" ne peut pas être un getter sans argument — il ne
+  // connaît jamais l'utilisateur courant. L'ancienne version comparait
+  // senderId à la chaîne littérale "me", qui ne correspond à aucun vrai
+  // UUID Supabase, donc elle renvoyait toujours false. On la transforme
+  // en méthode qui reçoit l'ID de l'utilisateur courant.
+  bool isMine(String? currentUserId) =>
+      currentUserId != null && senderId == currentUserId;
+
   bool get isStoryReply => storyReply != null;
   bool get isAnnonceReply => annonceReply != null;
   bool get hasReactions =>

@@ -6,6 +6,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/home/view/story_screen.dart';
 
 class ChatListScreen extends StatelessWidget {
   const ChatListScreen({super.key});
@@ -18,7 +20,6 @@ class ChatListScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildTopBar(),
-            // ✅ Barre de recherche
             const _SearchBar(),
             const _FilterBar(),
             const Expanded(child: _ConversationList()),
@@ -87,9 +88,9 @@ class _SearchBar extends GetView<ChatListController> {
                   ),
                   child: TextField(
                     autofocus: true,
-                    style: const TextStyle(
-                        fontSize: 14, color: AppColors.textPrimary),
-                    decoration: const InputDecoration(
+                    style:
+                        TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                    decoration: InputDecoration(
                       hintText: 'Rechercher une conversation...',
                       hintStyle:
                           TextStyle(color: AppColors.textMuted, fontSize: 14),
@@ -122,7 +123,6 @@ class _FilterBar extends GetView<ChatListController> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              // ✅ Bouton loupe pour activer/désactiver la recherche
               GestureDetector(
                 onTap: () {
                   controller.isSearching.toggle();
@@ -276,20 +276,18 @@ class _ConversationList extends GetView<ChatListController> {
 
         final list = ctrl.filteredConversations;
 
-        // ✅ Message spécial si recherche active mais aucun résultat
         if (list.isEmpty) {
           if (ctrl.searchQuery.value.isNotEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.search_off_rounded,
+                  Icon(Icons.search_off_rounded,
                       size: 48, color: AppColors.textMuted),
                   const SizedBox(height: 12),
                   Text(
                     'Aucun résultat pour "${ctrl.searchQuery.value}"',
-                    style: const TextStyle(
-                        color: AppColors.textMuted, fontSize: 14),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -328,7 +326,7 @@ class _ConversationList extends GetView<ChatListController> {
               Container(
                   width: 52,
                   height: 52,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                       color: AppColors.surface2, shape: BoxShape.circle)),
               const SizedBox(width: 12),
               Expanded(
@@ -368,11 +366,11 @@ class _ConversationList extends GetView<ChatListController> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.chat_bubble_outline_rounded,
+          Icon(Icons.chat_bubble_outline_rounded,
               size: 48, color: AppColors.textMuted),
           const SizedBox(height: 12),
           Text(msgs[filter] ?? 'Aucune conversation',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 15)),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
         ],
       ),
     );
@@ -410,24 +408,12 @@ class _ConversationTile extends GetView<ChatListController> {
         ),
         child: Row(
           children: [
-            Stack(
-              children: [
-                _Avatar(
-                    name: conv.userName, photoUrl: conv.userPhotoUrl, size: 52),
-                if (conv.isOnline)
-                  Positioned(
-                    bottom: 1,
-                    right: 1,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                          color: AppColors.online,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.bg, width: 2)),
-                    ),
-                  ),
-              ],
+            _AvatarWithStoryRing(
+              userId: conv.userId,
+              name: conv.userName,
+              photoUrl: conv.userPhotoUrl,
+              size: 52,
+              isOnline: conv.isOnline,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -440,13 +426,13 @@ class _ConversationTile extends GetView<ChatListController> {
                         child: Text(conv.userName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary)),
                       ),
                       if (conv.isPinned)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(right: 4),
                           child: Icon(Icons.push_pin,
                               size: 13, color: AppColors.accent),
@@ -516,6 +502,11 @@ class _ConversationTile extends GetView<ChatListController> {
     final msg = conv.lastMessage;
     if (msg == null) return const SizedBox.shrink();
 
+    // ✅ FIX : isMine est maintenant une méthode qui prend l'ID de
+    // l'utilisateur courant (controller.myId), au lieu d'un getter
+    // cassé qui comparait à la chaîne "me" et ne fonctionnait jamais.
+    final mine = msg.isMine(controller.myId);
+
     if (msg.type == MessageType.snap) {
       final isOpened = msg.isOpened;
       return Row(
@@ -529,7 +520,7 @@ class _ConversationTile extends GetView<ChatListController> {
                 borderRadius: BorderRadius.circular(2)),
           ),
           Text(
-              msg.isMine
+              mine
                   ? (isOpened ? 'Snap ouvert' : 'Snap envoyé')
                   : (isOpened ? 'Snap ouvert' : 'Snap reçu'),
               style: TextStyle(
@@ -541,7 +532,7 @@ class _ConversationTile extends GetView<ChatListController> {
     }
 
     if (msg.type == MessageType.audio) {
-      return const Row(children: [
+      return Row(children: [
         Icon(Icons.mic_rounded, size: 14, color: AppColors.textMuted),
         SizedBox(width: 4),
         Text('Message vocal',
@@ -550,7 +541,7 @@ class _ConversationTile extends GetView<ChatListController> {
     }
 
     if (msg.type == MessageType.image) {
-      return const Row(children: [
+      return Row(children: [
         Icon(Icons.photo_outlined, size: 14, color: AppColors.textMuted),
         SizedBox(width: 4),
         Text('Photo',
@@ -559,7 +550,7 @@ class _ConversationTile extends GetView<ChatListController> {
     }
 
     if (msg.type == MessageType.location) {
-      return const Row(children: [
+      return Row(children: [
         Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
         SizedBox(width: 4),
         Text('Localisation',
@@ -568,7 +559,7 @@ class _ConversationTile extends GetView<ChatListController> {
     }
 
     return Text(
-      msg.isMine ? 'Vous: ${msg.text ?? ''}' : (msg.text ?? ''),
+      mine ? 'Vous: ${msg.text ?? ''}' : (msg.text ?? ''),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
@@ -626,7 +617,7 @@ class _ConversationOptions extends GetView<ChatListController> {
             ],
           ),
           const SizedBox(height: 20),
-          const Divider(color: AppColors.border, height: 1),
+          Divider(color: AppColors.border, height: 1),
           const SizedBox(height: 8),
           _Option(
             icon: Icons.mark_chat_read_outlined,
@@ -683,11 +674,11 @@ class _ConversationOptions extends GetView<ChatListController> {
                 fontSize: 16)),
         content: Text(
             'La conversation avec ${conv.userName} sera supprimée définitivement.',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
         actions: [
           TextButton(
               onPressed: () => Get.back(),
-              child: const Text('Annuler',
+              child: Text('Annuler',
                   style: TextStyle(color: AppColors.textMuted))),
           TextButton(
               onPressed: () {
@@ -780,5 +771,118 @@ class _Avatar extends StatelessWidget {
       );
     }
     return fallback;
+  }
+}
+
+// ─── AVATAR AVEC ANNEAU DE STORY (façon WhatsApp statut / Snap) ───
+
+class _AvatarWithStoryRing extends StatelessWidget {
+  final String userId;
+  final String name;
+  final String? photoUrl;
+  final double size;
+  final bool isOnline;
+
+  const _AvatarWithStoryRing({
+    required this.userId,
+    required this.name,
+    required this.photoUrl,
+    required this.size,
+    this.isOnline = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = _Avatar(name: name, size: size, photoUrl: photoUrl);
+
+    if (!Get.isRegistered<HomeController>()) {
+      return _withOnlineDot(avatar);
+    }
+    final homeCtrl = Get.find<HomeController>();
+
+    return Obx(() {
+      final hasStory = homeCtrl.userHasActiveStory(userId);
+      final storySeen = homeCtrl.userStoryIsSeen(userId);
+
+      if (!hasStory) return _withOnlineDot(avatar);
+
+      return GestureDetector(
+        onTap: () => _openStory(homeCtrl),
+        child: Stack(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2.2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: storySeen
+                    ? null
+                    : LinearGradient(
+                        colors: [
+                          AppColors.accent,
+                          AppColors.accent2,
+                          AppColors.accent3,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                color: storySeen ? AppColors.border : null,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(1.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.bg,
+                ),
+                child: avatar,
+              ),
+            ),
+            if (isOnline)
+              Positioned(
+                bottom: 1,
+                right: 1,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                      color: AppColors.online,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.bg, width: 2)),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _withOnlineDot(Widget avatar) {
+    if (!isOnline) return avatar;
+    return Stack(
+      children: [
+        avatar,
+        Positioned(
+          bottom: 1,
+          right: 1,
+          child: Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+                color: AppColors.online,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.bg, width: 2)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openStory(HomeController homeCtrl) {
+    final userStories = homeCtrl.storiesForUser(userId);
+    if (userStories.isEmpty) return;
+    Get.to(
+      () => StoryViewerScreen(stories: userStories, initialIndex: 0),
+      transition: Transition.fadeIn,
+    );
+    homeCtrl.markStoryAsSeen(userStories.first.id);
   }
 }

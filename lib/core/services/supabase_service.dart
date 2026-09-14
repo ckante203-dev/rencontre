@@ -10,13 +10,6 @@ class SupabaseService {
 
   String? get currentUserId => supabase.auth.currentUser?.id;
 
-  // ══════════════════════════════════════════════════════════════════
-  // ✅ ALGORITHME EN LIGNE
-  // Une personne est EN LIGNE si last_seen < 30 minutes
-  //
-  // ⚠️ Quand tu auras beaucoup d'utilisateurs actifs,
-  //    réduis ce seuil à 5 minutes pour plus de précision.
-  // ══════════════════════════════════════════════════════════════════
   static bool isReallyOnline(dynamic isOnline, dynamic lastSeen) {
     if (lastSeen == null) return false;
     final dt = DateTime.tryParse(lastSeen.toString());
@@ -27,101 +20,77 @@ class SupabaseService {
   // ─── PROFILS ────────────────────────────────────────────────────
 
   Future<List<UserModel>> fetchProfiles({
-    String? genderFilter,
-    double? maxDistanceKm,
-    double? myLat,
-    double? myLng,
-  }) async {
-    final uid = currentUserId;
-    if (uid == null) return [];
+  String? genderFilter,
+  double? maxDistanceKm,
+  double? myLat,
+  double? myLng,
+  int limit = 30,
+  int offset = 0,
+}) async {
+  final uid = currentUserId;
+  if (uid == null) return [];
 
-    final myData = await supabase
-        .from('profiles')
-        .select('blocked_users')
-        .eq('id', uid)
-        .maybeSingle();
-    final myBlockedIds = List<String>.from(myData?['blocked_users'] ?? []);
+  final myData = await supabase
+      .from('profiles')
+      .select('blocked_users')
+      .eq('id', uid)
+      .maybeSingle();
+  final myBlockedIds = List<String>.from(myData?['blocked_users'] ?? []);
 
-    final blockedMeData = await supabase
-        .from('profiles')
-        .select('id')
-        .contains('blocked_users', [uid]);
-    final blockedMeIds =
-        (blockedMeData as List).map((r) => r['id'] as String).toList();
+  final blockedMeData = await supabase
+      .from('profiles')
+      .select('id')
+      .contains('blocked_users', [uid]);
+  final blockedMeIds =
+      (blockedMeData as List).map((r) => r['id'] as String).toList();
 
-    final allExcluded = <String>{uid, ...myBlockedIds, ...blockedMeIds};
+  final allExcluded = <String>{uid, ...myBlockedIds, ...blockedMeIds};
 
-    final data = await supabase
-        .from('profiles')
-        .select()
-        .eq('is_suspended', false)
-        .order('created_at', ascending: false);
+  // ✅ Pagination : on ne charge plus toute la table d'un coup.
+  var query = supabase
+      .from('profiles')
+      .select()
+      .eq('is_suspended', false);
 
-    List<UserModel> users = (data as List)
-        .map((row) => _profileToUser(row))
-        .where((u) => !allExcluded.contains(u.id))
-        .toList();
+  final data = await query
+      .order('created_at', ascending: false)
+      .range(offset, offset + limit - 1);
 
-    if (genderFilter != null &&
-        genderFilter != 'all' &&
-        genderFilter != 'tout le monde') {
+  List<UserModel> users = (data as List)
+      .map((row) => _profileToUser(row))
+      .where((u) => !allExcluded.contains(u.id))
+      .toList();
+
+  if (genderFilter != null) {
+    final normalizedFilter = genderFilter.toLowerCase().trim();
+    const showAllValues = {'tout', 'tous', 'all', 'tout le monde'};
+    if (!showAllValues.contains(normalizedFilter)) {
       users = users.where((u) {
-        final g = u.gender?.toLowerCase();
-        return g == genderFilter.toLowerCase() ||
-            g == null ||
-            g == 'non précisé' ||
-            g.isEmpty;
+        final g = u.gender?.toLowerCase().trim();
+        return g == normalizedFilter;
       }).toList();
     }
-
-    if (myLat != null && myLng != null) {
-      // Calculer les distances
-      for (int i = 0; i < users.length; i++) {
-        final u = users[i];
-        if (u.latitude != null && u.longitude != null) {
-          final dist = _distanceKm(myLat, myLng, u.latitude!, u.longitude!);
-          users[i] = u.copyWith(distanceMeters: dist * 1000);
-        }
-      }
-
-      if (maxDistanceKm != null) {
-        users = users.where((u) {
-          if (u.distanceMeters == null) return false;
-          return u.distanceMeters! <= maxDistanceKm * 1000;
-        }).toList();
-      }
-
-      // ✅ Tri intelligent :
-      // 1. En ligne en premier
-      // 2. Nouveaux membres (< 7 jours) en second
-      // 3. Puis par distance croissante
-      users.sort((a, b) {
-        // En ligne avant hors ligne
-        if (a.isOnline && !b.isOnline) return -1;
-        if (!a.isOnline && b.isOnline) return 1;
-
-        // Nouveaux membres avant les anciens
-        if (a.isNewMember && !b.isNewMember) return -1;
-        if (!a.isNewMember && b.isNewMember) return 1;
-
-        // Puis par distance
-        final da = a.distanceMeters ?? double.infinity;
-        final db = b.distanceMeters ?? double.infinity;
-        return da.compareTo(db);
-      });
-    } else {
-      // Sans localisation : en ligne d'abord, puis nouveaux membres
-      users.sort((a, b) {
-        if (a.isOnline && !b.isOnline) return -1;
-        if (!a.isOnline && b.isOnline) return 1;
-        if (a.isNewMember && !b.isNewMember) return -1;
-        if (!a.isNewMember && b.isNewMember) return 1;
-        return 0;
-      });
-    }
-
-    return users;
   }
+
+  if (myLat != null && myLng != null) {
+    for (int i = 0; i < users.length; i++) {
+      final u = users[i];
+      if (u.latitude != null && u.longitude != null) {
+        final dist = _distanceKm(myLat, myLng, u.latitude!, u.longitude!);
+        users[i] = u.copyWith(distanceMeters: dist * 1000);
+      }
+    }
+    if (maxDistanceKm != null) {
+      users = users.where((u) {
+        if (u.distanceMeters == null) return false;
+        return u.distanceMeters! <= maxDistanceKm * 1000;
+      }).toList();
+    }
+  }
+
+  return users;
+}
+
 
   double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
     const r = 6371.0;
@@ -179,6 +148,11 @@ class SupabaseService {
 
   Future<String> getOrCreateConversation(String otherUserId) async {
     final uid = currentUserId!;
+    // ✅ Garde-fou — on ne doit jamais pouvoir se conversation avec soi-même,
+    // même si un bug d'affichage amont a montré son propre profil par erreur.
+    if (uid == otherUserId) {
+      throw Exception('Impossible de démarrer une conversation avec soi-même');
+    }
     final existing = await supabase
         .from('conversations')
         .select('id')
@@ -234,31 +208,47 @@ class SupabaseService {
 
     final convIds = filtered.map((r) => r['id'] as String).toList();
 
-    final lastMsgsData = await supabase
-        .from('messages')
-        .select(
-            'id, conversation_id, type, content, sender_id, created_at, status, is_read, is_opened, audio_duration')
-        .inFilter('conversation_id', convIds)
-        .order('created_at', ascending: false);
+    List<Map<String, dynamic>> lastMsgsData = [];
+    List<Map<String, dynamic>> unreadData = [];
+    try {
+      lastMsgsData = List<Map<String, dynamic>>.from(await supabase
+          .from('messages')
+          .select(
+              'id, conversation_id, type, content, sender_id, created_at, status, is_read, is_opened, audio_duration')
+          .inFilter('conversation_id', convIds)
+          .order('created_at', ascending: false));
+    } catch (e) {
+      // ✅ Ne bloque plus la liste des conversations si is_read n'existe pas encore
+      lastMsgsData = List<Map<String, dynamic>>.from(await supabase
+          .from('messages')
+          .select(
+              'id, conversation_id, type, content, sender_id, created_at, status, audio_duration')
+          .inFilter('conversation_id', convIds)
+          .order('created_at', ascending: false));
+    }
 
     final Map<String, Map<String, dynamic>> lastMsgByConv = {};
-    for (final msg in (lastMsgsData as List)) {
+    for (final msg in lastMsgsData) {
       final cid = msg['conversation_id'] as String;
       if (!lastMsgByConv.containsKey(cid)) {
         lastMsgByConv[cid] = msg;
       }
     }
 
-    final unreadData = await supabase
-        .from('messages')
-        .select('conversation_id')
-        .inFilter('conversation_id', convIds)
-        .neq('sender_id', uid)
-        .eq('is_read', false)
-        .neq('status', 'read');
+    try {
+      unreadData = List<Map<String, dynamic>>.from(await supabase
+          .from('messages')
+          .select('conversation_id')
+          .inFilter('conversation_id', convIds)
+          .neq('sender_id', uid)
+          .eq('is_read', false)
+          .neq('status', 'read'));
+    } catch (e) {
+      unreadData = [];
+    }
 
     final Map<String, int> unreadByConv = {};
-    for (final msg in (unreadData as List)) {
+    for (final msg in unreadData) {
       final cid = msg['conversation_id'] as String;
       unreadByConv[cid] = (unreadByConv[cid] ?? 0) + 1;
     }
@@ -314,22 +304,30 @@ class SupabaseService {
 
   Future<void> markMessagesAsDelivered(String conversationId) async {
     final uid = currentUserId!;
-    await supabase
-        .from('messages')
-        .update({'status': 'delivered'})
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', uid)
-        .eq('status', 'sent');
+    try {
+      await supabase
+          .from('messages')
+          .update({'status': 'delivered'})
+          .eq('conversation_id', conversationId)
+          .neq('sender_id', uid)
+          .eq('status', 'sent');
+    } catch (e) {
+      // ✅ Ne doit jamais bloquer l'ouverture de la conversation
+    }
   }
 
   Future<void> markMessagesAsRead(String conversationId) async {
     final uid = currentUserId!;
-    await supabase
-        .from('messages')
-        .update({'status': 'read', 'is_read': true})
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', uid)
-        .neq('status', 'read');
+    try {
+      await supabase
+          .from('messages')
+          .update({'status': 'read', 'is_read': true})
+          .eq('conversation_id', conversationId)
+          .neq('sender_id', uid)
+          .neq('status', 'read');
+    } catch (e) {
+      // ✅ Ne doit jamais bloquer l'ouverture de la conversation ni l'envoi
+    }
   }
 
   RealtimeChannel listenToMessages(
@@ -399,7 +397,6 @@ class SupabaseService {
       lastSeen: row['last_seen'] != null
           ? DateTime.tryParse(row['last_seen'].toString())
           : null,
-      // ✅ createdAt pour le badge "Nouveau membre"
       createdAt: row['created_at'] != null
           ? DateTime.tryParse(row['created_at'].toString())
           : null,
@@ -410,6 +407,7 @@ class SupabaseService {
       poids: row['poids'] as int?,
       morphologie: row['morphologie'] as String?,
       lieuRencontre: row['lieu_rencontre'] as String?,
+      isPremium: row['is_premium'] ?? false,
     );
   }
 }

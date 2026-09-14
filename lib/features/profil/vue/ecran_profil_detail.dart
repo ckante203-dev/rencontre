@@ -11,6 +11,19 @@ import 'package:rencontre/features/likes/like_widgets.dart' show LikeButton;
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
+import 'package:rencontre/features/follow/controller/follow_controller.dart';
+
+// ══════════════════════════════════════════════════════════════════
+//  WRAPPER — gère le swipe HORIZONTAL entre plusieurs profils.
+//  Le swipe VERTICAL (haut/bas) est réservé au défilement des
+//  photos d'UN MÊME profil, façon Grindr (voir _VerticalPhotoPager
+//  dans _ProfilDetailContent ci-dessous).
+//
+//  Arguments attendus via Get.arguments :
+//    - Map { 'profiles': List<UserModel>, 'initialIndex': int }
+//    - ou List<UserModel> (index de départ = 0)
+//    - ou UserModel seul (rétro-compatibilité, liste à 1 élément)
+// ══════════════════════════════════════════════════════════════════
 
 class EcranProfilDetail extends StatefulWidget {
   const EcranProfilDetail({super.key});
@@ -19,7 +32,86 @@ class EcranProfilDetail extends StatefulWidget {
   State<EcranProfilDetail> createState() => _EcranProfilDetailState();
 }
 
-class _EcranProfilDetailState extends State<EcranProfilDetail>
+class _EcranProfilDetailState extends State<EcranProfilDetail> {
+  late List<UserModel> _profiles;
+  late int _initialIndex;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    final args = Get.arguments;
+
+    if (args is Map) {
+      _profiles = List<UserModel>.from(args['profiles'] as List? ?? const []);
+      _initialIndex = (args['initialIndex'] as int?) ?? 0;
+    } else if (args is List) {
+      _profiles = List<UserModel>.from(args);
+      _initialIndex = 0;
+    } else if (args is UserModel) {
+      _profiles = [args];
+      _initialIndex = 0;
+    } else {
+      _profiles = const [];
+      _initialIndex = 0;
+    }
+
+    if (_profiles.isNotEmpty) {
+      _initialIndex = _initialIndex.clamp(0, _profiles.length - 1);
+    }
+
+    _pageController = PageController(initialPage: _initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_profiles.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0D0D1A),
+        body: Center(
+          child: Text(
+            'Profil introuvable',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    return PageView.builder(
+      controller: _pageController,
+      scrollDirection: Axis.horizontal,
+      physics: const PageScrollPhysics(),
+      itemCount: _profiles.length,
+      itemBuilder: (context, index) {
+        return _ProfilDetailContent(
+          key: ValueKey(_profiles[index].id),
+          user: _profiles[index],
+        );
+      },
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CONTENU D'UN PROFIL — ex-EcranProfilDetail, désormais paramétré
+//  par `user` (reçu du PageView parent) au lieu de Get.arguments.
+// ══════════════════════════════════════════════════════════════════
+
+class _ProfilDetailContent extends StatefulWidget {
+  final UserModel user;
+  const _ProfilDetailContent({super.key, required this.user});
+
+  @override
+  State<_ProfilDetailContent> createState() => _ProfilDetailContentState();
+}
+
+class _ProfilDetailContentState extends State<_ProfilDetailContent>
     with SingleTickerProviderStateMixin {
   late UserModel user;
   bool _isLoadingMsg = false;
@@ -47,9 +139,12 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
   @override
   void initState() {
     super.initState();
-    user = Get.arguments as UserModel;
+    user = widget.user;
     _tabCtrl = TabController(length: 1, vsync: this);
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+    if (!Get.isRegistered<FollowController>()) {
+      Get.put(FollowController(), permanent: true);
+    }
     _loadActiveStory();
     _loadStories();
     _recordProfileView();
@@ -266,11 +361,10 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                   border: Border.all(color: AppColors.error.withOpacity(0.25))),
               child:
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.block_rounded,
-                    color: AppColors.error, size: 20),
+                Icon(Icons.block_rounded, color: AppColors.error, size: 20),
                 const SizedBox(width: 10),
                 Text('Bloquer ${user.name}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.error)),
@@ -313,7 +407,7 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border)),
-              child: const Center(
+              child: Center(
                 child: Text('Annuler',
                     style: TextStyle(
                         fontSize: 15,
@@ -380,12 +474,12 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                     Text(r['icon']!, style: const TextStyle(fontSize: 18)),
                     const SizedBox(width: 12),
                     Text(r['label']!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
                     const Spacer(),
-                    const Icon(Icons.chevron_right_rounded,
+                    Icon(Icons.chevron_right_rounded,
                         color: AppColors.textMuted, size: 18),
                   ]),
                 ),
@@ -450,36 +544,34 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
+                  // ✅ NOUVEAU — swipe VERTICAL (haut/bas) entre les photos
+                  // du profil, façon Grindr. Ne rentre pas en conflit avec
+                  // le swipe HORIZONTAL entre profils (axes différents).
                   photos.isNotEmpty
-                      ? PageView.builder(
-                          itemCount: photos.length,
-                          onPageChanged: (i) =>
+                      ? _VerticalPhotoPager(
+                          photos: photos,
+                          name: user.name,
+                          initialIndex: _currentPhotoIndex,
+                          onIndexChanged: (i) =>
                               setState(() => _currentPhotoIndex = i),
-                          itemBuilder: (_, i) => GestureDetector(
-                            onTap: () => _openPhoto(photos[i]),
-                            child: CachedNetworkImage(
-                              imageUrl: photos[i],
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) =>
-                                  _GradientBg(name: user.name),
-                              errorWidget: (_, __, ___) =>
-                                  _GradientBg(name: user.name),
-                            ),
-                          ),
+                          onTapPhoto: () =>
+                              _openPhoto(photos[_currentPhotoIndex]),
                         )
                       : _GradientBg(name: user.name),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          Color(0xCC000000),
-                          Color(0xFF0D0D1A),
-                        ],
-                        stops: [0.0, 0.5, 0.85, 1.0],
+                  const IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.transparent,
+                            Color(0xCC000000),
+                            Color(0xFF0D0D1A),
+                          ],
+                          stops: [0.0, 0.5, 0.85, 1.0],
+                        ),
                       ),
                     ),
                   ),
@@ -488,20 +580,22 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                       top: MediaQuery.of(context).padding.top + 54,
                       left: 0,
                       right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          photos.length,
-                          (i) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            width: i == _currentPhotoIndex ? 20 : 6,
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              color: i == _currentPhotoIndex
-                                  ? Colors.white
-                                  : Colors.white38,
-                              borderRadius: BorderRadius.circular(2),
+                      child: IgnorePointer(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            photos.length,
+                            (i) => AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              width: i == _currentPhotoIndex ? 20 : 6,
+                              height: 4,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: BoxDecoration(
+                                color: i == _currentPhotoIndex
+                                    ? Colors.white
+                                    : Colors.white38,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
                           ),
                         ),
@@ -511,25 +605,27 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                     Positioned(
                       top: MediaQuery.of(context).padding.top + 54,
                       left: 16,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.gradientPink,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.star_rounded,
-                                size: 11, color: Colors.white),
-                            SizedBox(width: 4),
-                            Text('Nouveau membre',
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white)),
-                          ],
+                      child: IgnorePointer(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.gradientPink,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star_rounded,
+                                  size: 11, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text('Nouveau membre',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -548,7 +644,7 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                                 shape: BoxShape.circle,
                                 gradient: _activeStory!.isSeen
                                     ? null
-                                    : const LinearGradient(
+                                    : LinearGradient(
                                         colors: [
                                             AppColors.accent,
                                             AppColors.accent2,
@@ -606,87 +702,110 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
                     bottom: 20,
                     left: 20,
                     right: 80,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: Text('${user.name}, ${user.age}',
-                                    style: const TextStyle(
-                                        fontFamily: 'Syne',
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                        letterSpacing: -0.5)),
-                              ),
-                              if (user.isOnline) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                      color: AppColors.online.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: AppColors.online
-                                              .withOpacity(0.5))),
-                                  child: const Row(children: [
-                                    Icon(Icons.circle,
-                                        size: 7, color: AppColors.online),
-                                    SizedBox(width: 4),
-                                    Text('En ligne',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.online)),
-                                  ]),
+                    child: IgnorePointer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text('${user.name}, ${user.age}',
+                                      style: const TextStyle(
+                                          fontFamily: 'Syne',
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          letterSpacing: -0.5)),
                                 ),
-                              ],
+                                if (user.isPremium) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Color(0xFFFFD700),
+                                          Color(0xFFFFA500)
+                                        ],
+                                      ),
+                                    ),
+                                    child: const Icon(Icons.check_rounded,
+                                        size: 12, color: Colors.white),
+                                  ),
+                                ],
+                                if (user.isOnline) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                        color:
+                                            AppColors.online.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                            color: AppColors.online
+                                                .withOpacity(0.5))),
+                                    child: Row(children: [
+                                      Icon(Icons.circle,
+                                          size: 7, color: AppColors.online),
+                                      SizedBox(width: 4),
+                                      Text('En ligne',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.online)),
+                                    ]),
+                                  ),
+                                ],
+                              ]),
+                          if (!user.isOnline) ...[
+                            const SizedBox(height: 4),
+                            Row(children: [
+                              const Icon(Icons.access_time_rounded,
+                                  size: 11, color: Colors.white54),
+                              const SizedBox(width: 4),
+                              Text(_lastSeenLabel(),
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white54)),
                             ]),
-                        if (!user.isOnline) ...[
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            const Icon(Icons.access_time_rounded,
-                                size: 11, color: Colors.white54),
-                            const SizedBox(width: 4),
-                            Text(_lastSeenLabel(),
-                                style: const TextStyle(
-                                    fontSize: 11, color: Colors.white54)),
-                          ]),
+                          ],
+                          if (user.distanceMeters != null) ...[
+                            const SizedBox(height: 2),
+                            Row(children: [
+                              const Icon(Icons.location_on_rounded,
+                                  size: 12, color: Colors.white54),
+                              const SizedBox(width: 3),
+                              Text(user.distanceLabel,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.white54)),
+                            ]),
+                          ],
                         ],
-                        if (user.distanceMeters != null) ...[
-                          const SizedBox(height: 2),
-                          Row(children: [
-                            const Icon(Icons.location_on_rounded,
-                                size: 12, color: Colors.white54),
-                            const SizedBox(width: 3),
-                            Text(user.distanceLabel,
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.white54)),
-                          ]),
-                        ],
-                      ],
+                      ),
                     ),
                   ),
                   if (photos.length > 1)
                     Positioned(
                       bottom: 22,
                       right: 16,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(10)),
-                        child: Text(
-                            '${_currentPhotoIndex + 1}/${photos.length}',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
+                      child: IgnorePointer(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(10)),
+                          child: Text(
+                              '${_currentPhotoIndex + 1}/${photos.length}',
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600)),
+                        ),
                       ),
                     ),
                 ],
@@ -696,58 +815,64 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _ouvrirChat,
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                          gradient: AppColors.gradientPink,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                                color: AppColors.accent.withOpacity(0.4),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4))
-                          ]),
-                      child: Center(
-                        child: _isLoadingMsg
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                    Icon(Icons.chat_bubble_rounded,
-                                        size: 17, color: Colors.white),
-                                    SizedBox(width: 8),
-                                    Text('Envoyer un message',
-                                        style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white)),
-                                  ]),
+              child: Column(
+                children: [
+                  _FollowButton(userId: user.id),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _ouvrirChat,
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                              gradient: AppColors.gradientPink,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: AppColors.accent.withOpacity(0.4),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4))
+                              ]),
+                          child: Center(
+                            child: _isLoadingMsg
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                        Icon(Icons.chat_bubble_rounded,
+                                            size: 17, color: Colors.white),
+                                        SizedBox(width: 8),
+                                        Text('Envoyer un message',
+                                            style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white)),
+                                      ]),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _ActionBtn(
-                    emoji: '📸',
-                    onTap: () => Get.snackbar('📸 Snap', 'Bientôt !',
-                        snackPosition: SnackPosition.TOP,
-                        backgroundColor: const Color(0xFF13131A),
-                        colorText: Colors.white)),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: LikeButton(user: user),
-                ),
-              ]),
+                    const SizedBox(width: 10),
+                    _ActionBtn(
+                        emoji: '📸',
+                        onTap: () => Get.snackbar('📸 Snap', 'Bientôt !',
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor: const Color(0xFF13131A),
+                            colorText: Colors.white)),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: LikeButton(user: user),
+                    ),
+                  ]),
+                ],
+              ),
             ),
           ),
         ],
@@ -759,6 +884,119 @@ class _EcranProfilDetailState extends State<EcranProfilDetail>
         ),
       ),
     );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ✅ NOUVEAU — SWIPE VERTICAL ENTRE LES PHOTOS D'UN PROFIL (Grindr)
+// ══════════════════════════════════════════════════════════════════
+
+class _VerticalPhotoPager extends StatefulWidget {
+  final List<String> photos;
+  final String name;
+  final int initialIndex;
+  final ValueChanged<int> onIndexChanged;
+  final VoidCallback onTapPhoto;
+
+  const _VerticalPhotoPager({
+    required this.photos,
+    required this.name,
+    required this.onIndexChanged,
+    required this.onTapPhoto,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<_VerticalPhotoPager> createState() => _VerticalPhotoPagerState();
+}
+
+class _VerticalPhotoPagerState extends State<_VerticalPhotoPager> {
+  late final PageController _vCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _vCtrl = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _vCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTapPhoto,
+      child: PageView.builder(
+        controller: _vCtrl,
+        scrollDirection: Axis.vertical,
+        physics: const ClampingScrollPhysics(),
+        itemCount: widget.photos.length,
+        onPageChanged: widget.onIndexChanged,
+        itemBuilder: (_, i) => CachedNetworkImage(
+          key: ValueKey(widget.photos[i]),
+          imageUrl: widget.photos[i],
+          fit: BoxFit.cover,
+          placeholder: (_, __) => _GradientBg(name: widget.name),
+          errorWidget: (_, __, ___) => _GradientBg(name: widget.name),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── BOUTON SUIVRE / SUIVI ────────────────────────────────────────
+
+class _FollowButton extends StatelessWidget {
+  final String userId;
+  const _FollowButton({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    final myUid = Supabase.instance.client.auth.currentUser?.id;
+    if (myUid == null || myUid == userId) return const SizedBox.shrink();
+
+    final ctrl = Get.find<FollowController>();
+
+    return Obx(() {
+      final following = ctrl.isFollowing(userId);
+      return GestureDetector(
+        onTap: () => ctrl.toggleFollow(userId),
+        child: Container(
+          width: double.infinity,
+          height: 44,
+          decoration: BoxDecoration(
+            gradient: following ? null : AppColors.gradientPink,
+            color: following ? AppColors.surface : null,
+            borderRadius: BorderRadius.circular(14),
+            border: following ? Border.all(color: AppColors.border) : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                following
+                    ? Icons.check_rounded
+                    : Icons.person_add_alt_1_rounded,
+                size: 17,
+                color: following ? AppColors.textPrimary : Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                following ? 'Suivi' : 'Suivre',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: following ? AppColors.textPrimary : Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }
 
@@ -816,7 +1054,6 @@ class _CorpsProfil extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Infos de base (sans genre ni recherche) ───────────
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -838,8 +1075,6 @@ class _CorpsProfil extends StatelessWidget {
             ]),
           ),
           const SizedBox(height: 12),
-
-          // ── Morphologie, taille, poids, lieu de rencontre ─────
           if (user.taille != null ||
               user.poids != null ||
               user.morphologie != null ||
@@ -868,8 +1103,6 @@ class _CorpsProfil extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-
-          // ── Bio ───────────────────────────────────────────────
           if (user.bio != null && user.bio!.isNotEmpty) ...[
             const _SectionTitle('✍️ À propos'),
             const SizedBox(height: 8),
@@ -881,13 +1114,11 @@ class _CorpsProfil extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border)),
               child: Text(user.bio!,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14, color: AppColors.textPrimary, height: 1.6)),
             ),
             const SizedBox(height: 16),
           ],
-
-          // ── Intérêts ──────────────────────────────────────────
           if (user.interests.isNotEmpty) ...[
             const _SectionTitle('🎯 Intérêts'),
             const SizedBox(height: 8),
@@ -911,8 +1142,6 @@ class _CorpsProfil extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-
-          // ── Publications ──────────────────────────────────────
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
@@ -938,7 +1167,7 @@ class _CorpsProfil extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (loadingStories)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.all(20),
                 child: CircularProgressIndicator(
@@ -980,7 +1209,7 @@ class _PhysiqueBadge extends StatelessWidget {
         Text(icon, style: const TextStyle(fontSize: 14)),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary)),
@@ -998,7 +1227,7 @@ class _GrilleStoriesDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (stories.isEmpty) {
-      return const Column(
+      return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.photo_library_outlined,
@@ -1095,13 +1324,12 @@ class _InfoTile extends StatelessWidget {
         Text(icon, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary),
             textAlign: TextAlign.center),
-        Text(label,
-            style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+        Text(label, style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
       ]),
     );
   }
@@ -1134,7 +1362,7 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: AppColors.textMuted,

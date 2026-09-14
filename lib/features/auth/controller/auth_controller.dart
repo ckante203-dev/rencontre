@@ -19,8 +19,14 @@ class AuthController extends GetxController {
   final RxBool showConfirmPassword = false.obs;
   final RxInt passwordStrength = 0.obs;
 
+  // ✅ Vérification de disponibilité du nom d'utilisateur (inscription)
+  final RxBool usernameAvailable = true.obs;
+  final RxBool checkingUsername = false.obs;
+  final RxString usernameText = ''.obs;
+
   final emailOtpController = TextEditingController();
   final nameController = TextEditingController();
+  final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
@@ -134,8 +140,38 @@ class AuthController extends GetxController {
     }
   }
 
+  // ─── USERNAME ────────────────────────────────────────────
+
+  /// ✅ Vérifie en direct si le nom d'utilisateur saisi est disponible.
+  Future<void> checkUsernameAvailability(String value) async {
+    final username = value.trim().toLowerCase();
+    if (username.length < 3) {
+      usernameAvailable.value = false;
+      return;
+    }
+    checkingUsername.value = true;
+    try {
+      final existing = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .maybeSingle();
+      usernameAvailable.value = existing == null;
+    } catch (e) {
+      debugPrint('checkUsernameAvailability error: $e');
+      // ✅ En cas d'erreur réseau on ne bloque pas l'utilisateur ;
+      // la contrainte unique en base reste le vrai garde-fou.
+      usernameAvailable.value = true;
+    } finally {
+      checkingUsername.value = false;
+    }
+  }
+
   // ─── EMAIL / PASSWORD ──────────────────────────────────────
 
+  /// ✅ Inscription simplifiée façon Snapchat : le compte est créé et
+  /// utilisable immédiatement, sans étape de validation d'email.
+  /// L'email pourra être vérifié plus tard depuis le profil.
   Future<void> signUpWithEmail() async {
     if (!_validateSignUp()) return;
     _setLoading(true);
@@ -147,15 +183,19 @@ class AuthController extends GetxController {
         emailRedirectTo: null,
       );
       errorMessage.value = '';
-      if (res.session != null && res.user != null) {
+
+      if (res.user != null) {
         final parsed = _parseBirthdate(birthdateController.text);
         await _createProfile(
           res.user!,
+          username: usernameController.text.trim().toLowerCase(),
           birthdate: parsed['iso'],
           age: parsed['age'],
         );
+        // ✅ La navigation vers l'onboarding se déclenche automatiquement
+        // via _handleAuthChange dès que la session est active.
       } else {
-        showEmailOtp.value = true;
+        errorMessage.value = 'Impossible de créer le compte. Réessaie.';
       }
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
@@ -166,10 +206,12 @@ class AuthController extends GetxController {
     }
   }
 
+  /// ⚠️ Plus appelée pendant l'inscription — conservée pour être réutilisée
+  /// plus tard depuis l'écran de profil ("Vérifier mon email").
   Future<void> verifyEmailOtp() async {
     final code = emailOtpController.text.trim();
-    if (code.length != 6) {
-      errorMessage.value = 'Entre le code à 6 chiffres';
+    if (code.length != 8) {
+      errorMessage.value = 'Entre le code à 8 chiffres';
       return;
     }
     _setLoading(true);
@@ -180,12 +222,9 @@ class AuthController extends GetxController {
         type: OtpType.signup,
       );
       if (res.user != null) {
-        final parsed = _parseBirthdate(birthdateController.text);
-        await _createProfile(
-          res.user!,
-          birthdate: parsed['iso'],
-          age: parsed['age'],
-        );
+        await supabase
+            .from('profiles')
+            .update({'email_verified': true}).eq('id', res.user!.id);
         showEmailOtp.value = false;
         errorMessage.value = '';
       }
@@ -200,6 +239,8 @@ class AuthController extends GetxController {
     }
   }
 
+  /// ⚠️ Plus appelée pendant l'inscription — conservée pour "Vérifier mon
+  /// email" depuis le profil.
   Future<void> resendEmailOtp() async {
     _setLoading(true);
     try {
@@ -219,18 +260,42 @@ class AuthController extends GetxController {
     }
   }
 
+  /// ✅ Connexion par email OU nom d'utilisateur + mot de passe.
   Future<void> signInWithEmail() async {
     if (!_validateLogin()) return;
     _setLoading(true);
     try {
+      final identifier = emailController.text.trim();
+      String emailToUse;
+
+      if (identifier.contains('@')) {
+        emailToUse = identifier;
+      } else {
+        final match = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', identifier.toLowerCase())
+            .maybeSingle();
+
+        final foundEmail = match?['email'] as String?;
+        if (foundEmail == null || foundEmail.isEmpty) {
+          errorMessage.value = 'Aucun compte trouvé avec ce nom d\'utilisateur';
+          _setLoading(false);
+          return;
+        }
+        emailToUse = foundEmail;
+      }
+
       await supabase.auth.signInWithPassword(
-        email: emailController.text.trim(),
+        email: emailToUse,
         password: passwordController.text,
       );
       errorMessage.value = '';
       // ✅ La navigation est gérée par _handleAuthChange (signedIn)
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
+    } catch (_) {
+      errorMessage.value = 'Une erreur est survenue. Réessaie.';
     } finally {
       _setLoading(false);
     }
@@ -260,10 +325,14 @@ class AuthController extends GetxController {
   Future<void> signInWithGoogle() async {
     _setLoading(true);
     try {
+      // Client Web ID OAuth 2.0 généré dans Google Cloud Console (zamu-dcffa)
       const webClientId =
-          '894643165430-pk4p5jitoov8qisi3s98rbk6eg8h4984.apps.googleusercontent.com';
-      final GoogleSignIn googleSignIn =
-          GoogleSignIn(serverClientId: webClientId);
+          '70132643190-skak491hsn89vg2qgmfe00ja04rcnb9j.apps.googleusercontent.com';
+
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        serverClientId: webClientId,
+        scopes: ['email', 'profile'],
+      );
 
       await googleSignIn.signOut();
 
@@ -275,7 +344,8 @@ class AuthController extends GetxController {
 
       final googleAuth = await googleUser.authentication;
       if (googleAuth.idToken == null) {
-        errorMessage.value = 'Connexion Google échouée';
+        errorMessage.value =
+            'Connexion Google échouée (aucun jeton d\'identité ID Token)';
         _setLoading(false);
         return;
       }
@@ -298,7 +368,6 @@ class AuthController extends GetxController {
         }
       }
       errorMessage.value = '';
-      // ✅ Navigation gérée par _handleAuthChange
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
       errorMessage.value = 'Connexion Google échouée. Réessaie.';
@@ -366,7 +435,6 @@ class AuthController extends GetxController {
       await googleSignIn.signOut();
     } catch (_) {}
     await supabase.auth.signOut();
-    // ✅ _handleAuthChange gère la navigation vers /login
   }
 
   // ─── HELPERS ───────────────────────────────────────────────
@@ -403,6 +471,7 @@ class AuthController extends GetxController {
   Future<void> _createProfile(
     User user, {
     String? name,
+    String? username,
     String? photoUrl,
     String? birthdate,
     int? age,
@@ -411,7 +480,9 @@ class AuthController extends GetxController {
     await supabase.from('profiles').upsert({
       'id': user.id,
       'name': name ?? user.userMetadata?['name'] ?? 'Utilisateur',
+      'username': username ?? 'user${user.id.substring(0, 8)}',
       'email': user.email ?? '',
+      'email_verified': false,
       'photo_url': photoUrl ?? user.userMetadata?['avatar_url'] ?? '',
       'photo_urls': [],
       'interests': [],
@@ -482,6 +553,22 @@ class AuthController extends GetxController {
       errorMessage.value = 'Entre ton prénom';
       return false;
     }
+
+    final username = usernameController.text.trim().toLowerCase();
+    if (username.isEmpty) {
+      errorMessage.value = 'Choisis un nom d\'utilisateur';
+      return false;
+    }
+    if (!RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(username)) {
+      errorMessage.value =
+          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)';
+      return false;
+    }
+    if (!usernameAvailable.value) {
+      errorMessage.value = 'Ce nom d\'utilisateur est déjà pris';
+      return false;
+    }
+
     final dateText = birthdateController.text.trim();
     if (dateText.isEmpty) {
       errorMessage.value = 'Entre ta date de naissance';
@@ -545,7 +632,7 @@ class AuthController extends GetxController {
 
   bool _validateLogin() {
     if (emailController.text.trim().isEmpty) {
-      errorMessage.value = 'Entre ton email';
+      errorMessage.value = 'Entre ton email ou ton nom d\'utilisateur';
       return false;
     }
     if (passwordController.text.isEmpty) {
@@ -576,6 +663,7 @@ class AuthController extends GetxController {
   void onClose() {
     emailOtpController.dispose();
     nameController.dispose();
+    usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();

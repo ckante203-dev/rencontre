@@ -22,8 +22,8 @@ class UserModel {
   final int? poids;
   final String? morphologie;
   final String? lieuRencontre;
-  // ✅ Nouveau — date d'inscription pour le badge "Nouveau membre"
   final DateTime? createdAt;
+  final bool isPremium; // ✅ NOUVEAU — badge certifié
 
   const UserModel({
     required this.id,
@@ -48,6 +48,7 @@ class UserModel {
     this.morphologie,
     this.lieuRencontre,
     this.createdAt,
+    this.isPremium = false, // ✅ NOUVEAU
   });
 
   // ✅ Nouveau membre = inscrit depuis moins de 7 jours
@@ -80,6 +81,7 @@ class UserModel {
     String? morphologie,
     String? lieuRencontre,
     DateTime? createdAt,
+    bool? isPremium,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -104,6 +106,7 @@ class UserModel {
         morphologie: morphologie ?? this.morphologie,
         lieuRencontre: lieuRencontre ?? this.lieuRencontre,
         createdAt: createdAt ?? this.createdAt,
+        isPremium: isPremium ?? this.isPremium,
       );
 
   /// "175cm · 70kg"

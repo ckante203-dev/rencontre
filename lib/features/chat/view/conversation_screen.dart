@@ -9,6 +9,8 @@ import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -120,59 +122,70 @@ class _ConversationScreenState extends State<ConversationScreen> {
       ),
       leading: GestureDetector(
         onTap: () => Get.back(),
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.only(left: 4),
           child: Icon(Icons.arrow_back_rounded,
               size: 24, color: AppColors.textPrimary),
         ),
       ),
-      title: GestureDetector(
-        onTap: () => _ouvrirProfil(conv),
-        child: Row(children: [
-          _Avatar(name: conv.userName, size: 34, photoUrl: conv.userPhotoUrl),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(conv.userName,
-                    style: const TextStyle(
-                        // ✅ Fix 1 : taille réduite, plus sobre
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Obx(() {
-                  if (ctrl.isOtherTyping.value) {
-                    return const Text('en train d\'écrire...',
-                        style: TextStyle(
-                            // ✅ Fix 2 : taille réduite
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.accent,
-                            fontStyle: FontStyle.italic));
-                  }
-                  return Text(
-                    ctrl.isOtherOnline.value ? 'en ligne' : 'hors ligne',
-                    style: TextStyle(
-                        // ✅ Fix 3 : taille et poids réduits
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: ctrl.isOtherOnline.value
-                            ? AppColors.online
-                            : AppColors.textMuted),
-                  );
-                }),
-              ],
+      // ✅ FIX POLICE : DefaultTextStyle réinitialise le style ambiant
+      // (Syne, hérité de AppBarTheme.titleTextStyle dans app_theme.dart)
+      // à la police normale de l'app avant d'afficher le nom/statut.
+      title: DefaultTextStyle(
+        style: Theme.of(context).textTheme.bodyMedium!,
+        child: GestureDetector(
+          onTap: () => _ouvrirProfil(conv),
+          child: Row(children: [
+            _AvatarWithStoryRing(
+              userId: conv.userId,
+              name: conv.userName,
+              photoUrl: conv.userPhotoUrl,
+              size: 34,
             ),
-          ),
-        ]),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(conv.userName,
+                      style: TextStyle(
+                          // ✅ Fix 1 : taille réduite, plus sobre
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  Obx(() {
+                    if (ctrl.isOtherTyping.value) {
+                      return Text('en train d\'écrire...',
+                          style: TextStyle(
+                              // ✅ Fix 2 : taille réduite
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.accent,
+                              fontStyle: FontStyle.italic));
+                    }
+                    return Text(
+                      ctrl.isOtherOnline.value ? 'en ligne' : 'hors ligne',
+                      style: TextStyle(
+                          // ✅ Fix 3 : taille et poids réduits
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: ctrl.isOtherOnline.value
+                              ? AppColors.online
+                              : AppColors.textMuted),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ]),
+        ),
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.more_vert_rounded,
+          icon: Icon(Icons.more_vert_rounded,
               color: AppColors.textMuted, size: 22),
           onPressed: () => _showConvMenu(context, conv),
         ),
@@ -252,7 +265,7 @@ class _ConvMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
       ),
@@ -267,7 +280,7 @@ class _ConvMenu extends StatelessWidget {
         _MenuItem(
             icon: Icons.notifications_outlined,
             label: 'Notifications',
-            trailing: const Icon(Icons.chevron_right_rounded,
+            trailing: Icon(Icons.chevron_right_rounded,
                 color: AppColors.textMuted, size: 18),
             onTap: () {
               Get.back();
@@ -338,18 +351,18 @@ class _ConvMenu extends StatelessWidget {
               backgroundColor: AppColors.surface,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
-              title: const Text('Effacer l\'historique ?',
+              title: Text('Effacer l\'historique ?',
                   style: TextStyle(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 16)),
-              content: const Text(
+              content: Text(
                   'Les messages seront masqués dans votre vue uniquement.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
               actions: [
                 TextButton(
                     onPressed: () => Get.back(),
-                    child: const Text('Annuler',
+                    child: Text('Annuler',
                         style: TextStyle(color: AppColors.textMuted))),
                 TextButton(
                   onPressed: () {
@@ -361,8 +374,8 @@ class _ConvMenu extends StatelessWidget {
                         colorText: Colors.white,
                         duration: const Duration(seconds: 2));
                   },
-                  child: const Text('Effacer',
-                      style: TextStyle(color: AppColors.error)),
+                  child:
+                      Text('Effacer', style: TextStyle(color: AppColors.error)),
                 ),
               ],
             ));
@@ -375,18 +388,17 @@ class _ConvMenu extends StatelessWidget {
               backgroundColor: AppColors.surface,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
-              title: const Text('Supprimer l\'échange ?',
+              title: Text('Supprimer l\'échange ?',
                   style: TextStyle(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 16)),
-              content: const Text(
-                  'Cette conversation sera supprimée définitivement.',
+              content: Text('Cette conversation sera supprimée définitivement.',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
               actions: [
                 TextButton(
                     onPressed: () => Get.back(),
-                    child: const Text('Annuler',
+                    child: Text('Annuler',
                         style: TextStyle(color: AppColors.textMuted))),
                 TextButton(
                   onPressed: () async {
@@ -406,7 +418,7 @@ class _ConvMenu extends StatelessWidget {
                       debugPrint('supprimer error: $e');
                     }
                   },
-                  child: const Text('Supprimer',
+                  child: Text('Supprimer',
                       style: TextStyle(color: AppColors.error)),
                 ),
               ],
@@ -450,7 +462,7 @@ class _MenuItem extends StatelessWidget {
 class _Div extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
-      const Divider(height: 0.5, color: AppColors.border, indent: 58);
+      Divider(height: 0.5, color: AppColors.border, indent: 58);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -467,15 +479,15 @@ class _EphemeralBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       color: AppColors.accent.withOpacity(0.07),
       child: Row(children: [
-        const Icon(Icons.timer_rounded, size: 13, color: AppColors.accent),
+        Icon(Icons.timer_rounded, size: 13, color: AppColors.accent),
         const SizedBox(width: 7),
-        const Expanded(
+        Expanded(
             child: Text(
                 'Mode éphémère activé — messages disparaissent après 24h',
                 style: TextStyle(fontSize: 11, color: AppColors.accent))),
         GestureDetector(
             onTap: ctrl.toggleEphemeralMode,
-            child: const Icon(Icons.close_rounded,
+            child: Icon(Icons.close_rounded,
                 size: 14, color: AppColors.textMuted)),
       ]),
     );
@@ -558,7 +570,7 @@ class _MessageList extends StatelessWidget {
   }
 
   Widget _buildEmpty() {
-    return const Center(
+    return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.chat_bubble_outline_rounded,
           size: 44, color: AppColors.textMuted),
@@ -635,7 +647,7 @@ class _DateLabel extends StatelessWidget {
         decoration: BoxDecoration(
             color: AppColors.surface2, borderRadius: BorderRadius.circular(10)),
         child: Text(_label(),
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textMuted,
                 fontWeight: FontWeight.w500)),
@@ -708,7 +720,7 @@ class _MessageBubble extends StatelessWidget {
                     const SizedBox(height: 2),
                     Row(mainAxisSize: MainAxisSize.min, children: [
                       Text('$h:$m',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 10, color: AppColors.textMuted)),
                       if (isMine) ...[
                         const SizedBox(width: 3),
@@ -857,8 +869,7 @@ class _StoryReplyPreview extends StatelessWidget {
                     storyReply.storyOwnerName.isNotEmpty
                         ? 'Story de ${storyReply.storyOwnerName}'
                         : 'Story',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ]),
@@ -914,7 +925,7 @@ class _ReplyPreview extends StatelessWidget {
         Text(_preview,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
       ]),
     );
   }
@@ -1140,7 +1151,7 @@ class _SnapBubbleState extends State<_SnapBubble> {
           color: AppColors.surface2,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border)),
-      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.timer_off_rounded, size: 14, color: AppColors.textMuted),
         SizedBox(width: 6),
         Text('Snap expiré',
@@ -1300,7 +1311,7 @@ class _MediaBubble extends StatelessWidget {
                     width: 220,
                     height: 220,
                     color: AppColors.surface2,
-                    child: const Center(
+                    child: Center(
                         child: CircularProgressIndicator(
                             color: AppColors.accent, strokeWidth: 2))),
                 errorWidget: (_, __, ___) => _fallback()),
@@ -1531,16 +1542,15 @@ class _StatusIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (status) {
       case MessageStatus.sending:
-        return const SizedBox(
+        return SizedBox(
             width: 11,
             height: 11,
             child: CircularProgressIndicator(
                 strokeWidth: 1.5, color: AppColors.textMuted));
       case MessageStatus.sent:
-        return const Icon(Icons.check_rounded,
-            size: 12, color: AppColors.textMuted);
+        return Icon(Icons.check_rounded, size: 12, color: AppColors.textMuted);
       case MessageStatus.delivered:
-        return const Icon(Icons.done_all_rounded,
+        return Icon(Icons.done_all_rounded,
             size: 12, color: AppColors.textMuted);
       case MessageStatus.read:
         // ✅ Affiche "Lu HH:MM" si on a l'heure, sinon double coche rose
@@ -1623,7 +1633,7 @@ class _LocationBubble extends StatelessWidget {
                             TileLayer(
                                 urlTemplate:
                                     'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                userAgentPackageName: 'com.snapmeet.app'),
+                                userAgentPackageName: 'com.vybestyle.zamu'),
                             MarkerLayer(markers: [
                               Marker(
                                   point: pt,
@@ -1695,7 +1705,7 @@ class _InputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border, width: 0.5))),
       padding: EdgeInsets.fromLTRB(
@@ -1743,13 +1753,13 @@ class _InputBar extends StatelessWidget {
                     border: Border.all(color: AppColors.border)),
                 child: TextField(
                   controller: ctrl.textController,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 15, color: AppColors.textPrimary, height: 1.35),
                   maxLines: 5,
                   minLines: 1,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => ctrl.sendText(),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                       hintText: 'Message...',
                       hintStyle:
                           TextStyle(color: AppColors.textMuted, fontSize: 15),
@@ -1773,7 +1783,7 @@ class _InputBar extends StatelessWidget {
                     height: isRec ? 46 : 38,
                     decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                             colors: [AppColors.accent, AppColors.accent2]),
                         boxShadow: [
                           BoxShadow(
@@ -1812,14 +1822,13 @@ class _ReplyBar extends StatelessWidget {
       decoration: BoxDecoration(
           color: AppColors.surface2,
           borderRadius: BorderRadius.circular(10),
-          border: const Border(
-              left: BorderSide(color: AppColors.accent, width: 3))),
+          border: Border(left: BorderSide(color: AppColors.accent, width: 3))),
       child: Row(children: [
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(msg.senderId == ctrl.myId ? 'Vous' : ctrl.conversation.userName,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.accent)),
@@ -1827,11 +1836,11 @@ class _ReplyBar extends StatelessWidget {
           Text(_preview(msg),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         ])),
         GestureDetector(
             onTap: ctrl.cancelReply,
-            child: const Icon(Icons.close_rounded,
+            child: Icon(Icons.close_rounded,
                 size: 16, color: AppColors.textMuted)),
       ]),
     );
@@ -1913,14 +1922,14 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
                           borderRadius: BorderRadius.circular(2)))));
         }),
         const SizedBox(width: 8),
-        const Text('Enregistrement...',
+        Text('Enregistrement...',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         const Spacer(),
         Obx(() {
           final s = widget.ctrl.recordingSeconds.value;
           return Text(
               '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600));
@@ -1928,7 +1937,7 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
         const SizedBox(width: 8),
         GestureDetector(
             onTap: widget.ctrl.cancelRecording,
-            child: const Icon(Icons.delete_outline_rounded,
+            child: Icon(Icons.delete_outline_rounded,
                 size: 18, color: AppColors.textMuted)),
       ]),
     );
@@ -2095,7 +2104,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
             Container(
                 color: AppColors.surface,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Padding(
+                  Padding(
                       padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
                       child: Text('Durée d\'affichage après ouverture',
                           style: TextStyle(
@@ -2121,7 +2130,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                                               ? FontWeight.w600
                                               : FontWeight.w400))),
                               if (_duree == d)
-                                const Icon(Icons.check_rounded,
+                                Icon(Icons.check_rounded,
                                     color: AppColors.accent, size: 18),
                             ])),
                       )),
@@ -2447,7 +2456,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                       width: 56,
                       height: 64,
                       color: Colors.white.withOpacity(0.08),
-                      child: const Center(
+                      child: Center(
                         child: Icon(Icons.videocam_rounded,
                             color: AppColors.accent, size: 20),
                       ),
@@ -2529,5 +2538,80 @@ class _Avatar extends StatelessWidget {
               errorWidget: (_, __, ___) => fallback));
     }
     return fallback;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ✅ AVATAR AVEC ANNEAU DE STORY (en-tête de conversation)
+// ═══════════════════════════════════════════════════════════════════
+
+class _AvatarWithStoryRing extends StatelessWidget {
+  final String userId;
+  final String name;
+  final String? photoUrl;
+  final double size;
+
+  const _AvatarWithStoryRing({
+    required this.userId,
+    required this.name,
+    required this.photoUrl,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<HomeController>()) {
+      return _Avatar(name: name, size: size, photoUrl: photoUrl);
+    }
+    final homeCtrl = Get.find<HomeController>();
+
+    return Obx(() {
+      final hasStory = homeCtrl.userHasActiveStory(userId);
+      final storySeen = homeCtrl.userStoryIsSeen(userId);
+
+      final avatar = _Avatar(name: name, size: size, photoUrl: photoUrl);
+
+      if (!hasStory) return avatar;
+
+      return GestureDetector(
+        onTap: () => _openStory(homeCtrl),
+        child: Container(
+          padding: const EdgeInsets.all(2.5),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: storySeen
+                ? null
+                : LinearGradient(
+                    colors: [
+                      AppColors.accent,
+                      AppColors.accent2,
+                      AppColors.accent3,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            color: storySeen ? AppColors.border : null,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(1.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surface,
+            ),
+            child: avatar,
+          ),
+        ),
+      );
+    });
+  }
+
+  void _openStory(HomeController homeCtrl) {
+    final userStories = homeCtrl.storiesForUser(userId);
+    if (userStories.isEmpty) return;
+    Get.to(
+      () => StoryViewerScreen(stories: userStories, initialIndex: 0),
+      transition: Transition.fadeIn,
+    );
+    homeCtrl.markStoryAsSeen(userStories.first.id);
   }
 }

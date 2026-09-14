@@ -10,6 +10,8 @@ import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
+import 'package:rencontre/core/theme/theme_controller.dart';
+import 'package:rencontre/core/utils/app_routes.dart';
 
 class ControleurProfil extends GetxController {
   static ControleurProfil get to => Get.find();
@@ -21,6 +23,9 @@ class ControleurProfil extends GetxController {
   final RxBool isLoading = true.obs;
   final RxBool isUploadingPhoto = false.obs;
   final RxBool isSaving = false.obs;
+
+  // ✅ Statut premium (badge certifié)
+  final RxBool isPremium = false.obs;
 
   final nomController = TextEditingController();
   final bioController = TextEditingController();
@@ -46,6 +51,10 @@ class ControleurProfil extends GetxController {
   final RxList<Map<String, dynamic>> blockedProfiles =
       <Map<String, dynamic>>[].obs;
   final RxBool isLoadingBlocked = false.obs;
+
+  // ✅ Galerie de photos multiples (défilables sur le profil public)
+  static const int maxPhotos = 4;
+  final RxList<String> photoUrls = <String>[].obs;
 
   RealtimeChannel? _profilChannel;
 
@@ -108,13 +117,18 @@ class ControleurProfil extends GetxController {
   // → évite "Hors ligne" affiché sur la page profil au chargement
   Future<void> _setOnlineEtCharger() async {
     final uid = supabase.auth.currentUser?.id;
-    if (uid == null) return;
-    try {
-      await supabase.from('profiles').update({
-        'is_online': true,
-        'last_seen': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', uid);
-    } catch (_) {}
+    if (uid != null) {
+      try {
+        await supabase
+            .from('profiles')
+            .update({
+              'is_online': true,
+              'last_seen': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('id', uid)
+            .timeout(const Duration(seconds: 8)); // ✅
+      } catch (_) {}
+    }
     await chargerMonProfil();
   }
 
@@ -123,18 +137,27 @@ class ControleurProfil extends GetxController {
     try {
       final uid = supabase.auth.currentUser?.id;
       if (uid == null) return;
-      final data =
-          await supabase.from('profiles').select().eq('id', uid).maybeSingle();
+      final data = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', uid)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 10));
+
+      if (isClosed) return;
       if (data == null) return;
 
-      // ✅ Utiliser isReallyOnline pour l'affichage
       final isOnline = SupabaseService.isReallyOnline(
         data['is_online'],
         data['last_seen'],
       );
 
-      monProfil.value =
-          (await _service.fetchMyProfile())?.copyWith(isOnline: isOnline);
+      final fetchedProfile =
+          await _service.fetchMyProfile().timeout(const Duration(seconds: 10));
+
+      if (isClosed) return;
+
+      monProfil.value = fetchedProfile?.copyWith(isOnline: isOnline);
 
       nomController.text = data['name'] ?? '';
       bioController.text = data['bio'] ?? '';
@@ -156,18 +179,20 @@ class ControleurProfil extends GetxController {
       profilPublic.value = data['is_public'] ?? true;
       showDistance.value = data['show_distance'] ?? true;
       selectedTheme.value = data['theme'] ?? 'dark';
+      isPremium.value = data['is_premium'] ?? false;
+      photoUrls.value = List<String>.from(data['photo_urls'] ?? []);
       if (data['birthdate'] != null) {
         birthdate.value = DateTime.tryParse(data['birthdate'].toString());
       }
     } catch (e) {
       debugPrint('chargerMonProfil error: $e');
     } finally {
-      isLoading.value = false;
+      if (!isClosed) isLoading.value = false;
     }
   }
 
   // ✅ Écoute Realtime les mises à jour de ton propre profil
-  // → is_online + last_seen se mettent à jour automatiquement
+  // → is_online + last_seen + is_premium se mettent à jour automatiquement
   void _ecouterMonProfil() {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return;
@@ -183,23 +208,30 @@ class ControleurProfil extends GetxController {
             value: uid,
           ),
           callback: (payload) async {
+            // ✅ FIX : le canal peut recevoir un événement juste après
+            // dispose (course entre unsubscribe et un message déjà en vol)
+            if (isClosed) return;
             final data = payload.newRecord;
             // ✅ Recalculer isReallyOnline à chaque update Realtime
             final isOnline = SupabaseService.isReallyOnline(
               data['is_online'],
               data['last_seen'],
             );
+            // ✅ Mettre à jour le statut premium en direct
+            isPremium.value = data['is_premium'] ?? isPremium.value;
             if (monProfil.value != null) {
               monProfil.value = monProfil.value!.copyWith(isOnline: isOnline);
             } else {
-              monProfil.value = await _service.fetchMyProfile();
+              final fetched = await _service.fetchMyProfile();
+              if (isClosed) return;
+              monProfil.value = fetched;
             }
           },
         )
         .subscribe();
   }
 
-  // ─── PHOTO ──────────────────────────────────────────────────────
+  // ─── PHOTO PRINCIPALE ───────────────────────────────────────────
 
   Future<void> changerPhoto() async {
     final source = await _choisirSource();
@@ -216,7 +248,7 @@ class ControleurProfil extends GetxController {
       final uid = supabase.auth.currentUser!.id;
       final file = File(picked.path);
       final ext = picked.path.split('.').last;
-      final path = 'avatars/$uid/photo.$ext';
+      final path = '$uid/photo.$ext';
       await supabase.storage.from('avatars').upload(
             path,
             file,
@@ -317,6 +349,87 @@ class ControleurProfil extends GetxController {
         ]),
       ),
     );
+  }
+
+  // ─── GALERIE DE PHOTOS (défilable sur le profil) ─────────────────
+
+  Future<void> ajouterPhotoProfil() async {
+    if (photoUrls.length >= maxPhotos) {
+      _snackError('Maximum $maxPhotos photos');
+      return;
+    }
+    final source = await _choisirSource();
+    if (source == null) return;
+    final picked = await _picker.pickImage(
+      source: source,
+      maxWidth: 1080,
+      maxHeight: 1080,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    isUploadingPhoto.value = true;
+    try {
+      final uid = supabase.auth.currentUser!.id;
+      final file = File(picked.path);
+      final ext = picked.path.split('.').last;
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final path = '$uid/$fileName';
+      await supabase.storage.from('profile-photos').upload(path, file);
+      final url = supabase.storage.from('profile-photos').getPublicUrl(path);
+      photoUrls.add(url);
+      await _sauvegarderPhotoUrls();
+      _snackSuccess('Photo ajoutée');
+    } catch (e) {
+      debugPrint('ajouterPhotoProfil error: $e');
+      _snackError('Impossible d\'ajouter la photo : $e');
+    } finally {
+      isUploadingPhoto.value = false;
+    }
+  }
+
+  Future<void> supprimerPhotoProfil(int index) async {
+    if (index < 0 || index >= photoUrls.length) return;
+    final url = photoUrls[index];
+    try {
+      final uid = supabase.auth.currentUser!.id;
+      final uri = Uri.parse(url);
+      final segments = uri.pathSegments;
+      final bucketIdx = segments.indexOf('profile-photos');
+      if (bucketIdx != -1 && bucketIdx + 1 < segments.length) {
+        final storagePath = segments.sublist(bucketIdx + 1).join('/');
+        await supabase.storage.from('profile-photos').remove([storagePath]);
+      } else {
+        debugPrint('supprimerPhotoProfil: chemin introuvable pour $url');
+      }
+    } catch (e) {
+      debugPrint('supprimerPhotoProfil storage error: $e');
+    }
+    photoUrls.removeAt(index);
+    await _sauvegarderPhotoUrls();
+    _snackSuccess('Photo supprimée');
+  }
+
+  void reordonnerPhotos(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    if (oldIndex < 0 || oldIndex >= photoUrls.length) return;
+    if (newIndex < 0 || newIndex >= photoUrls.length) return;
+    final item = photoUrls.removeAt(oldIndex);
+    photoUrls.insert(newIndex, item);
+    _sauvegarderPhotoUrls();
+  }
+
+  Future<void> _sauvegarderPhotoUrls() async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      await supabase.from('profiles').update({
+        'photo_urls': photoUrls.toList(),
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', uid);
+    } catch (e) {
+      debugPrint('_sauvegarderPhotoUrls error: $e');
+      _snackError('Erreur de synchronisation : $e');
+    }
   }
 
   // ─── MODIFIER INFOS ─────────────────────────────────────────────
@@ -432,8 +545,12 @@ class ControleurProfil extends GetxController {
       }
       await supabase.from('profiles').update(updates).eq('id', uid);
       await chargerMonProfil();
+      // ✅ FIX : redirige vers l'accueil et affiche le message de
+      // confirmation AVANT la navigation (le snackbar GetX vit dans un
+      // overlay indépendant de la pile de navigation, il survit au
+      // changement de route).
       _snackSuccess('Informations mises à jour');
-      Get.back();
+      Get.until((route) => route.settings.name == AppRoutes.main); // ✅
     } catch (e) {
       _snackError(
           'Erreur : ${e.toString().substring(0, e.toString().length.clamp(0, 120))}');
@@ -471,8 +588,18 @@ class ControleurProfil extends GetxController {
         'theme': selectedTheme.value,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', uid);
-      _snackSuccess('Paramètres sauvegardés');
-      Get.back();
+
+      // ✅ FIX : on diffère le changement de thème + la navigation à la
+      // frame suivante. Changer le thème (touche un Obx global) juste
+      // avant Get.offAllNamed (qui reconstruit tout l'écran d'accueil,
+      // plein de nouveaux Obx) faisait chevaucher deux reconstructions
+      // dans la même frame → "setState() or markNeedsBuild() called
+      // during build".
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await ThemeController.to.setTheme(selectedTheme.value);
+        _snackSuccess('Paramètres sauvegardés');
+        Get.until((route) => route.settings.name == AppRoutes.main); // ✅
+      });
     } catch (e) {
       _snackError(
           'Erreur : ${e.toString().substring(0, e.toString().length.clamp(0, 120))}');

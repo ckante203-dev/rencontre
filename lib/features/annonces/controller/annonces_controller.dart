@@ -21,18 +21,14 @@ class AnnoncesController extends GetxController {
   final RxInt unseenCount = 0.obs;
   DateTime? _lastSeenAt;
 
-  // ✅ Pagination
   static const _pageSize = 20;
   int _offset = 0;
 
-  // ✅ Realtime
   RealtimeChannel? _realtimeAnnonces;
   RealtimeChannel? _realtimeReactions;
 
-  // ✅ Debounce likes
   final Set<String> _reactingIds = {};
 
-  // ✅ Emojis réactions disponibles
   static const List<String> reactions = ['❤️', '😂', '😮', '😢', '👏', '🔥'];
 
   final categories = ['toutes', 'rencontre', 'amitie', 'sortie', 'voyage'];
@@ -51,12 +47,34 @@ class AnnoncesController extends GetxController {
     super.onClose();
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // REALTIME
-  // ═══════════════════════════════════════════════════════════════
+  int _calcAge(dynamic birthdate) {
+    if (birthdate == null) return 18;
+    try {
+      DateTime birth;
+      if (birthdate is String) {
+        if (birthdate.contains('/')) {
+          final parts = birthdate.split('/');
+          birth = DateTime(
+              int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        } else {
+          birth = DateTime.parse(birthdate);
+        }
+      } else {
+        return 18;
+      }
+      final now = DateTime.now();
+      int age = now.year - birth.year;
+      if (now.month < birth.month ||
+          (now.month == birth.month && now.day < birth.day)) {
+        age--;
+      }
+      return age < 0 ? 18 : age;
+    } catch (_) {
+      return 18;
+    }
+  }
 
   void _subscribeRealtime() {
-    // ✅ Nouvelles annonces en temps réel
     _realtimeAnnonces = _sb
         .channel('annonces_feed_rt')
         .onPostgresChanges(
@@ -100,7 +118,6 @@ class AnnoncesController extends GetxController {
         )
         .subscribe();
 
-    // ✅ Réactions en temps réel
     _realtimeReactions = _sb
         .channel('annonce_reactions_rt')
         .onPostgresChanges(
@@ -126,7 +143,6 @@ class AnnoncesController extends GetxController {
         .subscribe();
   }
 
-  // ✅ Refresh les compteurs de réactions d'une annonce spécifique
   Future<void> _refreshReactionCounts(String annonceId) async {
     try {
       final uid = _sb.auth.currentUser?.id;
@@ -159,16 +175,11 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // CHARGEMENT
-  // ═══════════════════════════════════════════════════════════════
-
   List<AnnonceModel> get filtered {
     var list = filterCategorie.value == 'toutes'
         ? annonces.toList()
         : annonces.where((a) => a.categorie == filterCategorie.value).toList();
 
-    // ✅ Filtre recherche
     if (searchQuery.value.isNotEmpty) {
       final q = searchQuery.value.toLowerCase();
       list = list
@@ -192,12 +203,11 @@ class AnnoncesController extends GetxController {
 
       final data = await _sb
           .from('annonces')
-          .select('*, profiles(name, photo_url, age)')
+          .select('*, profiles(name, photo_url, birthdate)')
           .order('is_boosted', ascending: false)
           .order('created_at', ascending: false)
           .range(0, _pageSize - 1);
 
-      // ✅ Réactions de l'utilisateur
       Map<String, String> myReactions = {};
       Map<String, Map<String, int>> allReactionCounts = {};
 
@@ -236,7 +246,6 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ✅ Infinite scroll
   Future<void> loadMore() async {
     if (isLoadingMore.value || !hasMore.value) return;
     isLoadingMore.value = true;
@@ -244,7 +253,7 @@ class AnnoncesController extends GetxController {
       final uid = _sb.auth.currentUser?.id;
       final data = await _sb
           .from('annonces')
-          .select('*, profiles(name, photo_url, age)')
+          .select('*, profiles(name, photo_url, birthdate)')
           .order('is_boosted', ascending: false)
           .order('created_at', ascending: false)
           .range(_offset, _offset + _pageSize - 1);
@@ -294,7 +303,6 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ✅ Mes annonces
   Future<void> loadMesAnnonces() async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null) return;
@@ -302,7 +310,7 @@ class AnnoncesController extends GetxController {
     try {
       final data = await _sb
           .from('annonces')
-          .select('*, profiles(name, photo_url, age)')
+          .select('*, profiles(name, photo_url, birthdate)')
           .eq('user_id', uid)
           .order('created_at', ascending: false);
 
@@ -333,7 +341,7 @@ class AnnoncesController extends GetxController {
       userId: row['user_id'],
       userName: isAnon ? 'Anonyme' : (p?['name'] ?? 'Utilisateur'),
       userPhotoUrl: isAnon ? null : p?['photo_url'],
-      userAge: p?['age'] ?? 18,
+      userAge: isAnon ? 18 : _calcAge(p?['birthdate']),
       titre: row['titre'] ?? '',
       description: row['description'] ?? '',
       categorie: row['categorie'] ?? 'rencontre',
@@ -358,14 +366,12 @@ class AnnoncesController extends GetxController {
     );
   }
 
-  // ✅ Refresh silencieux — ne vide pas la liste existante
-  // Utilisé quand on revient sur la page (données déjà en mémoire)
   Future<void> refreshSilent() async {
     try {
       final uid = _sb.auth.currentUser?.id;
       final data = await _sb
           .from('annonces')
-          .select('*, profiles(name, photo_url, age)')
+          .select('*, profiles(name, photo_url, birthdate)')
           .order('is_boosted', ascending: false)
           .order('created_at', ascending: false)
           .range(0, _pageSize - 1);
@@ -395,12 +401,10 @@ class AnnoncesController extends GetxController {
             uid: uid);
       }).toList();
 
-      // ✅ Mise à jour douce — seulement si des changements existent
       if (newList.length != annonces.length) {
         annonces.value = newList;
         _offset = newList.length;
       } else {
-        // Mettre à jour uniquement les compteurs (likes, vues, réactions)
         for (int i = 0; i < newList.length; i++) {
           if (i < annonces.length) {
             final old = annonces[i];
@@ -433,11 +437,6 @@ class AnnoncesController extends GetxController {
         annonces.where((a) => a.createdAt.isAfter(_lastSeenAt!)).length;
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // RÉACTIONS
-  // ═══════════════════════════════════════════════════════════════
-
-  // ✅ Réaction — remplace toggleLike
   Future<void> toggleReaction(AnnonceModel annonce, String emoji) async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null) return;
@@ -454,7 +453,6 @@ class AnnoncesController extends GetxController {
     final newCounts = Map<String, int>.from(annonce.reactionCounts);
 
     if (wasMyReaction) {
-      // Retirer la réaction
       newCounts[emoji] = (newCounts[emoji] ?? 1) - 1;
       if ((newCounts[emoji] ?? 0) <= 0) newCounts.remove(emoji);
       final newTotal = newCounts.values.fold(0, (s, v) => s + v);
@@ -465,9 +463,7 @@ class AnnoncesController extends GetxController {
         reactionCounts: newCounts,
       );
     } else {
-      // Changer ou ajouter la réaction
       if (annonce.myReaction.isNotEmpty) {
-        // Retirer l'ancienne
         final old = annonce.myReaction;
         newCounts[old] = (newCounts[old] ?? 1) - 1;
         if ((newCounts[old] ?? 0) <= 0) newCounts.remove(old);
@@ -490,7 +486,6 @@ class AnnoncesController extends GetxController {
             .eq('annonce_id', annonce.id)
             .eq('user_id', uid);
       } else {
-        // Upsert — remplace l'ancienne réaction ou en crée une
         await _sb.from('annonce_reactions').upsert({
           'annonce_id': annonce.id,
           'user_id': uid,
@@ -498,19 +493,17 @@ class AnnoncesController extends GetxController {
         }, onConflict: 'annonce_id,user_id');
       }
 
-      // Notifier si nouveau like
       if (!wasMyReaction && annonce.userId != uid) {
         _notifyReaction(annonce: annonce, emoji: emoji, uid: uid);
       }
     } catch (e) {
       debugPrint('toggleReaction error: $e');
-      if (idx < annonces.length) annonces[idx] = annonce; // rollback
+      if (idx < annonces.length) annonces[idx] = annonce;
     } finally {
       _reactingIds.remove(annonce.id);
     }
   }
 
-  // ✅ Rétrocompatibilité avec toggleLike existant
   Future<void> toggleLike(AnnonceModel annonce) async {
     await toggleReaction(annonce, '❤️');
   }
@@ -540,21 +533,53 @@ class AnnoncesController extends GetxController {
         'token': token,
         'title': '$emoji $myName a réagi à ton annonce',
         'body': '"${annonce.titre}"',
-        'data': {'type': 'reaction_annonce', 'annonceId': annonce.id},
+        'data': {'type': 'annonce_reaction', 'annonceId': annonce.id},
       });
     }).catchError((e) => debugPrint('_notifyReaction error: $e'));
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // VUES
-  // ═══════════════════════════════════════════════════════════════
+  // ✅ NOUVEAU — push notifications aux abonnés lors d'une nouvelle publication
+  Future<void> _notifyFollowersNewAnnonce(String uid, String titre) async {
+    try {
+      final followers = await _sb
+          .from('follows')
+          .select('follower_id')
+          .eq('followed_id', uid);
+      if ((followers as List).isEmpty) return;
+      final followerIds =
+          followers.map((r) => r['follower_id'] as String).toList();
 
-  // ✅ Marquer une annonce comme vue
+      final myProfile =
+          await _sb.from('profiles').select('name').eq('id', uid).maybeSingle();
+      final myName = myProfile?['name'] ?? 'Quelqu\'un';
+
+      final profiles = await _sb
+          .from('profiles')
+          .select('id, fcm_token, notif_annonces')
+          .inFilter('id', followerIds);
+
+      for (final p in (profiles as List)) {
+        if (!(p['notif_annonces'] ?? true)) continue;
+        final token = p['fcm_token'] as String?;
+        if (token == null || token.isEmpty) continue;
+        try {
+          await _sb.functions.invoke('send-notification', body: {
+            'token': token,
+            'title': '$myName a publié une annonce',
+            'body': titre,
+            'data': {'type': 'new_annonce', 'userId': uid},
+          });
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('_notifyFollowersNewAnnonce error: $e');
+    }
+  }
+
   Future<void> marquerVue(AnnonceModel annonce) async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null || annonce.isViewed || annonce.userId == uid) return;
 
-    // Mise à jour optimiste locale
     final idx = annonces.indexWhere((a) => a.id == annonce.id);
     if (idx != -1) {
       annonces[idx] = annonces[idx].copyWith(
@@ -572,10 +597,6 @@ class AnnoncesController extends GetxController {
       debugPrint('marquerVue error (non bloquant): $e');
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // MODIFIER UNE ANNONCE
-  // ═══════════════════════════════════════════════════════════════
 
   Future<bool> modifierAnnonce({
     required String id,
@@ -596,7 +617,6 @@ class AnnoncesController extends GetxController {
           .eq('id', id)
           .eq('user_id', uid);
 
-      // Mettre à jour localement
       final idx = annonces.indexWhere((a) => a.id == id);
       if (idx != -1) {
         final a = annonces[idx];
@@ -639,10 +659,6 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // ÉPINGLER COMMENTAIRE
-  // ═══════════════════════════════════════════════════════════════
-
   Future<void> epinglerCommentaire(
       AnnonceModel annonce, String? commentId) async {
     final uid = _sb.auth.currentUser?.id;
@@ -672,16 +688,11 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // PARTAGER EN MESSAGE PRIVÉ
-  // ═══════════════════════════════════════════════════════════════
-
   Future<void> partagerAnnonce(
       AnnonceModel annonce, String targetUserId) async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null) return;
     try {
-      // Récupérer ou créer la conversation
       final existing = await _sb
           .from('conversations')
           .select('id')
@@ -700,7 +711,6 @@ class AnnoncesController extends GetxController {
         convId = created['id'] as String;
       }
 
-      // Envoyer l'annonce comme message
       final shareText =
           '📢 *${annonce.titre}*\n${annonce.description.length > 100 ? annonce.description.substring(0, 100) + '...' : annonce.description}';
 
@@ -729,10 +739,6 @@ class AnnoncesController extends GetxController {
           colorText: Colors.white);
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════
-  // PUBLICATION
-  // ═══════════════════════════════════════════════════════════════
 
   Future<String?> _uploadMedia(XFile file, bool isVideo) async {
     final uid = _sb.auth.currentUser?.id;
@@ -849,6 +855,10 @@ class AnnoncesController extends GetxController {
       });
 
       await loadAnnonces();
+
+      // ✅ Push notifications aux abonnés (tâche de fond)
+      _notifyFollowersNewAnnonce(uid, titre);
+
       return true;
     } catch (e) {
       debugPrint('publierAnnonce error: $e');
@@ -861,7 +871,6 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ✅ Suppression avec nettoyage du bucket
   Future<void> supprimerAnnonce(String id) async {
     try {
       final row = await _sb
@@ -896,7 +905,6 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ✅ Signalement fonctionnel
   Future<void> signalerAnnonce(String annonceId, String reason) async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null) return;
@@ -926,7 +934,6 @@ class AnnoncesController extends GetxController {
     }
   }
 
-  // ✅ Boost
   Future<void> boosterAnnonce(AnnonceModel annonce) async {
     final uid = _sb.auth.currentUser?.id;
     if (uid == null || uid != annonce.userId) return;

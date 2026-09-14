@@ -268,14 +268,14 @@ class _MapScreenState extends State<MapScreen>
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
+                            decoration:  BoxDecoration(
                                 color: AppColors.online,
                                 shape: BoxShape.circle),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             '${_ctrl.filteredProfiles.length} personne${_ctrl.filteredProfiles.length > 1 ? 's' : ''} à proximité',
-                            style: const TextStyle(
+                            style:  TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary),
@@ -289,7 +289,7 @@ class _MapScreenState extends State<MapScreen>
             Obx(() => _ctrl.isLoading.value
                 ? Container(
                     color: AppColors.bg.withOpacity(0.85),
-                    child: const Center(
+                    child:  Center(
                         child:
                             CircularProgressIndicator(color: AppColors.accent)),
                   )
@@ -310,17 +310,17 @@ class _MapScreenState extends State<MapScreen>
                             Border.all(color: AppColors.error.withOpacity(0.4)),
                       ),
                       child: Row(children: [
-                        const Icon(Icons.location_off_rounded,
+                         Icon(Icons.location_off_rounded,
                             color: AppColors.error, size: 18),
                         const SizedBox(width: 8),
-                        const Expanded(
+                         Expanded(
                           child: Text('Localisation non disponible',
                               style: TextStyle(
                                   fontSize: 12, color: AppColors.error)),
                         ),
                         GestureDetector(
                           onTap: () => Geolocator.openLocationSettings(),
-                          child: const Text('Activer',
+                          child:  Text('Activer',
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -515,7 +515,7 @@ class _Header extends StatelessWidget {
                 color: AppColors.surface,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border)),
-            child: const Icon(Icons.refresh_rounded,
+            child:  Icon(Icons.refresh_rounded,
                 size: 18, color: AppColors.textPrimary),
           ),
         ),
@@ -583,7 +583,7 @@ class _BarreRecherche extends StatelessWidget {
         ),
         child: Row(children: [
           const SizedBox(width: 14),
-          const Icon(Icons.search_rounded, color: AppColors.accent, size: 20),
+           Icon(Icons.search_rounded, color: AppColors.accent, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -591,8 +591,8 @@ class _BarreRecherche extends StatelessWidget {
               focusNode: focusNode,
               autofocus: true,
               style:
-                  const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: const InputDecoration(
+                   TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration:  InputDecoration(
                 hintText: 'Rechercher une ville...',
                 hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
                 border: InputBorder.none,
@@ -604,7 +604,7 @@ class _BarreRecherche extends StatelessWidget {
             ),
           ),
           Obx(() => ctrl.isSearching.value
-              ? const Padding(
+              ?  Padding(
                   padding: EdgeInsets.all(12),
                   child: SizedBox(
                       width: 16,
@@ -617,7 +617,7 @@ class _BarreRecherche extends StatelessWidget {
                     ctrl.searchController.clear();
                     ctrl.searchResults.clear();
                   },
-                  child: const Padding(
+                  child:  Padding(
                     padding: EdgeInsets.all(12),
                     child: Icon(Icons.close_rounded,
                         color: AppColors.textMuted, size: 18),
@@ -658,13 +658,13 @@ class _BarreRecherche extends StatelessWidget {
                                           AppColors.border.withOpacity(0.5))),
                             ),
                             child: Row(children: [
-                              const Icon(Icons.location_on_rounded,
+                               Icon(Icons.location_on_rounded,
                                   color: AppColors.accent, size: 16),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   r['name'] as String,
-                                  style: const TextStyle(
+                                  style:  TextStyle(
                                       fontSize: 13,
                                       color: AppColors.textPrimary),
                                   maxLines: 1,
@@ -728,7 +728,7 @@ class _VueListe extends StatelessWidget {
         if (ctrl.isLoading.value) {
           return Padding(
             padding: EdgeInsets.only(top: topPad),
-            child: const Center(
+            child:  Center(
               child: CircularProgressIndicator(color: AppColors.accent),
             ),
           );
@@ -753,13 +753,13 @@ class _VueListe extends StatelessWidget {
                         size: 36, color: AppColors.textMuted.withOpacity(0.5)),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Personne à proximité',
+                   Text('Personne à proximité',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  const Text('Augmente la distance\npour voir plus de profils',
+                   Text('Augmente la distance\npour voir plus de profils',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 13,
@@ -832,7 +832,7 @@ class _CarteProfilListe extends StatelessWidget {
               Row(children: [
                 Flexible(
                   child: Text('${user.name}, ${user.age}',
-                      style: const TextStyle(
+                      style:  TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -850,7 +850,7 @@ class _CarteProfilListe extends StatelessWidget {
                       border:
                           Border.all(color: AppColors.online.withOpacity(0.3)),
                     ),
-                    child: const Text('En ligne',
+                    child:  Text('En ligne',
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
@@ -860,7 +860,7 @@ class _CarteProfilListe extends StatelessWidget {
               const SizedBox(height: 4),
               // Distance + genre
               Row(children: [
-                const Icon(Icons.location_on_rounded,
+                 Icon(Icons.location_on_rounded,
                     size: 12, color: AppColors.textMuted),
                 const SizedBox(width: 3),
                 Text(
@@ -868,13 +868,13 @@ class _CarteProfilListe extends StatelessWidget {
                       ? user.distanceLabel
                       : 'Distance inconnue',
                   style:
-                      const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                       TextStyle(fontSize: 12, color: AppColors.textMuted),
                 ),
                 if (user.gender != null) ...[
-                  const Text(' · ',
+                   Text(' · ',
                       style: TextStyle(color: AppColors.textMuted)),
                   Text(user.gender!.capitalize!,
-                      style: const TextStyle(
+                      style:  TextStyle(
                           fontSize: 12, color: AppColors.textMuted)),
                 ],
               ]),
@@ -884,7 +884,7 @@ class _CarteProfilListe extends StatelessWidget {
                 Text(user.bio!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style:  TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
                         fontStyle: FontStyle.italic)),
@@ -907,7 +907,7 @@ class _CarteProfilListe extends StatelessWidget {
                                   color: AppColors.accent.withOpacity(0.2)),
                             ),
                             child: Text(interest,
-                                style: const TextStyle(
+                                style:  TextStyle(
                                     fontSize: 10,
                                     color: AppColors.accent,
                                     fontWeight: FontWeight.w600)),
@@ -1112,7 +1112,7 @@ class _PanelParametresCarte extends StatelessWidget {
                   ),
                 ])
               : Column(children: [
-                  const Text('Se cacher pendant :',
+                   Text('Se cacher pendant :',
                       style:
                           TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   const SizedBox(height: 8),
@@ -1176,7 +1176,7 @@ class _PanelParametresCarte extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(children: [
-                            const Text('Mode Fantôme',
+                             Text('Mode Fantôme',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -1204,7 +1204,7 @@ class _PanelParametresCarte extends StatelessWidget {
                             ctrl.estFantome
                                 ? 'Actif — tu vois sans apparaître'
                                 : 'Vois les autres sans apparaître',
-                            style: const TextStyle(
+                            style:  TextStyle(
                                 fontSize: 11, color: AppColors.textMuted),
                           ),
                         ]),
@@ -1421,11 +1421,11 @@ class _FiltresBar extends StatelessWidget {
                 ],
               ),
               child: Row(children: [
-                const Icon(Icons.social_distance_rounded,
+                 Icon(Icons.social_distance_rounded,
                     size: 14, color: AppColors.accent),
                 const SizedBox(width: 6),
                 Text('${ctrl.filterDistance.value.toInt()} km',
-                    style: const TextStyle(
+                    style:  TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
@@ -1699,7 +1699,7 @@ class _ProfilCard extends StatelessWidget {
                     Row(children: [
                       Flexible(
                         child: Text('${user.name}, ${user.age}',
-                            style: const TextStyle(
+                            style:  TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
@@ -1717,7 +1717,7 @@ class _ProfilCard extends StatelessWidget {
                             border: Border.all(
                                 color: AppColors.online.withOpacity(0.4)),
                           ),
-                          child: const Text('En ligne',
+                          child:  Text('En ligne',
                               style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -1727,18 +1727,18 @@ class _ProfilCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     if (user.distanceMeters != null)
                       Row(children: [
-                        const Icon(Icons.location_on_rounded,
+                         Icon(Icons.location_on_rounded,
                             size: 12, color: AppColors.textMuted),
                         const SizedBox(width: 3),
                         Text(user.distanceLabel,
-                            style: const TextStyle(
+                            style:  TextStyle(
                                 fontSize: 12, color: AppColors.textMuted)),
                       ]),
                     const SizedBox(height: 4),
                     if (user.gender != null)
                       Text(
                         '${user.gender!.capitalize}${user.lookingFor != null ? ' · cherche ${user.lookingFor}' : ''}',
-                        style: const TextStyle(
+                        style:  TextStyle(
                             fontSize: 11, color: AppColors.textMuted),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1762,7 +1762,7 @@ class _ProfilCard extends StatelessWidget {
               child: Text(user.bio!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style:  TextStyle(
                       fontSize: 13, color: AppColors.textMuted, height: 1.5)),
             ),
           ),
@@ -1844,7 +1844,7 @@ class _ProfilCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Icon(Icons.chat_bubble_outline_rounded,
+                child:  Icon(Icons.chat_bubble_outline_rounded,
                     color: AppColors.accent, size: 20),
               ),
             ),
@@ -1886,7 +1886,7 @@ class _SectionTitre extends StatelessWidget {
   Widget build(BuildContext context) => Align(
         alignment: Alignment.centerLeft,
         child: Text(text,
-            style: const TextStyle(
+            style:  TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
@@ -1992,12 +1992,12 @@ class _OptionPrecision extends StatelessWidget {
                           ? AppColors.accent
                           : AppColors.textPrimary)),
               Text(sublabel,
-                  style: const TextStyle(
+                  style:  TextStyle(
                       fontSize: 11, color: AppColors.textMuted)),
             ]),
           ),
           if (isSelected)
-            const Icon(Icons.check_circle_rounded,
+             Icon(Icons.check_circle_rounded,
                 color: AppColors.accent, size: 20),
         ]),
       ),

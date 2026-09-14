@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/core/utils/app_routes.dart';
+import 'package:rencontre/features/home/view/main_navigation.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -140,7 +142,7 @@ class NotificationService {
 
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        id: fromUserId.hashCode.abs() % 2147483647,
         channelKey: 'likes',
         title: '❤️ Nouveau like !',
         body: '$userName t\'a liké !',
@@ -168,7 +170,7 @@ class NotificationService {
 
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        id: (fromUserId ?? userName).hashCode.abs() % 2147483647,
         channelKey: 'matches',
         title: '💘 Nouveau match !',
         body: '$userName veut te parler !',
@@ -380,7 +382,8 @@ class NotificationService {
           .select(
               'from_user_id, profiles!likes_from_user_id_fkey(name, photo_url)')
           .eq('to_user_id', uid)
-          .gte('created_at', since.toIso8601String());
+          .gte('created_at', since.toIso8601String())
+          .order('created_at', ascending: false);
 
       final count = (data as List).length;
       if (count >= 1) {
@@ -485,15 +488,12 @@ class NotificationService {
     }
 
     // ✅ Résumé likes → page profil / qui m'a liké
-    else if (type == 'likes_summary') {
+    else if (type == 'likes_summary' || type == 'profile_views') {
       await Future.delayed(const Duration(milliseconds: 500));
-      Get.toNamed('/profil');
-    }
-
-    // ✅ Vues profil → page profil
-    else if (type == 'profile_views') {
-      await Future.delayed(const Duration(milliseconds: 500));
-      Get.toNamed('/profil');
+      Get.offAllNamed(AppRoutes.main);
+      if (Get.isRegistered<NavigationController>()) {
+        Get.find<NavigationController>().goTo(4); // onglet Profil
+      }
     }
 
     // ✅ Utilisateur en ligne → ouvrir son profil
@@ -523,10 +523,10 @@ class NotificationService {
       } catch (_) {}
     }
 
-    // ✅ Réengagement → page home
+    // ✅ Réengagement → onglet Accueil
     else if (type == 'reengagement') {
       await Future.delayed(const Duration(milliseconds: 500));
-      Get.offAllNamed('/home');
+      Get.offAllNamed(AppRoutes.main);
     }
   }
 

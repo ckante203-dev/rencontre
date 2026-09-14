@@ -5,8 +5,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/widget/stories_row.dart';
+import 'package:rencontre/features/notifications/controller/notification_controller.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 
 // ─── CONTROLLER MESSAGES NON LUS ─────────────────────────────────
@@ -27,18 +29,33 @@ class UnreadMessagesController extends GetxController {
     final myId = _sb.auth.currentUser?.id;
     if (myId == null) return;
     try {
+      // ✅ FIX : il n'y a pas de colonne receiver_id sur messages — on
+      // retrouve d'abord les conversations où je participe, puis les
+      // messages non lus envoyés par l'autre personne dans ces
+      // conversations (cohérent avec le schéma utilisé partout ailleurs :
+      // conversations.user1_id / user2_id).
+      final convData = await _sb
+          .from('conversations')
+          .select('id')
+          .or('user1_id.eq.$myId,user2_id.eq.$myId');
+      final convIds = (convData as List).map((c) => c['id'] as String).toList();
+
+      if (convIds.isEmpty) {
+        unreadByUser.clear();
+        return;
+      }
+
       final data = await _sb
           .from('messages')
           .select('sender_id')
-          .eq('receiver_id', myId)
+          .inFilter('conversation_id', convIds)
+          .neq('sender_id', myId)
           .eq('is_read', false);
 
       final Map<String, int> counts = {};
-      if (data != null) {
-        for (final msg in (data as List)) {
-          final senderId = msg['sender_id'] as String;
-          counts[senderId] = (counts[senderId] ?? 0) + 1;
-        }
+      for (final msg in (data as List)) {
+        final senderId = msg['sender_id'] as String;
+        counts[senderId] = (counts[senderId] ?? 0) + 1;
       }
       unreadByUser.assignAll(counts);
     } catch (e) {
@@ -49,17 +66,18 @@ class UnreadMessagesController extends GetxController {
   void _listenRealtime() {
     final myId = _sb.auth.currentUser?.id;
     if (myId == null) return;
+    // ✅ FIX : pas de receiver_id à filtrer directement sur messages —
+    // on écoute tous les changements et loadUnread() refait le tri via
+    // la relation conversations. Nom de channel rendu unique par
+    // utilisateur (comme ailleurs dans l'app : 'mon_profil_$uid',
+    // 'chatlist:$uid') pour éviter toute collision entre comptes sur le
+    // même appareil.
     _channel = _sb
-        .channel('public:messages:unread')
+        .channel('public:messages:unread:$myId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'receiver_id',
-            value: myId,
-          ),
           callback: (payload) => loadUnread(),
         )
         .subscribe();
@@ -83,6 +101,9 @@ class HomeScreen extends GetView<HomeController> {
   Widget build(BuildContext context) {
     if (!Get.isRegistered<UnreadMessagesController>()) {
       Get.put(UnreadMessagesController(), permanent: true);
+    }
+    if (!Get.isRegistered<NotificationController>()) {
+      Get.put(NotificationController(), permanent: true);
     }
 
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -183,16 +204,6 @@ class _TopBar extends GetView<HomeController> {
       padding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
       child: Row(
         children: [
-          ShaderMask(
-            shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-            child: const Text('SnapMeet',
-                style: TextStyle(
-                    fontFamily: 'Syne',
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -0.8)),
-          ),
           const Spacer(),
           Obx(() => controller.locationError.value
               ? _IconBtn(
@@ -204,6 +215,15 @@ class _TopBar extends GetView<HomeController> {
               : const SizedBox.shrink()),
           const SizedBox(width: 8),
           _IconBtn(icon: Icons.search_rounded, onTap: () {}),
+          const SizedBox(width: 8),
+          // ✅ NOUVEAU — Notifications avec badge non-lu
+          _NotificationsBtn(),
+          const SizedBox(width: 8),
+          // ✅ NOUVEAU — Abonnés
+          _IconBtn(
+            icon: Icons.people_alt_rounded,
+            onTap: () => Get.toNamed(AppRoutes.followers),
+          ),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: () {
@@ -240,6 +260,62 @@ class _TopBar extends GetView<HomeController> {
   }
 }
 
+// ✅ NOUVEAU — Bouton notifications avec badge
+class _NotificationsBtn extends StatelessWidget {
+  const _NotificationsBtn();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = Get.find<NotificationController>();
+    return GestureDetector(
+      onTap: () => Get.toNamed(AppRoutes.notifications),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surface2,
+              border: Border.all(color: AppColors.border.withOpacity(0.5)),
+            ),
+            child: Icon(Icons.notifications_none_rounded,
+                size: 20, color: AppColors.textPrimary),
+          ),
+          Obx(() {
+            final count = ctrl.unreadCount.value;
+            if (count == 0) return const SizedBox.shrink();
+            return Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 18),
+                height: 18,
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: AppColors.bg, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    count > 9 ? '9+' : '$count',
+                    style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
 class _IconBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -265,52 +341,139 @@ class _IconBtn extends StatelessWidget {
   }
 }
 
-// ─── FILTRES ─────────────────────────────────────────────────────
+// ─── FILTRES (avec curseur animé qui glisse vers l'onglet actif) ──
 
-class _FilterChips extends GetView<HomeController> {
+class _FilterItem {
+  final String mode, label, icon;
+  const _FilterItem(
+      {required this.mode, required this.label, required this.icon});
+}
+
+const _filterItems = [
+  _FilterItem(mode: 'all', label: 'Tous', icon: '⚡'),
+  _FilterItem(mode: 'online', label: 'En ligne', icon: '🟢'),
+  _FilterItem(mode: 'nearby', label: 'Proches', icon: '📍'),
+  _FilterItem(mode: 'new', label: 'Nouveaux', icon: '✨'),
+];
+
+class _FilterChips extends StatefulWidget {
   const _FilterChips();
+
+  @override
+  State<_FilterChips> createState() => _FilterChipsState();
+}
+
+class _FilterChipsState extends State<_FilterChips> {
+  final HomeController controller = Get.find<HomeController>();
+
+  final GlobalKey _stackKey = GlobalKey();
+  final Map<String, GlobalKey> _chipKeys = {
+    for (final f in _filterItems) f.mode: GlobalKey(),
+  };
+
+  Rect? _indicatorRect;
+  String? _lastMode;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateIndicator());
+  }
+
+  void _updateIndicator() {
+    final mode = controller.filterMode.value;
+    final stackBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    final chipBox =
+        _chipKeys[mode]?.currentContext?.findRenderObject() as RenderBox?;
+    if (stackBox == null || chipBox == null || !stackBox.attached) return;
+
+    final chipOffset = chipBox.localToGlobal(Offset.zero, ancestor: stackBox);
+    final rect = Rect.fromLTWH(
+      chipOffset.dx,
+      chipOffset.dy,
+      chipBox.size.width,
+      chipBox.size.height,
+    );
+
+    if (_indicatorRect != rect || _lastMode != mode) {
+      setState(() {
+        _indicatorRect = rect;
+        _lastMode = mode;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 42,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          Obx(() => _Chip(
-              label: 'Tous',
-              icon: '⚡',
-              isActive: controller.filterMode.value == 'all',
-              onTap: () => controller.setFilter('all'))),
-          const SizedBox(width: 8),
-          Obx(() => _Chip(
-              label: 'En ligne',
-              icon: '🟢',
-              isActive: controller.filterMode.value == 'online',
-              onTap: () => controller.setFilter('online'))),
-          const SizedBox(width: 8),
-          Obx(() => _Chip(
-              label: 'Proches',
-              icon: '📍',
-              isActive: controller.filterMode.value == 'nearby',
-              onTap: () => controller.setFilter('nearby'))),
-          const SizedBox(width: 8),
-          Obx(() => _Chip(
-              label: 'Nouveaux',
-              icon: '✨',
-              isActive: controller.filterMode.value == 'new',
-              onTap: () => controller.setFilter('new'))),
-          const SizedBox(width: 8),
-          const _AdvancedFilterBtn(),
-        ],
-      ),
+      child: Obx(() {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _updateIndicator());
+        final activeMode = controller.filterMode.value;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Stack(
+            key: _stackKey,
+            clipBehavior: Clip.none,
+            children: [
+              if (_indicatorRect != null)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  left: _indicatorRect!.left,
+                  top: _indicatorRect!.top,
+                  width: _indicatorRect!.width,
+                  height: _indicatorRect!.height,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.accent.withOpacity(0.4),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Row(
+                children: [
+                  for (final f in _filterItems) ...[
+                    _Chip(
+                      key: _chipKeys[f.mode],
+                      label: f.label,
+                      icon: f.icon,
+                      isActive: activeMode == f.mode,
+                      onTap: () => controller.setFilter(f.mode),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  const _AdvancedFilterBtn(),
+                ],
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 }
 
+// ─── BOUTON FILTRES AVANCÉS (✅ CORRIGÉ — ouvre désormais un vrai bottom sheet) ──
+
 class _AdvancedFilterBtn extends GetView<HomeController> {
   const _AdvancedFilterBtn();
+
+  void _openAdvancedFilters(BuildContext context) {
+    Get.bottomSheet(
+      const _AdvancedFilterSheet(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -318,9 +481,11 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
       final hasActiveFilters = controller.filterGender.value != 'tous' ||
           controller.filterDistance.value < 50;
       return GestureDetector(
-        onTap: () {},
+        onTap: () => _openAdvancedFilters(context),
         child: Container(
+          height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: hasActiveFilters
@@ -330,6 +495,7 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
                 color: hasActiveFilters ? AppColors.accent : AppColors.border),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.tune_rounded,
                   size: 16,
@@ -349,6 +515,229 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
         ),
       );
     });
+  }
+}
+
+// ─── ✅ NOUVEAU — BOTTOM SHEET FILTRES AVANCÉS (genre + distance) ──
+
+class _AdvancedFilterSheet extends StatefulWidget {
+  const _AdvancedFilterSheet();
+
+  @override
+  State<_AdvancedFilterSheet> createState() => _AdvancedFilterSheetState();
+}
+
+class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
+  final HomeController controller = Get.find<HomeController>();
+
+  late String _gender;
+  late double _distance;
+
+  static const _genders = [
+    {'value': 'tous', 'label': 'Tous', 'icon': '👥'},
+    {'value': 'homme', 'label': 'Hommes', 'icon': '👨'},
+    {'value': 'femme', 'label': 'Femmes', 'icon': '👩'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _gender = controller.filterGender.value;
+    _distance = controller.filterDistance.value;
+  }
+
+  void _reset() {
+    setState(() {
+      _gender = 'tous';
+      _distance = 50.0;
+    });
+  }
+
+  void _apply() {
+    controller.filterGender.value = _gender;
+    controller.filterDistance.value = _distance;
+    Get.back();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF11111C),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFF252538),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Filtres avancés',
+                style: TextStyle(
+                  fontFamily: 'Syne',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              TextButton(
+                onPressed: _reset,
+                child: Text(
+                  'Réinitialiser',
+                  style: TextStyle(color: AppColors.accent, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ── Genre ──────────────────────────────────────────
+          Text(
+            'JE VEUX VOIR',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: _genders.map((g) {
+              final isActive = _gender == g['value'];
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _gender = g['value']!),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? AppColors.accent.withOpacity(0.15)
+                          : AppColors.surface2,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isActive ? AppColors.accent : AppColors.border,
+                        width: isActive ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(g['icon']!, style: const TextStyle(fontSize: 20)),
+                        const SizedBox(height: 4),
+                        Text(
+                          g['label']!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isActive
+                                ? AppColors.accent
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Distance ───────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'DISTANCE MAXIMALE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              Text(
+                _distance >= 50 ? '50+ km' : '${_distance.round()} km',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppColors.accent,
+              inactiveTrackColor: AppColors.border,
+              thumbColor: AppColors.accent,
+              overlayColor: AppColors.accent.withOpacity(0.2),
+              trackHeight: 4,
+            ),
+            child: Slider(
+              value: _distance,
+              min: 1,
+              max: 50,
+              divisions: 49,
+              onChanged: (v) => setState(() => _distance = v),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Bouton Appliquer ───────────────────────────────
+          GestureDetector(
+            onTap: _apply,
+            child: Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                gradient: AppColors.gradientPink,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.accent.withOpacity(0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'Appliquer les filtres',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -385,12 +774,14 @@ class _UsersGridScrollable extends GetView<HomeController> {
                   Get.find<UnreadMessagesController>().unreadFrom(user.id);
               final hasStory = controller.userHasActiveStory(user.id);
               final storyIsSeen = controller.userStoryIsSeen(user.id);
+              final likedMe = controller.userLikedMe(user.id);
 
               return _UserCard(
                 user: user,
                 unreadCount: unreadCount,
                 hasActiveStory: hasStory,
                 storyIsSeen: storyIsSeen,
+                hasLikedMe: likedMe,
                 onTap: () => controller.openProfile(user),
               );
             });
@@ -437,7 +828,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
               size: 64, color: AppColors.textMuted.withOpacity(0.5)),
           const SizedBox(height: 16),
           Text(msg,
-              style: const TextStyle(
+              style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: AppColors.textPrimary)),
@@ -458,6 +849,7 @@ class _UserCard extends StatelessWidget {
   final int unreadCount;
   final bool hasActiveStory;
   final bool storyIsSeen;
+  final bool hasLikedMe;
 
   const _UserCard({
     required this.user,
@@ -465,13 +857,16 @@ class _UserCard extends StatelessWidget {
     this.unreadCount = 0,
     this.hasActiveStory = false,
     this.storyIsSeen = false,
+    this.hasLikedMe = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final bool hasUnread = unreadCount > 0;
+    // Priorité d'affichage : messages non lus > like reçu > story active
     final bool showUnreadBorder = hasUnread;
-    final bool showStoryBorder = !hasUnread && hasActiveStory;
+    final bool showLikeBorder = !hasUnread && hasLikedMe;
+    final bool showStoryBorder = !hasUnread && !hasLikedMe && hasActiveStory;
 
     return GestureDetector(
       onTap: onTap,
@@ -480,25 +875,35 @@ class _UserCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: showUnreadBorder
               ? Border.all(color: const Color(0xFFFFD700), width: 2)
-              : showStoryBorder
-                  ? Border.all(
-                      color: storyIsSeen ? AppColors.border : AppColors.accent,
-                      width: 2)
-                  : null,
+              : showLikeBorder
+                  ? Border.all(color: const Color(0xFFFF3CAC), width: 2)
+                  : showStoryBorder
+                      ? Border.all(
+                          color:
+                              storyIsSeen ? AppColors.border : AppColors.accent,
+                          width: 2)
+                      : null,
           boxShadow: showUnreadBorder
               ? [
                   BoxShadow(
                       color: const Color(0xFFFFD700).withOpacity(0.3),
                       blurRadius: 8)
                 ]
-              : showStoryBorder && !storyIsSeen
+              : showLikeBorder
                   ? [
                       BoxShadow(
-                          color: AppColors.accent.withOpacity(0.35),
+                          color: const Color(0xFFFF3CAC).withOpacity(0.4),
                           blurRadius: 10,
                           spreadRadius: 0)
                     ]
-                  : null,
+                  : showStoryBorder && !storyIsSeen
+                      ? [
+                          BoxShadow(
+                              color: AppColors.accent.withOpacity(0.35),
+                              blurRadius: 10,
+                              spreadRadius: 0)
+                        ]
+                      : null,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -566,7 +971,6 @@ class _UserCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                     decoration: BoxDecoration(
-                      // ✅ Même gradient que l'app (rose → violet)
                       gradient: AppColors.gradientPink,
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -600,7 +1004,6 @@ class _UserCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          // ✅ Même gradient que l'app (rose → violet)
                           gradient: AppColors.gradientPink,
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -628,8 +1031,25 @@ class _UserCard extends StatelessWidget {
                         decoration: const BoxDecoration(
                             color: Colors.green, shape: BoxShape.circle))),
 
-              // ── Icône story ────────────────────────────────
-              if (hasActiveStory && !hasUnread)
+              // ── Icône ❤️ "t'a liké" (priorité sur l'icône story) ──
+              if (showLikeBorder)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFFF3CAC),
+                    ),
+                    child: const Center(
+                      child: Text('❤️', style: TextStyle(fontSize: 11)),
+                    ),
+                  ),
+                )
+              // ── Icône story (si pas de like à afficher) ────
+              else if (hasActiveStory && !hasUnread)
                 Positioned(
                   top: 6,
                   right: 6,
@@ -641,7 +1061,7 @@ class _UserCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       gradient: storyIsSeen
                           ? null
-                          : const LinearGradient(
+                          : LinearGradient(
                               colors: [
                                 AppColors.accent,
                                 AppColors.accent2,
@@ -738,35 +1158,38 @@ class _Chip extends StatelessWidget {
   final String label, icon;
   final bool isActive;
   final VoidCallback onTap;
-  const _Chip(
-      {required this.label,
-      required this.icon,
-      required this.isActive,
-      required this.onTap});
+  const _Chip({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isActive ? AppColors.accent : AppColors.surface2,
+          color: isActive ? Colors.transparent : AppColors.surface2,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Center(
-          child: Row(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 12)),
-              const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      color: isActive ? Colors.white : AppColors.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
-            ],
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 12)),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                    color: isActive ? Colors.white : AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+          ],
         ),
       ),
     );

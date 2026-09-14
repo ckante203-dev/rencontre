@@ -26,11 +26,11 @@ class EcranParametres extends StatelessWidget {
                 color: AppColors.surface2,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border)),
-            child: const Icon(Icons.arrow_back_ios_rounded,
+            child: Icon(Icons.arrow_back_ios_rounded,
                 size: 16, color: AppColors.textPrimary),
           ),
         ),
-        title: const Text('Paramètres',
+        title: Text('Paramètres',
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 17,
@@ -76,7 +76,7 @@ class EcranParametres extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(children: [
+                    Row(children: [
                       Text('♂️', style: TextStyle(fontSize: 14)),
                       SizedBox(width: 6),
                       Text('MON GENRE',
@@ -135,7 +135,7 @@ class EcranParametres extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(children: [
+                    Row(children: [
                       Text('💞', style: TextStyle(fontSize: 14)),
                       SizedBox(width: 6),
                       Text('JE RECHERCHE',
@@ -253,7 +253,9 @@ class EcranParametres extends StatelessWidget {
             const _Titre('Thème de l\'application'),
             const SizedBox(height: 10),
             Obx(() => _SelecteurTheme(
-                selected: ctrl.selectedTheme.value, onSelected: ctrl.setTheme)),
+                  selected: ctrl.selectedTheme.value,
+                  onSelected: (id) => ctrl.selectedTheme.value = id,
+                )),
             const SizedBox(height: 28),
 
             // ════ PROFILS BLOQUÉS ════════════════════════════════
@@ -279,7 +281,7 @@ class EcranParametres extends StatelessWidget {
                         color: AppColors.error.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.block_rounded,
+                      child: Icon(Icons.block_rounded,
                           color: AppColors.error, size: 18),
                     ),
                     const SizedBox(width: 12),
@@ -287,7 +289,7 @@ class EcranParametres extends StatelessWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Profils bloqués',
+                            Text('Profils bloqués',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
@@ -297,7 +299,7 @@ class EcranParametres extends StatelessWidget {
                               count == 0
                                   ? 'Aucun profil bloqué'
                                   : '$count profil${count > 1 ? 's' : ''} bloqué${count > 1 ? 's' : ''}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 11, color: AppColors.textMuted),
                             ),
                           ]),
@@ -318,49 +320,13 @@ class EcranParametres extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                     ],
-                    const Icon(Icons.chevron_right_rounded,
+                    Icon(Icons.chevron_right_rounded,
                         color: AppColors.textMuted, size: 20),
                   ]),
                 ),
               );
             }),
             const SizedBox(height: 28),
-
-            // ════ SOUTENIR SNAPMEET ══════════════════════════════
-            const _Titre('Soutenir SnapMeet'),
-            const SizedBox(height: 10),
-            _BlocSoutien(ctrl: ctrl),
-            const SizedBox(height: 16),
-
-            // ════ NOUS CONTACTER ═════════════════════════════════
-            GestureDetector(
-              onTap: ctrl.ouvrirWhatsApp,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF25D366).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: const Color(0xFF25D366).withOpacity(0.3)),
-                ),
-                child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('💬', style: TextStyle(fontSize: 20)),
-                      SizedBox(width: 10),
-                      Text('Nous contacter sur WhatsApp',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF25D366))),
-                      SizedBox(width: 6),
-                      Icon(Icons.open_in_new_rounded,
-                          size: 16, color: Color(0xFF25D366)),
-                    ]),
-              ),
-            ),
-            const SizedBox(height: 32),
 
             // ── Bouton Sauvegarder ─────────────────────────────
             Obx(() => GestureDetector(
@@ -412,7 +378,7 @@ class EcranParametres extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.error.withOpacity(0.4)),
                 ),
-                child: const Center(
+                child: Center(
                   child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -584,7 +550,7 @@ class _BlocSoutien extends StatelessWidget {
         border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.25)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Si tu aimes SnapMeet, soutiens le projet 🙏',
+        Text('Si tu aimes SnapMeet, soutiens le projet 🙏',
             style: TextStyle(
                 fontSize: 13, color: AppColors.textMuted, height: 1.5)),
         const SizedBox(height: 12),
@@ -638,7 +604,7 @@ class _TuilePaiement extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w700, color: couleur)),
             Text(numero,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary)),
@@ -672,24 +638,24 @@ class _SelecteurTheme extends StatelessWidget {
   static const _themes = [
     {
       'id': 'dark',
-      'label': 'Sombre',
-      'emoji': '🌙',
-      'c1': Color(0xFF0D0D1A),
-      'c2': Color(0xFF1A1A2E)
-    },
-    {
-      'id': 'pink',
-      'label': 'Rose',
+      'label': 'Néon rose',
       'emoji': '💗',
       'c1': Color(0xFFFF3CAC),
       'c2': Color(0xFF7B2FFF)
     },
     {
+      'id': 'blue',
+      'label': 'Bleu élec.',
+      'emoji': '💙',
+      'c1': Color(0xFF2E63FF),
+      'c2': Color(0xFF00C2FF)
+    },
+    {
       'id': 'ocean',
       'label': 'Océan',
       'emoji': '🌊',
-      'c1': Color(0xFF00B4DB),
-      'c2': Color(0xFF0083B0)
+      'c1': Color(0xFF00E0D0),
+      'c2': Color(0xFF00A8CC)
     },
     {
       'id': 'sunset',
@@ -700,17 +666,24 @@ class _SelecteurTheme extends StatelessWidget {
     },
     {
       'id': 'forest',
-      'label': 'Forêt',
+      'label': 'Émeraude',
       'emoji': '🌿',
-      'c1': Color(0xFF00B894),
-      'c2': Color(0xFF00F5D4)
+      'c1': Color(0xFF00D68F),
+      'c2': Color(0xFF00B894)
     },
     {
       'id': 'gold',
       'label': 'Or',
       'emoji': '✨',
       'c1': Color(0xFFFFD700),
-      'c2': Color(0xFFFFA500)
+      'c2': Color(0xFFFF8A00)
+    },
+    {
+      'id': 'violet',
+      'label': 'Galaxie',
+      'emoji': '🔮',
+      'c1': Color(0xFF7B2FFF),
+      'c2': Color(0xFFB026FF)
     },
   ];
 
@@ -774,24 +747,6 @@ class _SelecteurTheme extends StatelessWidget {
             );
           }).toList(),
         ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.accent.withOpacity(0.07),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Row(children: [
-            Icon(Icons.info_outline_rounded,
-                size: 13, color: AppColors.textMuted),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                  'Les thèmes seront disponibles dans la prochaine mise à jour.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-            ),
-          ]),
-        ),
       ]),
     );
   }
@@ -804,7 +759,7 @@ class _Titre extends StatelessWidget {
   const _Titre(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
+      style: TextStyle(
           fontFamily: 'Syne',
           fontSize: 13,
           fontWeight: FontWeight.w800,
@@ -838,14 +793,13 @@ class _Toggle extends StatelessWidget {
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 2),
             Text(subtitle,
-                style:
-                    const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
           ]),
         ),
         Switch(
@@ -864,13 +818,13 @@ class _Toggle extends StatelessWidget {
 class _Tuile extends StatelessWidget {
   final String icon, title, subtitle;
   final VoidCallback onTap;
-  final Color titleColor;
+  final Color? titleColor;
   const _Tuile(
       {required this.icon,
       required this.title,
       required this.subtitle,
       required this.onTap,
-      this.titleColor = AppColors.textPrimary});
+      this.titleColor});
 
   @override
   Widget build(BuildContext context) {
@@ -892,16 +846,15 @@ class _Tuile extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: titleColor)),
+                      color: titleColor ?? AppColors.textPrimary)),
               const SizedBox(height: 2),
               Text(subtitle,
-                  style:
-                      const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
             ]),
           ),
-          const Icon(Icons.chevron_right_rounded,
+          Icon(Icons.chevron_right_rounded,
               color: AppColors.textMuted, size: 20),
         ]),
       ),

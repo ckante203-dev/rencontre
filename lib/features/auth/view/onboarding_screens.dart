@@ -153,7 +153,7 @@ class _OnboardBase extends StatelessWidget {
                   RichText(
                     text: TextSpan(
                       text: title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
@@ -179,7 +179,7 @@ class _OnboardBase extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(description,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textMuted,
                           height: 1.6)),
@@ -198,7 +198,7 @@ class _OnboardBase extends StatelessWidget {
                       onTap: onSkip,
                       child: Center(
                         child: Text(skipLabel!,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textMuted,
                                 fontWeight: FontWeight.w500)),
@@ -479,14 +479,14 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                               ? TextField(
                                   controller: _nameController,
                                   autofocus: true,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.textPrimary),
                                   decoration: InputDecoration(
                                     hintText: 'Ton prénom',
-                                    hintStyle: const TextStyle(
-                                        color: AppColors.textMuted),
+                                    hintStyle:
+                                        TextStyle(color: AppColors.textMuted),
                                     border: UnderlineInputBorder(
                                       borderSide: BorderSide(
                                           color: AppColors.accent, width: 1.5),
@@ -509,7 +509,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                                     _nameController.text.isNotEmpty
                                         ? _nameController.text
                                         : (_googleName ?? 'Utilisateur'),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.textPrimary),
@@ -525,18 +525,17 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                               border: Border.all(
                                   color: AppColors.online.withOpacity(0.3)),
                             ),
-                            child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.check_circle_rounded,
-                                      size: 11, color: AppColors.online),
-                                  SizedBox(width: 4),
-                                  Text('Importé depuis Google',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.online,
-                                          fontWeight: FontWeight.w600)),
-                                ]),
+                            child:
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.check_circle_rounded,
+                                  size: 11, color: AppColors.online),
+                              SizedBox(width: 4),
+                              Text('Importé depuis Google',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.online,
+                                      fontWeight: FontWeight.w600)),
+                            ]),
                           ),
                         ],
                       ),
@@ -597,7 +596,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                           height: 1.2)),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Nous avons besoin de ta date de naissance pour vérifier que tu as au moins 18 ans.',
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.6),
@@ -631,12 +630,12 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                           FilteringTextInputFormatter.digitsOnly,
                           _DateInputFormatter(),
                         ],
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 18,
                             color: AppColors.textPrimary,
                             letterSpacing: 2,
                             fontWeight: FontWeight.w600),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'JJ / MM / AAAA',
                           hintStyle: TextStyle(
                               color: AppColors.textMuted,
@@ -653,10 +652,10 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                     Padding(
                       padding: const EdgeInsets.only(right: 16),
                       child: _isValid
-                          ? const Icon(Icons.check_circle_rounded,
+                          ? Icon(Icons.check_circle_rounded,
                               color: AppColors.online, size: 22)
                           : _errorText != null
-                              ? const Icon(Icons.cancel_rounded,
+                              ? Icon(Icons.cancel_rounded,
                                   color: AppColors.error, size: 22)
                               : const SizedBox.shrink(),
                     ),
@@ -666,11 +665,11 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                 if (_errorText != null) ...[
                   const SizedBox(height: 8),
                   Row(children: [
-                    const Icon(Icons.warning_rounded,
+                    Icon(Icons.warning_rounded,
                         size: 14, color: AppColors.error),
                     const SizedBox(width: 6),
                     Text(_errorText!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12,
                             color: AppColors.error,
                             fontWeight: FontWeight.w500)),
@@ -730,7 +729,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
   }
 }
 
-// ─── STEP 1 : PHOTO ──────────────────────────────────────────────
+// ─── STEP 1 : PHOTO (obligatoire) ────────────────────────────────
 
 class OnboardingPhotoScreen extends StatefulWidget {
   const OnboardingPhotoScreen({super.key});
@@ -786,7 +785,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                         borderRadius: BorderRadius.circular(12)),
                     child: const Icon(Icons.camera_alt_rounded,
                         color: Colors.white, size: 22)),
-                title: const Text('Prendre une photo',
+                title: Text('Prendre une photo',
                     style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600)),
@@ -803,9 +802,9 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                         color: AppColors.surface2,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.border)),
-                    child: const Icon(Icons.photo_library_rounded,
+                    child: Icon(Icons.photo_library_rounded,
                         color: AppColors.textPrimary, size: 22)),
-                title: const Text('Choisir depuis la galerie',
+                title: Text('Choisir depuis la galerie',
                     style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600)),
@@ -821,11 +820,9 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
     );
   }
 
+  // ✅ La photo est désormais obligatoire — aucun bypass possible.
   Future<void> _continuer() async {
-    if (_photo == null) {
-      Get.offNamed('/onboarding/identity');
-      return;
-    }
+    if (_photo == null) return;
     setState(() => _isUploading = true);
     try {
       final ctrl = Get.find<AuthController>();
@@ -842,6 +839,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
       }
     } catch (e) {
       debugPrint('Upload photo error: $e');
+      return; // ✅ en cas d'erreur d'upload, on reste bloqué sur l'écran
     } finally {
       setState(() => _isUploading = false);
     }
@@ -869,10 +867,13 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
       buttonLabel: _isUploading
           ? 'Envoi...'
           : (_photo != null ? 'Continuer →' : 'Choisir une photo'),
-      onNext: _isUploading ? () {} : _continuer,
+      nextEnabled: !_isUploading,
+      // ✅ Sans photo, le bouton ouvre le sélecteur au lieu de passer à l'étape suivante.
+      onNext: _isUploading
+          ? () {}
+          : (_photo != null ? _continuer : _showSourcePicker),
       onBack: null,
-      skipLabel: "Passer pour l'instant",
-      onSkip: () => Get.offNamed('/onboarding/identity'),
+      // ✅ Plus de skipLabel / onSkip — impossible de passer cette étape sans photo.
       content: Column(
         children: [
           Center(
@@ -904,7 +905,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                       child: _photo != null
                           ? Image.file(_photo!, fit: BoxFit.cover)
                           : Container(
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                       colors: [
                                     AppColors.accent,
@@ -937,7 +938,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                             decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.black.withOpacity(0.5)),
-                            child: const Center(
+                            child: Center(
                                 child: CircularProgressIndicator(
                                     color: AppColors.accent, strokeWidth: 2)))),
                 ],
@@ -953,7 +954,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.online.withOpacity(0.3)),
               ),
-              child: const Row(children: [
+              child: Row(children: [
                 Icon(Icons.check_circle_rounded,
                     size: 16, color: AppColors.online),
                 SizedBox(width: 8),
@@ -1023,7 +1024,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
       onNext: _continuer,
       onBack: () => Get.offNamed('/onboarding/photo'),
       content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('JE SUIS',
+        Text('JE SUIS',
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1074,7 +1075,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
           ));
         }).toList()),
         const SizedBox(height: 24),
-        const Text('JE RECHERCHE',
+        Text('JE RECHERCHE',
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1135,7 +1136,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.accent3.withOpacity(0.2)),
           ),
-          child: const Row(children: [
+          child: Row(children: [
             Text('🔒', style: TextStyle(fontSize: 14)),
             SizedBox(width: 8),
             Expanded(
@@ -1251,29 +1252,39 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
   }
 }
 
-// ─── STEP 4 : PERMISSIONS ────────────────────────────────────────
+// ─── STEP 4 : PERMISSIONS (dernière étape → /main directement) ──
 
 class OnboardingPermissionsScreen extends StatelessWidget {
   const OnboardingPermissionsScreen({super.key});
+
+  // ✅ Termine l'onboarding et va directement à l'accueil.
+  // Plus d'écran "bienvenue" ni d'étape numéro de téléphone.
+  Future<void> _finish() async {
+    final ctrl = Get.find<AuthController>();
+    await ctrl.saveOnboardingData(complete: true);
+    Get.offAllNamed('/main');
+  }
+
   @override
   Widget build(BuildContext context) {
     return _OnboardBase(
       step: 4,
+      totalSteps: 4,
       heroColor1: const Color(0xFF0a2e1a),
       heroColor2: const Color(0xFF2e2a0a),
       emoji: '📍',
       tagColor: AppColors.accent2,
       tagBg: const Color(0x1A7B2FFF),
-      tag: '📍 Étape 4 / 5',
+      tag: '📍 Étape 4 / 4',
       title: 'Active ta ',
       titleHighlight: 'position',
       description:
           'Pour voir les personnes autour de toi en temps réel, on a besoin de quelques autorisations.',
-      buttonLabel: 'Autoriser et continuer →',
-      onNext: () => Get.offNamed('/onboarding/ready'),
+      buttonLabel: 'Terminer →',
+      onNext: _finish,
       onBack: () => Get.offNamed('/onboarding/interests'),
       skipLabel: 'Pas maintenant',
-      onSkip: () => Get.offNamed('/onboarding/ready'),
+      onSkip: _finish,
       content: Column(children: [
         _PermissionCard(
             icon: '📍',
@@ -1334,7 +1345,7 @@ class _PermissionCard extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary)),
@@ -1346,7 +1357,7 @@ class _PermissionCard extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: AppColors.accent.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(6)),
-                  child: const Text('Requis',
+                  child: Text('Requis',
                       style: TextStyle(
                           fontSize: 9,
                           color: AppColors.accent,
@@ -1355,7 +1366,7 @@ class _PermissionCard extends StatelessWidget {
           ]),
           const SizedBox(height: 3),
           Text(description,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, color: AppColors.textMuted, height: 1.4)),
         ])),
       ]),
@@ -1363,125 +1374,10 @@ class _PermissionCard extends StatelessWidget {
   }
 }
 
-// ─── STEP 5 : PRÊT ! ─────────────────────────────────────────────
-
-class OnboardingReadyScreen extends StatelessWidget {
-  const OnboardingReadyScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = Get.find<AuthController>();
-    return _OnboardBase(
-      step: 5,
-      heroColor1: const Color(0xFF1a0a2e),
-      heroColor2: const Color(0xFF0a1a2e),
-      emoji: '🎉',
-      tagColor: AppColors.online,
-      tagBg: const Color(0x1A00E676),
-      tag: '🎉 Tout est prêt !',
-      title: 'Bienvenue sur ',
-      titleHighlight: 'SnapMeet !',
-      description:
-          'Ton profil est créé. Découvre les personnes autour de toi et crée des connexions authentiques.',
-      buttonLabel: 'Ajouter mon numéro 📱',
-      onNext: () async {
-        await ctrl.saveOnboardingData(complete: true);
-        Get.offAllNamed('/phone/verify');
-      },
-      onBack: () => Get.offNamed('/onboarding/permissions'),
-      skipLabel: 'Passer et aller sur l\'app',
-      onSkip: () async {
-        await ctrl.saveOnboardingData(complete: true);
-        Get.offAllNamed('/main');
-      },
-      content: Column(children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-              color: AppColors.bg,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border)),
-          child:
-              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _StatItem(
-                value: '247',
-                label: 'Personnes\nà proximité',
-                color: AppColors.accent),
-            Container(width: 1, height: 40, color: AppColors.border),
-            _StatItem(
-                value: '12',
-                label: 'Stories\nactives',
-                color: AppColors.accent2),
-            Container(width: 1, height: 40, color: AppColors.border),
-            _StatItem(
-                value: '3',
-                label: 'Matchs\npotentiels',
-                color: AppColors.accent3),
-          ]),
-        ),
-        const SizedBox(height: 14),
-        _FeatureRow(icon: '🗺️', label: 'Voir les gens sur la carte'),
-        const SizedBox(height: 8),
-        _FeatureRow(icon: '📸', label: 'Envoyer des snaps éphémères'),
-        const SizedBox(height: 8),
-        _FeatureRow(icon: '💬', label: 'Chatter et créer des connexions'),
-        const SizedBox(height: 8),
-        _FeatureRow(
-            icon: '💫', label: 'Voir uniquement les profils compatibles'),
-      ]),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String value, label;
-  final Color color;
-  const _StatItem(
-      {required this.value, required this.label, required this.color});
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      ShaderMask(
-          shaderCallback: (b) =>
-              LinearGradient(colors: [color, color.withOpacity(0.7)])
-                  .createShader(b),
-          child: Text(value,
-              style: const TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white))),
-      const SizedBox(height: 4),
-      Text(label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-              fontSize: 10, color: AppColors.textMuted, height: 1.4)),
-    ]);
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  final String icon, label;
-  const _FeatureRow({required this.icon, required this.label});
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-              color: AppColors.surface2,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border)),
-          child:
-              Center(child: Text(icon, style: const TextStyle(fontSize: 18)))),
-      const SizedBox(width: 12),
-      Text(label,
-          style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-    ]);
-  }
-}
-
 // ─── WIDGETS COMMUNS ─────────────────────────────────────────────
+// ℹ️ L'ancien "STEP 5 : PRÊT !" (OnboardingReadyScreen, _StatItem,
+// _FeatureRow) a été retiré : l'onboarding se termine désormais à
+// l'étape Permissions et va directement sur /main.
 
 class _InitialAvatar extends StatelessWidget {
   final String name;

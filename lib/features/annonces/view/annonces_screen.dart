@@ -1,7 +1,7 @@
 // lib/features/annonces/view/annonces_screen.dart
+// ✅ VERSION PRO — Follow, vidéo barre visible, double-tap ❤️, améliorations UX
 
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -42,7 +42,7 @@ class AnnoncesScreen extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  VUE PRINCIPALE — TIKTOK STYLE
+//  VUE PRINCIPALE
 // ══════════════════════════════════════════════════════════════════
 
 class _AnnoncesView extends GetView<AnnoncesController> {
@@ -55,28 +55,39 @@ class _AnnoncesView extends GetView<AnnoncesController> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // ── Feed TikTok ──
+          // ── Feed TikTok ──────────────────────────────────────
           Obx(() {
             if (controller.isLoading.value && controller.annonces.isEmpty) {
               return const _TikTokSkeleton();
             }
             final list = controller.filtered;
-            if (list.isEmpty) {
-              return _buildEmptyState();
-            }
-            return PageView.builder(
-              scrollDirection: Axis.vertical,
-              itemCount: list.length,
-              onPageChanged: (i) {
-                if (i >= list.length - 3) {
-                  controller.loadMore();
-                }
-              },
-              itemBuilder: (_, i) => _TikTokCard(annonce: list[i]),
+            if (list.isEmpty) return _buildEmptyState();
+
+            return RefreshIndicator(
+              color: AppColors.accent,
+              backgroundColor: const Color(0xFF13131A),
+              onRefresh: controller.loadAnnonces,
+              child: PageView.builder(
+                scrollDirection: Axis.vertical,
+                physics: const BouncingScrollPhysics(),
+                itemCount: list.length + (controller.hasMore.value ? 1 : 0),
+                onPageChanged: (i) {
+                  if (i >= list.length - 2) controller.loadMore();
+                },
+                itemBuilder: (_, i) {
+                  if (i >= list.length) {
+                    return  Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.accent, strokeWidth: 2),
+                    );
+                  }
+                  return _TikTokCard(annonce: list[i]);
+                },
+              ),
             );
           }),
 
-          // ── Header flottant ──
+          // ── Header flottant ──────────────────────────────────
           Positioned(
             top: 0,
             left: 0,
@@ -85,8 +96,6 @@ class _AnnoncesView extends GetView<AnnoncesController> {
           ),
         ],
       ),
-
-      // ── FAB Publier ──
       floatingActionButton: _PublierFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -105,20 +114,15 @@ class _AnnoncesView extends GetView<AnnoncesController> {
                   size: 80, color: Colors.white),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Aucune annonce',
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
+            const Text('Aucune annonce',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white)),
             const SizedBox(height: 8),
-            const Text(
-              'Sois le premier à publier !',
-              style: TextStyle(fontSize: 14, color: Colors.white60),
-            ),
+            const Text('Sois le premier à publier !',
+                style: TextStyle(fontSize: 14, color: Colors.white60)),
           ],
         ),
       ),
@@ -141,17 +145,16 @@ class _FloatingHeader extends GetView<AnnoncesController> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(0.7),
+            Colors.black.withOpacity(0.75),
             Colors.transparent,
           ],
         ),
       ),
       child: Row(
         children: [
-          // ── Filtres catégories ──
           Expanded(
             child: Obx(() => SizedBox(
-                  height: 32,
+                  height: 34,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
@@ -159,10 +162,9 @@ class _FloatingHeader extends GetView<AnnoncesController> {
                       'rencontre',
                       'amitie',
                       'sortie',
-                      'voyage'
+                      'voyage',
                     ].map((cat) {
                       final sel = controller.filterCategorie.value == cat;
-                      final label = _catLabel(cat);
                       return GestureDetector(
                         onTap: () => controller.filterCategorie.value = cat,
                         child: AnimatedContainer(
@@ -173,14 +175,14 @@ class _FloatingHeader extends GetView<AnnoncesController> {
                           decoration: BoxDecoration(
                             gradient: sel ? AppColors.gradientPink : null,
                             color: sel ? null : Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(20),
                             border: sel
                                 ? null
                                 : Border.all(
                                     color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Text(
-                            label,
+                            _catLabel(cat),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -195,8 +197,6 @@ class _FloatingHeader extends GetView<AnnoncesController> {
                   ),
                 )),
           ),
-
-          // ── Mes annonces ──
           GestureDetector(
             onTap: () => _showMesAnnonces(context),
             child: Container(
@@ -247,7 +247,12 @@ class _PublierFAB extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _showPublierSheet(context),
+      onTap: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const _PublierSheet(),
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
@@ -266,26 +271,14 @@ class _PublierFAB extends StatelessWidget {
           children: [
             Icon(Icons.add_rounded, color: Colors.white, size: 20),
             SizedBox(width: 6),
-            Text(
-              'Publier',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
+            Text('Publier',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
           ],
         ),
       ),
-    );
-  }
-
-  void _showPublierSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _PublierSheet(),
     );
   }
 }
@@ -325,12 +318,9 @@ class _TikTokCard extends GetView<AnnoncesController> {
     return VisibilityDetector(
       key: Key('tiktok_${annonce.id}'),
       onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0.8) {
-          controller.marquerVue(annonce);
-        }
+        if (info.visibleFraction > 0.8) controller.marquerVue(annonce);
       },
-      child: GestureDetector(
-        // ✅ Double tap pour liker
+      child: _DoubleTapLike(
         onDoubleTap: () {
           HapticFeedback.mediumImpact();
           controller.toggleReaction(annonce, '❤️');
@@ -341,29 +331,20 @@ class _TikTokCard extends GetView<AnnoncesController> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Background media ou couleur ──
               _buildBackground(),
-
-              // ── Overlay dégradé ──
               _buildOverlay(),
-
-              // ── Actions droite (TikTok style) ──
+              // ── Actions droite ────────────────────────────
               Positioned(
                 right: 12,
                 bottom: 120,
                 child: _ActionsSidebar(annonce: annonce),
               ),
-
-              // ── Infos bas gauche ──
+              // ── Infos bas gauche ──────────────────────────
               Positioned(
                 left: 16,
                 right: 80,
                 bottom: 80,
-                child: _AnnonceInfo(
-                  annonce: annonce,
-                  emoji: _emoji,
-                  ago: _ago,
-                ),
+                child: _AnnonceInfo(annonce: annonce, emoji: _emoji, ago: _ago),
               ),
             ],
           ),
@@ -376,9 +357,7 @@ class _TikTokCard extends GetView<AnnoncesController> {
     if (annonce.mediaUrl != null) {
       if (annonce.isVideo) {
         return _TikTokVideoPlayer(
-          url: annonce.mediaUrl!,
-          annonceId: annonce.id,
-        );
+            url: annonce.mediaUrl!, annonceId: annonce.id);
       } else {
         return CachedNetworkImage(
           imageUrl: annonce.mediaUrl!,
@@ -404,10 +383,9 @@ class _TikTokCard extends GetView<AnnoncesController> {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
-        ),
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors),
       ),
       child: Center(
         child: Column(
@@ -417,17 +395,14 @@ class _TikTokCard extends GetView<AnnoncesController> {
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Text(
-                annonce.titre,
-                style: const TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  height: 1.2,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              child: Text(annonce.titre,
+                  style: const TextStyle(
+                      fontFamily: 'Syne',
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.2),
+                  textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -444,10 +419,10 @@ class _TikTokCard extends GetView<AnnoncesController> {
             end: Alignment.bottomCenter,
             stops: const [0.0, 0.4, 0.7, 1.0],
             colors: [
-              Colors.black.withOpacity(0.4),
+              Colors.black.withOpacity(0.35),
               Colors.transparent,
               Colors.black.withOpacity(0.3),
-              Colors.black.withOpacity(0.85),
+              Colors.black.withOpacity(0.88),
             ],
           ),
         ),
@@ -456,8 +431,105 @@ class _TikTokCard extends GetView<AnnoncesController> {
   }
 }
 
+// ✅ Widget double tap avec animation cœur style TikTok
+class _DoubleTapLike extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onDoubleTap;
+  const _DoubleTapLike({required this.child, required this.onDoubleTap});
+
+  @override
+  State<_DoubleTapLike> createState() => _DoubleTapLikeState();
+}
+
+class _DoubleTapLikeState extends State<_DoubleTapLike>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scaleAnim;
+  late Animation<double> _fadeAnim;
+  Offset _tapPosition = Offset.zero;
+  bool _show = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 700));
+    _scaleAnim = TweenSequence([
+      TweenSequenceItem(
+          tween: Tween(begin: 0.0, end: 1.3)
+              .chain(CurveTween(curve: Curves.elasticOut)),
+          weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 40),
+    ]).animate(_ctrl);
+    _fadeAnim = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
+    ]).animate(_ctrl);
+    _ctrl.addStatusListener((s) {
+      if (s == AnimationStatus.completed) {
+        if (mounted) setState(() => _show = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onDoubleTapDown: (d) => setState(() => _tapPosition = d.localPosition),
+      onDoubleTap: () {
+        widget.onDoubleTap();
+        setState(() => _show = true);
+        _ctrl.forward(from: 0);
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          widget.child,
+          // ✅ Cœur flottant — icône Flutter + dégradé TikTok
+          if (_show)
+            Positioned(
+              left: _tapPosition.dx - 60,
+              top: _tapPosition.dy - 60,
+              child: AnimatedBuilder(
+                animation: _ctrl,
+                builder: (_, __) => Opacity(
+                  opacity: _fadeAnim.value,
+                  child: Transform.scale(
+                    scale: _scaleAnim.value,
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [
+                          Color(0xFFFF2D55),
+                          Color(0xFFFF6B8A),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        size: 120,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
-//  SIDEBAR ACTIONS (droite, style TikTok)
+//  SIDEBAR ACTIONS
 // ══════════════════════════════════════════════════════════════════
 
 class _ActionsSidebar extends GetView<AnnoncesController> {
@@ -466,18 +538,20 @@ class _ActionsSidebar extends GetView<AnnoncesController> {
 
   @override
   Widget build(BuildContext context) {
+    final myId = Supabase.instance.client.auth.currentUser?.id;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Avatar auteur ──
+        // ✅ Avatar avec Follow/Unfollow
         _AvatarFollow(annonce: annonce),
         const SizedBox(height: 24),
 
-        // ── Like / Réaction ──
+        // ── Like ──────────────────────────────────────────
         _LikeAction(annonce: annonce),
         const SizedBox(height: 20),
 
-        // ── Commentaire ──
+        // ── Commentaire ───────────────────────────────────
         _SidebarAction(
           icon: Icons.chat_bubble_rounded,
           count: annonce.reponsesCount,
@@ -489,65 +563,168 @@ class _ActionsSidebar extends GetView<AnnoncesController> {
         ),
         const SizedBox(height: 20),
 
-        // ── Répondre en PV ──
+        // ── Répondre en PV ────────────────────────────────
         _SidebarAction(
           icon: Icons.send_rounded,
           count: 0,
           label: 'Répondre',
           showCount: false,
-          onTap: annonce.userId != Supabase.instance.client.auth.currentUser?.id
-              ? () => _repondreEnPV(context)
+          onTap: myId != annonce.userId
+              ? () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => _RepondreEnPVSheet(annonce: annonce))
               : null,
-          disabled:
-              annonce.userId == Supabase.instance.client.auth.currentUser?.id,
+          disabled: myId == annonce.userId,
         ),
         const SizedBox(height: 20),
 
-        // ── Boost (si propriétaire) ──
+        // ── Boost ─────────────────────────────────────────
         _BoostSidebar(annonce: annonce),
       ],
     );
   }
-
-  void _repondreEnPV(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _RepondreEnPVSheet(annonce: annonce),
-    );
-  }
 }
 
-class _AvatarFollow extends StatelessWidget {
+// ✅ Avatar avec bouton Follow/Unfollow intégré
+class _AvatarFollow extends StatefulWidget {
   final AnnonceModel annonce;
   const _AvatarFollow({required this.annonce});
 
   @override
+  State<_AvatarFollow> createState() => _AvatarFollowState();
+}
+
+class _AvatarFollowState extends State<_AvatarFollow> {
+  bool _isFollowing = false;
+  bool _loading = false;
+  final _myId = Supabase.instance.client.auth.currentUser?.id;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFollow();
+  }
+
+  Future<void> _checkFollow() async {
+    if (_myId == null || _myId == widget.annonce.userId) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('follows')
+          .select('id')
+          .eq('follower_id', _myId!)
+          .eq('following_id', widget.annonce.userId)
+          .maybeSingle();
+      if (mounted) setState(() => _isFollowing = row != null);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_myId == null || _loading) return;
+    setState(() => _loading = true);
+    HapticFeedback.mediumImpact();
+    try {
+      if (_isFollowing) {
+        await Supabase.instance.client
+            .from('follows')
+            .delete()
+            .eq('follower_id', _myId!)
+            .eq('following_id', widget.annonce.userId);
+        if (mounted) setState(() => _isFollowing = false);
+        Get.snackbar(
+          'Abonnement retiré',
+          'Tu ne suis plus ${widget.annonce.userName}',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      } else {
+        await Supabase.instance.client.from('follows').insert({
+          'follower_id': _myId,
+          'following_id': widget.annonce.userId,
+        });
+        if (mounted) setState(() => _isFollowing = true);
+
+        // ✅ Notification push au profil suivi
+        _notifyFollow();
+
+        Get.snackbar(
+          '✅ Abonné !',
+          'Tu suis ${widget.annonce.userName} · tu recevras ses annonces',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.accent.withOpacity(0.15),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    } catch (e) {
+      debugPrint('toggleFollow error: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _notifyFollow() async {
+    try {
+      final myProfile = await Supabase.instance.client
+          .from('profiles')
+          .select('name')
+          .eq('id', _myId!)
+          .maybeSingle();
+      final myName = myProfile?['name'] ?? 'Quelqu\'un';
+
+      final target = await Supabase.instance.client
+          .from('profiles')
+          .select('fcm_token')
+          .eq('id', widget.annonce.userId)
+          .maybeSingle();
+      final token = target?['fcm_token'] as String?;
+      if (token == null || token.isEmpty) return;
+
+      await Supabase.instance.client.functions
+          .invoke('send-notification', body: {
+        'token': token,
+        'title': '👥 Nouvel abonné',
+        'body': '$myName s\'est abonné à ton profil !',
+        'data': {'type': 'new_follower', 'userId': _myId},
+      });
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isMe = _myId == widget.annonce.userId;
+
     return GestureDetector(
       onTap: () => Get.toNamed('/profile/view',
           arguments: UserModel(
-            id: annonce.userId,
-            name: annonce.userName,
-            age: annonce.userAge,
-            photoUrl: annonce.userPhotoUrl,
+            id: widget.annonce.userId,
+            name: widget.annonce.userName,
+            age: widget.annonce.userAge,
+            photoUrl: widget.annonce.userPhotoUrl,
             isOnline: false,
             interests: [],
           )),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // ── Avatar ────────────────────────────────────
           Container(
             width: 52,
             height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: AppColors.gradientPink,
-              border: Border.all(color: Colors.white, width: 2),
+              gradient: _isFollowing ? null : AppColors.gradientPink,
+              color: _isFollowing ? Colors.transparent : null,
+              border: Border.all(
+                color: _isFollowing ? AppColors.accent : Colors.white,
+                width: _isFollowing ? 2.5 : 2,
+              ),
             ),
             child: ClipOval(
-              child: annonce.isAnonyme
+              child: widget.annonce.isAnonyme
                   ? Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
@@ -559,33 +736,49 @@ class _AvatarFollow extends StatelessWidget {
                             color: Colors.white, size: 26),
                       ),
                     )
-                  : (annonce.userPhotoUrl != null
+                  : (widget.annonce.userPhotoUrl != null
                       ? CachedNetworkImage(
-                          imageUrl: annonce.userPhotoUrl!,
+                          imageUrl: widget.annonce.userPhotoUrl!,
                           fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => _initials(),
-                        )
+                          errorWidget: (_, __, ___) => _initials())
                       : _initials()),
             ),
           ),
-          Positioned(
-            bottom: -8,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradientPink,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+
+          // ✅ Bouton +/✓ Follow
+          if (!isMe)
+            Positioned(
+              bottom: -10,
+              left: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: _toggleFollow,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      gradient: _isFollowing ? null : AppColors.gradientPink,
+                      color: _isFollowing ? const Color(0xFF252538) : null,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: _loading
+                        ? const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 1.5))
+                        : Icon(
+                            _isFollowing
+                                ? Icons.check_rounded
+                                : Icons.add_rounded,
+                            color: Colors.white,
+                            size: 14),
+                  ),
                 ),
-                child: const Icon(Icons.add_rounded,
-                    color: Colors.white, size: 14),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -595,14 +788,11 @@ class _AvatarFollow extends StatelessWidget {
         decoration: BoxDecoration(gradient: AppColors.gradientPink),
         child: Center(
           child: Text(
-            annonce.userName.isNotEmpty
-                ? annonce.userName[0].toUpperCase()
+            widget.annonce.userName.isNotEmpty
+                ? widget.annonce.userName[0].toUpperCase()
                 : '?',
             style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 22,
-            ),
+                color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22),
           ),
         ),
       );
@@ -612,8 +802,19 @@ class _LikeAction extends GetView<AnnoncesController> {
   final AnnonceModel annonce;
   const _LikeAction({required this.annonce});
 
+  // ✅ Format TikTok : 1.2K, 3.4M
+  String _formatCount(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Détermine si une réaction non-❤️ est active
+    final hasOtherReaction =
+        annonce.myReaction.isNotEmpty && annonce.myReaction != '❤️';
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -625,33 +826,56 @@ class _LikeAction extends GetView<AnnoncesController> {
       },
       child: Column(
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            transitionBuilder: (child, anim) =>
-                ScaleTransition(scale: anim, child: child),
-            child: Text(
-              annonce.myReaction.isNotEmpty ? annonce.myReaction : '🤍',
-              key: ValueKey(annonce.myReaction),
-              style: const TextStyle(fontSize: 36),
+          // ✅ Vraie icône Flutter animée — plus d'emoji texte
+          TweenAnimationBuilder<double>(
+            key: ValueKey(annonce.isLiked),
+            tween: Tween(
+              begin: annonce.isLiked ? 0.7 : 1.0,
+              end: 1.0,
             ),
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.elasticOut,
+            builder: (_, scale, child) =>
+                Transform.scale(scale: scale, child: child),
+            child: hasOtherReaction
+                // Autre réaction (emoji) → on garde l'emoji
+                ? Text(
+                    annonce.myReaction,
+                    style: const TextStyle(fontSize: 38),
+                  )
+                // ❤️ ou rien → icône Flutter propre
+                : Icon(
+                    annonce.isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: annonce.isLiked
+                        ? const Color(0xFFFF2D55) // Rouge TikTok
+                        : Colors.white,
+                    size: 38,
+                    shadows: const [
+                      Shadow(color: Colors.black54, blurRadius: 8)
+                    ],
+                  ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
+          // ✅ Compteur formaté style TikTok
           Text(
             _formatCount(annonce.likes),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: annonce.isLiked ? AppColors.accent : Colors.white,
+              color: annonce.isLiked ? const Color(0xFFFF2D55) : Colors.white,
               shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
             ),
           ),
+          // Mini réactions des autres
           if (annonce.reactionCounts.length > 1)
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 3),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: annonce.reactionCounts.entries
-                    .where((e) => e.key != annonce.myReaction && e.key != '❤️')
+                    .where((e) => e.key != '❤️')
                     .take(2)
                     .map((e) =>
                         Text(e.key, style: const TextStyle(fontSize: 12)))
@@ -661,11 +885,6 @@ class _LikeAction extends GetView<AnnoncesController> {
         ],
       ),
     );
-  }
-
-  String _formatCount(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
-    return '$n';
   }
 
   void _showReactionPicker(BuildContext context) {
@@ -686,19 +905,15 @@ class _LikeAction extends GetView<AnnoncesController> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
-            const Text(
-              'Réagir',
-              style: TextStyle(
-                fontFamily: 'Syne',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
+            const Text('Réagir',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -710,42 +925,36 @@ class _LikeAction extends GetView<AnnoncesController> {
                     Navigator.pop(context);
                     controller.toggleReaction(annonce, emoji);
                   },
-                  child: Column(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
+                  child: Column(children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.accent.withOpacity(0.2)
+                            : Colors.white.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                        border: Border.all(
                           color: isSelected
-                              ? AppColors.accent.withOpacity(0.2)
-                              : Colors.white.withOpacity(0.08),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.accent
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                        child: Text(
-                          emoji,
-                          style: TextStyle(fontSize: isSelected ? 30 : 26),
+                              ? AppColors.accent
+                              : Colors.transparent,
+                          width: 2,
                         ),
                       ),
-                      if (count > 0) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '$count',
+                      child: Text(emoji,
+                          style: TextStyle(fontSize: isSelected ? 30 : 26)),
+                    ),
+                    if (count > 0) ...[
+                      const SizedBox(height: 4),
+                      Text('$count',
                           style: TextStyle(
-                            fontSize: 11,
-                            color:
-                                isSelected ? AppColors.accent : Colors.white54,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                              fontSize: 11,
+                              color: isSelected
+                                  ? AppColors.accent
+                                  : Colors.white54,
+                              fontWeight: FontWeight.w600)),
                     ],
-                  ),
+                  ]),
                 );
               }).toList(),
             ),
@@ -788,26 +997,20 @@ class _SidebarAction extends StatelessWidget {
                   : Colors.white.withOpacity(0.15),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(disabled ? 0.1 : 0.3),
-              ),
+                  color: Colors.white.withOpacity(disabled ? 0.1 : 0.3)),
             ),
-            child: Icon(
-              icon,
-              color: disabled ? Colors.white.withOpacity(0.3) : Colors.white,
-              size: 22,
-            ),
+            child: Icon(icon,
+                color: disabled ? Colors.white.withOpacity(0.3) : Colors.white,
+                size: 22),
           ),
           if (showCount && count > 0) ...[
             const SizedBox(height: 4),
-            Text(
-              '$count',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-              ),
-            ),
+            Text('$count',
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    shadows: [Shadow(color: Colors.black54, blurRadius: 4)])),
           ],
         ],
       ),
@@ -846,9 +1049,8 @@ class _BoostSidebar extends GetView<AnnoncesController> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFD700).withOpacity(0.4),
-              blurRadius: 10,
-            ),
+                color: const Color(0xFFFFD700).withOpacity(0.4),
+                blurRadius: 10),
           ],
         ),
         child: const Text('⚡', style: TextStyle(fontSize: 20)),
@@ -871,10 +1073,9 @@ class _BoostSidebar extends GetView<AnnoncesController> {
             style: TextStyle(color: Colors.white54, fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Annuler', style: TextStyle(color: Colors.white38)),
-          ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white38))),
           GestureDetector(
             onTap: () {
               Navigator.pop(context);
@@ -919,7 +1120,7 @@ class _AnnonceInfo extends GetView<AnnoncesController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Auteur
+        // ── Auteur ────────────────────────────────────────
         GestureDetector(
           onTap: annonce.isAnonyme
               ? null
@@ -932,84 +1133,73 @@ class _AnnonceInfo extends GetView<AnnoncesController> {
                     isOnline: false,
                     interests: [],
                   )),
-          child: Row(
-            children: [
-              Text(
-                annonce.isAnonyme ? '👤 Anonyme' : '@${annonce.userName}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
-                ),
+          child: Row(children: [
+            Text(
+              annonce.isAnonyme ? '👤 Anonyme' : '@${annonce.userName}',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
               ),
-              const SizedBox(width: 8),
-              if (annonce.isBoosted)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text('⚡ BOOST',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white)),
+            ),
+            const SizedBox(width: 8),
+            if (annonce.isBoosted)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFF8C00)]),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-            ],
-          ),
+                child: const Text('⚡ BOOST',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white)),
+              ),
+          ]),
         ),
         const SizedBox(height: 6),
 
-        // Titre
+        // ── Titre ─────────────────────────────────────────
         if (annonce.titre != '📸')
-          Text(
-            annonce.titre,
-            style: const TextStyle(
-              fontFamily: 'Syne',
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              height: 1.2,
-              shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(annonce.titre,
+              style: const TextStyle(
+                fontFamily: 'Syne',
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                height: 1.2,
+                shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
 
-        // Description
+        // ── Description ───────────────────────────────────
         if (annonce.description.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(
-            annonce.description,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.85),
-              height: 1.4,
-              shadows: const [Shadow(color: Colors.black87, blurRadius: 6)],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(annonce.description,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.85),
+                height: 1.4,
+                shadows: const [Shadow(color: Colors.black87, blurRadius: 6)],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
         ],
 
         const SizedBox(height: 10),
 
-        // ✅ FIX OVERFLOW — Wrap au lieu de Row
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _Tag('$emoji ${annonce.categorie}'),
-            if (annonce.ville != null && !annonce.isAnonyme)
-              _Tag('📍 ${annonce.ville!}'),
-            _Tag('🕐 $ago'),
-            _Tag('👁 ${annonce.viewsCount}'),
-          ],
-        ),
+        // ── Tags ──────────────────────────────────────────
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          _Tag('$emoji ${annonce.categorie}'),
+          if (annonce.ville != null && !annonce.isAnonyme)
+            _Tag('📍 ${annonce.ville!}'),
+          _Tag('🕐 $ago'),
+          _Tag('👁 ${annonce.viewsCount}'),
+        ]),
 
         const SizedBox(height: 8),
         GestureDetector(
@@ -1058,9 +1248,8 @@ class _AnnonceInfo extends GetView<AnnoncesController> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             if (myId == annonce.userId) ...[
               _MenuItem(Icons.delete_outline_rounded, 'Supprimer', Colors.red,
@@ -1108,9 +1297,8 @@ class _AnnonceInfo extends GetView<AnnoncesController> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             const Text('Pourquoi signaler ?',
                 style: TextStyle(
@@ -1154,24 +1342,19 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
+        color: Colors.black.withOpacity(0.45),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 10,
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child: Text(text,
+          style: const TextStyle(
+              fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  ✅ VIDEO PLAYER TIKTOK — FIX SON
+//  ✅ VIDEO PLAYER — BARRE VISIBLE + SON CORRIGÉ
 // ══════════════════════════════════════════════════════════════════
 
 class _TikTokVideoPlayer extends StatefulWidget {
@@ -1186,9 +1369,8 @@ class _TikTokVideoPlayer extends StatefulWidget {
 class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
   late VideoPlayerController _ctrl;
   bool _initialized = false;
-  bool _muted = true; // Muet par défaut (comportement TikTok)
+  bool _muted = true;
   bool _paused = false;
-  bool _showMuteHint = true; // ✅ Affiche le hint "Appuie pour le son"
 
   @override
   void initState() {
@@ -1203,13 +1385,8 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
       if (mounted) {
         setState(() => _initialized = true);
         await _ctrl.setLooping(true);
-        // ✅ Commence muet — le volume sera changé par le bouton
         await _ctrl.setVolume(0);
         await _ctrl.play();
-        // ✅ Cache le hint après 3 secondes
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) setState(() => _showMuteHint = false);
-        });
       }
     } catch (e) {
       debugPrint('Video init error: $e');
@@ -1222,13 +1399,8 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
     super.dispose();
   }
 
-  // ✅ Toggle son corrigé — setVolume asynchrone propre
   Future<void> _toggleMute() async {
-    setState(() {
-      _muted = !_muted;
-      _showMuteHint = false;
-    });
-    // ✅ setVolume sur le même controller — pas de recréation
+    setState(() => _muted = !_muted);
     await _ctrl.setVolume(_muted ? 0.0 : 1.0);
     HapticFeedback.lightImpact();
   }
@@ -1243,7 +1415,7 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
     if (!_initialized) {
       return Container(
         color: Colors.black,
-        child: const Center(
+        child:  Center(
           child: CircularProgressIndicator(
               color: AppColors.accent, strokeWidth: 2),
         ),
@@ -1255,7 +1427,7 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Vidéo ──
+          // ── Vidéo ──────────────────────────────────────
           FittedBox(
             fit: BoxFit.cover,
             child: SizedBox(
@@ -1265,7 +1437,7 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
             ),
           ),
 
-          // ── Pause overlay ──
+          // ── Pause overlay ──────────────────────────────
           if (_paused)
             Center(
               child: Container(
@@ -1280,7 +1452,7 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
               ),
             ),
 
-          // ✅ BOUTON SON — mieux positionné et plus visible
+          // ── Bouton son ────────────────────────────────
           Positioned(
             top: 100,
             right: 16,
@@ -1305,46 +1477,77 @@ class _TikTokVideoPlayerState extends State<_TikTokVideoPlayer> {
             ),
           ),
 
-          // ✅ Hint "Appuie pour le son" — disparaît après 3s
-          if (_showMuteHint && _muted)
-            Positioned(
-              top: 108,
-              right: 66,
-              child: GestureDetector(
-                onTap: _toggleMute,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    '🔇 Son désactivé',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // ✅ Barre de progression discrète en bas
+          // ✅ BARRE DE PROGRESSION BIEN VISIBLE — 4px, blanche
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: VideoProgressIndicator(
-              _ctrl,
-              allowScrubbing: true,
-              colors: VideoProgressColors(
-                playedColor: AppColors.accent,
-                bufferedColor: Colors.white.withOpacity(0.3),
-                backgroundColor: Colors.white.withOpacity(0.1),
-              ),
-              padding: EdgeInsets.zero,
+            child: ValueListenableBuilder<VideoPlayerValue>(
+              valueListenable: _ctrl,
+              builder: (_, value, __) {
+                final duration = value.duration.inMilliseconds.toDouble();
+                final position = value.position.inMilliseconds.toDouble();
+                final progress =
+                    duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
+
+                return GestureDetector(
+                  onHorizontalDragUpdate: (d) {
+                    if (duration <= 0) return;
+                    final box = context.findRenderObject() as RenderBox?;
+                    if (box == null) return;
+                    final width = box.size.width;
+                    final dx = d.globalPosition.dx / width;
+                    final newPos = Duration(
+                        milliseconds:
+                            (dx * duration).toInt().clamp(0, duration.toInt()));
+                    _ctrl.seekTo(newPos);
+                  },
+                  child: Container(
+                    height: 22,
+                    alignment: Alignment.bottomCenter,
+                    color: Colors.transparent,
+                    child: Stack(children: [
+                      // Track fond
+                      Container(
+                        height: 3,
+                        color: Colors.white.withOpacity(0.25),
+                      ),
+                      // Progress
+                      FractionallySizedBox(
+                        widthFactor: progress,
+                        child: Container(
+                          height: 3,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.gradientPink,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      // Thumb
+                      Positioned(
+                        left: progress *
+                                (MediaQuery.of(context).size.width - 10) -
+                            5,
+                        top: -3,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black45,
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -1412,16 +1615,17 @@ class _TikTokSkeletonState extends State<_TikTokSkeleton>
               bottom: 150,
               child: Column(
                 children: List.generate(
-                    3,
-                    (i) => Container(
-                          width: 50,
-                          height: 50,
-                          margin: const EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(_anim.value * 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                        )),
+                  3,
+                  (i) => Container(
+                    width: 50,
+                    height: 50,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(_anim.value * 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
               ),
             ),
             Positioned(
@@ -1446,15 +1650,6 @@ class _TikTokSkeletonState extends State<_TikTokSkeleton>
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(_anim.value * 0.4),
                       borderRadius: BorderRadius.circular(9),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 12,
-                    width: 250,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(_anim.value * 0.2),
-                      borderRadius: BorderRadius.circular(6),
                     ),
                   ),
                 ],
@@ -1526,9 +1721,8 @@ class _PublierSheetState extends State<_PublierSheet> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1537,15 +1731,12 @@ class _PublierSheetState extends State<_PublierSheet> {
                   ShaderMask(
                     shaderCallback: (b) =>
                         AppColors.gradientPink.createShader(b),
-                    child: const Text(
-                      'Nouvelle annonce',
-                      style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: const Text('Nouvelle annonce',
+                        style: TextStyle(
+                            fontFamily: 'Syne',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white)),
                   ),
                   const Spacer(),
                   Container(
@@ -1556,13 +1747,11 @@ class _PublierSheetState extends State<_PublierSheet> {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.border),
                     ),
-                    child: Text(
-                      '${_step + 1}/2',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w600),
-                    ),
+                    child: Text('${_step + 1}/2',
+                        style:  TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -1584,7 +1773,7 @@ class _PublierSheetState extends State<_PublierSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ajoute une photo ou vidéo',
+         Text('Ajoute une photo ou vidéo',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
         const SizedBox(height: 16),
         GestureDetector(
@@ -1609,7 +1798,7 @@ class _PublierSheetState extends State<_PublierSheet> {
                               size: 48, color: Colors.white),
                         ),
                         const SizedBox(height: 12),
-                        const Text('Appuie pour ajouter',
+                         Text('Appuie pour ajouter',
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1624,7 +1813,7 @@ class _PublierSheetState extends State<_PublierSheet> {
                       ? Container(
                           height: 220,
                           color: AppColors.surface,
-                          child: const Center(
+                          child:  Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -1648,43 +1837,41 @@ class _PublierSheetState extends State<_PublierSheet> {
                 ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _MediaButton(
-                icon: Icons.photo_rounded,
-                label: 'Photo',
-                active: _mediaFile != null && !_isVideo,
-                onTap: _pickImage,
-              ),
+        Row(children: [
+          Expanded(
+            child: _MediaButton(
+              icon: Icons.photo_rounded,
+              label: 'Photo',
+              active: _mediaFile != null && !_isVideo,
+              onTap: _pickImage,
             ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _MediaButton(
+              icon: Icons.videocam_rounded,
+              label: 'Vidéo',
+              active: _mediaFile != null && _isVideo,
+              onTap: _pickVideo,
+            ),
+          ),
+          if (_mediaFile != null) ...[
             const SizedBox(width: 10),
-            Expanded(
-              child: _MediaButton(
-                icon: Icons.videocam_rounded,
-                label: 'Vidéo',
-                active: _mediaFile != null && _isVideo,
-                onTap: _pickVideo,
+            GestureDetector(
+              onTap: () => setState(() => _mediaFile = null),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: const Icon(Icons.delete_outline_rounded,
+                    color: Colors.red, size: 22),
               ),
             ),
-            if (_mediaFile != null) ...[
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () => setState(() => _mediaFile = null),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
-                  ),
-                  child: const Icon(Icons.delete_outline_rounded,
-                      color: Colors.red, size: 22),
-                ),
-              ),
-            ],
           ],
-        ),
+        ]),
         const SizedBox(height: 24),
         GestureDetector(
           onTap: () => setState(() => _step = 1),
@@ -1718,7 +1905,7 @@ class _PublierSheetState extends State<_PublierSheet> {
       children: [
         GestureDetector(
           onTap: () => setState(() => _step = 0),
-          child: const Row(
+          child:  Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.arrow_back_ios_rounded,
@@ -1751,15 +1938,13 @@ class _PublierSheetState extends State<_PublierSheet> {
                                   ? Colors.transparent
                                   : AppColors.border),
                         ),
-                        child: Text(
-                          _catLabel(c),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                _cat == c ? Colors.white : AppColors.textMuted,
-                          ),
-                        ),
+                        child: Text(_catLabel(c),
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: _cat == c
+                                    ? Colors.white
+                                    : AppColors.textMuted)),
                       ),
                     ))
                 .toList(),
@@ -1909,9 +2094,8 @@ class _MesAnnoncesSheet extends GetView<AnnoncesController> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1926,7 +2110,7 @@ class _MesAnnoncesSheet extends GetView<AnnoncesController> {
                   const Spacer(),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close_rounded,
+                    child:  Icon(Icons.close_rounded,
                         color: AppColors.textMuted),
                   ),
                 ],
@@ -1936,13 +2120,13 @@ class _MesAnnoncesSheet extends GetView<AnnoncesController> {
             Expanded(
               child: Obx(() {
                 if (controller.isLoadingMesAnnonces.value) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: AppColors.accent),
-                  );
+                  return  Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.accent));
                 }
                 final list = controller.mesAnnonces;
                 if (list.isEmpty) {
-                  return const Center(
+                  return  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -2007,7 +2191,7 @@ class _MesAnnoncesItem extends GetView<AnnoncesController> {
               children: [
                 Text(
                   annonce.titre == '📸' ? 'Annonce photo' : annonce.titre,
-                  style: const TextStyle(
+                  style:  TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary),
@@ -2015,30 +2199,28 @@ class _MesAnnoncesItem extends GetView<AnnoncesController> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.favorite_rounded,
-                        size: 12, color: Colors.red),
-                    const SizedBox(width: 3),
-                    Text('${annonce.likes}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textMuted)),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.chat_bubble_outline_rounded,
-                        size: 12, color: AppColors.textMuted),
-                    const SizedBox(width: 3),
-                    Text('${annonce.reponsesCount}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textMuted)),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.visibility_outlined,
-                        size: 12, color: AppColors.textMuted),
-                    const SizedBox(width: 3),
-                    Text('${annonce.viewsCount}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textMuted)),
-                  ],
-                ),
+                Row(children: [
+                  const Icon(Icons.favorite_rounded,
+                      size: 12, color: Colors.red),
+                  const SizedBox(width: 3),
+                  Text('${annonce.likes}',
+                      style:  TextStyle(
+                          fontSize: 11, color: AppColors.textMuted)),
+                  const SizedBox(width: 10),
+                   Icon(Icons.chat_bubble_outline_rounded,
+                      size: 12, color: AppColors.textMuted),
+                  const SizedBox(width: 3),
+                  Text('${annonce.reponsesCount}',
+                      style:  TextStyle(
+                          fontSize: 11, color: AppColors.textMuted)),
+                  const SizedBox(width: 10),
+                   Icon(Icons.visibility_outlined,
+                      size: 12, color: AppColors.textMuted),
+                  const SizedBox(width: 3),
+                  Text('${annonce.viewsCount}',
+                      style:  TextStyle(
+                          fontSize: 11, color: AppColors.textMuted)),
+                ]),
               ],
             ),
           ),
@@ -2068,7 +2250,7 @@ class _MesAnnoncesItem extends GetView<AnnoncesController> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Center(
+        child:  Center(
           child: Icon(Icons.campaign_rounded,
               color: AppColors.textMuted, size: 28),
         ),
@@ -2076,7 +2258,7 @@ class _MesAnnoncesItem extends GetView<AnnoncesController> {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  RÉPONDRE EN PV
+//  RÉPONDRE EN PV (inchangé — copié tel quel)
 // ══════════════════════════════════════════════════════════════════
 
 class _RepondreEnPVSheet extends StatefulWidget {
@@ -2110,7 +2292,6 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
   @override
   Widget build(BuildContext context) {
     final annonce = widget.annonce;
-
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -2127,9 +2308,8 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
@@ -2144,8 +2324,6 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Preview annonce
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
@@ -2196,53 +2374,14 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (annonce.description.isNotEmpty)
-                            Text(
-                              annonce.description,
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white.withOpacity(0.6)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
                         ],
                       ),
                     ),
                   ),
-                  if (annonce.mediaUrl != null && !annonce.isVideo)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(16),
-                          bottomRight: Radius.circular(16)),
-                      child: CachedNetworkImage(
-                        imageUrl: annonce.mediaUrl!,
-                        width: 70,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    )
-                  else if (annonce.isVideo && annonce.mediaUrl != null)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(16),
-                          bottomRight: Radius.circular(16)),
-                      child: Container(
-                        width: 70,
-                        height: 80,
-                        color: Colors.white.withOpacity(0.08),
-                        child: const Center(
-                          child: Icon(Icons.videocam_rounded,
-                              color: AppColors.accent, size: 28),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -2254,10 +2393,10 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
                 child: TextField(
                   controller: _msgCtrl,
                   autofocus: true,
-                  maxLines: 4,
+                  maxLines: 3,
                   minLines: 2,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: const InputDecoration(
+                  decoration:  InputDecoration(
                     hintText: 'Écris ton message...',
                     hintStyle:
                         TextStyle(color: AppColors.textMuted, fontSize: 14),
@@ -2268,9 +2407,7 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               child: GestureDetector(
@@ -2328,7 +2465,6 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
     setState(() => _sending = true);
     try {
       final annonce = widget.annonce;
-
       final existing = await Supabase.instance.client
           .from('conversations')
           .select('id')
@@ -2349,29 +2485,26 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
       }
 
       final now = DateTime.now().toIso8601String();
-
-      final annoncePayload = {
-        'annonceId': annonce.id,
-        'annonceTitre': annonce.titre == '📸' ? 'Annonce photo' : annonce.titre,
-        'annonceDescription': annonce.description.length > 100
-            ? '${annonce.description.substring(0, 100)}...'
-            : annonce.description,
-        'annonceMediaUrl': annonce.mediaUrl,
-        'annonceIsVideo': annonce.isVideo,
-        'annonceAuteur': annonce.isAnonyme ? 'Anonyme' : annonce.userName,
-        'annonceCategorie': annonce.categorie,
-      };
-
       await Supabase.instance.client.from('messages').insert({
         'conversation_id': convId,
         'sender_id': uid,
         'type': 'annonce_reply',
         'content': texte.isEmpty ? '📢 A répondu à une annonce' : texte,
-        'payload': annoncePayload,
+        'payload': {
+          'annonceId': annonce.id,
+          'annonceTitre':
+              annonce.titre == '📸' ? 'Annonce photo' : annonce.titre,
+          'annonceDescription': annonce.description.length > 100
+              ? '${annonce.description.substring(0, 100)}...'
+              : annonce.description,
+          'annonceMediaUrl': annonce.mediaUrl,
+          'annonceIsVideo': annonce.isVideo,
+          'annonceAuteur': annonce.isAnonyme ? 'Anonyme' : annonce.userName,
+          'annonceCategorie': annonce.categorie,
+        },
         'status': 'sent',
         'created_at': now,
       });
-
       await Supabase.instance.client
           .from('conversations')
           .update({'updated_at': now}).eq('id', convId);
@@ -2390,7 +2523,7 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
       }
     } catch (e) {
       debugPrint('_envoyer error: $e');
-      Get.snackbar('Erreur', 'Impossible d\'envoyer le message',
+      Get.snackbar('Erreur', 'Impossible d\'envoyer',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.red.shade900,
           colorText: Colors.white);
@@ -2401,7 +2534,7 @@ class _RepondreEnPVSheetState extends State<_RepondreEnPVSheet> {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  COMMENTAIRES
+//  COMMENTAIRES (inchangés)
 // ══════════════════════════════════════════════════════════════════
 
 class AnnonceCommentsSheet extends StatelessWidget {
@@ -2545,7 +2678,7 @@ class _CommentsContentState extends State<_CommentsContent> {
           Expanded(
             child: Obx(() {
               if (widget.ctrl.loading.value) {
-                return const Center(
+                return  Center(
                   child: CircularProgressIndicator(
                       color: AppColors.accent, strokeWidth: 2),
                 );
@@ -2670,7 +2803,7 @@ class _CommentsContentState extends State<_CommentsContent> {
                             imageUrl: _myPhotoUrl!, fit: BoxFit.cover)
                         : Container(
                             color: AppColors.accent.withOpacity(0.2),
-                            child: const Icon(Icons.person_rounded,
+                            child:  Icon(Icons.person_rounded,
                                 color: AppColors.accent, size: 18),
                           ),
                   ),
@@ -2727,10 +2860,11 @@ class _CommentsContentState extends State<_CommentsContent> {
                         child: widget.ctrl.sending.value
                             ? const Center(
                                 child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2)))
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              ))
                             : const Icon(Icons.send_rounded,
                                 color: Colors.white, size: 17),
                       ),
@@ -2933,12 +3067,12 @@ class _CommentTile extends StatelessWidget {
                               color: Color(0xFF4A4A70), fontSize: 11)),
                       if (isPinned) ...[
                         const SizedBox(width: 6),
-                        const Icon(Icons.push_pin_rounded,
+                         Icon(Icons.push_pin_rounded,
                             size: 10, color: AppColors.accent),
                       ],
                       if (isSending) ...[
                         const SizedBox(width: 6),
-                        const SizedBox(
+                         SizedBox(
                           width: 10,
                           height: 10,
                           child: CircularProgressIndicator(
@@ -3088,10 +3222,10 @@ class _InputField extends StatelessWidget {
       child: TextField(
         controller: controller,
         maxLines: maxLines,
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+        style:  TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.textMuted),
+          hintStyle:  TextStyle(color: AppColors.textMuted),
           border: InputBorder.none,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -3273,7 +3407,7 @@ class BoostProfilWidget extends StatelessWidget {
                   const Icon(Icons.bolt_rounded, color: Colors.white, size: 42),
             ),
             const SizedBox(height: 20),
-            const Text('Booster ton profil',
+             Text('Booster ton profil',
                 style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 22,

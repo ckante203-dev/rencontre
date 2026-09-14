@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:permission_handler/permission_handler.dart';
@@ -9,12 +10,16 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/core/theme/theme_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/core/services/notification_service.dart';
+import 'package:rencontre/features/follow/controller/follow_controller.dart';
 
-const String _supabaseUrl = 'https://hccdxchznkpxlfgsoufs.supabase.co';
-const String _supabaseAnon = 'sb_publishable_j4U12Xsnk1nVXwG0kaRZSQ_Vhp-dUFV';
+// ✅ Nouvelle base Supabase — zamu-prod (vybe-studio org)
+const String _supabaseUrl = 'https://flixcyjefjcyjwvjdiny.supabase.co';
+const String _supabaseAnon =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsaXhjeWplZmpjeWp3dmpkaW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTM4MDMsImV4cCI6MjEwMzk4OTgwM30.2LcUPXgP47xsWr70CdaAOuwu-PZMNl3hcwTIV8cmpz4';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -49,11 +54,19 @@ void main() async {
   await Future.wait([
     Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnon),
     Firebase.initializeApp(),
+    GetStorage.init(),
   ]);
 
   timeago.setLocaleMessages('fr', timeago.FrMessages());
 
-  // ✅ String (pas final) avec valeur par défaut
+  // ✅ Thème : chargé AVANT runApp pour éviter le flash de thème par défaut.
+  // loadInitial() lit d'abord la préférence locale (GetStorage) ; si
+  // l'utilisateur est connecté, on synchronise ensuite avec la valeur
+  // stockée sur son profil Supabase (utile en cas de réinstallation ou
+  // de changement d'appareil).
+  final themeCtrl = Get.put(ThemeController(), permanent: true);
+  themeCtrl.loadInitial();
+
   String startRoute = AppRoutes.login;
 
   final user = Supabase.instance.client.auth.currentUser;
@@ -61,9 +74,13 @@ void main() async {
     try {
       final row = await Supabase.instance.client
           .from('profiles')
-          .select('onboarding_complete, birthdate')
+          .select('onboarding_complete, birthdate, theme')
           .eq('id', user.id)
           .maybeSingle();
+
+      if (row != null && row['theme'] != null) {
+        themeCtrl.applyRemote(row['theme'] as String);
+      }
 
       if (row != null && row['onboarding_complete'] == true) {
         startRoute = AppRoutes.main;
@@ -85,8 +102,9 @@ void main() async {
   }
 
   Get.put(AuthController(), permanent: true);
+  Get.put(FollowController(), permanent: true); // ✅ Ajouté
 
-  runApp(SnapMeetApp(initialRoute: startRoute));
+  runApp(ZamuApp(initialRoute: startRoute));
 
   _initEnArrierePlan();
 }
@@ -212,21 +230,24 @@ Future<void> _demanderPermissions() async {
   }
 }
 
-class SnapMeetApp extends StatelessWidget {
+class ZamuApp extends StatelessWidget {
   final String initialRoute;
-  const SnapMeetApp({super.key, required this.initialRoute});
+  const ZamuApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'SnapMeet',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
-      initialRoute: initialRoute,
-      getPages: AppRoutes.pages,
-      defaultTransition: Transition.cupertino,
-      transitionDuration: const Duration(milliseconds: 280),
-    );
+    return Obx(() {
+      final palette = ThemeController.to.palette.value;
+      return GetMaterialApp(
+        title: 'Zamu',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.buildFrom(palette),
+        themeMode: ThemeMode.dark,
+        initialRoute: initialRoute,
+        getPages: AppRoutes.pages,
+        defaultTransition: Transition.cupertino,
+        transitionDuration: const Duration(milliseconds: 280),
+      );
+    });
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
@@ -7,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/features/follow/controller/follow_controller.dart';
 
 class HomeController extends GetxController with WidgetsBindingObserver {
   final _service = SupabaseService();
@@ -22,13 +24,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   final RxList<StoryModel> _allStories = <StoryModel>[].obs;
   final Set<String> _viewedStoryIds = {};
 
+  final RxSet<String> likedMeIds = <String>{}.obs;
+  RealtimeChannel? _likesChannel;
+
   Timer? _heartbeatTimer;
   static const _heartbeatInterval = Duration(seconds: 60);
 
-  // ✅ Timer pour différer le passage hors ligne
   Timer? _offlineTimer;
 
   RealtimeChannel? _onlineChannel;
+  RealtimeChannel? _storiesChannel; // ✅ auto-refresh des stories
 
   double? _myLat;
   double? _myLng;
@@ -40,8 +45,21 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   static const double _storyRadiusKm = 50.0;
 
+  // ═══════════════════════════════════════════════════════════════
+  // ✅ NOUVEAU — état d'upload de story façon Snapchat/TikTok
+  // ═══════════════════════════════════════════════════════════════
+  final RxBool isUploadingStory = false.obs;
+  final RxDouble storyUploadProgress = 0.0.obs;
+  final Rx<String?> storyUploadPreviewPath = Rx<String?>(null);
+  final RxBool storyUploadIsVideo = false.obs;
+
   String? get _myUid => _service.currentUserId;
 
+  FollowController? get _followCtrl => Get.isRegistered<FollowController>()
+      ? Get.find<FollowController>()
+      : null;
+
+  // ✅ Toutes les stories actives que je peux voir (RLS filtre déjà les "amis" non autorisées), hors les miennes
   List<StoryModel> get stories {
     final seen = <String>{};
     final result = <StoryModel>[];
@@ -55,6 +73,42 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     return result;
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ✅ SECTIONS "STORY" FAÇON SNAPCHAT
+  // ═══════════════════════════════════════════════════════════════
+
+  List<StoryModel> get friendsStories {
+    final fc = _followCtrl;
+    if (fc == null) return [];
+    return stories.where((s) => fc.isFriend(s.userId)).toList();
+  }
+
+  List<StoryModel> get followingStories {
+    final fc = _followCtrl;
+    if (fc == null) return [];
+    return stories
+        .where((s) => fc.isFollowing(s.userId) && !fc.isFriend(s.userId))
+        .toList();
+  }
+
+  List<StoryModel> get discoverStories {
+    final fc = _followCtrl;
+    final list = stories.where((s) {
+      if (fc == null) return true;
+      return !fc.isFollowing(s.userId) && !fc.isFriend(s.userId);
+    }).toList();
+
+    list.sort((a, b) {
+      if (a.isPremium && !b.isPremium) return -1;
+      if (!a.isPremium && b.isPremium) return 1;
+      final va = a.viewedBy.length;
+      final vb = b.viewedBy.length;
+      if (va != vb) return vb.compareTo(va);
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return list;
+  }
+
   StoryModel? get myActiveStory =>
       _allStories.where((s) => s.userId == _myUid && s.isActive).firstOrNull;
 
@@ -66,27 +120,25 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
-    // ── ÉTAPE 1 : profil utilisateur
     await _loadMyProfile();
 
     isLoading.value = true;
 
-    // ── ÉTAPE 2 : localisation + setOnline en parallèle
-    // On attend la localisation pour avoir les distances dès le premier chargement
     await Future.wait([
       _locateMe(),
       _service.setOnline(true),
     ]);
 
-    // ── ÉTAPE 3 : profils + stories avec localisation disponible
     await Future.wait([
       loadProfiles(),
       loadStories(),
+      loadLikedMe(),
     ]);
 
-    // ── ÉTAPE 4 : tâches non critiques en arrière-plan
     _startHeartbeat();
     _subscribeToOnlineChanges();
+    _subscribeToLikes();
+    _subscribeToStories();
     _ensureFcmToken();
   }
 
@@ -118,6 +170,31 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         .subscribe();
   }
 
+  // ✅ auto-refresh des stories (insert / update / delete)
+  void _subscribeToStories() {
+    _storiesChannel = Supabase.instance.client
+        .channel('stories:realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'stories',
+          callback: (_) => loadStories(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'stories',
+          callback: (_) => loadStories(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'stories',
+          callback: (_) => loadStories(),
+        )
+        .subscribe();
+  }
+
   Future<void> _ensureFcmToken() async {
     try {
       final uid = _myUid;
@@ -143,7 +220,6 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        // ✅ Annule le timer hors ligne si l'utilisateur revient rapidement
         _offlineTimer?.cancel();
         _offlineTimer = null;
         _service.setOnline(true);
@@ -156,11 +232,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        // ✅ Arrête le heartbeat immédiatement
         _heartbeatTimer?.cancel();
-        // ✅ Attend 5 minutes avant de passer hors ligne
-        // Si l'utilisateur revient dans les 5 min → reste en ligne
-        // Utile quand peu d'utilisateurs ou pour éviter les faux "hors ligne"
         _offlineTimer?.cancel();
         _offlineTimer = Timer(const Duration(minutes: 5), () {
           _service.setOnline(false);
@@ -169,18 +241,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
   }
 
-  // ✅ Refresh sans spinner — met à jour en arrière-plan
   Future<void> _silentRefresh() async {
     try {
-      final myProfile = _myProfile.value;
       final fetched = await _service.fetchProfiles(
-        genderFilter: myProfile?.lookingFor,
         myLat: _myLat,
         myLng: _myLng,
       );
       _allUsers.value = fetched;
       profiles.value = fetched;
       await loadStories();
+      await loadLikedMe();
     } catch (_) {}
   }
 
@@ -224,9 +294,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> loadProfiles() async {
     isLoading.value = true;
     try {
-      final myProfile = _myProfile.value;
       final fetched = await _service.fetchProfiles(
-        genderFilter: myProfile?.lookingFor,
         myLat: _myLat,
         myLng: _myLng,
       );
@@ -246,8 +314,12 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   void setFilter(String mode) => filterMode.value = mode;
 
+  // ✅ MODIFIÉ — tri systématique du profil le plus proche
+  // au plus éloigné, quel que soit le filtre actif (Tous /
+  // En ligne / Proche...). Les profils sans distance connue
+  // (localisation indisponible) sont relégués en fin de liste.
   List<UserModel> get filteredUsers {
-    return profiles.where((u) {
+    final list = profiles.where((u) {
       if (filterMode.value == 'online' && !u.isOnline) return false;
       if (filterMode.value == 'nearby') {
         final dist = u.distanceMeters;
@@ -268,6 +340,17 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       }
       return true;
     }).toList();
+
+    list.sort((a, b) {
+      final da = a.distanceMeters;
+      final db = b.distanceMeters;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.compareTo(db);
+    });
+
+    return list;
   }
 
   static String formatDistance(double? meters) {
@@ -276,10 +359,64 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  void openProfile(UserModel user) =>
-      Get.toNamed('/profile/view', arguments: user);
+  // ✅ Ouvre le profil dans un carrousel (swipe pour passer
+  // au profil suivant, façon Grindr). On retrouve l'index du profil
+  // cliqué dans la liste actuellement affichée (filteredUsers) et on
+  // transmet toute la liste + cet index à l'écran de détail.
+  void openProfile(UserModel user) {
+    final list = filteredUsers;
+    final idx = list.indexWhere((u) => u.id == user.id);
+    Get.toNamed('/profile/view', arguments: {
+      'profiles': list,
+      'initialIndex': idx >= 0 ? idx : 0,
+    });
+  }
 
   void openLocationSettings() => Geolocator.openLocationSettings();
+
+  // ═══════════════════════════════════════════════════════════════
+  // LIKES REÇUS
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> loadLikedMe() async {
+    final uid = _myUid;
+    if (uid == null) return;
+    try {
+      final data = await Supabase.instance.client
+          .from('likes')
+          .select('from_user_id')
+          .eq('to_user_id', uid);
+
+      likedMeIds.value =
+          (data as List).map((r) => r['from_user_id'] as String).toSet();
+    } catch (e) {
+      debugPrint('loadLikedMe error: $e');
+    }
+  }
+
+  void _subscribeToLikes() {
+    final uid = _myUid;
+    if (uid == null) return;
+    _likesChannel = Supabase.instance.client
+        .channel('likes:received')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'likes',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'to_user_id',
+            value: uid,
+          ),
+          callback: (payload) {
+            final fromId = payload.newRecord['from_user_id'] as String?;
+            if (fromId != null) likedMeIds.add(fromId);
+          },
+        )
+        .subscribe();
+  }
+
+  bool userLikedMe(String userId) => likedMeIds.contains(userId);
 
   // ═══════════════════════════════════════════════════════════════
   // STORIES
@@ -291,53 +428,17 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     try {
       final data = await Supabase.instance.client
           .from('stories')
-          .select('*, profiles(name, photo_url, latitude, longitude)')
+          .select(
+              '*, profiles(name, photo_url, latitude, longitude, is_premium)')
           .gt('expires_at', DateTime.now().toIso8601String())
           .order('created_at', ascending: false);
 
-      // ✅ MODE CROISSANCE — Stories visibles par TOUT LE MONDE
-      // Aucun filtrage → idéal quand la communauté est petite
-      // Quand tu auras beaucoup d'utilisateurs, décommenter l'ALGO ORIGINAL ci-dessous
       final stories = <StoryModel>[];
       for (final row in (data as List)) {
         final profile = row['profiles'] as Map<String, dynamic>?;
         stories.add(_rowToStory(row, profile, hasChatted: true));
       }
       _allStories.value = stories;
-
-      // ══════════════════════════════════════════════════════════════
-      // ✅ ALGO ORIGINAL — À DÉCOMMENTER QUAND LA COMMUNAUTÉ EST GRANDE
-      //
-      // Conditions pour voir une story :
-      //   1. Avoir échangé au moins un message avec l'auteur
-      //   2. L'auteur doit être à moins de 50km
-      //
-      // Pour réactiver :
-      //   1. Commenter le bloc "MODE CROISSANCE" ci-dessus
-      //   2. Décommenter ce bloc
-      // ══════════════════════════════════════════════════════════════
-      /*
-      final Set<String> chattedUserIds = await _fetchChattedUserIds(uid);
-      final storiesFiltered = <StoryModel>[];
-
-      for (final row in (data as List)) {
-        final profile = row['profiles'] as Map<String, dynamic>?;
-        final authorId = row['user_id'] as String? ?? '';
-
-        if (authorId == uid) {
-          storiesFiltered.add(_rowToStory(row, profile));
-          continue;
-        }
-
-        final bool hasChatted = chattedUserIds.contains(authorId);
-        final bool isNearby = _isNearby(profile);
-        if (hasChatted && isNearby) {
-          storiesFiltered.add(_rowToStory(row, profile, hasChatted: true));
-        }
-      }
-
-      _allStories.value = storiesFiltered;
-      */
     } catch (e) {
       debugPrint('loadStories error: $e');
     }
@@ -409,6 +510,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       viewedBy: viewedBy,
       distanceKm: distanceKm,
       hasChatted: hasChatted,
+      isPinned: row['is_pinned'] ?? false,
+      isPremium: profile?['is_premium'] ?? false,
+      visibility: row['visibility'] ?? 'public',
     );
   }
 
@@ -456,12 +560,143 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   Future<void> setOnline(bool online) async => await _service.setOnline(online);
 
+  // ═══════════════════════════════════════════════════════════════
+  // ✅ NOUVEAU — PUBLICATION DE STORY FAÇON SNAPCHAT/TIKTOK
+  // Le HomeController est persistant (permanent: true), donc l'upload
+  // continue même si AddStoryScreen a déjà été fermé et détruit.
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> publishStory({
+    required File file,
+    required bool isVideo,
+    String? caption,
+    required double durationHours,
+    required String visibility,
+  }) async {
+    final uid = _myUid;
+    if (uid == null) return;
+
+    isUploadingStory.value = true;
+    storyUploadProgress.value = 0.0;
+    storyUploadPreviewPath.value = file.path;
+    storyUploadIsVideo.value = isVideo;
+
+    try {
+      final ext = file.path.split('.').last.toLowerCase();
+      final fileName = '${uid}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final storagePath = 'stories/$uid/$fileName';
+
+      storyUploadProgress.value = 0.2;
+      await Supabase.instance.client.storage.from('stories').upload(
+            storagePath,
+            file,
+            fileOptions: const FileOptions(upsert: true),
+          );
+      storyUploadProgress.value = 0.65;
+
+      final mediaUrl = Supabase.instance.client.storage
+          .from('stories')
+          .getPublicUrl(storagePath);
+
+      final expiresAt =
+          DateTime.now().add(Duration(minutes: (durationHours * 60).round()));
+
+      await Supabase.instance.client.from('stories').insert({
+        'user_id': uid,
+        'media_url': mediaUrl,
+        'is_video': isVideo,
+        'caption': caption,
+        'created_at': DateTime.now().toIso8601String(),
+        'expires_at': expiresAt.toIso8601String(),
+        'viewed_by': [],
+        'visibility': visibility,
+      });
+
+      storyUploadProgress.value = 1.0;
+      await loadStories();
+      _notifyFollowersOfNewStory(uid);
+
+      Get.snackbar(
+        'Story publiée ✓',
+        'Visible pendant ${_formatDurationLabel(durationHours)}',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFF13131A),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    } catch (e) {
+      debugPrint('publishStory error: $e');
+      Get.snackbar(
+        'Erreur',
+        "Impossible de publier la story",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: const Color(0xFF13131A),
+        colorText: Colors.white,
+      );
+    } finally {
+      isUploadingStory.value = false;
+      storyUploadPreviewPath.value = null;
+      storyUploadProgress.value = 0.0;
+    }
+  }
+
+  Future<void> _notifyFollowersOfNewStory(String uid) async {
+    try {
+      final followers = await Supabase.instance.client
+          .from('follows')
+          .select('follower_id')
+          .eq('followed_id', uid);
+      if ((followers as List).isEmpty) return;
+      final followerIds =
+          followers.map((r) => r['follower_id'] as String).toList();
+
+      final myProfile = await Supabase.instance.client
+          .from('profiles')
+          .select('name')
+          .eq('id', uid)
+          .maybeSingle();
+      final myName = myProfile?['name'] ?? 'Quelqu\'un';
+
+      final profilesData = await Supabase.instance.client
+          .from('profiles')
+          .select('id, fcm_token, notif_stories')
+          .inFilter('id', followerIds);
+
+      for (final p in (profilesData as List)) {
+        if (!(p['notif_stories'] ?? true)) continue;
+        final token = p['fcm_token'] as String?;
+        if (token == null || token.isEmpty) continue;
+        try {
+          await Supabase.instance.client.functions
+              .invoke('send-notification', body: {
+            'token': token,
+            'title': '$myName a publié une story',
+            'body': 'Appuie pour la voir',
+            'data': {'type': 'new_story', 'userId': uid},
+          });
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('_notifyFollowersOfNewStory error: $e');
+    }
+  }
+
+  String _formatDurationLabel(double hours) {
+    if (hours < 1) return '${(hours * 60).round()} min';
+    if (hours < 24) return '${hours.round()}h';
+    final days = hours / 24;
+    if (days == days.roundToDouble()) return '${days.round()}j';
+    return '${hours.round()}h';
+  }
+
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     _heartbeatTimer?.cancel();
     _offlineTimer?.cancel();
     _onlineChannel?.unsubscribe();
+    _likesChannel?.unsubscribe();
+    _storiesChannel?.unsubscribe();
     super.onClose();
   }
 }

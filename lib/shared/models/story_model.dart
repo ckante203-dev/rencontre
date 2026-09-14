@@ -12,7 +12,9 @@ class StoryModel {
   final bool isSeen;
   final double? distanceKm;
   final bool hasChatted;
-  final bool isPinned; // ✅ NOUVEAU
+  final bool isPinned;
+  final bool isPremium; // ✅ pour le badge et le tri "Découvrir"
+  final String visibility; // ✅ NOUVEAU — 'public' ou 'friends'
 
   const StoryModel({
     required this.id,
@@ -28,13 +30,20 @@ class StoryModel {
     this.isSeen = false,
     this.distanceKm,
     this.hasChatted = false,
-    this.isPinned = false, // ✅ NOUVEAU
+    this.isPinned = false,
+    this.isPremium = false,
+    this.visibility = 'public', // ✅ NOUVEAU
   });
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool get isActive => !isExpired;
 
-  StoryModel copyWith({bool? isSeen, bool? isPinned}) {
+  StoryModel copyWith({
+    bool? isSeen,
+    bool? isPinned,
+    bool? isPremium,
+    String? visibility,
+  }) {
     return StoryModel(
       id: id,
       userId: userId,
@@ -49,7 +58,9 @@ class StoryModel {
       isSeen: isSeen ?? this.isSeen,
       distanceKm: distanceKm,
       hasChatted: hasChatted,
-      isPinned: isPinned ?? this.isPinned, // ✅ NOUVEAU
+      isPinned: isPinned ?? this.isPinned,
+      isPremium: isPremium ?? this.isPremium,
+      visibility: visibility ?? this.visibility, // ✅ NOUVEAU
     );
   }
 }

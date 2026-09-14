@@ -42,11 +42,11 @@ class _CguScreenState extends State<CguScreen> {
         backgroundColor: AppColors.bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded,
+          icon: Icon(Icons.arrow_back_ios_rounded,
               color: AppColors.textPrimary, size: 20),
           onPressed: () => Get.back(result: false),
         ),
-        title: const Text("Conditions d'utilisation",
+        title: Text("Conditions d'utilisation",
             style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -56,7 +56,7 @@ class _CguScreenState extends State<CguScreen> {
         actions: [
           // Bouton ouvrir dans le navigateur
           IconButton(
-            icon: const Icon(Icons.open_in_new_rounded,
+            icon: Icon(Icons.open_in_new_rounded,
                 color: AppColors.accent, size: 20),
             onPressed: _openOnline,
             tooltip: 'Voir en ligne',
@@ -81,7 +81,7 @@ class _CguScreenState extends State<CguScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(children: [
-                    const Text('SnapMeet',
+                    const Text('Zamu',
                         style: TextStyle(
                             color: Colors.white,
                             fontFamily: 'Syne',
@@ -105,7 +105,7 @@ class _CguScreenState extends State<CguScreen> {
                 ),
 
                 _buildSection('1. Présentation',
-                    'SnapMeet est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant SnapMeet, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'),
+                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant SnapMeet, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'),
 
                 _buildSection('2. Conditions d\'accès',
                     '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'),
@@ -117,7 +117,7 @@ class _CguScreenState extends State<CguScreen> {
                     'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.snapmeet@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'),
 
                 _buildSection('5. Responsabilités',
-                    'SnapMeet est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'),
+                    'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'),
 
                 _buildSection('6. Abonnement Premium',
                     'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à SnapMeet.'),
@@ -142,7 +142,7 @@ class _CguScreenState extends State<CguScreen> {
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.border)),
-                  child: const Text(
+                  child: Text(
                     'En utilisant SnapMeet, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 SnapMeet — Tous droits réservés',
                     style: TextStyle(
                         color: AppColors.textMuted, fontSize: 12, height: 1.6),
@@ -164,7 +164,7 @@ class _CguScreenState extends State<CguScreen> {
                             color: AppColors.accent.withOpacity(0.4))),
                     child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.open_in_new_rounded,
                               color: AppColors.accent, size: 16),
                           SizedBox(width: 8),
@@ -215,7 +215,7 @@ class _CguScreenState extends State<CguScreen> {
                         : null,
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       "J'ai lu et j'accepte les Conditions Générales d'Utilisation",
                       style: TextStyle(
@@ -280,7 +280,7 @@ class _CguScreenState extends State<CguScreen> {
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
           child: Text(title,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -289,7 +289,7 @@ class _CguScreenState extends State<CguScreen> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(content,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textMuted, fontSize: 13, height: 1.7)),
         ),
       ]),

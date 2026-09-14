@@ -41,52 +41,26 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 28),
 
-                // ── HEADER : Logo + Nom ──
-                Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.accent.withOpacity(0.4),
-                            blurRadius: 24,
-                            spreadRadius: 3,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          width: 46,
-                          height: 46,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                // ── HEADER : Nom ──
+                ShaderMask(
+                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
+                  child: const Text(
+                    'Zamu',
+                    style: TextStyle(
+                      fontFamily: 'Syne',
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
                     ),
-                    const SizedBox(width: 12),
-                    ShaderMask(
-                      shaderCallback: (b) =>
-                          AppColors.gradientPink.createShader(b),
-                      child: const Text(
-                        'SnapMeet',
-                        style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
 
                 const SizedBox(height: 40),
 
                 // ── Titre ──
-                const Text(
-                  'Bon retour 👋',
+                Text(
+                  'Connexion',
                   style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 26,
@@ -106,13 +80,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 32),
 
-                // ── Email ──
+                // ── Email ou nom d'utilisateur ──
                 AuthInputField(
-                  label: 'Email',
-                  hint: 'ton@email.com',
+                  label: 'Email ou nom d\'utilisateur',
+                  hint: 'ton@email.com ou ton pseudo',
                   icon: '✉️',
                   controller: ctrl.emailController,
-                  keyboardType: TextInputType.emailAddress,
                   onChanged: (_) => ctrl.clearError(),
                 ),
                 const SizedBox(height: 14),
@@ -134,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
                     onTap: () => _showForgotPassword(context, ctrl),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: Text(
                         'Mot de passe oublié ?',
@@ -190,14 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: 'Continuer avec Google',
                   onTap: ctrl.signInWithGoogle,
                 ),
-                const SizedBox(height: 12),
-
-                // ── Continuer avec le téléphone ──
-                _GradientBorderButton(
-                  icon: '📱',
-                  label: 'Continuer avec le téléphone',
-                  onTap: () => Get.toNamed('/login/phone'),
-                ),
 
                 const SizedBox(height: 32),
 
@@ -206,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onTap: () => Get.toNamed('/signup'),
                   child: Center(
                     child: RichText(
-                      text: const TextSpan(
+                      text: TextSpan(
                         text: 'Pas encore de compte ?  ',
                         style: TextStyle(
                           fontSize: 14,
@@ -287,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Mot de passe oublié ?',
               style: TextStyle(
                 fontFamily: 'Syne',
@@ -361,7 +326,7 @@ class _GradientBorderButton extends StatelessWidget {
               children: [
                 Text(
                   icon,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -370,7 +335,7 @@ class _GradientBorderButton extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,

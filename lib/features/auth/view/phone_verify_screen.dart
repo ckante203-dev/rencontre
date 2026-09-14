@@ -127,7 +127,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                   decoration: BoxDecoration(
                       color: AppColors.border,
                       borderRadius: BorderRadius.circular(2))),
-              const Padding(
+               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text('Choisir un pays',
                     style: TextStyle(
@@ -139,11 +139,11 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: search,
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style:  TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Rechercher...',
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded,
+                    hintStyle:  TextStyle(color: AppColors.textMuted),
+                    prefixIcon:  Icon(Icons.search_rounded,
                         color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.surface2,
@@ -281,7 +281,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                             color: AppColors.surface2,
                             shape: BoxShape.circle,
                             border: Border.all(color: AppColors.border)),
-                        child: const Icon(Icons.arrow_back_ios_rounded,
+                        child:  Icon(Icons.arrow_back_ios_rounded,
                             size: 18, color: AppColors.textPrimary),
                       ),
                     ),
@@ -295,7 +295,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child: const Text('Passer',
+                        child:  Text('Passer',
                             style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textMuted,
@@ -335,7 +335,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                           height: 1.2)),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                 Text(
                   'Ton numéro sera sauvegardé pour sécuriser ton compte et faciliter la récupération.',
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.6),
@@ -351,7 +351,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                     border:
                         Border.all(color: AppColors.accent2.withOpacity(0.25)),
                   ),
-                  child: const Row(children: [
+                  child:  Row(children: [
                     Text('🔔', style: TextStyle(fontSize: 16)),
                     SizedBox(width: 8),
                     Expanded(
@@ -384,7 +384,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 16),
-                        decoration: const BoxDecoration(
+                        decoration:  BoxDecoration(
                             border: Border(
                                 right: BorderSide(color: AppColors.border))),
                         child: Row(children: [
@@ -392,12 +392,12 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                               style: const TextStyle(fontSize: 20)),
                           const SizedBox(width: 6),
                           Text(_selected.code,
-                              style: const TextStyle(
+                              style:  TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary)),
                           const SizedBox(width: 4),
-                          const Icon(Icons.keyboard_arrow_down_rounded,
+                           Icon(Icons.keyboard_arrow_down_rounded,
                               size: 18, color: AppColors.textMuted),
                         ]),
                       ),
@@ -410,12 +410,12 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(15),
                         ],
-                        style: const TextStyle(
+                        style:  TextStyle(
                             fontSize: 15, color: AppColors.textPrimary),
                         decoration: InputDecoration(
                           hintText: '${_selected.digits} chiffres',
                           hintStyle:
-                              const TextStyle(color: AppColors.textMuted),
+                               TextStyle(color: AppColors.textMuted),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 16),
@@ -451,7 +451,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 Center(
                   child: GestureDetector(
                     onTap: ctrl.skipPhoneVerify,
-                    child: const Text(
+                    child:  Text(
                       'Je ferai ça plus tard',
                       style: TextStyle(
                           fontSize: 13,

@@ -11,11 +11,17 @@ import 'package:rencontre/features/annonces/view/annonces_screen.dart';
 import 'package:rencontre/features/annonces/controller/annonces_controller.dart';
 import 'package:rencontre/features/likes/likes_screen.dart';
 import 'package:rencontre/features/likes/like_controller.dart';
+import 'package:rencontre/features/follow/controller/follow_controller.dart';
 
 class NavigationController extends GetxController {
+  // ✅ Index fixes correspondant au nouvel ordre visuel de la barre :
+  // Messages(0), Story(1), Découvrir/Accueil(2, centre), Annonces(3), Profil(4)
+  static const int accueilIndex = 2;
+  static const int annoncesIndex = 3;
+
   final RxInt currentIndex = 0.obs;
   void goTo(int index) => currentIndex.value = index;
-  void goToAnnonces() => currentIndex.value = 2;
+  void goToAnnonces() => currentIndex.value = annoncesIndex;
 }
 
 class MainNavigation extends StatefulWidget {
@@ -45,15 +51,48 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!Get.isRegistered<LikeController>()) {
       Get.put(LikeController(), permanent: true);
     }
+    if (!Get.isRegistered<FollowController>()) {
+      Get.put(FollowController(), permanent: true);
+    }
 
     Get.lazyPut<ControleurProfil>(() => ControleurProfil(), fenix: true);
+
+    // ✅ FIX : on diffère à la frame suivante à la fois le reset de l'index
+    // ET le rafraîchissement des données (_refreshForCurrentUser). Ce dernier
+    // modifie plusieurs valeurs .obs (dont AnnoncesController.loadAnnonces)
+    // de façon synchrone — appelé ici pendant initState(), ces écritures
+    // avaient lieu AVANT la fin du tout premier build() de cet écran, ce qui
+    // provoquait "setState() or markNeedsBuild() called during build" sur
+    // les Obx qui dépendent de ces contrôleurs (ex: AnnoncesController).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Toujours démarrer sur Découvrir (désormais au centre de la barre)
+      _navCtrl.currentIndex.value = NavigationController.accueilIndex;
+      _refreshForCurrentUser();
+    });
   }
 
+  void _refreshForCurrentUser() {
+    if (Get.isRegistered<HomeController>()) {
+      final home = Get.find<HomeController>();
+      home.loadProfiles();
+      home.loadStories();
+      home.loadLikedMe();
+    }
+    if (Get.isRegistered<AnnoncesController>()) {
+      Get.find<AnnoncesController>().loadAnnonces();
+    }
+
+    if (Get.isRegistered<FollowController>()) {
+      Get.find<FollowController>().loadFollowData();
+    }
+  }
+
+  // ✅ Nouvel ordre : Messages, Story, Découvrir (centre), Annonces, Profil
   final List<Widget> _screens = const [
-    HomeScreen(),
-    LikesScreen(), // ✅ Remplace MapScreen
-    AnnoncesScreen(),
     ChatListScreen(),
+    LikesScreen(),
+    HomeScreen(),
+    AnnoncesScreen(),
     EcranProfil(),
   ];
 
@@ -80,58 +119,119 @@ class _BarreNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+    // ✅ FIX overflow : on calcule nous-mêmes l'espace de sécurité en bas
+    // (barre de gestion Android) et on l'AJOUTE à la hauteur totale, au
+    // lieu de laisser SafeArea le retirer de l'intérieur d'une hauteur
+    // fixe de 60px — c'est ce qui causait le débordement
+    // "OVERFLOWED BOTTOM BY 38 PIXELS".
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    const contentHeight = 60.0;
+    final totalHeight = contentHeight +
+        bottomInset +
+        16; // +16 pour le bouton central qui dépasse
+
+    return SizedBox(
+      height: totalHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          // ── Barre de fond avec les 4 icônes normales ──────────
+          Container(
+            height: contentHeight + bottomInset,
+            padding: EdgeInsets.only(bottom: bottomInset),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border:
+                  Border(top: BorderSide(color: AppColors.border, width: 1)),
+            ),
+            child: SizedBox(
+              height: contentHeight,
+              child: Row(children: [
+                _NavItemMessages(
+                  index: 0,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                _NavItemStory(
+                  index: 1,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                // Espace réservé au bouton Découvrir surélevé
+                const SizedBox(width: 64),
+                _NavItemAnnonces(
+                  index: NavigationController.annoncesIndex,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+                _NavItem(
+                  icon: Icons.person_rounded,
+                  label: 'Profil',
+                  index: 4,
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                ),
+              ]),
+            ),
+          ),
+          // ── Bouton Découvrir central, surélevé façon Snapchat ─
+          Positioned(
+            top: 0,
+            child: _DecouvrirCentralBtn(
+              isActive: currentIndex == NavigationController.accueilIndex,
+              onTap: () => onTap(NavigationController.accueilIndex),
+            ),
+          ),
+        ],
       ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 60,
-          child: Row(children: [
-            _NavItem(
-              icon: Icons.grid_view_rounded,
-              label: 'Accueil',
-              index: 0,
-              currentIndex: currentIndex,
-              onTap: onTap,
+    );
+  }
+}
+
+// ─── BOUTON DÉCOUVRIR CENTRAL (surélevé, façon caméra Snapchat) ──
+
+class _DecouvrirCentralBtn extends StatelessWidget {
+  final bool isActive;
+  final VoidCallback onTap;
+  const _DecouvrirCentralBtn({required this.isActive, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: AppColors.gradientPink,
+          border: Border.all(color: AppColors.surface, width: 4),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.accent.withOpacity(isActive ? 0.55 : 0.35),
+              blurRadius: isActive ? 20 : 12,
+              spreadRadius: isActive ? 2 : 0,
             ),
-            _NavItemLikes(
-              index: 1,
-              currentIndex: currentIndex,
-              onTap: onTap,
-            ),
-            _NavItemAnnonces(
-              index: 2,
-              currentIndex: currentIndex,
-              onTap: onTap,
-            ),
-            _NavItemMessages(
-              index: 3,
-              currentIndex: currentIndex,
-              onTap: onTap,
-            ),
-            _NavItem(
-              icon: Icons.person_rounded,
-              label: 'Profil',
-              index: 4,
-              currentIndex: currentIndex,
-              onTap: onTap,
-            ),
-          ]),
+          ],
+        ),
+        child: Icon(
+          Icons.grid_view_rounded,
+          color: Colors.white,
+          size: isActive ? 30 : 26,
         ),
       ),
     );
   }
 }
 
-// ─── NAV ITEM LIKES ──────────────────────────────────────────────
+// ─── NAV ITEM STORY (ex "Likes") ─────────────────────────────────
 
-class _NavItemLikes extends StatelessWidget {
+class _NavItemStory extends StatelessWidget {
   final int index, currentIndex;
   final ValueChanged<int> onTap;
-  const _NavItemLikes(
+  const _NavItemStory(
       {required this.index, required this.currentIndex, required this.onTap});
 
   bool get isActive => currentIndex == index;
@@ -156,17 +256,17 @@ class _NavItemLikes extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.favorite_rounded,
+                  Icons.auto_awesome_mosaic_rounded,
                   size: 22,
                   color: isActive ? AppColors.accent : AppColors.textMuted,
                 ),
               ),
-              // Badge nombre de likes reçus
               Obx(() {
-                if (!Get.isRegistered<LikeController>()) {
+                if (!Get.isRegistered<HomeController>()) {
                   return const SizedBox.shrink();
                 }
-                final count = Get.find<LikeController>().likedUserIds.length;
+                final ctrl = Get.find<HomeController>();
+                final count = ctrl.stories.where((s) => !s.isSeen).length;
                 if (count == 0) return const SizedBox.shrink();
                 return Positioned(
                   top: -2,
@@ -196,7 +296,7 @@ class _NavItemLikes extends StatelessWidget {
             ]),
             const SizedBox(height: 2),
             Text(
-              'LIKES',
+              'STORY',
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,

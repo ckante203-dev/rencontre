@@ -28,11 +28,11 @@ class EcranProfilsBloques extends StatelessWidget {
                 color: AppColors.surface2,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border)),
-            child: const Icon(Icons.arrow_back_ios_rounded,
+            child:  Icon(Icons.arrow_back_ios_rounded,
                 size: 16, color: AppColors.textPrimary),
           ),
         ),
-        title: const Text('Profils bloqués',
+        title:  Text('Profils bloqués',
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 17,
@@ -52,7 +52,7 @@ class EcranProfilsBloques extends StatelessWidget {
                       border:
                           Border.all(color: AppColors.error.withOpacity(0.3)),
                     ),
-                    child: const Text('Tout débloquer',
+                    child:  Text('Tout débloquer',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -64,7 +64,7 @@ class EcranProfilsBloques extends StatelessWidget {
       ),
       body: Obx(() {
         if (ctrl.isLoadingBlocked.value) {
-          return const Center(
+          return  Center(
             child: CircularProgressIndicator(
                 color: AppColors.accent, strokeWidth: 2),
           );
@@ -83,17 +83,17 @@ class EcranProfilsBloques extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: const Icon(Icons.block_rounded,
+                  child:  Icon(Icons.block_rounded,
                       size: 36, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 16),
-                const Text('Aucun profil bloqué',
+                 Text('Aucun profil bloqué',
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
-                const Text('Les profils que tu bloques\napparaîtront ici',
+                 Text('Les profils que tu bloques\napparaîtront ici',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               ],
@@ -139,12 +139,12 @@ class EcranProfilsBloques extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(name,
-                          style: const TextStyle(
+                          style:  TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 2),
-                      const Text('Bloqué',
+                       Text('Bloqué',
                           style:
                               TextStyle(fontSize: 11, color: AppColors.error)),
                     ],
@@ -162,7 +162,7 @@ class EcranProfilsBloques extends StatelessWidget {
                       border:
                           Border.all(color: AppColors.online.withOpacity(0.3)),
                     ),
-                    child: const Text('Débloquer',
+                    child:  Text('Débloquer',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,

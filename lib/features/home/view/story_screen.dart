@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -43,7 +45,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    // ✅ FIX CRASH : protection liste vide
     _current = widget.stories.isEmpty
         ? 0
         : widget.initialIndex.clamp(0, widget.stories.length - 1);
@@ -292,7 +293,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
-  // ✅ NOUVEAU — Toggle épingler depuis le viewer
   Future<void> _togglePin(StoryModel story) async {
     final newVal = !story.isPinned;
     try {
@@ -316,7 +316,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
-  // ✅ NOUVEAU — Menu style Telegram (3 points)
   void _showStoryOptions(StoryModel story) {
     Get.bottomSheet(
       Container(
@@ -326,7 +325,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Handle
           Center(
             child: Container(
               width: 40,
@@ -337,8 +335,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             ),
           ),
           const SizedBox(height: 8),
-
-          // ── Publier / retirer du profil ──────────────────
           _OptionTile(
             icon: story.isPinned
                 ? Icons.push_pin_outlined
@@ -353,8 +349,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             },
           ),
           const _OptionDivider(),
-
-          // ── Vues ─────────────────────────────────────────
           _OptionTile(
             icon: Icons.remove_red_eye_rounded,
             label:
@@ -367,8 +361,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             },
           ),
           const _OptionDivider(),
-
-          // ── Supprimer ─────────────────────────────────────
           _OptionTile(
             icon: Icons.delete_outline_rounded,
             label: 'Supprimer',
@@ -386,7 +378,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIX CRASH : protection liste vide
     if (widget.stories.isEmpty) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -467,8 +458,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         Color(0xBB000000),
                         Colors.transparent
                       ]))))),
-
-          // ── Barres de progression ──────────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 12,
@@ -497,7 +486,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                   minHeight: 2.5))));
             })),
           ),
-
           if (_paused)
             Center(
                 child: Container(
@@ -508,14 +496,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         border: Border.all(color: Colors.white24)),
                     child: const Icon(Icons.pause_rounded,
                         color: Colors.white, size: 36))),
-
-          // ── Header ────────────────────────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 20,
             left: 12,
             right: 12,
             child: Row(children: [
-              // Avatar
               GestureDetector(
                   onTap: () => _openProfile(s),
                   child: Container(
@@ -541,7 +526,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                               fontWeight: FontWeight.w800,
                                               fontSize: 16))))))),
               const SizedBox(width: 10),
-              // Nom + heure
               Expanded(
                   child: GestureDetector(
                       onTap: () => _openProfile(s),
@@ -549,17 +533,25 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(s.userName,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(s.userName,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700)),
+                                if (s.visibility == 'friends') ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.group_rounded,
+                                      size: 12, color: Colors.white70),
+                                ],
+                              ],
+                            ),
                             Text(_ago(s.createdAt),
                                 style: const TextStyle(
                                     color: Colors.white70, fontSize: 11)),
                           ]))),
-
-              // ✅ Bouton ⋯ options (owner seulement) + bouton fermer
               if (isOwner) ...[
                 GestureDetector(
                   onTap: () {
@@ -579,7 +571,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                   ),
                 ),
               ],
-              // Bouton fermer
               GestureDetector(
                   onTap: () => Get.back(),
                   child: Container(
@@ -593,8 +584,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           color: Colors.white, size: 18))),
             ]),
           ),
-
-          // ── Zone basse ────────────────────────────────────
           if (!_longPressing)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
@@ -745,18 +734,18 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
             Row(children: [
-              const Icon(Icons.remove_red_eye_outlined,
+              Icon(Icons.remove_red_eye_outlined,
                   color: AppColors.textMuted, size: 18),
               const SizedBox(width: 8),
               Text('${viewers.length} vue${viewers.length != 1 ? 's' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.w700)),
             ]),
             const SizedBox(height: 12),
             if (viewers.isEmpty)
-              const Padding(
+              Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                       child: Text("Personne n'a encore vu cette story",
@@ -823,7 +812,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14)),
                             const SizedBox(height: 6),
-                            const Text('Passe en Premium pour tout voir',
+                            Text('Passe en Premium pour tout voir',
                                 style: TextStyle(
                                     color: AppColors.textMuted, fontSize: 12)),
                             const SizedBox(height: 14),
@@ -1031,12 +1020,12 @@ class _ViewerTileState extends State<_ViewerTile> {
                           color: AppColors.surface2,
                           borderRadius: BorderRadius.circular(5)))
                   : Text(_name,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600))),
           if (!_loading)
-            const Icon(Icons.arrow_forward_ios_rounded,
+            Icon(Icons.arrow_forward_ios_rounded,
                 color: AppColors.textMuted, size: 14),
         ]),
       ),
@@ -1184,7 +1173,7 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
                           color: AppColors.surface2,
                           borderRadius: BorderRadius.circular(5)))
                   : Text(_name,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600))),
@@ -1193,7 +1182,7 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
             const SizedBox(width: 8),
           ],
           if (!_loading)
-            const Icon(Icons.arrow_forward_ios_rounded,
+            Icon(Icons.arrow_forward_ios_rounded,
                 color: AppColors.textMuted, size: 14),
         ]),
       ),
@@ -1389,6 +1378,9 @@ class _ReplyBarState extends State<_ReplyBar> {
 
 // ─────────────────────────────────────────────────────────────────
 //  ADD STORY SCREEN
+//  ✅ MIS À JOUR — Publication façon Snapchat/TikTok :
+//  on quitte l'écran immédiatement, l'upload continue en tâche de
+//  fond via HomeController.publishStory() (controller persistant).
 // ─────────────────────────────────────────────────────────────────
 
 class AddStoryScreen extends StatefulWidget {
@@ -1399,12 +1391,13 @@ class AddStoryScreen extends StatefulWidget {
 
 class _AddStoryScreenState extends State<AddStoryScreen> {
   final _picker = ImagePicker();
-  bool _uploading = false;
-  double _progress = 0;
   String? _previewPath;
   bool _isVideo = false;
   final _captionCtrl = TextEditingController();
   bool _showCaption = false;
+
+  double _durationHours = 24;
+  String _visibility = 'public';
 
   Future<void> _pickMedia(ImageSource source, {bool video = false}) async {
     try {
@@ -1428,70 +1421,49 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   Future<void> _publish() async {
     if (_previewPath == null) return;
-    setState(() {
-      _uploading = true;
-      _progress = 0;
-    });
-    try {
-      final uid = Supabase.instance.client.auth.currentUser?.id;
-      if (uid == null) {
-        _snack('Tu dois être connecté');
-        setState(() => _uploading = false);
-        return;
-      }
-      final file = File(_previewPath!);
-      if (!await file.exists()) {
-        _snack('Fichier introuvable');
-        setState(() => _uploading = false);
-        return;
-      }
-      final ext = _previewPath!.split('.').last.toLowerCase();
-      const allowedImg = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
-      const allowedVid = ['mp4', 'mov', 'avi', 'mkv'];
-      if (!(_isVideo ? allowedVid : allowedImg).contains(ext)) {
-        _snack('Format non supporté');
-        setState(() => _uploading = false);
-        return;
-      }
-      final fileName = '${uid}_${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final storagePath = 'stories/$uid/$fileName';
-      setState(() => _progress = 0.2);
-      await Supabase.instance.client.storage.from('stories').upload(
-          storagePath, file,
-          fileOptions: const FileOptions(upsert: true));
-      setState(() => _progress = 0.65);
-      final mediaUrl = Supabase.instance.client.storage
-          .from('stories')
-          .getPublicUrl(storagePath);
-      final caption = _captionCtrl.text.trim();
-      final safeCaption = caption.isNotEmpty
-          ? caption.substring(0, caption.length.clamp(0, 200))
-          : null;
-      await Supabase.instance.client.from('stories').insert({
-        'user_id': uid,
-        'media_url': mediaUrl,
-        'is_video': _isVideo,
-        'caption': safeCaption,
-        'created_at': DateTime.now().toIso8601String(),
-        'expires_at':
-            DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-        'viewed_by': [],
-      });
-      setState(() => _progress = 1.0);
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (Get.isRegistered<HomeController>())
-        await Get.find<HomeController>().loadStories();
-      Get.back(result: true);
-      Get.snackbar('Story publiée ✓', 'Visible pendant 24h',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2));
-    } catch (e) {
-      debugPrint('publish story error: $e');
-      _snack('Erreur lors de la publication : $e');
-      setState(() => _uploading = false);
+
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) {
+      _snack('Tu dois être connecté');
+      return;
     }
+
+    final file = File(_previewPath!);
+    if (!await file.exists()) {
+      _snack('Fichier introuvable');
+      return;
+    }
+
+    final ext = _previewPath!.split('.').last.toLowerCase();
+    const allowedImg = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
+    const allowedVid = ['mp4', 'mov', 'avi', 'mkv'];
+    if (!(_isVideo ? allowedVid : allowedImg).contains(ext)) {
+      _snack('Format non supporté');
+      return;
+    }
+
+    final caption = _captionCtrl.text.trim();
+    final safeCaption = caption.isNotEmpty
+        ? caption.substring(0, caption.length.clamp(0, 200))
+        : null;
+
+    if (!Get.isRegistered<HomeController>()) {
+      Get.put(HomeController(), permanent: true);
+    }
+    final homeCtrl = Get.find<HomeController>();
+
+    // ✅ Retour immédiat façon Snapchat/TikTok — on ne bloque pas l'utilisateur
+    Get.back(result: true);
+
+    // ✅ Upload en tâche de fond, piloté par HomeController (persistant).
+    // Le cercle "Toi" sur l'accueil / la page Story affiche la progression.
+    homeCtrl.publishStory(
+      file: file,
+      isVideo: _isVideo,
+      caption: safeCaption,
+      durationHours: _durationHours,
+      visibility: _visibility,
+    );
   }
 
   void _snack(String msg) => Get.snackbar('Erreur', msg,
@@ -1541,13 +1513,148 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           decoration: BoxDecoration(
                               color: const Color(0xFF11111C),
                               borderRadius: BorderRadius.circular(16)),
-                          child: const Text('Annuler',
+                          child: Text('Annuler',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   color: AppColors.accent,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700)))),
                 ]))));
+  }
+
+  void _showSettingsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return SafeArea(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF11111C),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                              color: const Color(0xFF252538),
+                              borderRadius: BorderRadius.circular(2))),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Durée de la story',
+                        style: TextStyle(
+                            fontFamily: 'Syne',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text(_formatDuration(_durationHours),
+                        style: TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900)),
+                    Slider(
+                      value: _durationHours,
+                      min: 1,
+                      max: 48,
+                      divisions: 47,
+                      activeColor: AppColors.accent,
+                      inactiveColor: AppColors.border,
+                      label: _formatDuration(_durationHours),
+                      onChanged: (v) {
+                        setSheetState(() => _durationHours = v);
+                        setState(() => _durationHours = v);
+                      },
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('1h',
+                            style: TextStyle(
+                                fontSize: 11, color: AppColors.textMuted)),
+                        Text('48h',
+                            style: TextStyle(
+                                fontSize: 11, color: AppColors.textMuted)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Qui peut voir cette story',
+                        style: TextStyle(
+                            fontFamily: 'Syne',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _VisibilityChip(
+                            icon: Icons.public_rounded,
+                            label: 'Publique',
+                            selected: _visibility == 'public',
+                            onTap: () {
+                              setSheetState(() => _visibility = 'public');
+                              setState(() => _visibility = 'public');
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _VisibilityChip(
+                            icon: Icons.group_rounded,
+                            label: 'Amis seulement',
+                            selected: _visibility == 'friends',
+                            onTap: () {
+                              setSheetState(() => _visibility = 'friends');
+                              setState(() => _visibility = 'friends');
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.gradientPink,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Text('OK',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDuration(double hours) {
+    if (hours < 1) return '${(hours * 60).round()} min';
+    if (hours < 24) return '${hours.round()}h';
+    final days = hours / 24;
+    if (days == days.roundToDouble()) return '${days.round()}j';
+    return '${hours.round()}h';
   }
 
   @override
@@ -1571,7 +1678,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             icon: const Icon(Icons.close_rounded, color: Colors.white),
             onPressed: () => Get.back(result: false)),
         actions: [
-          if (_previewPath != null && !_uploading)
+          if (_previewPath != null)
             GestureDetector(
                 onTap: _publish,
                 child: Container(
@@ -1588,11 +1695,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             fontSize: 14))))
         ],
       ),
-      body: _uploading
-          ? _buildUploading()
-          : _previewPath == null
-              ? _buildPicker()
-              : _buildPreview(),
+      body: _previewPath == null ? _buildPicker() : _buildPreview(),
     );
   }
 
@@ -1613,7 +1716,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        const Text('Photo ou vidéo • Visible 24h',
+        const Text('Photo ou vidéo • Durée personnalisable',
             style: TextStyle(color: Colors.white54, fontSize: 14)),
         const SizedBox(height: 48),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -1635,7 +1738,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             : Image.file(File(_previewPath!), fit: BoxFit.contain),
         if (_showCaption)
           Positioned(
-              bottom: 110,
+              bottom: 160,
               left: 16,
               right: 16,
               child: Container(
@@ -1671,90 +1774,157 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 top: false,
                 child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Row(children: [
-                      GestureDetector(
-                          onTap: () =>
-                              setState(() => _showCaption = !_showCaption),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: _showSettingsSheet,
                           child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                  color: _showCaption
-                                      ? AppColors.accent.withOpacity(0.2)
-                                      : Colors.black54,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white24)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.timer_outlined,
+                                    color: Colors.white, size: 16),
+                                const SizedBox(width: 6),
+                                Text(_formatDuration(_durationHours),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 10),
+                                Icon(
+                                    _visibility == 'public'
+                                        ? Icons.public_rounded
+                                        : Icons.group_rounded,
+                                    color: Colors.white,
+                                    size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                    _visibility == 'public'
+                                        ? 'Publique'
+                                        : 'Amis',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.expand_more_rounded,
+                                    color: Colors.white54, size: 16),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Row(children: [
+                          GestureDetector(
+                              onTap: () =>
+                                  setState(() => _showCaption = !_showCaption),
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
                                       color: _showCaption
-                                          ? AppColors.accent
-                                          : Colors.white24)),
-                              child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.text_fields_rounded,
-                                        color: _showCaption
-                                            ? AppColors.accent
-                                            : Colors.white,
-                                        size: 16),
-                                    const SizedBox(width: 6),
-                                    Text('Légende',
-                                        style: TextStyle(
+                                          ? AppColors.accent.withOpacity(0.2)
+                                          : Colors.black54,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: _showCaption
+                                              ? AppColors.accent
+                                              : Colors.white24)),
+                                  child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.text_fields_rounded,
                                             color: _showCaption
                                                 ? AppColors.accent
                                                 : Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                  ]))),
-                      const Spacer(),
-                      GestureDetector(
-                          onTap: () => setState(() => _previewPath = null),
-                          child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.white24)),
-                              child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.refresh_rounded,
-                                        color: Colors.white, size: 16),
-                                    SizedBox(width: 6),
-                                    Text('Changer',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                  ]))),
-                    ])))),
+                                            size: 16),
+                                        const SizedBox(width: 6),
+                                        Text('Légende',
+                                            style: TextStyle(
+                                                color: _showCaption
+                                                    ? AppColors.accent
+                                                    : Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600)),
+                                      ]))),
+                          const Spacer(),
+                          GestureDetector(
+                              onTap: () => setState(() => _previewPath = null),
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border:
+                                          Border.all(color: Colors.white24)),
+                                  child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.refresh_rounded,
+                                            color: Colors.white, size: 16),
+                                        SizedBox(width: 6),
+                                        Text('Changer',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600)),
+                                      ]))),
+                        ]),
+                      ],
+                    )))),
       ]);
+}
 
-  Widget _buildUploading() => Center(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-                gradient: AppColors.gradientPink, shape: BoxShape.circle),
-            child: const Icon(Icons.cloud_upload_rounded,
-                color: Colors.white, size: 36)),
-        const SizedBox(height: 24),
-        const Text('Publication en cours...',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700)),
-        const SizedBox(height: 24),
-        Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                    value: _progress > 0 ? _progress : null,
-                    backgroundColor: Colors.white12,
-                    valueColor: AlwaysStoppedAnimation(AppColors.accent),
-                    minHeight: 4))),
-      ]));
+// ─── PUCE DE VISIBILITÉ ───────────────────────────────────────────
+
+class _VisibilityChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _VisibilityChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: selected ? AppColors.gradientPink : null,
+          color: selected ? null : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: selected ? Colors.transparent : AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Icon(icon,
+                size: 20, color: selected ? Colors.white : AppColors.textMuted),
+            const SizedBox(height: 4),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : AppColors.textMuted)),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ─── VIDEO PREVIEW ────────────────────────────────────────────────

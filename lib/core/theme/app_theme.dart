@@ -1,61 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_palette.dart';
+import 'theme_controller.dart';
 
 class AppColors {
-  static const bg = Color(0xFF0A0A0F);
-  static const surface = Color(0xFF13131A);
-  static const surface2 = Color(0xFF1C1C28);
-  static const border = Color(0xFF2A2A3D);
-  static const accent = Color(0xFFFF3CAC);
-  static const accent2 = Color(0xFF7B2FFF);
-  static const accent3 = Color(0xFF00F5D4);
-  static const yellow = Color(0xFFFFDD57);
-  static const textPrimary = Color(0xFFF0F0FF);
-  static const textMuted = Color(0xFF6B6B8A);
-  static const online = Color(0xFF00E676);
-  static const error = Color(0xFFFF5252);
+  static AppPalette get _p => ThemeController.to.palette.value;
 
-  static LinearGradient get gradientPink => const LinearGradient(
-        colors: [accent, accent2],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+  static Color get bg => _p.bg;
+  static Color get surface => _p.surface;
+  static Color get surface2 => _p.surface2;
+  static Color get border => _p.border;
+  static Color get accent => _p.accent;
+  static Color get accent2 => _p.accent2;
+  static Color get accent3 => _p.accent3;
+  static Color get yellow => _p.yellow;
+  static Color get textPrimary => _p.textPrimary;
+  static Color get textMuted => _p.textMuted;
+  static Color get online => _p.online;
+  static Color get error => _p.error;
 
-  static LinearGradient get gradientFull => const LinearGradient(
-        colors: [accent, accent2, accent3],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+  static LinearGradient get gradientPink => _p.gradientPink;
+  static LinearGradient get gradientFull => _p.gradientFull;
 }
 
 class AppTheme {
-  static ThemeData get dark {
+  static ThemeData buildFrom(AppPalette p) {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.bg,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.accent,
-        secondary: AppColors.accent2,
-        tertiary: AppColors.accent3,
-        surface: AppColors.surface,
-        error: AppColors.error,
+      scaffoldBackgroundColor: p.bg,
+      colorScheme: ColorScheme.dark(
+        primary: p.accent,
+        secondary: p.accent2,
+        tertiary: p.accent3,
+        surface: p.surface,
+        error: p.error,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: p.textPrimary,
+        onError: Colors.white,
       ),
-      textTheme: GoogleFonts.spaceGroteskTextTheme(base.textTheme),
+      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+        bodyColor: p.textPrimary,
+        displayColor: p.textPrimary,
+      ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.bg,
+        backgroundColor: p.bg,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: IconThemeData(color: p.textPrimary),
         titleTextStyle: GoogleFonts.syne(
           fontSize: 22,
           fontWeight: FontWeight.w800,
-          color: AppColors.textPrimary,
+          color: p.textPrimary,
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
-        thickness: 1,
-      ),
+      dividerTheme: DividerThemeData(color: p.border, thickness: 1),
     );
   }
+
+  /// Construit le thème à partir de la palette actuellement active.
+  static ThemeData get current => buildFrom(ThemeController.to.palette.value);
 }

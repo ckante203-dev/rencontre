@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 
@@ -27,11 +28,11 @@ class EcranModifierInfos extends StatelessWidget {
                 color: AppColors.surface2,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border)),
-            child: const Icon(Icons.arrow_back_ios_rounded,
+            child: Icon(Icons.arrow_back_ios_rounded,
                 size: 16, color: AppColors.textPrimary),
           ),
         ),
-        title: const Text('Modifier mes infos',
+        title: Text('Modifier mes infos',
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 17,
@@ -43,13 +44,27 @@ class EcranModifierInfos extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ✅ NOUVEAU — Galerie de photos (défilable sur le profil public)
+            Row(children: [
+              const _SectionLabel(icon: '🖼️', title: 'Mes photos'),
+              const Spacer(),
+              Obx(() => Text(
+                  '${ctrl.photoUrls.length}/${ControleurProfil.maxPhotos}',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted))),
+            ]),
+            const SizedBox(height: 4),
+            Text('Maintiens et glisse pour réordonner',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+            const SizedBox(height: 12),
+            const _PhotosGridEditor(),
+            const SizedBox(height: 24),
+
             // ── Prénom ────────────────────────────────────────
             const _SectionLabel(icon: '👤', title: 'Prénom *'),
             const SizedBox(height: 8),
             TextField(
               controller: ctrl.nomController,
-              style:
-                  const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
               textCapitalization: TextCapitalization.words,
               decoration: _inputDeco('Ton prénom'),
             ),
@@ -70,7 +85,7 @@ class EcranModifierInfos extends StatelessWidget {
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.cake_rounded,
+                      Icon(Icons.cake_rounded,
                           size: 18, color: AppColors.accent),
                       const SizedBox(width: 12),
                       Text(ctrl.birthdateLabel,
@@ -81,7 +96,7 @@ class EcranModifierInfos extends StatelessWidget {
                                   ? AppColors.textPrimary
                                   : AppColors.textMuted)),
                       const Spacer(),
-                      const Icon(Icons.chevron_right_rounded,
+                      Icon(Icons.chevron_right_rounded,
                           size: 18, color: AppColors.textMuted),
                     ]),
                   ),
@@ -103,7 +118,7 @@ class EcranModifierInfos extends StatelessWidget {
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(3),
                         ],
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.textPrimary, fontSize: 15),
                         decoration: _inputDeco('ex: 175'),
                       ),
@@ -123,7 +138,7 @@ class EcranModifierInfos extends StatelessWidget {
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(3),
                         ],
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.textPrimary, fontSize: 15),
                         decoration: _inputDeco('ex: 70'),
                       ),
@@ -195,8 +210,7 @@ class EcranModifierInfos extends StatelessWidget {
               controller: ctrl.bioController,
               maxLines: 4,
               maxLength: 150,
-              style:
-                  const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: _inputDeco('Dis quelque chose sur toi...'),
             ),
             const SizedBox(height: 20),
@@ -206,11 +220,10 @@ class EcranModifierInfos extends StatelessWidget {
               const _SectionLabel(icon: '🎯', title: 'Mes intérêts'),
               const Spacer(),
               Obx(() => Text('${ctrl.selectedInterests.length}/10',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textMuted))),
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted))),
             ]),
             const SizedBox(height: 4),
-            const Text('Appuie pour sélectionner ou retirer',
+            Text('Appuie pour sélectionner ou retirer',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
             const SizedBox(height: 12),
             Obx(() => Wrap(
@@ -298,19 +311,19 @@ class EcranModifierInfos extends StatelessWidget {
   // ✅ FIX : fillColor = AppColors.surface pour matcher ecran_parametres
   InputDecoration _inputDeco(String hint) => InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted),
+        hintStyle: TextStyle(color: AppColors.textMuted),
         filled: true,
         fillColor: AppColors.surface,
-        counterStyle: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+        counterStyle: TextStyle(color: AppColors.textMuted, fontSize: 11),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.border)),
+            borderSide: BorderSide(color: AppColors.border)),
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.border)),
+            borderSide: BorderSide(color: AppColors.border)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.accent)),
+            borderSide: BorderSide(color: AppColors.accent)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       );
@@ -328,7 +341,7 @@ class _SectionLabel extends StatelessWidget {
       Text(icon, style: const TextStyle(fontSize: 14)),
       const SizedBox(width: 6),
       Text(title.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: AppColors.textMuted,
@@ -373,5 +386,154 @@ class _ChipRow extends StatelessWidget {
         );
       }).toList(),
     );
+  }
+}
+
+// ─── ✅ NOUVEAU — GALERIE DE PHOTOS RÉORDONNABLE ───────────────────
+
+class _PhotosGridEditor extends StatelessWidget {
+  const _PhotosGridEditor();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = ControleurProfil.to;
+    return Obx(() {
+      final photos = ctrl.photoUrls;
+      // ✅ Lecture synchrone de .length dans le callback Obx : c'est ce qui
+      // permet à GetX de détecter la dépendance réactive et de reconstruire
+      // ce widget quand photoUrls change (sinon aucune lecture n'est faite
+      // avant que itemBuilder ne soit appelé plus tard, hors de portée).
+      final count = photos.length;
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 0.85,
+        ),
+        itemCount: ControleurProfil.maxPhotos,
+        itemBuilder: (_, index) {
+          if (index < count) {
+            return _PhotoSlot(
+              key: ValueKey(photos[index]),
+              index: index,
+              url: photos[index],
+            );
+          }
+          return _AddPhotoSlot(onTap: ctrl.ajouterPhotoProfil);
+        },
+      );
+    });
+  }
+}
+
+class _PhotoSlot extends StatelessWidget {
+  final int index;
+  final String url;
+  const _PhotoSlot({super.key, required this.index, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = ControleurProfil.to;
+
+    Widget content = ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(imageUrl: url, fit: BoxFit.cover),
+          if (index == 0)
+            Positioned(
+              top: 6,
+              left: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Principale',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+              ),
+            ),
+          Positioned(
+            top: 6,
+            right: 6,
+            child: GestureDetector(
+              onTap: () => ctrl.supprimerPhotoProfil(index),
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: const BoxDecoration(
+                    color: Colors.black54, shape: BoxShape.circle),
+                child: const Icon(Icons.close_rounded,
+                    size: 16, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return DragTarget<int>(
+      onWillAccept: (from) => from != null && from != index,
+      onAccept: (from) => ctrl.reordonnerPhotos(from, index),
+      builder: (context, candidateData, rejectedData) {
+        final isTarget = candidateData.isNotEmpty;
+        return LongPressDraggable<int>(
+          data: index,
+          feedback: Material(
+            color: Colors.transparent,
+            child: SizedBox(width: 140, height: 160, child: content),
+          ),
+          childWhenDragging: Opacity(opacity: 0.3, child: content),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: isTarget
+                  ? Border.all(color: AppColors.accent, width: 2)
+                  : null,
+            ),
+            child: content,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AddPhotoSlot extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPhotoSlot({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = ControleurProfil.to;
+    return Obx(() => GestureDetector(
+          onTap: ctrl.isUploadingPhoto.value ? null : onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Center(
+              child: ctrl.isUploadingPhoto.value
+                  ? SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.accent))
+                  : Icon(Icons.add_rounded,
+                      size: 32, color: AppColors.textMuted),
+            ),
+          ),
+        ));
   }
 }

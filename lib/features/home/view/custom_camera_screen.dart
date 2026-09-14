@@ -170,7 +170,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
                     child: CameraPreview(_ctrl!))))))
         else
           Container(color: Colors.black,
-            child: const Center(child: CircularProgressIndicator(
+            child:  Center(child: CircularProgressIndicator(
               color: AppColors.accent))),
 
         // ── Gradient top ──

@@ -135,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen>
                             shaderCallback: (b) =>
                                 AppColors.gradientPink.createShader(b),
                             child: const Text(
-                              'SnapMeet',
+                              'Zamu',
                               style: TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 40,
@@ -146,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                           Text(
                             'Rencontre. Connecte. Vis.',
                             style: TextStyle(
                               fontSize: 15,
@@ -202,7 +202,7 @@ class _SplashScreenState extends State<SplashScreen>
                               border: Border.all(
                                   color: AppColors.border, width: 1.5),
                             ),
-                            child: const Center(
+                            child:  Center(
                               child: Text('Se connecter',
                                   style: TextStyle(
                                     fontSize: 16,

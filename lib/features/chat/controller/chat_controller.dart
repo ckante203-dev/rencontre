@@ -27,6 +27,14 @@ class ChatListController extends GetxController {
   final RxString searchQuery = ''.obs;
   RealtimeChannel? _channel;
   final RxSet<String> pinnedIds = <String>{}.obs;
+  // ✅ NOUVEAU — expose l'ID de l'utilisateur courant pour que
+  // chat_list_screen.dart puisse appeler msg.isMine(controller.myId)
+  String? get myId => _service.currentUserId;
+
+  // ✅ FIX Realtime — polling de secours + horodatage de la dernière sync
+  Timer? _pollingTimer;
+  Timer? _watchdogTimer;
+  DateTime? _lastSyncAt;
 
   int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
 
@@ -113,6 +121,8 @@ class ChatListController extends GetxController {
         );
       }).toList();
       _sortConversations();
+      // ✅ FIX Realtime — on marque l'heure de la dernière synchro réussie
+      _lastSyncAt = DateTime.now();
     } catch (e) {
       debugPrint('ChatListController error: $e');
     } finally {
@@ -150,6 +160,8 @@ class ChatListController extends GetxController {
     update();
   }
 
+  // ✅ FIX Realtime — abonnement avec callback de statut, logs de debug,
+  // fallback de polling automatique, et watchdog périodique.
   void _subscribeToMessages() {
     final uid = _service.currentUserId;
     if (uid == null) return;
@@ -163,6 +175,9 @@ class ChatListController extends GetxController {
             final record = payload.newRecord;
             final senderId = record['sender_id'] as String?;
             final convId = record['conversation_id'] as String?;
+            // ✅ Log de debug : confirme que le Realtime arrive bien
+            debugPrint(
+                '📨 [Realtime ChatList] Nouveau message — conv=$convId sender=$senderId');
             if (convId == null) return;
             final isMine = senderId == uid;
             final isConvOpen =
@@ -206,9 +221,50 @@ class ChatListController extends GetxController {
             } else {
               await loadConversations();
             }
+            _lastSyncAt = DateTime.now();
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+      // ✅ Log de debug : confirme l'état de la connexion Realtime
+      debugPrint('🔌 [Realtime ChatList] status=$status error=$error');
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        // Connexion OK : on arrête le polling de secours s'il tournait
+        _pollingTimer?.cancel();
+        _pollingTimer = null;
+        _lastSyncAt = DateTime.now();
+      } else if (status == RealtimeSubscribeStatus.channelError ||
+          status == RealtimeSubscribeStatus.timedOut ||
+          status == RealtimeSubscribeStatus.closed) {
+        // ✅ Fallback : Realtime en panne, on repasse en polling
+        _startPolling();
+      }
+    });
+
+    // ✅ Watchdog — même si le statut Realtime reste "subscribed" sans
+    // jamais rien recevoir, on resynchronise automatiquement si rien
+    // n'est arrivé depuis plus de 15s. Filet de sécurité léger.
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer.periodic(const Duration(seconds: 20), (t) {
+      if (!Get.isRegistered<ChatListController>()) {
+        t.cancel();
+        return;
+      }
+      final last = _lastSyncAt;
+      if (last == null || DateTime.now().difference(last).inSeconds > 15) {
+        debugPrint('⏱️ [ChatList] Resynchronisation périodique de sécurité');
+        loadConversations();
+      }
+    });
+  }
+
+  // ✅ FIX Realtime — polling de secours (3s) si le canal tombe en panne
+  void _startPolling() {
+    if (_pollingTimer != null) return; // déjà en cours
+    debugPrint('⚠️ [ChatList] Realtime indisponible → passage en polling (3s)');
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      await loadConversations();
+    });
   }
 
   String _getMessagePreview(Map<String, dynamic> r) {
@@ -222,6 +278,9 @@ class ChatListController extends GetxController {
         return '📸 Snap';
       case 'location':
         return '📍 Position';
+      // ✅ Aperçu pour réponse annonce
+      case 'annonce_reply':
+        return '📢 A répondu à une annonce';
       default:
         return r['content'] as String? ?? '';
     }
@@ -290,6 +349,7 @@ class ChatListController extends GetxController {
     };
   }
 
+  // ✅ _parseType avec annonce_reply ajouté
   MessageType _parseType(String? t) {
     switch (t) {
       case 'image':
@@ -300,6 +360,8 @@ class ChatListController extends GetxController {
         return MessageType.audio;
       case 'location':
         return MessageType.location;
+      case 'annonce_reply':
+        return MessageType.annonceReply;
       default:
         return MessageType.text;
     }
@@ -321,6 +383,8 @@ class ChatListController extends GetxController {
   @override
   void onClose() {
     _channel?.unsubscribe();
+    _pollingTimer?.cancel(); // ✅ FIX Realtime
+    _watchdogTimer?.cancel(); // ✅ FIX Realtime
     super.onClose();
   }
 }
@@ -384,12 +448,10 @@ class ConversationController extends GetxController {
       _subscribeToPresence(conv.userId);
       _subscribeToTyping(conv.id, conv.userId);
       _markReadAndUpdateBadge(conv.id);
-      // ✅ Fetch direct du vrai statut en ligne — corrige "hors ligne" affiché à tort
       _fetchOtherOnlineStatus(conv.userId);
     });
   }
 
-  // ✅ Fetch direct is_online depuis Supabase — ne dépend pas du cache de la liste
   Future<void> _fetchOtherOnlineStatus(String otherUserId) async {
     try {
       final data = await Supabase.instance.client
@@ -775,6 +837,43 @@ class ConversationController extends GetxController {
     }
   }
 
+  // ✅ Envoyer une réponse à une annonce
+  Future<void> sendAnnonceReply({
+    required String conversationId,
+    required String text,
+    required AnnonceReplyData annonceData,
+  }) async {
+    final uid = _service.currentUserId;
+    if (uid == null) return;
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    messages.add(MessageModel(
+      id: tempId,
+      senderId: uid,
+      text: text,
+      type: MessageType.annonceReply,
+      status: MessageStatus.sending,
+      createdAt: DateTime.now(),
+      annonceReply: annonceData,
+    ));
+    try {
+      await Supabase.instance.client.from('messages').insert({
+        'conversation_id': conversationId,
+        'sender_id': uid,
+        'type': 'annonce_reply',
+        'content': text,
+        'status': 'sent',
+        // ✅ Sérialise les données de l'annonce dans le champ payload
+        'payload': annonceData.toJson(),
+      });
+    } catch (e) {
+      messages.removeWhere((m) => m.id == tempId);
+      Get.snackbar('Erreur', "Impossible d'envoyer la réponse",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF13131A),
+          colorText: Colors.white);
+    }
+  }
+
   Future<void> sendStoryReply({
     required String conversationId,
     required String text,
@@ -906,8 +1005,7 @@ class ConversationController extends GetxController {
               child: Text(msg.text!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
             ),
           _MsgOption(
               icon: Icons.reply_rounded,
@@ -1062,7 +1160,7 @@ class ConversationController extends GetxController {
           colorText: Colors.white,
           mainButton: TextButton(
               onPressed: () => openAppSettings(),
-              child: const Text('Paramètres',
+              child: Text('Paramètres',
                   style: TextStyle(color: AppColors.accent))));
       return;
     }
@@ -1266,8 +1364,10 @@ class ConversationController extends GetxController {
 
   String get myId => _service.currentUserId ?? '';
 
+  // ✅ _rowToMessage avec parsing AnnonceReplyData
   MessageModel _rowToMessage(Map<String, dynamic> row,
       {MessageModel? replyTo}) {
+    // ── Story reply ──────────────────────────────────────────────
     StoryReplyData? storyReply;
     final storyId = row['story_id'] as String?;
     final storyPreviewUrl = row['story_preview_url'] as String?;
@@ -1279,15 +1379,29 @@ class ConversationController extends GetxController {
         storyOwnerName: _parseStoryOwnerName(row['topic'] as String?),
       );
     }
+
+    // ✅ Annonce reply — parse depuis le champ payload
+    AnnonceReplyData? annonceReply;
+    final type = _parseType(row['type'] as String?);
+    if (type == MessageType.annonceReply && row['payload'] != null) {
+      try {
+        annonceReply = AnnonceReplyData.fromJson(
+            Map<String, dynamic>.from(row['payload'] as Map));
+      } catch (e) {
+        debugPrint('AnnonceReplyData parse error: $e');
+      }
+    }
+
     final rawReactions = row['reactions'] as Map<String, dynamic>? ?? {};
     final reactions = rawReactions
         .map((k, v) => MapEntry(k, List<String>.from(v as List? ?? [])));
+
     return MessageModel(
       id: row['id'] ?? '',
       senderId: row['sender_id'] ?? '',
       text: row['content'],
       mediaUrl: row['media_url'],
-      type: _parseType(row['type']),
+      type: type,
       status: _parseStatus(row['status']),
       createdAt: DateTime.tryParse(row['created_at'] ?? '') ?? DateTime.now(),
       isOpened: row['is_opened'] ?? false,
@@ -1301,6 +1415,7 @@ class ConversationController extends GetxController {
           : null,
       reactions: reactions,
       storyReply: storyReply,
+      annonceReply: annonceReply, // ✅
       replyTo: replyTo,
     );
   }
@@ -1312,6 +1427,7 @@ class ConversationController extends GetxController {
     return topic;
   }
 
+  // ✅ _parseType avec annonce_reply
   MessageType _parseType(String? t) {
     switch (t) {
       case 'image':
@@ -1322,6 +1438,8 @@ class ConversationController extends GetxController {
         return MessageType.audio;
       case 'location':
         return MessageType.location;
+      case 'annonce_reply':
+        return MessageType.annonceReply;
       default:
         return MessageType.text;
     }

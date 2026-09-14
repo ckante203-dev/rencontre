@@ -9,6 +9,7 @@ import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/shared/widgets/premium_badge.dart';
 
 class EcranProfil extends StatelessWidget {
   const EcranProfil({super.key});
@@ -21,7 +22,7 @@ class EcranProfil extends StatelessWidget {
       backgroundColor: AppColors.bg,
       body: Obx(() {
         if (ctrl.isLoading.value) {
-          return const Center(
+          return Center(
               child: CircularProgressIndicator(color: AppColors.accent));
         }
         return SingleChildScrollView(
@@ -181,12 +182,24 @@ class _NomStatut extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(children: [
-          Text('${p.name}, ${p.age}',
-              style: const TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary)),
+          // ✅ Nom + badge premium
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text('${p.name}, ${p.age}',
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary)),
+              ),
+              if (ctrl.isPremium.value) ...[
+                const SizedBox(width: 6),
+                const PremiumBadge(size: 20),
+              ],
+            ],
+          ),
           const SizedBox(height: 6),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Container(
@@ -205,8 +218,7 @@ class _NomStatut extends StatelessWidget {
           if (p.corpsMesures.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(p.corpsMesures,
-                style:
-                    const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ],
         ]),
       );
@@ -253,14 +265,13 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(children: [
       Text(value,
-          style: const TextStyle(
+          style: TextStyle(
               fontFamily: 'Syne',
               fontSize: 20,
               fontWeight: FontWeight.w900,
               color: AppColors.textPrimary)),
       const SizedBox(height: 2),
-      Text(label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+      Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
     ]);
   }
 }
@@ -286,7 +297,7 @@ class _BoutonsLigne extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border, width: 1.5),
               ),
-              child: const Column(mainAxisSize: MainAxisSize.min, children: [
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.edit_rounded,
                     color: AppColors.textPrimary, size: 22),
                 SizedBox(height: 4),
@@ -310,7 +321,7 @@ class _BoutonsLigne extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Column(mainAxisSize: MainAxisSize.min, children: [
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.settings_rounded,
                     color: AppColors.textPrimary, size: 22),
                 SizedBox(height: 4),
@@ -426,7 +437,7 @@ class _SectionLikesState extends State<_SectionLikes> {
               if (_likers.isNotEmpty)
                 GestureDetector(
                   onTap: () => _voirTout(context),
-                  child: const Text('Voir tout',
+                  child: Text('Voir tout',
                       style: TextStyle(
                           fontSize: 13,
                           color: AppColors.accent,
@@ -438,7 +449,7 @@ class _SectionLikesState extends State<_SectionLikes> {
 
           // Contenu
           if (_loading)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: CircularProgressIndicator(
@@ -453,7 +464,7 @@ class _SectionLikesState extends State<_SectionLikes> {
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border)),
-              child: const Column(children: [
+              child: Column(children: [
                 Icon(Icons.favorite_border_rounded,
                     size: 32, color: AppColors.textMuted),
                 SizedBox(height: 8),
@@ -554,7 +565,7 @@ class _LikerAvatar extends StatelessWidget {
                 child: Container(
                   width: 20,
                   height: 20,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                       gradient: LinearGradient(
                           colors: [AppColors.accent, AppColors.accent2]),
                       shape: BoxShape.circle),
@@ -572,7 +583,7 @@ class _LikerAvatar extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 11,
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w500),
@@ -608,7 +619,7 @@ class _LikersBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -689,7 +700,7 @@ class _LikersBottomSheet extends StatelessWidget {
                   ],
                 ),
                 title: Text('$name, $age',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary)),
@@ -853,9 +864,8 @@ class _MesStoriesState extends State<_MesStories>
   }
 
   void _ajouterStory() {
-    if (Get.isRegistered<NavigationController>()) {
-      Get.find<NavigationController>().goTo(0);
-    }
+    // Pas besoin de changer d'onglet ici — AddStoryScreen s'ouvre en
+    // plein écran par-dessus, peu importe l'onglet actif.
     Get.to(() => const AddStoryScreen(), transition: Transition.downToUp)
         ?.then((_) => _charger());
   }
@@ -893,7 +903,7 @@ class _MesStoriesState extends State<_MesStories>
           ),
           const SizedBox(height: 12),
           if (_loading)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: CircularProgressIndicator(
@@ -963,13 +973,12 @@ class _GrilleStories extends StatelessWidget {
               size: 48, color: AppColors.textMuted.withOpacity(0.4)),
           const SizedBox(height: 12),
           Text(emptyMessage,
-              style: const TextStyle(fontSize: 14, color: AppColors.textMuted)),
+              style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
           if (emptySubtitle.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(emptySubtitle,
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ],
           if (showAjouter) ...[
             const SizedBox(height: 20),
@@ -1015,7 +1024,7 @@ class _GrilleStories extends StatelessWidget {
                 color: AppColors.surface,
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Column(
+              child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.add_rounded, color: AppColors.accent, size: 28),
@@ -1189,7 +1198,7 @@ class _GrilleStories extends StatelessWidget {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              child: const Text('Annuler',
+              child: Text('Annuler',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       fontSize: 14,

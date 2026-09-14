@@ -95,7 +95,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                   decoration: BoxDecoration(
                       color: AppColors.border,
                       borderRadius: BorderRadius.circular(2))),
-              const Padding(
+               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text('Choisir un pays',
                     style: TextStyle(
@@ -108,11 +108,11 @@ class _PhoneScreenState extends State<PhoneScreen> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
                   controller: search,
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style:  TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Rechercher...',
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded,
+                    hintStyle:  TextStyle(color: AppColors.textMuted),
+                    prefixIcon:  Icon(Icons.search_rounded,
                         color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.surface2,
@@ -187,7 +187,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                         color: AppColors.surface2,
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.border)),
-                    child: const Icon(Icons.arrow_back_ios_rounded,
+                    child:  Icon(Icons.arrow_back_ios_rounded,
                         size: 18, color: AppColors.textPrimary),
                   ),
                 ),
@@ -207,7 +207,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           height: 1.2)),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                 Text(
                   'Connecte-toi avec ton numéro de téléphone via SMS.',
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.5),
@@ -229,7 +229,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 16),
-                          decoration: const BoxDecoration(
+                          decoration:  BoxDecoration(
                               border: Border(
                                   right: BorderSide(color: AppColors.border))),
                           child: Row(children: [
@@ -237,12 +237,12 @@ class _PhoneScreenState extends State<PhoneScreen> {
                                 style: const TextStyle(fontSize: 20)),
                             const SizedBox(width: 6),
                             Text(_selected.code,
-                                style: const TextStyle(
+                                style:  TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textPrimary)),
                             const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down_rounded,
+                             Icon(Icons.keyboard_arrow_down_rounded,
                                 size: 18, color: AppColors.textMuted),
                           ]),
                         ),
@@ -250,9 +250,9 @@ class _PhoneScreenState extends State<PhoneScreen> {
                       Expanded(
                         child: TextField(
                           enabled: false,
-                          style: const TextStyle(
+                          style:  TextStyle(
                               fontSize: 15, color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
+                          decoration:  InputDecoration(
                             hintText: 'Numéro de téléphone',
                             hintStyle: TextStyle(color: AppColors.textMuted),
                             border: InputBorder.none,
@@ -287,7 +287,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           child: Text('🔔', style: TextStyle(fontSize: 18))),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
