@@ -7,21 +7,23 @@ import 'package:rencontre/features/chat/view/chat_list_screen.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/profil/vue/ecran_profil.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
-import 'package:rencontre/features/annonces/view/annonces_screen.dart';
-import 'package:rencontre/features/annonces/controller/annonces_controller.dart';
 import 'package:rencontre/features/likes/likes_screen.dart';
 import 'package:rencontre/features/likes/like_controller.dart';
-import 'package:rencontre/features/follow/controller/follow_controller.dart';
+import 'package:rencontre/features/likes/likes_insights_screen.dart';
+import 'package:rencontre/features/likes/profile_insights_controller.dart';
 
 class NavigationController extends GetxController {
-  // ✅ Index fixes correspondant au nouvel ordre visuel de la barre :
-  // Messages(0), Story(1), Découvrir/Accueil(2, centre), Annonces(3), Profil(4)
-  static const int accueilIndex = 2;
-  static const int annoncesIndex = 3;
+  // ✅ Ordre : Accueil(0), Messages(1), Likes(2), Story(3), Profil(4)
+  static const int accueilIndex = 0;
+  static const int likesIndex = 2;
+  static const int storyIndex = 3;
+
+  // ✅ Onglet à ouvrir au prochain affichage de MainNavigation (clic sur
+  // une notification) — sinon le reset post-frame ramenait sur Accueil.
+  static int? pendingIndex;
 
   final RxInt currentIndex = 0.obs;
   void goTo(int index) => currentIndex.value = index;
-  void goToAnnonces() => currentIndex.value = annoncesIndex;
 }
 
 class MainNavigation extends StatefulWidget {
@@ -42,31 +44,24 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!Get.isRegistered<ChatListController>()) {
       Get.put(ChatListController(), permanent: true);
     }
-    if (!Get.isRegistered<AnnoncesController>()) {
-      Get.put(AnnoncesController(), permanent: true);
-    }
     if (!Get.isRegistered<HomeController>()) {
       Get.put(HomeController(), permanent: true);
     }
     if (!Get.isRegistered<LikeController>()) {
       Get.put(LikeController(), permanent: true);
     }
-    if (!Get.isRegistered<FollowController>()) {
-      Get.put(FollowController(), permanent: true);
+    if (!Get.isRegistered<ProfileInsightsController>()) {
+      Get.put(ProfileInsightsController(), permanent: true);
     }
 
-    Get.lazyPut<ControleurProfil>(() => ControleurProfil(), fenix: true);
+    if (!Get.isRegistered<ControleurProfil>()) {
+      Get.put(ControleurProfil(), permanent: true);
+    }
 
-    // ✅ FIX : on diffère à la frame suivante à la fois le reset de l'index
-    // ET le rafraîchissement des données (_refreshForCurrentUser). Ce dernier
-    // modifie plusieurs valeurs .obs (dont AnnoncesController.loadAnnonces)
-    // de façon synchrone — appelé ici pendant initState(), ces écritures
-    // avaient lieu AVANT la fin du tout premier build() de cet écran, ce qui
-    // provoquait "setState() or markNeedsBuild() called during build" sur
-    // les Obx qui dépendent de ces contrôleurs (ex: AnnoncesController).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Toujours démarrer sur Découvrir (désormais au centre de la barre)
-      _navCtrl.currentIndex.value = NavigationController.accueilIndex;
+      _navCtrl.currentIndex.value =
+          NavigationController.pendingIndex ?? NavigationController.accueilIndex;
+      NavigationController.pendingIndex = null;
       _refreshForCurrentUser();
     });
   }
@@ -78,21 +73,14 @@ class _MainNavigationState extends State<MainNavigation> {
       home.loadStories();
       home.loadLikedMe();
     }
-    if (Get.isRegistered<AnnoncesController>()) {
-      Get.find<AnnoncesController>().loadAnnonces();
-    }
-
-    if (Get.isRegistered<FollowController>()) {
-      Get.find<FollowController>().loadFollowData();
-    }
   }
 
-  // ✅ Nouvel ordre : Messages, Story, Découvrir (centre), Annonces, Profil
+  // ✅ Nouvel ordre : Accueil, Messages, Likes, Story, Profil
   final List<Widget> _screens = const [
-    ChatListScreen(),
-    LikesScreen(),
     HomeScreen(),
-    AnnoncesScreen(),
+    ChatListScreen(),
+    LikesInsightsScreen(),
+    LikesScreen(),
     EcranProfil(),
   ];
 
@@ -110,7 +98,7 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 }
 
-// ─── BARRE DE NAVIGATION ─────────────────────────────────────────
+// ─── BARRE DE NAVIGATION (5 onglets) ─────────────────────────────
 
 class _BarreNavigation extends StatelessWidget {
   final int currentIndex;
@@ -119,108 +107,51 @@ class _BarreNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIX overflow : on calcule nous-mêmes l'espace de sécurité en bas
-    // (barre de gestion Android) et on l'AJOUTE à la hauteur totale, au
-    // lieu de laisser SafeArea le retirer de l'intérieur d'une hauteur
-    // fixe de 60px — c'est ce qui causait le débordement
-    // "OVERFLOWED BOTTOM BY 38 PIXELS".
     final bottomInset = MediaQuery.of(context).padding.bottom;
     const contentHeight = 60.0;
-    final totalHeight = contentHeight +
-        bottomInset +
-        16; // +16 pour le bouton central qui dépasse
 
-    return SizedBox(
-      height: totalHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.bottomCenter,
-        children: [
-          // ── Barre de fond avec les 4 icônes normales ──────────
-          Container(
-            height: contentHeight + bottomInset,
-            padding: EdgeInsets.only(bottom: bottomInset),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border:
-                  Border(top: BorderSide(color: AppColors.border, width: 1)),
-            ),
-            child: SizedBox(
-              height: contentHeight,
-              child: Row(children: [
-                _NavItemMessages(
-                  index: 0,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                _NavItemStory(
-                  index: 1,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                // Espace réservé au bouton Découvrir surélevé
-                const SizedBox(width: 64),
-                _NavItemAnnonces(
-                  index: NavigationController.annoncesIndex,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-                _NavItem(
-                  icon: Icons.person_rounded,
-                  label: 'Profil',
-                  index: 4,
-                  currentIndex: currentIndex,
-                  onTap: onTap,
-                ),
-              ]),
-            ),
-          ),
-          // ── Bouton Découvrir central, surélevé façon Snapchat ─
-          Positioned(
-            top: 0,
-            child: _DecouvrirCentralBtn(
-              isActive: currentIndex == NavigationController.accueilIndex,
-              onTap: () => onTap(NavigationController.accueilIndex),
-            ),
-          ),
-        ],
+    return Container(
+      height: contentHeight + bottomInset,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
-    );
-  }
-}
-
-// ─── BOUTON DÉCOUVRIR CENTRAL (surélevé, façon caméra Snapchat) ──
-
-class _DecouvrirCentralBtn extends StatelessWidget {
-  final bool isActive;
-  final VoidCallback onTap;
-  const _DecouvrirCentralBtn({required this.isActive, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: AppColors.gradientPink,
-          border: Border.all(color: AppColors.surface, width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.accent.withOpacity(isActive ? 0.55 : 0.35),
-              blurRadius: isActive ? 20 : 12,
-              spreadRadius: isActive ? 2 : 0,
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.grid_view_rounded,
-          color: Colors.white,
-          size: isActive ? 30 : 26,
-        ),
+      child: SizedBox(
+        height: contentHeight,
+        child: Row(children: [
+          _NavItem(
+            icon: Icons.grid_view_rounded,
+            label: 'Accueil',
+            index: 0,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItemMessages(
+            index: 1,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItem(
+            icon: Icons.favorite_rounded,
+            label: 'Likes',
+            index: 2,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItemStory(
+            index: 3,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+          _NavItem(
+            icon: Icons.person_rounded,
+            label: 'Profil',
+            index: 4,
+            currentIndex: currentIndex,
+            onTap: onTap,
+          ),
+        ]),
       ),
     );
   }
@@ -311,85 +242,6 @@ class _NavItemStory extends StatelessWidget {
   }
 }
 
-// ─── NAV ITEM ANNONCES ───────────────────────────────────────────
-
-class _NavItemAnnonces extends StatelessWidget {
-  final int index, currentIndex;
-  final ValueChanged<int> onTap;
-  const _NavItemAnnonces(
-      {required this.index, required this.currentIndex, required this.onTap});
-
-  bool get isActive => currentIndex == index;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onTap(index),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(clipBehavior: Clip.none, children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? AppColors.accent.withOpacity(0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.campaign_rounded,
-                    size: 22,
-                    color: isActive ? AppColors.accent : AppColors.textMuted),
-              ),
-              Obx(() {
-                if (!Get.isRegistered<AnnoncesController>()) {
-                  return const SizedBox.shrink();
-                }
-                final unseen = Get.find<AnnoncesController>().unseenCount.value;
-                if (unseen == 0) return const SizedBox.shrink();
-                return Positioned(
-                  top: -2,
-                  right: -6,
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 16),
-                    height: 16,
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD700),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black, width: 1),
-                    ),
-                    child: Center(
-                      child: Text(
-                        unseen > 9 ? '9+' : '$unseen',
-                        style: const TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ]),
-            const SizedBox(height: 2),
-            Text('ANNONCES',
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: isActive ? AppColors.accent : AppColors.textMuted)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── NAV ITEM MESSAGES ───────────────────────────────────────────
 
 class _NavItemMessages extends StatelessWidget {
@@ -469,7 +321,7 @@ class _NavItemMessages extends StatelessWidget {
   }
 }
 
-// ─── NAV ITEM STANDARD ───────────────────────────────────────────
+// ─── NAV ITEM STANDARD (Accueil, Likes, Profil) ──────────────────
 
 class _NavItem extends StatelessWidget {
   final IconData icon;

@@ -2,11 +2,22 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/services/update_service.dart';
+import 'package:rencontre/core/services/revenue_cat_service.dart';
+import 'package:rencontre/features/chat/controller/chat_controller.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/home/view/home_screen.dart';
+import 'package:rencontre/features/home/view/main_navigation.dart';
+import 'package:rencontre/features/likes/like_controller.dart';
+import 'package:rencontre/features/likes/profile_insights_controller.dart';
+import 'package:rencontre/features/notifications/controller/notification_controller.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
+import 'package:rencontre/core/theme/app_theme.dart';
 
 class AuthController extends GetxController {
   static AuthController get to => Get.find();
@@ -33,10 +44,15 @@ class AuthController extends GetxController {
   final phoneController = TextEditingController();
   final birthdateController = TextEditingController();
 
+  // ✅ Utilisateur auquel appartiennent les contrôleurs permanents
+  // (accueil, chat, likes, profil…). S'il change, on les recrée.
+  String? _sessionUserId;
+
   @override
   void onInit() {
     super.onInit();
     currentUser.value = supabase.auth.currentUser;
+    _sessionUserId = supabase.auth.currentUser?.id;
     supabase.auth.onAuthStateChange.listen((data) {
       currentUser.value = data.session?.user;
       _handleAuthChange(data.event, data.session?.user);
@@ -57,10 +73,20 @@ class AuthController extends GetxController {
 
   void _handleAuthChange(AuthChangeEvent event, User? user) {
     if (event == AuthChangeEvent.signedIn && user != null) {
+      if (_sessionUserId != user.id) {
+        _resetUserControllers();
+        _sessionUserId = user.id;
+      }
       _setOnlineNow(user.id);
       _saveFcmToken();
       _checkOnboarding(user.id);
+
+      // ✅ Lie l'identité RevenueCat à l'utilisateur Supabase
+      if (Get.isRegistered<RevenueCatService>()) {
+        Get.find<RevenueCatService>().loginRevenueCat(user.id);
+      }
     } else if (event == AuthChangeEvent.signedOut) {
+      _sessionUserId = null;
       _setOfflineNow();
       // ✅ Après déconnexion → page LOGIN (pas splash)
       Get.offAllNamed('/login');
@@ -114,6 +140,18 @@ class AuthController extends GetxController {
 
       debugPrint('📋 Profile onboarding: $row');
 
+      // ✅ Compte sans profil (création échouée à l'inscription) : on crée
+      // un profil minimal, sans écraser celui que l'inscription est peut-
+      // être en train d'enregistrer en parallèle.
+      final authUser = supabase.auth.currentUser;
+      if (row == null && authUser != null && authUser.id == uid) {
+        try {
+          await _createProfile(authUser, onlyIfMissing: true);
+        } catch (e) {
+          debugPrint('_checkOnboarding create profile error: $e');
+        }
+      }
+
       if (row == null || row['onboarding_complete'] != true) {
         final hasBirthdate = row != null &&
             row['birthdate'] != null &&
@@ -128,16 +166,34 @@ class AuthController extends GetxController {
           Get.offAllNamed('/onboarding/photo');
         }
       } else {
-        // ✅ Onboarding terminé → /main directement
-        Get.offAllNamed('/main');
+        GetStorage().write('onboarding_done_$uid', true);
+        // ✅ Onboarding terminé → /main directement. Si l'app y est déjà
+        // (route initiale calculée dans main.dart), on ne renavigue pas :
+        // ça effaçait la conversation ouverte depuis une notification.
+        if (!_isInsideApp()) Get.offAllNamed('/main');
         Future.delayed(const Duration(seconds: 2), () {
           UpdateService.checkForUpdate();
         });
       }
     } catch (e) {
       debugPrint('_checkOnboarding error: $e');
-      Get.offAllNamed('/onboarding/photo');
+      // ✅ Hors ligne : un utilisateur déjà inscrit reste dans l'app.
+      final done = GetStorage().read<bool>('onboarding_done_$uid') ?? false;
+      if (done) {
+        if (!_isInsideApp()) Get.offAllNamed('/main');
+      } else {
+        Get.offAllNamed('/onboarding/photo');
+      }
     }
+  }
+
+  bool _isInsideApp() {
+    final r = Get.currentRoute;
+    const outside = ['', '/', '/splash', '/login', '/signup', '/phone'];
+    return !(outside.contains(r) ||
+        r.startsWith('/login') ||
+        r.startsWith('/onboarding') ||
+        r.startsWith('/phone'));
   }
 
   // ─── USERNAME ────────────────────────────────────────────
@@ -150,22 +206,26 @@ class AuthController extends GetxController {
       return;
     }
     checkingUsername.value = true;
+    // ✅ Ignore les réponses arrivées dans le désordre (frappe rapide).
+    final seq = ++_usernameCheckSeq;
     try {
-      final existing = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('username', username)
-          .maybeSingle();
-      usernameAvailable.value = existing == null;
+      // ✅ RPC : la table profiles n'est plus lisible avant connexion.
+      final available = await supabase
+          .rpc('username_available', params: {'p_username': username});
+      if (seq != _usernameCheckSeq) return;
+      usernameAvailable.value = available == true;
     } catch (e) {
       debugPrint('checkUsernameAvailability error: $e');
+      if (seq != _usernameCheckSeq) return;
       // ✅ En cas d'erreur réseau on ne bloque pas l'utilisateur ;
       // la contrainte unique en base reste le vrai garde-fou.
       usernameAvailable.value = true;
     } finally {
-      checkingUsername.value = false;
+      if (seq == _usernameCheckSeq) checkingUsername.value = false;
     }
   }
+
+  int _usernameCheckSeq = 0;
 
   // ─── EMAIL / PASSWORD ──────────────────────────────────────
 
@@ -176,6 +236,20 @@ class AuthController extends GetxController {
     if (!_validateSignUp()) return;
     _setLoading(true);
     try {
+      // ✅ Revérifie le nom juste avant de créer le compte : sinon un nom
+      // déjà pris faisait échouer la création du profil après celle du
+      // compte, laissant un compte sans profil bloqué dans l'onboarding.
+      try {
+        final available = await supabase.rpc('username_available', params: {
+          'p_username': usernameController.text.trim().toLowerCase()
+        });
+        if (available == false) {
+          usernameAvailable.value = false;
+          errorMessage.value = 'Ce nom d\'utilisateur est déjà pris';
+          return;
+        }
+      } catch (_) {}
+
       final res = await supabase.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text,
@@ -311,7 +385,7 @@ class AuthController extends GetxController {
       await supabase.auth.resetPasswordForEmail(emailController.text.trim());
       Get.snackbar('Email envoyé 📧', 'Vérifie ta boîte mail',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
@@ -363,8 +437,10 @@ class AuthController extends GetxController {
             .eq('id', res.user!.id)
             .maybeSingle();
         if (existing == null) {
+          final prenom = (googleUser.displayName ?? '').trim().split(' ').first;
           await _createProfile(res.user!,
-              name: googleUser.displayName, photoUrl: googleUser.photoUrl);
+              name: prenom.isNotEmpty ? prenom : null,
+              photoUrl: googleUser.photoUrl);
         }
       }
       errorMessage.value = '';
@@ -385,7 +461,7 @@ class AuthController extends GetxController {
       await supabase.from('profiles').update({
         'phone': phone,
         'phone_verified': false,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
     } catch (e) {
       debugPrint('savePhoneNumberOnly error: $e');
@@ -413,7 +489,7 @@ class AuthController extends GetxController {
     if (uid == null) return;
 
     final Map<String, dynamic> updates = {
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     if (photoUrl != null) updates['photo_url'] = photoUrl;
     if (gender != null) updates['gender'] = gender;
@@ -430,11 +506,44 @@ class AuthController extends GetxController {
 
   Future<void> signOut() async {
     await _setOfflineNow();
+    // ✅ Ce téléphone ne doit plus recevoir les push de ce compte.
+    try {
+      final uid = supabase.auth.currentUser?.id;
+      if (uid != null) {
+        await supabase
+            .from('profiles')
+            .update({'fcm_token': null}).eq('id', uid);
+      }
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e) {
+      debugPrint('signOut fcm cleanup error: $e');
+    }
+    // ✅ Sinon un achat du compte suivant serait attribué à celui-ci.
+    if (Get.isRegistered<RevenueCatService>()) {
+      await Get.find<RevenueCatService>().logoutRevenueCat();
+    }
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
       await googleSignIn.signOut();
     } catch (_) {}
     await supabase.auth.signOut();
+  }
+
+  /// ✅ Les contrôleurs permanents gardaient les données (profil, likes,
+  /// conversations, Premium, canaux realtime) du compte précédent.
+  void _resetUserControllers() {
+    void del<T>() {
+      if (Get.isRegistered<T>()) Get.delete<T>(force: true);
+    }
+
+    del<ControleurProfil>();
+    del<HomeController>();
+    del<ChatListController>();
+    del<LikeController>();
+    del<ProfileInsightsController>();
+    del<NotificationController>();
+    del<UnreadMessagesController>();
+    del<NavigationController>();
   }
 
   // ─── HELPERS ───────────────────────────────────────────────
@@ -475,6 +584,7 @@ class AuthController extends GetxController {
     String? photoUrl,
     String? birthdate,
     int? age,
+    bool onlyIfMissing = false,
   }) async {
     final now = DateTime.now();
     await supabase.from('profiles').upsert({
@@ -499,9 +609,9 @@ class AuthController extends GetxController {
       'following_count': 0,
       'matches_count': 0,
       'app_version': '1.0.3',
-      'created_at': now.toIso8601String(),
-      'updated_at': now.toIso8601String(),
-    });
+      'created_at': now.toUtc().toIso8601String(),
+      'updated_at': now.toUtc().toIso8601String(),
+    }, ignoreDuplicates: onlyIfMissing);
     debugPrint('✅ Profil créé — birthdate: $birthdate, age: ${age ?? 18}');
   }
 
@@ -536,15 +646,15 @@ class AuthController extends GetxController {
   Color get strengthColor {
     switch (passwordStrength.value) {
       case 1:
-        return const Color(0xFFFF5252);
+        return AppColors.error;
       case 2:
-        return const Color(0xFFFF3CAC);
+        return AppColors.accent;
       case 3:
-        return const Color(0xFF7B2FFF);
+        return AppColors.accent2;
       case 4:
-        return const Color(0xFF00E676);
+        return AppColors.online;
       default:
-        return const Color(0xFF2A2A3D);
+        return AppColors.border;
     }
   }
 
@@ -588,7 +698,9 @@ class AuthController extends GetxController {
         errorMessage.value = 'Mois invalide (01-12)';
         return false;
       }
-      if (day < 1 || day > 31) {
+      // ✅ Refuse aussi les dates inexistantes (31/02, 31/04…) que
+      // Postgres rejetait à la création du profil.
+      if (day < 1 || day > 31 || DateTime(year, month, day).day != day) {
         errorMessage.value = 'Jour invalide (01-31)';
         return false;
       }

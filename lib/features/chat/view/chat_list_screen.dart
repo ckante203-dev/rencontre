@@ -500,7 +500,12 @@ class _ConversationTile extends GetView<ChatListController> {
 
   Widget _buildLastMessage() {
     final msg = conv.lastMessage;
-    if (msg == null) return const SizedBox.shrink();
+    // ✅ Tous les messages ont expiré (règle éphémère) : la conversation
+    // reste, avec un aperçu neutre.
+    if (msg == null) {
+      return Text('Aucun nouveau message',
+          style: TextStyle(fontSize: 13, color: AppColors.textMuted));
+    }
 
     // ✅ FIX : isMine est maintenant une méthode qui prend l'ID de
     // l'utilisateur courant (controller.myId), au lieu d'un getter

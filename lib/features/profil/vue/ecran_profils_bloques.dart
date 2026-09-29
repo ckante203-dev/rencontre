@@ -179,7 +179,7 @@ class EcranProfilsBloques extends StatelessWidget {
 
   void _confirmerDeblocage(ControleurProfil ctrl, String id, String name) {
     Get.dialog(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text('Débloquer $name ?',
           style: const TextStyle(
@@ -189,12 +189,12 @@ class EcranProfilsBloques extends StatelessWidget {
               fontSize: 17)),
       content: Text(
           '$name pourra à nouveau voir ton profil et t\'envoyer des messages.',
-          style: const TextStyle(color: Color(0xFF5A5A78), fontSize: 13)),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
             Get.back();

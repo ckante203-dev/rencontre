@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -9,11 +8,31 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
+
+Color _colorFromHex(String hex) {
+  var h = hex.replaceFirst('#', '');
+  if (h.length == 6) h = 'FF$h';
+  return Color(int.parse(h, radix: 16));
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ✅ RÉÉCRIT — comportement façon WhatsApp/Telegram :
+//  - TAP (zone gauche/droite) : avance/recule d'UNE story À
+//    L'INTÉRIEUR DU MÊME PROFIL. Une fois les stories du profil
+//    épuisées, enchaîne automatiquement sur le profil suivant.
+//  - SWIPE HORIZONTAL (glissement du doigt) : saute DIRECTEMENT au
+//    profil suivant/précédent, quelle que soit la story affichée.
+//
+//  L'API publique du widget (stories + initialIndex, tous deux une
+//  liste "plate" comme avant) est inchangée : aucun appelant
+//  existant n'a besoin d'être modifié.
+// ══════════════════════════════════════════════════════════════════
 
 class StoryViewerScreen extends StatefulWidget {
   final List<StoryModel> stories;
@@ -28,8 +47,13 @@ class StoryViewerScreen extends StatefulWidget {
 
 class _StoryViewerScreenState extends State<StoryViewerScreen>
     with SingleTickerProviderStateMixin {
-  late int _current;
+  // ── Regroupement par profil ──────────────────────────────────
+  late List<List<StoryModel>> _groups;
+  late int _profileIndex;
+  late int _storyIndexInProfile;
+
   late AnimationController _progressCtrl;
+  late final PageController _pageCtrl;
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
   final String? _myUid = Supabase.instance.client.auth.currentUser?.id;
@@ -38,70 +62,282 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   bool _longPressing = false;
   final Set<String> _likedStoryIds = {};
 
+  // ── Cache & préchargement vidéo/image (perf) ────────────────────
+  // Indexés par l'ID de la story (plus robuste qu'une position,
+  // maintenant que la navigation n'est plus purement linéaire).
+  final Map<String, VideoPlayerController> _videoCache = {};
+  final Set<String> _precachedImages = {};
+  int _loadToken = 0;
+
   static const Duration _imageDuration = Duration(seconds: 5);
   static const int _freeViewersLimit = 10;
+
+  StoryModel get _currentStory => _groups[_profileIndex][_storyIndexInProfile];
+  List<StoryModel> get _currentGroup => _groups[_profileIndex];
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    _current = widget.stories.isEmpty
-        ? 0
-        : widget.initialIndex.clamp(0, widget.stories.length - 1);
+
+    _groups = _groupByProfile(widget.stories);
+
+    if (_groups.isEmpty) {
+      _profileIndex = 0;
+      _storyIndexInProfile = 0;
+    } else {
+      final pos = _resolveInitialPosition(widget.initialIndex);
+      _profileIndex = pos[0];
+      _storyIndexInProfile = pos[1];
+    }
+
+    _pageCtrl = PageController(initialPage: _profileIndex);
     _progressCtrl = AnimationController(vsync: this);
     _progressCtrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed) _next();
+      if (status == AnimationStatus.completed) _advance();
     });
-    if (widget.stories.isNotEmpty) {
-      _loadStory(_current);
+
+    if (_groups.isNotEmpty) {
+      _loadCurrentStory();
     }
+  }
+
+  /// Regroupe la liste plate reçue en sous-listes consécutives par
+  /// userId : chaque groupe = les stories d'UN SEUL profil, dans
+  /// l'ordre. Suppose que l'appelant fournit déjà une liste
+  /// contiguë par profil (c'est le cas pour tous les appelants
+  /// actuels : StoriesRow, écran de profil, grille de publications
+  /// — qui ne passent d'ailleurs souvent qu'un seul profil).
+  List<List<StoryModel>> _groupByProfile(List<StoryModel> flat) {
+    final groups = <List<StoryModel>>[];
+    for (final s in flat) {
+      if (groups.isNotEmpty && groups.last.first.userId == s.userId) {
+        groups.last.add(s);
+      } else {
+        groups.add([s]);
+      }
+    }
+    return groups;
+  }
+
+  /// Convertit l'index "plat" reçu par le widget (rétro-compatible
+  /// avec tous les appelants existants) en position (profil, story
+  /// dans ce profil).
+  List<int> _resolveInitialPosition(int flatIndex) {
+    int remaining = flatIndex.clamp(0, widget.stories.length - 1);
+    for (int g = 0; g < _groups.length; g++) {
+      if (remaining < _groups[g].length) return [g, remaining];
+      remaining -= _groups[g].length;
+    }
+    return [_groups.length - 1, _groups.last.length - 1];
   }
 
   @override
   void dispose() {
+    _pageCtrl.dispose();
     _progressCtrl.dispose();
-    _videoCtrl?.dispose();
+    for (final c in _videoCache.values) {
+      c.dispose();
+    }
+    _videoCache.clear();
     super.dispose();
   }
 
-  Future<void> _loadStory(int index) async {
-    _progressCtrl.stop();
-    _progressCtrl.reset();
-    await _videoCtrl?.dispose();
-    _videoCtrl = null;
-    if (mounted) setState(() => _videoReady = false);
-
-    final s = widget.stories[index];
-    if (s.isVideo) {
-      final ctrl = VideoPlayerController.networkUrl(Uri.parse(s.mediaUrl));
-      _videoCtrl = ctrl;
-      await ctrl.initialize();
-      if (!mounted) return;
-      setState(() => _videoReady = true);
-      ctrl.play();
-      _progressCtrl.duration = ctrl.value.duration;
-    } else {
-      _progressCtrl.duration = _imageDuration;
+  // ── Position plate courante (toutes stories confondues, même à
+  // cheval sur deux profils) — utilisée uniquement pour le
+  // préchargement / l'éviction du cache vidéo. ────────────────────
+  int get _flatIndexOfCurrent {
+    int idx = 0;
+    for (int g = 0; g < _profileIndex; g++) {
+      idx += _groups[g].length;
     }
-    _progressCtrl.forward();
-    if (mounted) setState(() {});
-    _loadLikes(s);
+    return idx + _storyIndexInProfile;
   }
 
-  void _next() {
-    if (_current < widget.stories.length - 1) {
-      setState(() => _current++);
-      _loadStory(_current);
+  StoryModel? _flatStoryAt(int flatIndex) {
+    if (flatIndex < 0 || flatIndex >= widget.stories.length) return null;
+    return widget.stories[flatIndex];
+  }
+
+  Future<void> _loadCurrentStory() async {
+    // Jeton de génération : si un chargement plus récent démarre
+    // entre-temps (navigation rapide), ce chargement s'arrête
+    // proprement au lieu de toucher un contrôleur disposé ailleurs.
+    final token = ++_loadToken;
+
+    _progressCtrl.stop();
+    _progressCtrl.reset();
+
+    final s = _currentStory;
+    _markSeen(s);
+
+    if (s.isVideo) {
+      VideoPlayerController? ctrl = _videoCache[s.id];
+
+      if (ctrl == null && Get.isRegistered<HomeController>()) {
+        // Réutilise un contrôleur déjà préchargé par HomeController
+        // au lieu d'en recréer un et de retélécharger la vidéo.
+        ctrl = Get.find<HomeController>().takeCachedVideoController(s.id);
+        if (ctrl != null) _videoCache[s.id] = ctrl;
+      }
+
+      bool alreadyInitialized = ctrl?.value.isInitialized ?? false;
+
+      if (ctrl == null) {
+        ctrl = VideoPlayerController.networkUrl(Uri.parse(s.mediaUrl));
+        _videoCache[s.id] = ctrl;
+      }
+
+      if (!alreadyInitialized) {
+        try {
+          await ctrl.initialize();
+        } catch (e) {
+          debugPrint('_loadCurrentStory video init error: $e');
+        }
+      }
+
+      // Ce chargement est-il encore pertinent ?
+      if (token != _loadToken || !mounted) return;
+
+      _pruneVideoCache();
+
+      if (!mounted) return;
+      setState(() {
+        _videoCtrl = ctrl;
+        _videoReady = ctrl!.value.isInitialized;
+      });
+
+      if (_videoReady) {
+        ctrl.setLooping(false);
+        ctrl.seekTo(Duration.zero);
+        ctrl.play();
+        _progressCtrl.duration = ctrl.value.duration;
+      } else {
+        // fallback si la vidéo n'a pas pu s'initialiser
+        _progressCtrl.duration = _imageDuration;
+      }
+    } else {
+      _pruneVideoCache();
+      if (!mounted) return;
+      setState(() {
+        _videoCtrl = null;
+        _videoReady = false;
+      });
+      _progressCtrl.duration = _imageDuration;
+    }
+
+    if (token != _loadToken || !mounted) return;
+
+    _progressCtrl.forward();
+    _loadLikes(s);
+    _preloadAdjacent();
+  }
+
+  // ✅ Marque comme vue CHAQUE story réellement affichée (tap, fin de
+  // minuterie, swipe vers un autre profil) — auparavant seule la 1ère
+  // story du profil ouvert l'était. Une seule fois par story, et jamais
+  // pour mes propres stories (sinon je m'ajoute à mes propres vues).
+  final Set<String> _markedSeenIds = {};
+
+  void _markSeen(StoryModel s) {
+    if (s.id.isEmpty || s.userId == _myUid) return;
+    if (!_markedSeenIds.add(s.id)) return;
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().markStoryAsSeen(s.id);
+    }
+  }
+
+  /// Garde uniquement les contrôleurs vidéo de la story courante et
+  /// de ses voisines immédiates (dans l'ordre plat global — donc
+  /// potentiellement la dernière story du profil précédent ou la
+  /// première du profil suivant) ; dispose tout le reste.
+  void _pruneVideoCache() {
+    final keep = <String>{_currentStory.id};
+    final prev = _flatStoryAt(_flatIndexOfCurrent - 1);
+    final next = _flatStoryAt(_flatIndexOfCurrent + 1);
+    if (prev != null) keep.add(prev.id);
+    if (next != null) keep.add(next.id);
+
+    final toRemove =
+        _videoCache.keys.where((id) => !keep.contains(id)).toList();
+    for (final id in toRemove) {
+      final removed = _videoCache.remove(id);
+      if (removed != _videoCtrl) {
+        removed?.dispose();
+      }
+    }
+  }
+
+  /// Précharge la story suivante et précédente dans l'ordre plat
+  /// global (même si elles appartiennent au profil suivant ou
+  /// précédent), pour rendre la transition quasi instantanée.
+  void _preloadAdjacent() {
+    for (final s in [
+      _flatStoryAt(_flatIndexOfCurrent + 1),
+      _flatStoryAt(_flatIndexOfCurrent - 1),
+    ]) {
+      if (s == null || s.isTextStory) continue;
+      if (s.isVideo) {
+        if (!_videoCache.containsKey(s.id)) {
+          final ctrl = VideoPlayerController.networkUrl(Uri.parse(s.mediaUrl));
+          _videoCache[s.id] = ctrl;
+          ctrl.initialize().catchError((e) {
+            debugPrint('_preloadAdjacent video error: $e');
+          });
+        }
+      } else {
+        if (_precachedImages.add(s.id) && mounted) {
+          precacheImage(CachedNetworkImageProvider(s.mediaUrl), context)
+              .catchError((e) {
+            debugPrint('_preloadAdjacent image error: $e');
+          });
+        }
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  NAVIGATION
+  //  TAP  → story suivante/précédente DU MÊME PROFIL ; une fois
+  //         épuisées, bascule sur le profil suivant/précédent.
+  //  SWIPE (PageView) → change directement de PROFIL, quelle que
+  //         soit la story affichée (voir _onPageChanged).
+  // ══════════════════════════════════════════════════════════════
+
+  void _advance() {
+    if (_storyIndexInProfile < _currentGroup.length - 1) {
+      setState(() => _storyIndexInProfile++);
+      _loadCurrentStory();
+    } else if (_profileIndex < _groups.length - 1) {
+      _pageCtrl.nextPage(
+          duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     } else {
       Get.back();
     }
   }
 
-  void _prev() {
-    if (_current > 0) {
-      setState(() => _current--);
-      _loadStory(_current);
+  void _retreat() {
+    if (_storyIndexInProfile > 0) {
+      setState(() => _storyIndexInProfile--);
+      _loadCurrentStory();
+    } else if (_profileIndex > 0) {
+      _pageCtrl.previousPage(
+          duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
     }
+  }
+
+  /// Appelé aussi bien par un balayage manuel de l'utilisateur que
+  /// par les appels programmatiques nextPage()/previousPage() de
+  /// _advance()/_retreat() une fois un profil épuisé. En avançant,
+  /// on démarre à la 1ère story du nouveau profil ; en reculant, à
+  /// sa dernière story.
+  void _onPageChanged(int newProfileIndex) {
+    final forward = newProfileIndex > _profileIndex;
+    setState(() {
+      _profileIndex = newProfileIndex;
+      _storyIndexInProfile = forward ? 0 : _groups[newProfileIndex].length - 1;
+    });
+    _loadCurrentStory();
   }
 
   void _pause() {
@@ -118,6 +354,36 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _videoCtrl?.play();
   }
 
+  // ✅ Vrai quand le menu d'options se ferme pour ouvrir aussitôt une
+  // autre feuille/dialogue (vues, suppression) : la lecture ne doit
+  // PAS reprendre entre les deux.
+  bool _chainingModal = false;
+
+  // ✅ Reprend la lecture après fermeture d'une feuille/dialogue, mais
+  // seulement si le viewer est de nouveau l'écran visible. Si un autre
+  // écran a été ouvert entre-temps depuis la feuille (ex: profil d'un
+  // spectateur), on attend d'y être revenu — sinon la minuterie
+  // continuait et Get.back() en fin de story fermait le mauvais écran.
+  void _resumeWhenVisible() {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || route.isCurrent) {
+      _resume();
+      return;
+    }
+    final anim = route.secondaryAnimation;
+    if (anim == null) return;
+    late final AnimationStatusListener listener;
+    listener = (status) {
+      if (status != AnimationStatus.dismissed) return;
+      anim.removeStatusListener(listener);
+      if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        _resume();
+      }
+    };
+    anim.addStatusListener(listener);
+  }
+
   Future<void> _likeStory(StoryModel story) async {
     if (story.userId == _myUid) return;
     final uid = _myUid;
@@ -131,22 +397,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       }
     });
     try {
-      final row = await Supabase.instance.client
-          .from('stories')
-          .select('liked_by')
-          .eq('id', story.id)
-          .maybeSingle();
-      if (row == null) return;
-      final List<String> liked = List<String>.from(row['liked_by'] ?? []);
-      if (alreadyLiked) {
-        liked.remove(uid);
-      } else if (!liked.contains(uid)) {
-        liked.add(uid);
-      }
-      await Supabase.instance.client
-          .from('stories')
-          .update({'liked_by': liked}).eq('id', story.id);
+      // ✅ RPC : la RLS n'autorise l'update de stories qu'au propriétaire
+      // (le like n'était jamais enregistré), et l'ajout est atomique.
+      await Supabase.instance.client.rpc('set_story_like',
+          params: {'p_story_id': story.id, 'p_like': !alreadyLiked});
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         if (alreadyLiked) {
           _likedStoryIds.add(story.id);
@@ -177,6 +433,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   Future<void> _openProfile(StoryModel story) async {
     if (_replyFocused) return;
     if (story.userId == _myUid) return;
+
+    // ✅ Coupe la vidéo/la progression AVANT de quitter vers le
+    // profil — sinon le son continue de jouer en arrière-plan tant
+    // que cet écran reste monté sous l'écran de profil.
+    final wasAlreadyPaused = _paused;
+    _pause();
+
     try {
       final data = await Supabase.instance.client
           .from('profiles')
@@ -223,16 +486,31 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         followingCount: data['following_count'] ?? 0,
         matchesCount: data['matches_count'] ?? 0,
       );
-      Get.toNamed('/profile/view', arguments: user);
+      // ✅ On attend le retour de l'écran de profil pour savoir
+      // quand relancer la lecture.
+      await Get.toNamed('/profile/view', arguments: user);
     } catch (e) {
       debugPrint('_openProfile from story error: $e');
+    } finally {
+      // ✅ Ne relance que si ce n'était pas déjà en pause manuelle
+      // (ex: appui long) avant d'ouvrir le profil.
+      if (mounted && !wasAlreadyPaused) {
+        _resume();
+      }
     }
   }
 
   Future<void> _deleteStory(StoryModel story) async {
-    if (story.userId != _myUid) return;
+    _chainingModal = false;
+    if (story.userId != _myUid) {
+      _resumeWhenVisible();
+      return;
+    }
+    // ✅ Lecture en pause pendant la confirmation : sinon la minuterie
+    // avançait (ou Get.back() fermait le dialogue au lieu du viewer).
+    _pause();
     final confirmed = await Get.dialog<bool>(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Supprimer cette story ?',
           style: TextStyle(
@@ -240,14 +518,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               fontSize: 17)),
-      content: const Text('Cette story sera définitivement supprimée.',
-          style: TextStyle(color: Color(0xFF5A5A78), fontSize: 13)),
+      content: Text('Cette story sera définitivement supprimée.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Annuler',
+            child: Text('Annuler',
                 style: TextStyle(
-                    color: Color(0xFF5A5A78), fontWeight: FontWeight.w600))),
+                    color: AppColors.textMuted, fontWeight: FontWeight.w600))),
         GestureDetector(
           onTap: () => Get.back(result: true),
           child: Container(
@@ -263,7 +541,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       ],
     ));
     if (confirmed != true) {
-      _resume();
+      _resumeWhenVisible();
       return;
     }
     try {
@@ -278,7 +556,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         Get.back();
         Get.snackbar('Story supprimée', '',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white,
             duration: const Duration(seconds: 2));
       }
@@ -287,32 +565,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       if (mounted) {
         Get.snackbar('Erreur', "Impossible de supprimer la story",
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
+        _resumeWhenVisible(); // ✅ la story reste affichée : on reprend
       }
-    }
-  }
-
-  Future<void> _togglePin(StoryModel story) async {
-    final newVal = !story.isPinned;
-    try {
-      await Supabase.instance.client
-          .from('stories')
-          .update({'is_pinned': newVal}).eq('id', story.id);
-      Get.snackbar(
-        newVal ? '📌 Publiée sur ton profil' : '📌 Retirée du profil',
-        '',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF13131A),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
-      );
-    } catch (e) {
-      debugPrint('_togglePin error: $e');
-      Get.snackbar('Erreur', 'Impossible de modifier',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
-          colorText: Colors.white);
     }
   }
 
@@ -336,28 +592,20 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           ),
           const SizedBox(height: 8),
           _OptionTile(
-            icon: story.isPinned
-                ? Icons.push_pin_outlined
-                : Icons.push_pin_rounded,
-            label:
-                story.isPinned ? 'Retirer du profil' : 'Publier sur le profil',
-            color: story.isPinned ? Colors.red : Colors.white,
-            onTap: () async {
-              Get.back();
-              await _togglePin(story);
-              _resume();
-            },
-          ),
-          const _OptionDivider(),
-          _OptionTile(
             icon: Icons.remove_red_eye_rounded,
             label:
                 '${story.viewedBy.length} vue${story.viewedBy.length != 1 ? 's' : ''}',
             color: Colors.white,
             onTap: () {
+              _chainingModal = true; // ✅ pas de reprise entre les 2 feuilles
               Get.back();
-              Future.delayed(
-                  const Duration(milliseconds: 200), () => _showViewers(story));
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (mounted) {
+                  _showViewers(story);
+                } else {
+                  _chainingModal = false;
+                }
+              });
             },
           ),
           const _OptionDivider(),
@@ -366,19 +614,30 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             label: 'Supprimer',
             color: Colors.red,
             onTap: () {
+              _chainingModal = true; // ✅ pas de reprise avant le dialogue
               Get.back();
-              Future.delayed(
-                  const Duration(milliseconds: 200), () => _deleteStory(story));
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (mounted) {
+                  _deleteStory(story);
+                } else {
+                  _chainingModal = false;
+                }
+              });
             },
           ),
         ]),
       ),
-    ).then((_) => _resume());
+    ).then((_) {
+      // ✅ Si une autre feuille/dialogue prend le relais, c'est elle
+      // qui relancera la lecture à sa fermeture.
+      if (_chainingModal) return;
+      _resumeWhenVisible();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.stories.isEmpty) {
+    if (_groups.isEmpty) {
       return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
@@ -406,7 +665,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       );
     }
 
-    final s = widget.stories[_current];
+    final s = _currentStory;
     final bool isOwner = s.userId == _myUid;
     final keyboardH = MediaQuery.of(context).viewInsets.bottom;
     final bottomPad = MediaQuery.of(context).padding.bottom;
@@ -432,13 +691,24 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           final x = d.globalPosition.dx;
           final w = MediaQuery.of(context).size.width;
           if (x < w * 0.35) {
-            _prev();
+            _retreat();
           } else {
-            _next();
+            _advance();
           }
         },
         child: Stack(fit: StackFit.expand, children: [
-          _buildMedia(s),
+          PageView.builder(
+            controller: _pageCtrl,
+            // ✅ Chaque PAGE = un PROFIL entier (pas une story isolée).
+            // Le balayage manuel change donc directement de profil ;
+            // seul le tap avance story par story (voir onTapUp).
+            physics: _replyFocused
+                ? const NeverScrollableScrollPhysics()
+                : const BouncingScrollPhysics(),
+            itemCount: _groups.length,
+            onPageChanged: _onPageChanged,
+            itemBuilder: (_, profileIdx) => _buildProfilePage(profileIdx),
+          ),
           const DecoratedBox(
               decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -458,18 +728,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         Color(0xBB000000),
                         Colors.transparent
                       ]))))),
+          // ✅ Barre de progression — un segment par story DU PROFIL
+          // COURANT UNIQUEMENT (se réinitialise à chaque changement
+          // de profil), façon WhatsApp/Instagram.
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 12,
             right: 12,
             child: Row(
-                children: List.generate(widget.stories.length, (i) {
+                children: List.generate(_currentGroup.length, (i) {
               return Expanded(
                   child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       child: ClipRRect(
                           borderRadius: BorderRadius.circular(2),
-                          child: i == _current
+                          child: i == _storyIndexInProfile
                               ? AnimatedBuilder(
                                   animation: _progressCtrl,
                                   builder: (_, __) => LinearProgressIndicator(
@@ -479,7 +752,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                           Colors.white),
                                       minHeight: 2.5))
                               : LinearProgressIndicator(
-                                  value: i < _current ? 1.0 : 0.0,
+                                  value: i < _storyIndexInProfile ? 1.0 : 0.0,
                                   backgroundColor: Colors.white30,
                                   valueColor: const AlwaysStoppedAnimation(
                                       Colors.white),
@@ -684,7 +957,46 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     );
   }
 
+  /// Construit la page pour le profil `profileIndex`. Seule la page
+  /// du profil ACTUELLEMENT AFFICHÉ montre la story interactive
+  /// (vidéo qui joue, liée à la barre de progression) ; les pages
+  /// voisines (visibles brièvement pendant un glissement en cours)
+  /// affichent un simple aperçu statique de leur première story.
+  Widget _buildProfilePage(int profileIndex) {
+    if (profileIndex != _profileIndex) {
+      return _buildStaticPreview(_groups[profileIndex].first);
+    }
+    return _buildMedia(_currentStory);
+  }
+
+  Widget _buildStaticPreview(StoryModel s) {
+    if (s.isTextStory) {
+      return _buildTextStoryContent(s);
+    }
+    if (s.isVideo) {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: Icon(Icons.play_circle_outline_rounded,
+              color: Colors.white38, size: 48),
+        ),
+      );
+    }
+    return CachedNetworkImage(
+        imageUrl: s.mediaUrl,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => const Center(
+            child:
+                CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+        errorWidget: (_, __, ___) => const Center(
+            child: Icon(Icons.broken_image_outlined,
+                color: Colors.white38, size: 48)));
+  }
+
   Widget _buildMedia(StoryModel s) {
+    if (s.isTextStory) {
+      return _buildTextStoryContent(s);
+    }
     if (s.isVideo) {
       if (!_videoReady || _videoCtrl == null) {
         return const Center(
@@ -707,8 +1019,34 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 color: Colors.white38, size: 48)));
   }
 
+  Widget _buildTextStoryContent(StoryModel s) {
+    return Container(
+      color: _colorFromHex(s.bgColor ?? '#7B2FFF'),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Text(
+        s.textContent ?? '',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.w800,
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+
   void _showViewers(StoryModel s) {
-    if (s.userId != _myUid) return;
+    _chainingModal = false;
+    if (s.userId != _myUid) {
+      _resumeWhenVisible();
+      return;
+    }
+    // ✅ Pause pendant que la liste des vues est ouverte : sinon la
+    // minuterie avançait sous la feuille et, sur la dernière story,
+    // Get.back() fermait la feuille au lieu du viewer.
+    _pause();
     final viewers = s.viewedBy;
     final storyId = s.id;
     final freeCount = viewers.length.clamp(0, _freeViewersLimit);
@@ -718,9 +1056,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       constraints: BoxConstraints(
           maxHeight: MediaQuery.of(Get.context!).size.height * 0.65),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      decoration: const BoxDecoration(
-          color: Color(0xFF11111C),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
       child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -730,7 +1068,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: const Color(0xFF252538),
+                        color: AppColors.surface2,
                         borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
             Row(children: [
@@ -791,8 +1129,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                               end: Alignment.bottomCenter,
                               colors: [
                             Colors.transparent,
-                            const Color(0xFF11111C).withOpacity(0.9),
-                            const Color(0xFF11111C)
+                            AppColors.surface.withOpacity(0.9),
+                            AppColors.surface
                           ])),
                       child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -822,7 +1160,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                   Get.snackbar(
                                       '⭐ Premium', 'Bientôt disponible !',
                                       snackPosition: SnackPosition.TOP,
-                                      backgroundColor: const Color(0xFF13131A),
+                                      backgroundColor: AppColors.surface,
                                       colorText: Colors.white);
                                 },
                                 child: Container(
@@ -843,7 +1181,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 ],
               ])),
           ]),
-    )).then((_) => _resume());
+    )).then((_) => _resumeWhenVisible());
   }
 
   String _ago(DateTime d) {
@@ -1071,8 +1409,8 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
             .eq('id', widget.storyId)
             .maybeSingle(),
       ]);
-      final profileData = results[0] as Map<String, dynamic>?;
-      final storyData = results[1] as Map<String, dynamic>?;
+      final profileData = results[0];
+      final storyData = results[1];
       if (mounted) {
         final liked = List<String>.from(storyData?['liked_by'] ?? []);
         setState(() {
@@ -1223,29 +1561,19 @@ class _ReplyBarState extends State<_ReplyBar> {
     if (uid == widget.story.userId) {
       Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
       return;
     }
     setState(() => _sending = true);
     try {
-      final res = await Supabase.instance.client
-          .from('conversations')
-          .select('id')
-          .or('and(user1_id.eq.$uid,user2_id.eq.${widget.story.userId}),'
-              'and(user1_id.eq.${widget.story.userId},user2_id.eq.$uid)')
-          .maybeSingle();
-      final String convId;
-      if (res != null) {
-        convId = res['id'] as String;
-      } else {
-        final created = await Supabase.instance.client
-            .from('conversations')
-            .insert({'user1_id': uid, 'user2_id': widget.story.userId})
-            .select('id')
-            .single();
-        convId = created['id'] as String;
-      }
+      // ✅ MODIFIÉ — passe par le point d'entrée centralisé au lieu
+      // de dupliquer la recherche/création de conversation. Ça
+      // applique automatiquement la règle "sans match, la
+      // conversation démarre en demande de message (pending)".
+      final convId = await SupabaseService().getOrCreateConversation(
+        widget.story.userId,
+      );
       final storyData = StoryReplyData(
         storyId: widget.story.id,
         storyPreviewUrl: widget.story.mediaUrl,
@@ -1285,7 +1613,11 @@ class _ReplyBarState extends State<_ReplyBar> {
           });
         }
         await Supabase.instance.client.from('conversations').update(
-            {'updated_at': DateTime.now().toIso8601String()}).eq('id', convId);
+            {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId); // ✅ UTC
+        // ✅ Si je réponds à la story de quelqu'un qui m'avait
+        // lui-même écrit sans match, ma réponse fait passer la
+        // conversation de "demande" à "acceptée".
+        await SupabaseService().maybePromoteMessageRequest(convId);
       }
       _ctrl.clear();
       _focus.unfocus();
@@ -1293,7 +1625,7 @@ class _ReplyBarState extends State<_ReplyBar> {
       if (mounted) {
         Get.snackbar('Réponse envoyée ✓', '',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white,
             duration: const Duration(seconds: 2));
       }
@@ -1302,7 +1634,7 @@ class _ReplyBarState extends State<_ReplyBar> {
       if (mounted) {
         Get.snackbar('Erreur', "Impossible d'envoyer le message",
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
       }
     } finally {
@@ -1378,9 +1710,9 @@ class _ReplyBarState extends State<_ReplyBar> {
 
 // ─────────────────────────────────────────────────────────────────
 //  ADD STORY SCREEN
-//  ✅ MIS À JOUR — Publication façon Snapchat/TikTok :
-//  on quitte l'écran immédiatement, l'upload continue en tâche de
-//  fond via HomeController.publishStory() (controller persistant).
+//  Publication façon Snapchat/TikTok : on quitte l'écran
+//  immédiatement, l'upload continue en tâche de fond via
+//  HomeController.publishStory() (controller persistant).
 // ─────────────────────────────────────────────────────────────────
 
 class AddStoryScreen extends StatefulWidget {
@@ -1398,6 +1730,26 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   double _durationHours = 24;
   String _visibility = 'public';
+
+  bool _textMode = false;
+  final _textCtrl = TextEditingController();
+  Color _selectedBgColor = _textBgColors.first;
+
+  static const List<Color> _textBgColors = [
+    Color(0xFF7B2FFF),
+    Color(0xFFFF3CAC),
+    Color(0xFF2E63FF),
+    Color(0xFF00B894),
+    Color(0xFFFFA500),
+    Color(0xFFE53935),
+    Color(0xFF0A0A0F),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _textCtrl.addListener(() => setState(() {}));
+  }
 
   Future<void> _pickMedia(ImageSource source, {bool video = false}) async {
     try {
@@ -1466,9 +1818,37 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     );
   }
 
+  Future<void> _publishText() async {
+    final text = _textCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) {
+      _snack('Tu dois être connecté');
+      return;
+    }
+
+    if (!Get.isRegistered<HomeController>()) {
+      Get.put(HomeController(), permanent: true);
+    }
+    final homeCtrl = Get.find<HomeController>();
+
+    final bgHex =
+        '#${_selectedBgColor.value.toRadixString(16).substring(2).toUpperCase()}';
+
+    Get.back(result: true);
+
+    homeCtrl.publishTextStory(
+      text: text,
+      bgColorHex: bgHex,
+      durationHours: _durationHours,
+      visibility: _visibility,
+    );
+  }
+
   void _snack(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF13131A),
+      backgroundColor: AppColors.surface,
       colorText: Colors.white);
 
   void _showSourcePicker({required bool video}) {
@@ -1482,7 +1862,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Container(
                       decoration: BoxDecoration(
-                          color: const Color(0xFF11111C),
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16)),
                       child: Column(children: [
                         _SourceOption(
@@ -1511,7 +1891,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
-                              color: const Color(0xFF11111C),
+                              color: AppColors.surface,
                               borderRadius: BorderRadius.circular(16)),
                           child: Text('Annuler',
                               textAlign: TextAlign.center,
@@ -1533,9 +1913,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             return SafeArea(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF11111C),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1546,7 +1926,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                              color: const Color(0xFF252538),
+                              color: AppColors.surface2,
                               borderRadius: BorderRadius.circular(2))),
                     ),
                     const SizedBox(height: 20),
@@ -1660,11 +2040,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   @override
   void dispose() {
     _captionCtrl.dispose();
+    _textCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final canPublishText = _textMode && _textCtrl.text.trim().isNotEmpty;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -1676,11 +2059,17 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 fontWeight: FontWeight.w800)),
         leading: IconButton(
             icon: const Icon(Icons.close_rounded, color: Colors.white),
-            onPressed: () => Get.back(result: false)),
+            onPressed: () {
+              if (_textMode) {
+                setState(() => _textMode = false);
+              } else {
+                Get.back(result: false);
+              }
+            }),
         actions: [
-          if (_previewPath != null)
+          if (_previewPath != null || canPublishText)
             GestureDetector(
-                onTap: _publish,
+                onTap: _textMode ? _publishText : _publish,
                 child: Container(
                     margin: const EdgeInsets.only(right: 16),
                     padding:
@@ -1695,7 +2084,124 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             fontSize: 14))))
         ],
       ),
-      body: _previewPath == null ? _buildPicker() : _buildPreview(),
+      body: _textMode
+          ? _buildTextComposer()
+          : (_previewPath == null ? _buildPicker() : _buildPreview()),
+    );
+  }
+
+  Widget _buildTextComposer() {
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final v = details.primaryVelocity;
+        if (v == null) return;
+        final idx = _textBgColors.indexOf(_selectedBgColor);
+        setState(() {
+          if (v < 0) {
+            _selectedBgColor = _textBgColors[(idx + 1) % _textBgColors.length];
+          } else if (v > 0) {
+            _selectedBgColor = _textBgColors[
+                (idx - 1 + _textBgColors.length) % _textBgColors.length];
+          }
+        });
+      },
+      child: Container(
+        color: _selectedBgColor,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: _textBgColors.map((c) {
+                  final isSel = c == _selectedBgColor;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: isSel ? 12 : 8,
+                    height: isSel ? 12 : 8,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                  );
+                }).toList(),
+              ),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      controller: _textCtrl,
+                      autofocus: true,
+                      maxLines: null,
+                      maxLength: 200,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      cursorColor: Colors.white,
+                      buildCounter: (_,
+                              {required currentLength,
+                              required isFocused,
+                              maxLength}) =>
+                          null,
+                      decoration: const InputDecoration(
+                        hintText: 'Tape ton texte...',
+                        hintStyle: TextStyle(color: Colors.white70),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: GestureDetector(
+                  onTap: _showSettingsSheet,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.timer_outlined,
+                            color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(_formatDuration(_durationHours),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 10),
+                        Icon(
+                            _visibility == 'public'
+                                ? Icons.public_rounded
+                                : Icons.group_rounded,
+                            color: Colors.white,
+                            size: 16),
+                        const SizedBox(width: 6),
+                        Text(_visibility == 'public' ? 'Publique' : 'Amis',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1719,17 +2225,25 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         const Text('Photo ou vidéo • Durée personnalisable',
             style: TextStyle(color: Colors.white54, fontSize: 14)),
         const SizedBox(height: 48),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          _BigBtn(
-              icon: Icons.photo_library_rounded,
-              label: 'Photo',
-              onTap: () => _showSourcePicker(video: false)),
-          const SizedBox(width: 16),
-          _BigBtn(
-              icon: Icons.videocam_rounded,
-              label: 'Vidéo',
-              onTap: () => _showSourcePicker(video: true)),
-        ]),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _BigBtn(
+                icon: Icons.photo_library_rounded,
+                label: 'Photo',
+                onTap: () => _showSourcePicker(video: false)),
+            _BigBtn(
+                icon: Icons.videocam_rounded,
+                label: 'Vidéo',
+                onTap: () => _showSourcePicker(video: true)),
+            _BigBtn(
+                icon: Icons.text_fields_rounded,
+                label: 'Texte',
+                onTap: () => setState(() => _textMode = true)),
+          ],
+        ),
       ]));
 
   Widget _buildPreview() => Stack(fit: StackFit.expand, children: [
@@ -2047,7 +2561,7 @@ class _SourceOption extends StatelessWidget {
                           fontWeight: FontWeight.w500))
                 ]))),
         if (showDivider)
-          const Divider(
-              height: 1, color: Color(0xFF252538), indent: 20, endIndent: 20),
+          Divider(
+              height: 1, color: AppColors.surface2, indent: 20, endIndent: 20),
       ]);
 }

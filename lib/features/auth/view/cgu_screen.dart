@@ -29,7 +29,7 @@ class _CguScreenState extends State<CguScreen> {
     } catch (_) {
       Get.snackbar('Erreur', 'Impossible d\'ouvrir le lien',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }

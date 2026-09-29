@@ -14,31 +14,48 @@ import 'package:rencontre/core/theme/theme_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/core/services/notification_service.dart';
-import 'package:rencontre/features/follow/controller/follow_controller.dart';
+import 'package:rencontre/core/services/revenue_cat_service.dart';
 
-// ✅ Nouvelle base Supabase — zamu-prod (vybe-studio org)
+// ✅ Base Supabase — zamu-prod (vybe-studio org)
 const String _supabaseUrl = 'https://flixcyjefjcyjwvjdiny.supabase.co';
 const String _supabaseAnon =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsaXhjeWplZmpjeWp3dmpkaW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MTM4MDMsImV4cCI6MjEwMzk4OTgwM30.2LcUPXgP47xsWr70CdaAOuwu-PZMNl3hcwTIV8cmpz4';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // ✅ Si le push contient un bloc "notification", Android l'affiche déjà
+  // lui-même en arrière-plan : en recréer une ici faisait un doublon.
+  // Le clic est géré par onMessageOpenedApp / getInitialMessage.
+  if (message.notification != null) return;
+
   await Firebase.initializeApp();
   final data = message.data;
-  final notification = message.notification;
+  final type = data['type'] ?? 'message';
+  final isLike = type == 'like' || type == 'match';
   await AwesomeNotifications().createNotification(
     content: NotificationContent(
       id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      channelKey: 'messages',
-      title: notification?.title ?? data['senderName'] ?? 'Nouveau message',
-      body: notification?.body ?? data['message'] ?? '',
-      notificationLayout: NotificationLayout.Messaging,
+      channelKey: isLike ? (type == 'match' ? 'matches' : 'likes') : 'messages',
+      title: isLike
+          ? (type == 'match' ? '💘 Nouveau match !' : '❤️ Nouveau like !')
+          : (data['senderName'] ?? 'Nouveau message'),
+      body: isLike
+          ? '${data['from_user_name'] ?? 'Quelqu\'un'} t\'a liké !'
+          : (data['message'] ?? ''),
+      notificationLayout:
+          isLike ? NotificationLayout.Default : NotificationLayout.Messaging,
       wakeUpScreen: true,
-      payload: {
-        'type': 'message',
-        'conversationId': data['conversationId'] ?? '',
-        'senderName': data['senderName'] ?? '',
-      },
+      payload: isLike
+          ? {
+              'type': type,
+              'fromUserId': data['from_user_id'] ?? '',
+              'userName': data['from_user_name'] ?? '',
+            }
+          : {
+              'type': 'message',
+              'conversationId': data['conversationId'] ?? '',
+              'senderName': data['senderName'] ?? '',
+            },
     ),
   );
 }
@@ -60,10 +77,6 @@ void main() async {
   timeago.setLocaleMessages('fr', timeago.FrMessages());
 
   // ✅ Thème : chargé AVANT runApp pour éviter le flash de thème par défaut.
-  // loadInitial() lit d'abord la préférence locale (GetStorage) ; si
-  // l'utilisateur est connecté, on synchronise ensuite avec la valeur
-  // stockée sur son profil Supabase (utile en cas de réinstallation ou
-  // de changement d'appareil).
   final themeCtrl = Get.put(ThemeController(), permanent: true);
   themeCtrl.loadInitial();
 
@@ -76,7 +89,8 @@ void main() async {
           .from('profiles')
           .select('onboarding_complete, birthdate, theme')
           .eq('id', user.id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 8));
 
       if (row != null && row['theme'] != null) {
         themeCtrl.applyRemote(row['theme'] as String);
@@ -84,6 +98,7 @@ void main() async {
 
       if (row != null && row['onboarding_complete'] == true) {
         startRoute = AppRoutes.main;
+        GetStorage().write('onboarding_done_${user.id}', true);
       } else {
         final hasBirthdate = row != null &&
             row['birthdate'] != null &&
@@ -97,12 +112,15 @@ void main() async {
         }
       }
     } catch (_) {
-      startRoute = AppRoutes.onboardPhoto;
+      // ✅ Hors ligne / réseau lent : un utilisateur déjà inscrit ne doit
+      // pas être renvoyé à l'onboarding.
+      final done =
+          GetStorage().read<bool>('onboarding_done_${user.id}') ?? false;
+      startRoute = done ? AppRoutes.main : AppRoutes.onboardPhoto;
     }
   }
 
   Get.put(AuthController(), permanent: true);
-  Get.put(FollowController(), permanent: true); // ✅ Ajouté
 
   runApp(ZamuApp(initialRoute: startRoute));
 
@@ -115,6 +133,16 @@ Future<void> _initEnArrierePlan() async {
     NotificationService.listenToNotifications();
   } catch (e) {
     debugPrint('NotificationService error: $e');
+  }
+
+  try {
+    final rc = await Get.putAsync(() => RevenueCatService().init());
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid != null) {
+      await rc.loginRevenueCat(uid);
+    }
+  } catch (e) {
+    debugPrint('RevenueCatService error: $e');
   }
 
   try {
@@ -164,39 +192,24 @@ Future<void> _setupFirebaseMessaging() async {
 
   messaging.onTokenRefresh.listen(_saveFcmToken);
 
+  // ✅ App ouverte : affichage selon le type (message / like / match)
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    final data = message.data;
-    final convId = data['conversationId'] ?? '';
-    final senderName = data['senderName'] ?? 'Quelqu\'un';
-    final msg = data['message'] ?? message.notification?.body ?? '';
-    NotificationService.showMessageNotification(
-      senderName: senderName,
-      message: msg,
-      conversationId: convId,
-    );
+    NotificationService.showFromPush(message.data,
+        message.notification?.title, message.notification?.body);
   });
 
+  // ✅ Clic sur la notification système : même navigation que les
+  // notifications locales (l'écran conversation attend un
+  // ConversationModel, pas une Map — c'était la cause du crash).
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    final convId = message.data['conversationId'];
-    final senderName = message.data['senderName'] ?? '';
-    if (convId != null && convId.isNotEmpty) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        Get.toNamed('/chat/conversation',
-            arguments: {'id': convId, 'userName': senderName});
-      });
-    }
+    NotificationService.handlePushTap(message.data);
   });
 
   messaging.getInitialMessage().then((initialMessage) {
     if (initialMessage != null) {
-      final convId = initialMessage.data['conversationId'];
-      final senderName = initialMessage.data['senderName'] ?? '';
-      if (convId != null && convId.isNotEmpty) {
-        Future.delayed(const Duration(seconds: 1), () {
-          Get.toNamed('/chat/conversation',
-              arguments: {'id': convId, 'userName': senderName});
-        });
-      }
+      Future.delayed(const Duration(seconds: 1), () {
+        NotificationService.handlePushTap(initialMessage.data);
+      });
     }
   });
 }
@@ -229,6 +242,8 @@ Future<void> _demanderPermissions() async {
     debugPrint('Permissions error: $e');
   }
 }
+
+// Remplacez la classe ZamuApp dans main.dart par celle-ci :
 
 class ZamuApp extends StatelessWidget {
   final String initialRoute;

@@ -7,11 +7,11 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart'; // ✅ AJOUTÉ — nécessaire pour HomeController
 import 'package:rencontre/features/likes/like_widgets.dart' show LikeButton;
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
-import 'package:rencontre/features/follow/controller/follow_controller.dart';
 
 // ══════════════════════════════════════════════════════════════════
 //  WRAPPER — gère le swipe HORIZONTAL entre plusieurs profils.
@@ -72,9 +72,9 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
   @override
   Widget build(BuildContext context) {
     if (_profiles.isEmpty) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0D0D1A),
-        body: Center(
+      return Scaffold(
+        backgroundColor: AppColors.bg,
+        body: const Center(
           child: Text(
             'Profil introuvable',
             style: TextStyle(color: Colors.white70),
@@ -92,6 +92,7 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
         return _ProfilDetailContent(
           key: ValueKey(_profiles[index].id),
           user: _profiles[index],
+          allProfiles: _profiles,
         );
       },
     );
@@ -105,25 +106,24 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
 
 class _ProfilDetailContent extends StatefulWidget {
   final UserModel user;
-  const _ProfilDetailContent({super.key, required this.user});
+  final List<UserModel> allProfiles;
+  const _ProfilDetailContent({
+    super.key,
+    required this.user,
+    required this.allProfiles,
+  });
 
   @override
-  State<_ProfilDetailContent> createState() => _ProfilDetailContentState();
+  State<_ProfilDetailContent> createState() =>
+      _ProfilDetailContentState(); // ✅ AJOUTÉ — manquait, obligatoire pour un StatefulWidget
 }
 
-class _ProfilDetailContentState extends State<_ProfilDetailContent>
-    with SingleTickerProviderStateMixin {
+class _ProfilDetailContentState extends State<_ProfilDetailContent> {
   late UserModel user;
   bool _isLoadingMsg = false;
   StoryModel? _activeStory;
   bool _loadingStory = true;
-  List<StoryModel> _stories = [];
-  bool _loadingStories = true;
-  late TabController _tabCtrl;
   int _currentPhotoIndex = 0;
-
-  List<StoryModel> get _publications =>
-      _stories.where((s) => s.isPinned).toList();
 
   List<String> get _allPhotos {
     final photos = <String>[];
@@ -140,20 +140,10 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
   void initState() {
     super.initState();
     user = widget.user;
-    _tabCtrl = TabController(length: 1, vsync: this);
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    if (!Get.isRegistered<FollowController>()) {
-      Get.put(FollowController(), permanent: true);
-    }
-    _loadActiveStory();
-    _loadStories();
-    _recordProfileView();
-  }
 
-  @override
-  void dispose() {
-    _tabCtrl.dispose();
-    super.dispose();
+    _loadActiveStory();
+    _recordProfileView();
   }
 
   Future<void> _recordProfileView() async {
@@ -163,7 +153,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
       await Supabase.instance.client.from('profile_views').upsert({
         'viewer_id': myUid,
         'viewed_id': user.id,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'viewer_id,viewed_id');
     } catch (e) {
       debugPrint('_recordProfileView error: $e');
@@ -176,7 +166,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
           .from('stories')
           .select('*, profiles(name, photo_url)')
           .eq('user_id', user.id)
-          .gt('expires_at', DateTime.now().toIso8601String())
+          .gt('expires_at', DateTime.now().toUtc().toIso8601String())
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle();
@@ -210,47 +200,30 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
     }
   }
 
-  Future<void> _loadStories() async {
-    try {
-      final myUid = Supabase.instance.client.auth.currentUser?.id;
-      final data = await Supabase.instance.client
-          .from('stories')
-          .select()
-          .eq('user_id', user.id)
-          .order('created_at', ascending: false);
-      if (mounted) {
-        final list = (data as List).map((row) {
-          final viewedBy = List<String>.from(row['viewed_by'] ?? []);
-          return StoryModel(
-            id: row['id'],
-            userId: row['user_id'],
-            userName: user.name,
-            userPhotoUrl: user.photoUrl,
-            mediaUrl: row['media_url'] ?? '',
-            isVideo: row['is_video'] ?? false,
-            caption: row['caption'],
-            createdAt: DateTime.parse(row['created_at']),
-            expiresAt: DateTime.parse(row['expires_at']),
-            viewedBy: viewedBy,
-            isSeen: myUid != null && viewedBy.contains(myUid),
-            isPinned: row['is_pinned'] ?? false,
-          );
-        }).toList();
-        setState(() {
-          _stories = list;
-          _loadingStories = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('_loadStories error: $e');
-      if (mounted) setState(() => _loadingStories = false);
-    }
-  }
-
   void _viewStory() {
     if (_activeStory == null) return;
+
+    if (!Get.isRegistered<HomeController>()) {
+      Get.to(() => StoryViewerScreen(stories: [_activeStory!], initialIndex: 0),
+          transition: Transition.fadeIn);
+      return;
+    }
+
+    final homeCtrl = Get.find<HomeController>();
+    final combined = <StoryModel>[];
+    int startIndex = 0;
+
+    for (final p in widget.allProfiles) {
+      final userStories = homeCtrl.storiesForUser(p.id);
+      if (userStories.isEmpty) continue;
+      if (p.id == user.id) startIndex = combined.length;
+      combined.addAll(userStories);
+    }
+
+    if (combined.isEmpty) combined.add(_activeStory!);
+
     Get.to(
-      () => StoryViewerScreen(stories: [_activeStory!], initialIndex: 0),
+      () => StoryViewerScreen(stories: combined, initialIndex: startIndex),
       transition: Transition.fadeIn,
     );
   }
@@ -272,40 +245,27 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
     } catch (_) {
       Get.snackbar('Erreur', "Impossible d'ouvrir la conversation",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isLoadingMsg = false);
     }
   }
 
-  String _lastSeenLabel() {
-    if (user.isOnline) return '';
-    final lastSeen = user.lastSeen;
-    if (lastSeen == null) return 'Hors ligne';
-    final diff = DateTime.now().difference(lastSeen);
-    if (diff.inMinutes < 1) return 'Vu à l\'instant';
-    if (diff.inMinutes < 60) return 'Vu il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Vu il y a ${diff.inHours}h';
-    if (diff.inDays < 7)
-      return 'Vu il y a ${diff.inDays} jour${diff.inDays > 1 ? 's' : ''}';
-    return 'Hors ligne';
-  }
-
   void _showOptions() {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-        decoration: const BoxDecoration(
-            color: Color(0xFF11111C),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Center(
             child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: const Color(0xFF252538),
+                    color: AppColors.surface2,
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 20),
@@ -313,7 +273,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
             onTap: () async {
               Get.back();
               final confirmed = await Get.dialog<bool>(AlertDialog(
-                backgroundColor: const Color(0xFF11111C),
+                backgroundColor: AppColors.surface,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
                 title: Text('Bloquer ${user.name} ?',
@@ -324,13 +284,13 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                         fontSize: 17)),
                 content: Text(
                     '${user.name} ne pourra plus voir ton profil ni t\'envoyer des messages.',
-                    style: const TextStyle(
-                        color: Color(0xFF5A5A78), fontSize: 13)),
+                    style: TextStyle(
+                        color: AppColors.textMuted, fontSize: 13)),
                 actions: [
                   TextButton(
                       onPressed: () => Get.back(result: false),
-                      child: const Text('Annuler',
-                          style: TextStyle(color: Color(0xFF5A5A78)))),
+                      child: Text('Annuler',
+                          style: TextStyle(color: AppColors.textMuted))),
                   GestureDetector(
                     onTap: () => Get.back(result: true),
                     child: Container(
@@ -436,16 +396,16 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-        decoration: const BoxDecoration(
-            color: Color(0xFF11111C),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Center(
             child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: const Color(0xFF252538),
+                    color: AppColors.surface2,
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
@@ -504,13 +464,13 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
     final photos = _allPhotos;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
+      backgroundColor: AppColors.bg,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
             expandedHeight: size.height * 0.55,
             pinned: true,
-            backgroundColor: const Color(0xFF0D0D1A),
+            backgroundColor: AppColors.bg,
             leading: GestureDetector(
               onTap: () => Get.back(),
               child: Container(
@@ -544,9 +504,6 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // ✅ NOUVEAU — swipe VERTICAL (haut/bas) entre les photos
-                  // du profil, façon Grindr. Ne rentre pas en conflit avec
-                  // le swipe HORIZONTAL entre profils (axes différents).
                   photos.isNotEmpty
                       ? _VerticalPhotoPager(
                           photos: photos,
@@ -558,7 +515,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                               _openPhoto(photos[_currentPhotoIndex]),
                         )
                       : _GradientBg(name: user.name),
-                  const IgnorePointer(
+                  IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -567,10 +524,10 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                           colors: [
                             Colors.transparent,
                             Colors.transparent,
-                            Color(0xCC000000),
-                            Color(0xFF0D0D1A),
+                            const Color(0xCC000000),
+                            AppColors.bg,
                           ],
-                          stops: [0.0, 0.5, 0.85, 1.0],
+                          stops: const [0.0, 0.5, 0.85, 1.0],
                         ),
                       ),
                     ),
@@ -659,9 +616,9 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                               child: Container(
                                 width: 52,
                                 height: 52,
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Color(0xFF0D0D1A)),
+                                    color: AppColors.bg),
                                 padding: const EdgeInsets.all(2),
                                 child: ClipOval(
                                   child: CachedNetworkImage(
@@ -711,7 +668,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Flexible(
-                                  child: Text('${user.name}, ${user.age}',
+                                  child: Text(user.name,
                                       style: const TextStyle(
                                           fontFamily: 'Syne',
                                           fontSize: 26,
@@ -737,53 +694,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                                         size: 12, color: Colors.white),
                                   ),
                                 ],
-                                if (user.isOnline) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                        color:
-                                            AppColors.online.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                            color: AppColors.online
-                                                .withOpacity(0.5))),
-                                    child: Row(children: [
-                                      Icon(Icons.circle,
-                                          size: 7, color: AppColors.online),
-                                      SizedBox(width: 4),
-                                      Text('En ligne',
-                                          style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.online)),
-                                    ]),
-                                  ),
-                                ],
                               ]),
-                          if (!user.isOnline) ...[
-                            const SizedBox(height: 4),
-                            Row(children: [
-                              const Icon(Icons.access_time_rounded,
-                                  size: 11, color: Colors.white54),
-                              const SizedBox(width: 4),
-                              Text(_lastSeenLabel(),
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Colors.white54)),
-                            ]),
-                          ],
-                          if (user.distanceMeters != null) ...[
-                            const SizedBox(height: 2),
-                            Row(children: [
-                              const Icon(Icons.location_on_rounded,
-                                  size: 12, color: Colors.white54),
-                              const SizedBox(width: 3),
-                              Text(user.distanceLabel,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.white54)),
-                            ]),
-                          ],
                         ],
                       ),
                     ),
@@ -817,8 +728,6 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Column(
                 children: [
-                  _FollowButton(userId: user.id),
-                  const SizedBox(height: 10),
                   Row(children: [
                     Expanded(
                       child: GestureDetector(
@@ -862,7 +771,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
                         emoji: '📸',
                         onTap: () => Get.snackbar('📸 Snap', 'Bientôt !',
                             snackPosition: SnackPosition.TOP,
-                            backgroundColor: const Color(0xFF13131A),
+                            backgroundColor: AppColors.surface,
                             colorText: Colors.white)),
                     const SizedBox(width: 10),
                     SizedBox(
@@ -876,19 +785,14 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent>
             ),
           ),
         ],
-        body: _CorpsProfil(
-          user: user,
-          publications: _publications,
-          loadingStories: _loadingStories,
-          tabCtrl: _tabCtrl,
-        ),
+        body: _CorpsProfil(user: user),
       ),
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  ✅ NOUVEAU — SWIPE VERTICAL ENTRE LES PHOTOS D'UN PROFIL (Grindr)
+//  SWIPE VERTICAL ENTRE LES PHOTOS D'UN PROFIL (Grindr)
 // ══════════════════════════════════════════════════════════════════
 
 class _VerticalPhotoPager extends StatefulWidget {
@@ -947,59 +851,6 @@ class _VerticalPhotoPagerState extends State<_VerticalPhotoPager> {
   }
 }
 
-// ─── BOUTON SUIVRE / SUIVI ────────────────────────────────────────
-
-class _FollowButton extends StatelessWidget {
-  final String userId;
-  const _FollowButton({required this.userId});
-
-  @override
-  Widget build(BuildContext context) {
-    final myUid = Supabase.instance.client.auth.currentUser?.id;
-    if (myUid == null || myUid == userId) return const SizedBox.shrink();
-
-    final ctrl = Get.find<FollowController>();
-
-    return Obx(() {
-      final following = ctrl.isFollowing(userId);
-      return GestureDetector(
-        onTap: () => ctrl.toggleFollow(userId),
-        child: Container(
-          width: double.infinity,
-          height: 44,
-          decoration: BoxDecoration(
-            gradient: following ? null : AppColors.gradientPink,
-            color: following ? AppColors.surface : null,
-            borderRadius: BorderRadius.circular(14),
-            border: following ? Border.all(color: AppColors.border) : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                following
-                    ? Icons.check_rounded
-                    : Icons.person_add_alt_1_rounded,
-                size: 17,
-                color: following ? AppColors.textPrimary : Colors.white,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                following ? 'Suivi' : 'Suivre',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: following ? AppColors.textPrimary : Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-}
-
 // ─── PHOTO PLEIN ÉCRAN ────────────────────────────────────────────
 
 class _FullScreenPhoto extends StatelessWidget {
@@ -1036,16 +887,8 @@ class _FullScreenPhoto extends StatelessWidget {
 
 class _CorpsProfil extends StatelessWidget {
   final UserModel user;
-  final List<StoryModel> publications;
-  final bool loadingStories;
-  final TabController tabCtrl;
 
-  const _CorpsProfil({
-    required this.user,
-    required this.publications,
-    required this.loadingStories,
-    required this.tabCtrl,
-  });
+  const _CorpsProfil({required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -1054,26 +897,6 @@ class _CorpsProfil extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border)),
-            child: Row(children: [
-              _InfoTile(icon: '🎂', label: 'Âge', value: '${user.age} ans'),
-              _InfoTile(
-                  icon: '📍',
-                  label: 'Distance',
-                  value: user.distanceMeters != null
-                      ? user.distanceLabel
-                      : 'Inconnue'),
-              _InfoTile(
-                  icon: '🟢',
-                  label: 'Statut',
-                  value: user.isOnline ? 'En ligne' : 'Hors ligne'),
-            ]),
-          ),
           const SizedBox(height: 12),
           if (user.taille != null ||
               user.poids != null ||
@@ -1142,48 +965,6 @@ class _CorpsProfil extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: TabBar(
-              controller: tabCtrl,
-              indicator: BoxDecoration(
-                gradient: AppColors.gradientPink,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              labelColor: Colors.white,
-              unselectedLabelColor: AppColors.textMuted,
-              labelStyle:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              tabs: [
-                Tab(text: 'Publications (${publications.length})'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (loadingStories)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(
-                    color: AppColors.accent, strokeWidth: 2),
-              ),
-            )
-          else
-            SizedBox(
-              height: publications.isEmpty ? 150 : 400,
-              child: TabBarView(
-                controller: tabCtrl,
-                children: [
-                  _GrilleStoriesDetail(stories: publications),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -1218,122 +999,7 @@ class _PhysiqueBadge extends StatelessWidget {
   }
 }
 
-// ─── GRILLE PUBLICATIONS ─────────────────────────────────────────
-
-class _GrilleStoriesDetail extends StatelessWidget {
-  final List<StoryModel> stories;
-  const _GrilleStoriesDetail({required this.stories});
-
-  @override
-  Widget build(BuildContext context) {
-    if (stories.isEmpty) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.photo_library_outlined,
-              size: 36, color: AppColors.textMuted),
-          SizedBox(height: 8),
-          Text('Aucune publication',
-              style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-        ],
-      );
-    }
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
-      ),
-      itemCount: stories.length,
-      itemBuilder: (_, i) {
-        final story = stories[i];
-        return GestureDetector(
-          onTap: () => Get.to(
-            () => StoryViewerScreen(stories: stories, initialIndex: i),
-            transition: Transition.fadeIn,
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              story.mediaUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: story.mediaUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                          color: AppColors.surface2,
-                          child: const Icon(Icons.broken_image_rounded,
-                              color: Colors.white38, size: 24)))
-                  : Container(
-                      color: AppColors.surface2,
-                      child: const Icon(Icons.photo_rounded,
-                          color: Colors.white38, size: 24)),
-              if (story.isVideo)
-                Positioned(
-                    bottom: 6,
-                    left: 6,
-                    child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(4)),
-                        child: const Icon(Icons.play_arrow_rounded,
-                            color: Colors.white, size: 12))),
-              Positioned(
-                  top: 4,
-                  right: 4,
-                  child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                          gradient: AppColors.gradientPink,
-                          shape: BoxShape.circle),
-                      child: const Icon(Icons.push_pin_rounded,
-                          color: Colors.white, size: 10))),
-              if (story.isSeen)
-                Positioned(
-                    top: 4,
-                    left: 4,
-                    child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                            color: Colors.black54, shape: BoxShape.circle),
-                        child: const Icon(Icons.check_rounded,
-                            color: Colors.white70, size: 10))),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ─── WIDGETS ─────────────────────────────────────────────────────
-
-class _InfoTile extends StatelessWidget {
-  final String icon, label, value;
-  const _InfoTile(
-      {required this.icon, required this.label, required this.value});
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(children: [
-        Text(icon, style: const TextStyle(fontSize: 20)),
-        const SizedBox(height: 4),
-        Text(value,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary),
-            textAlign: TextAlign.center),
-        Text(label, style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-      ]),
-    );
-  }
-}
 
 class _ActionBtn extends StatelessWidget {
   final String emoji;

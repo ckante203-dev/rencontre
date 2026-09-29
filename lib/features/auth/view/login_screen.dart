@@ -201,15 +201,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       () => const CguScreen(showAcceptButton: false),
                       transition: Transition.cupertino,
                     ),
-                    child: const Text(
+                    child: Text(
                       "Conditions d'utilisation · Politique de confidentialité",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF6B6B8A),
+                        color: AppColors.textMuted,
                         height: 1.5,
                         decoration: TextDecoration.underline,
-                        decorationColor: Color(0xFF6B6B8A),
+                        decorationColor: AppColors.textMuted,
                       ),
                     ),
                   ),

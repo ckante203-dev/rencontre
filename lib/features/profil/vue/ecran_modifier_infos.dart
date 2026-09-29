@@ -70,6 +70,78 @@ class EcranModifierInfos extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            // ── Nom d'utilisateur ─────────────────────────────
+            const _SectionLabel(icon: '🔗', title: 'Nom d\'utilisateur'),
+            const SizedBox(height: 8),
+            Obx(() {
+              final dispo = ctrl.usernameDispo.value;
+              final saisi = ctrl.usernameText.value;
+              final inchange = saisi == ctrl.monUsername.value;
+              Widget? suffix;
+              if (ctrl.verifUsername.value) {
+                suffix = Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.accent)),
+                );
+              } else if (!inchange && dispo == true) {
+                suffix = Icon(Icons.check_circle_rounded,
+                    color: AppColors.online, size: 20);
+              } else if (!inchange && dispo == false) {
+                suffix = Icon(Icons.cancel_rounded,
+                    color: AppColors.error, size: 20);
+              }
+              String? aide;
+              Color aideCouleur = AppColors.textMuted;
+              if (!inchange && dispo == false) {
+                aide = RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(saisi)
+                    ? 'Déjà pris'
+                    : '3 à 20 caractères : lettres, chiffres, . ou _';
+                aideCouleur = AppColors.error;
+              } else if (!inchange && dispo == true) {
+                aide = 'Disponible';
+                aideCouleur = AppColors.online;
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: ctrl.usernameController,
+                    style:
+                        TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    maxLength: 20,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+                      TextInputFormatter.withFunction((oldV, newV) =>
+                          newV.copyWith(text: newV.text.toLowerCase())),
+                    ],
+                    onChanged: (v) {
+                      ctrl.usernameText.value = v;
+                      ctrl.verifierUsername(v);
+                    },
+                    decoration: _inputDeco('ton_pseudo').copyWith(
+                      prefixText: '@ ',
+                      prefixStyle:
+                          TextStyle(color: AppColors.textMuted, fontSize: 15),
+                      suffixIcon: suffix,
+                    ),
+                  ),
+                  if (aide != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Text(aide,
+                          style: TextStyle(fontSize: 12, color: aideCouleur)),
+                    ),
+                ],
+              );
+            }),
+            const SizedBox(height: 20),
+
             // ── Date de naissance ──────────────────────────────
             const _SectionLabel(icon: '🎂', title: 'Date de naissance'),
             const SizedBox(height: 8),

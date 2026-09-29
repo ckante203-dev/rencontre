@@ -24,6 +24,8 @@ class UserModel {
   final String? lieuRencontre;
   final DateTime? createdAt;
   final bool isPremium; // ✅ NOUVEAU — badge certifié
+  final bool showBirthdate; // ✅ NOUVEAU — masque l'âge si false
+  final bool showDistance; // ✅ réglage « Afficher ma distance »
 
   const UserModel({
     required this.id,
@@ -49,6 +51,8 @@ class UserModel {
     this.lieuRencontre,
     this.createdAt,
     this.isPremium = false, // ✅ NOUVEAU
+    this.showBirthdate = true, // ✅ NOUVEAU
+    this.showDistance = true,
   });
 
   // ✅ Nouveau membre = inscrit depuis moins de 7 jours
@@ -82,6 +86,8 @@ class UserModel {
     String? lieuRencontre,
     DateTime? createdAt,
     bool? isPremium,
+    bool? showBirthdate,
+    bool? showDistance,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -107,6 +113,8 @@ class UserModel {
         lieuRencontre: lieuRencontre ?? this.lieuRencontre,
         createdAt: createdAt ?? this.createdAt,
         isPremium: isPremium ?? this.isPremium,
+        showBirthdate: showBirthdate ?? this.showBirthdate,
+        showDistance: showDistance ?? this.showDistance,
       );
 
   /// "175cm · 70kg"

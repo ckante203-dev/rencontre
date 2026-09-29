@@ -13,6 +13,12 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
+  /// Réglage « Son des notifications » de l'utilisateur (mis à jour par
+  /// ControleurProfil). Coupé → canaux *_silencieux.
+  static bool sonActive = true;
+  static String _canal(String base) =>
+      sonActive ? base : '${base}_silencieux';
+
   // ═══════════════════════════════════════════════════════════════
   // INITIALISATION
   // ═══════════════════════════════════════════════════════════════
@@ -54,17 +60,46 @@ class NotificationService {
           channelShowBadge: true,
           playSound: true,
         ),
+        // ✅ Nouveaux abonnés (le serveur utilisait ce canal, absent de l'app)
         NotificationChannel(
-          channelKey: 'annonces',
-          channelName: 'Annonces',
-          channelDescription: 'Nouvelles annonces',
-          defaultColor: const Color(0xFFFFD700),
-          ledColor: const Color(0xFFFFD700),
+          channelKey: 'follows',
+          channelName: 'Abonnés',
+          channelDescription: 'Notifications de nouveaux abonnés',
+          defaultColor: const Color(0xFFFF3CAC),
+          importance: NotificationImportance.High,
+          channelShowBadge: true,
+          playSound: true,
+        ),
+        // ✅ Variantes silencieuses : réglage « Son des notifications » coupé
+        // (le serveur choisit le canal *_silencieux selon profiles.notif_son)
+        for (final c in const [
+          ['messages_silencieux', 'Messages (silencieux)'],
+          ['likes_silencieux', 'Likes (silencieux)'],
+          ['matches_silencieux', 'Matchs (silencieux)'],
+          ['follows_silencieux', 'Abonnés (silencieux)'],
+        ])
+          NotificationChannel(
+            channelKey: c[0],
+            channelName: c[1],
+            channelDescription: 'Notifications sans son',
+            defaultColor: const Color(0xFFFF3CAC),
+            importance: NotificationImportance.High,
+            channelShowBadge: true,
+            playSound: false,
+            enableVibration: true,
+          ),
+        // ✅ Nouveau canal — stories
+        NotificationChannel(
+          channelKey: 'stories',
+          channelName: 'Stories',
+          channelDescription: 'Nouvelles stories et likes de stories',
+          defaultColor: const Color(0xFF7B2FFF),
+          ledColor: const Color(0xFF7B2FFF),
           importance: NotificationImportance.Default,
           channelShowBadge: true,
           playSound: false,
         ),
-        // ✅ Nouveau canal — notifications intelligentes
+        // ✅ Notifications intelligentes
         NotificationChannel(
           channelKey: 'smart',
           channelName: 'Activité',
@@ -76,7 +111,7 @@ class NotificationService {
           playSound: false,
           enableVibration: false,
         ),
-        // ✅ Nouveau canal — alertes en ligne
+        // ✅ Alertes en ligne
         NotificationChannel(
           channelKey: 'online_alert',
           channelName: 'En ligne',
@@ -96,7 +131,7 @@ class NotificationService {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // NOTIFICATIONS EXISTANTES (inchangées)
+  // NOTIFICATIONS
   // ═══════════════════════════════════════════════════════════════
 
   static Future<void> showMessageNotification({
@@ -114,7 +149,7 @@ class NotificationService {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: conversationId.hashCode.abs() % 2147483647,
-        channelKey: 'messages',
+        channelKey: _canal('messages'),
         title: senderName,
         body: preview,
         largeIcon: senderPhoto,
@@ -143,7 +178,7 @@ class NotificationService {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: fromUserId.hashCode.abs() % 2147483647,
-        channelKey: 'likes',
+        channelKey: _canal('likes'),
         title: '❤️ Nouveau like !',
         body: '$userName t\'a liké !',
         largeIcon: userPhoto,
@@ -171,7 +206,7 @@ class NotificationService {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: (fromUserId ?? userName).hashCode.abs() % 2147483647,
-        channelKey: 'matches',
+        channelKey: _canal('matches'),
         title: '💘 Nouveau match !',
         body: '$userName veut te parler !',
         largeIcon: userPhoto,
@@ -188,9 +223,12 @@ class NotificationService {
     );
   }
 
-  static Future<void> showAnnonceNotification({
+  // ✅ Remplace showAnnonceNotification — notifications de stories
+  static Future<void> showStoryNotification({
     required String title,
     required String body,
+    String? userPhoto,
+    String? userId,
   }) async {
     final bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) return;
@@ -198,11 +236,16 @@ class NotificationService {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        channelKey: 'annonces',
+        channelKey: 'stories',
         title: title,
         body: body,
+        largeIcon: userPhoto,
         notificationLayout: NotificationLayout.Default,
         wakeUpScreen: false,
+        payload: {
+          'type': 'new_story',
+          'userId': userId ?? '',
+        },
       ),
     );
   }
@@ -212,7 +255,6 @@ class NotificationService {
   // ═══════════════════════════════════════════════════════════════
 
   /// Notif "X personnes ont vu ton profil"
-  /// À appeler depuis l'Edge Function ou depuis home_controller
   static Future<void> showProfileViewsNotification({
     required int viewCount,
   }) async {
@@ -268,7 +310,6 @@ class NotificationService {
   }
 
   /// Notif "X est en ligne maintenant"
-  /// À appeler quand un utilisateur suivi passe en ligne
   static Future<void> showUserOnlineNotification({
     required String userName,
     required String userId,
@@ -295,8 +336,7 @@ class NotificationService {
     );
   }
 
-  /// Notif "Tu n'as pas ouvert l'app depuis X jours"
-  /// Rappel de réengagement
+  /// Notif de réengagement
   static Future<void> showReEngagementNotification() async {
     final bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) return;
@@ -308,11 +348,11 @@ class NotificationService {
       ),
       (
         'Tu manques à la communauté 🔥',
-        'Reviens voir ce qui se passe sur SnapMeet'
+        'Reviens voir ce qui se passe sur Zamu'
       ),
       (
-        'Nouvelles annonces disponibles 📢',
-        'Des gens cherchent quelqu\'un comme toi'
+        'Nouvelles stories disponibles 📸',
+        'Découvre ce que partagent les gens près de toi'
       ),
       ('Tes matchs t\'attendent 💬', 'Tu as des conversations non lues'),
     ];
@@ -333,7 +373,6 @@ class NotificationService {
   }
 
   /// ✅ Vérification intelligente — à appeler au démarrage de l'app
-  /// Vérifie les stats et envoie les notifs appropriées
   static Future<void> checkAndSendSmartNotifications() async {
     try {
       final sb = Supabase.instance.client;
@@ -346,10 +385,7 @@ class NotificationService {
 
       final yesterday = DateTime.now().subtract(const Duration(hours: 24));
 
-      // ✅ 1. Vues du profil depuis hier
       await _checkProfileViews(sb, uid, yesterday);
-
-      // ✅ 2. Nouveaux likes depuis hier
       await _checkNewLikes(sb, uid, yesterday);
     } catch (e) {
       debugPrint('checkAndSendSmartNotifications error: $e');
@@ -426,14 +462,74 @@ class NotificationService {
 
   @pragma('vm:entry-point')
   static Future<void> _onActionReceived(ReceivedAction action) async {
-    final type = action.payload?['type'];
+    await _handlePayload(action.payload ?? const {});
+  }
+
+  /// ✅ Clic sur une notification push FCM affichée par le système
+  /// (app en arrière-plan ou fermée). Convertit les clés envoyées par
+  /// les edge functions vers celles des notifications locales, puis
+  /// réutilise la même navigation.
+  static Future<void> handlePushTap(Map<String, dynamic> data) async {
+    String? s(String key) {
+      return data[key]?.toString();
+    }
+
+    final type = s('type') ??
+        ((s('conversationId') ?? '').isNotEmpty ? 'message' : null);
+    await _handlePayload({
+      'type': type,
+      'conversationId': s('conversationId'),
+      'senderName': s('senderName'),
+      'senderPhoto': s('senderPhoto'),
+      'fromUserId': s('fromUserId') ?? s('from_user_id'),
+      'userName': s('userName') ?? s('from_user_name'),
+      'userPhoto': s('userPhoto') ?? s('from_user_photo'),
+      'userId': s('userId'),
+    });
+  }
+
+  /// ✅ Notification push reçue app ouverte : on l'affiche avec le bon
+  /// canal selon son type (avant, un like s'affichait comme un message).
+  static Future<void> showFromPush(
+      Map<String, dynamic> data, String? title, String? body) async {
+    String? s(String key) {
+      return data[key]?.toString();
+    }
+
+    final type = s('type');
+    if (type == 'like' || type == 'match') {
+      final fromUserId = s('fromUserId') ?? s('from_user_id') ?? '';
+      final userName = s('userName') ?? s('from_user_name') ?? 'Quelqu\'un';
+      final userPhoto = s('userPhoto') ?? s('from_user_photo');
+      if (type == 'match') {
+        await showMatchNotification(
+            userName: userName, userPhoto: userPhoto, fromUserId: fromUserId);
+      } else if (fromUserId.isNotEmpty) {
+        await showLikeNotification(
+            userName: userName, userPhoto: userPhoto, fromUserId: fromUserId);
+      }
+      return;
+    }
+
+    final convId = s('conversationId') ?? '';
+    if (convId.isEmpty) return;
+    await showMessageNotification(
+      senderName: s('senderName') ?? title ?? 'Quelqu\'un',
+      message: s('message') ?? body ?? '',
+      senderPhoto: s('senderPhoto'),
+      conversationId: convId,
+    );
+  }
+
+  static Future<void> _handlePayload(Map<String, String?> payload) async {
+    final type = payload['type'];
 
     // ── Message → conversation ──
     if (type == 'message') {
-      final conversationId = action.payload?['conversationId'];
-      final senderName = action.payload?['senderName'] ?? '';
-      final senderPhoto = action.payload?['senderPhoto'];
-      if (conversationId == null) return;
+      final conversationId = payload['conversationId'];
+      final senderName = payload['senderName'] ?? '';
+      final senderPhoto = payload['senderPhoto'];
+      if (conversationId == null || conversationId.isEmpty) return;
 
       await Future.delayed(const Duration(milliseconds: 800));
 
@@ -462,7 +558,7 @@ class NotificationService {
 
     // ── Like / Match → profil ──
     else if (type == 'like' || type == 'match') {
-      final fromUserId = action.payload?['fromUserId'];
+      final fromUserId = payload['fromUserId'];
       if (fromUserId == null || fromUserId.isEmpty) return;
 
       await Future.delayed(const Duration(milliseconds: 800));
@@ -487,19 +583,24 @@ class NotificationService {
       } catch (_) {}
     }
 
-    // ✅ Résumé likes → page profil / qui m'a liké
+    // ✅ Nouvelle story → onglet Story
+    else if (type == 'new_story' || type == 'like_story') {
+      await Future.delayed(const Duration(milliseconds: 500));
+      NavigationController.pendingIndex = NavigationController.storyIndex;
+      Get.offAllNamed(AppRoutes.main);
+    }
+
+    // ✅ Résumé likes / vues profil → onglet Profil
     else if (type == 'likes_summary' || type == 'profile_views') {
       await Future.delayed(const Duration(milliseconds: 500));
+      NavigationController.pendingIndex = NavigationController.likesIndex;
       Get.offAllNamed(AppRoutes.main);
-      if (Get.isRegistered<NavigationController>()) {
-        Get.find<NavigationController>().goTo(4); // onglet Profil
-      }
     }
 
     // ✅ Utilisateur en ligne → ouvrir son profil
     else if (type == 'user_online') {
-      final userId = action.payload?['userId'];
-      final userName = action.payload?['userName'] ?? '';
+      final userId = payload['userId'];
+      final userName = payload['userName'] ?? '';
       if (userId == null) return;
 
       await Future.delayed(const Duration(milliseconds: 800));

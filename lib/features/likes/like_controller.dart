@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:rencontre/features/likes/match_dialog.dart' show MatchDialog;
+import 'package:rencontre/core/theme/app_theme.dart';
 
 // ══════════════════════════════════════════════════════════════════
 //  LIKE CONTROLLER
@@ -32,8 +33,8 @@ class LikeController extends GetxController {
     try {
       final data =
           await _sb.from('likes').select('to_user_id').eq('from_user_id', myId);
-      likedUserIds.value =
-          (data as List).map((r) => r['to_user_id'] as String).toSet();
+      likedUserIds.assignAll(
+          (data as List).map((r) => r['to_user_id'] as String));
     } catch (_) {}
   }
 
@@ -45,11 +46,11 @@ class LikeController extends GetxController {
           .from('matches')
           .select('user1_id, user2_id')
           .or('user1_id.eq.$myId,user2_id.eq.$myId');
-      matchedUserIds.value = (data as List).map((r) {
+      matchedUserIds.assignAll((data as List).map((r) {
         final u1 = r['user1_id'] as String;
         final u2 = r['user2_id'] as String;
         return u1 == myId ? u2 : u1;
-      }).toSet();
+      }));
     } catch (_) {}
   }
 
@@ -65,7 +66,7 @@ class LikeController extends GetxController {
         '💘 Match !',
         'Vous êtes en match — impossible de retirer le like',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF13131A),
+        backgroundColor: AppColors.surface,
         colorText: Colors.white,
         duration: const Duration(seconds: 2),
       );
@@ -104,12 +105,9 @@ class LikeController extends GetxController {
           matchedUserIds.add(targetUser.id);
           _showMatchPopup(targetUser);
         }
-
-        await _sendLikeNotification(
-          fromUserId: myId,
-          toUserId: targetUser.id,
-          isMatch: isMatch,
-        );
+        // ✅ La notification push du like / match est envoyée par la base
+        // (trigger notify_new_like → fonction dynamic-processor). L'app
+        // appelait en plus « send-like-notification », qui n'existe pas.
       }
     } catch (_) {
     } finally {
@@ -122,23 +120,6 @@ class LikeController extends GetxController {
     final u2 = myId.compareTo(otherId) < 0 ? otherId : myId;
     try {
       await _sb.from('matches').upsert({'user1_id': u1, 'user2_id': u2});
-    } catch (_) {}
-  }
-
-  Future<void> _sendLikeNotification({
-    required String fromUserId,
-    required String toUserId,
-    required bool isMatch,
-  }) async {
-    try {
-      await _sb.functions.invoke(
-        'send-like-notification',
-        body: {
-          'from_user_id': fromUserId,
-          'to_user_id': toUserId,
-          'is_match': isMatch,
-        },
-      );
     } catch (_) {}
   }
 

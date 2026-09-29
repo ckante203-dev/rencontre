@@ -864,7 +864,7 @@ class _CarteProfilListe extends StatelessWidget {
                     size: 12, color: AppColors.textMuted),
                 const SizedBox(width: 3),
                 Text(
-                  user.distanceMeters != null
+                  user.distanceMeters != null && user.showDistance
                       ? user.distanceLabel
                       : 'Distance inconnue',
                   style:
@@ -1052,9 +1052,9 @@ class _PanelParametresCarte extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      decoration: const BoxDecoration(
-        color: Color(0xFF11111C),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1063,7 +1063,7 @@ class _PanelParametresCarte extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: const Color(0xFF252538),
+                    color: AppColors.surface2,
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
@@ -1460,22 +1460,40 @@ class _FiltresBar extends StatelessWidget {
 
 // ─── MON MARQUEUR ────────────────────────────────────────────────
 
-class _MonMarqueur extends StatelessWidget {
+class _MonMarqueur extends StatefulWidget {
   final bool isGhost;
   final bool isInvisible;
   const _MonMarqueur({this.isGhost = false, this.isInvisible = false});
 
   @override
-  Widget build(BuildContext context) {
+  State<_MonMarqueur> createState() => _MonMarqueurState();
+}
+
+class _MonMarqueurState extends State<_MonMarqueur> {
+  // ✅ Future créée une seule fois (et non à chaque build) : évite
+  // une requête Supabase à chaque reconstruction de la carte.
+  late final Future<Map<String, dynamic>?> _photoFuture;
+
+  bool get isGhost => widget.isGhost;
+  bool get isInvisible => widget.isInvisible;
+
+  @override
+  void initState() {
+    super.initState();
     final uid = SupabaseService().currentUserId;
+    _photoFuture = uid != null
+        ? Supabase.instance.client
+            .from('profiles')
+            .select('photo_url')
+            .eq('id', uid)
+            .maybeSingle()
+        : Future.value(null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: uid != null
-          ? Supabase.instance.client
-              .from('profiles')
-              .select('photo_url')
-              .eq('id', uid)
-              .maybeSingle()
-          : Future.value(null),
+      future: _photoFuture,
       builder: (_, snap) {
         final photo = snap.data?['photo_url'] as String?;
         return Stack(children: [
@@ -1664,7 +1682,7 @@ class _ProfilCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF11111C),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
         boxShadow: [
@@ -1725,7 +1743,7 @@ class _ProfilCard extends StatelessWidget {
                         ),
                     ]),
                     const SizedBox(height: 4),
-                    if (user.distanceMeters != null)
+                    if (user.distanceMeters != null && user.showDistance)
                       Row(children: [
                          Icon(Icons.location_on_rounded,
                             size: 12, color: AppColors.textMuted),
@@ -1871,7 +1889,7 @@ class _ProfilCard extends StatelessWidget {
     } catch (e) {
       Get.snackbar('Erreur', "Impossible d'ouvrir la conversation",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }

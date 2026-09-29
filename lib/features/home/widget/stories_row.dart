@@ -6,14 +6,17 @@ import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 
+// ═══════════════════════════════════════════════════════════════
+// La construction de la chaîne complète de stories (tous les
+// profils, dans l'ordre) vit dans HomeController.buildStoryChain().
+// ═══════════════════════════════════════════════════════════════
+
 class StoriesRow extends GetView<HomeController> {
   const StoriesRow({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // ✅ FIX BUG 3 : stories est déjà dédupliqué (1 bulle par user)
-      // car home_controller.get stories retourne 1 story par userId
       final stories = controller.stories;
       final myStory = controller.myActiveStory;
       final hasMyStory = myStory != null;
@@ -55,98 +58,117 @@ class _MyStoryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 62,
-            height: 62,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                GestureDetector(
-                  onTap: _onMainTap,
-                  child: Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: hasStory
-                            ? AppColors.accent
-                            : const Color(0xFF2A2A3D),
-                        width: hasStory ? 2.5 : 2,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: myPhotoUrl != null && myPhotoUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: myPhotoUrl!, fit: BoxFit.cover)
-                          : Container(
-                              decoration:  BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [AppColors.accent, AppColors.accent2],
+      // ✅ CORRIGÉ — l'OverflowBox précédent posait deux problèmes
+      // dans un ListView horizontal :
+      //  1. largeur non bornée → l'OverflowBox prenait une largeur
+      //     infinie et l'élément ne s'affichait plus ;
+      //  2. minHeight hérité de la liste (96) > maxHeight (90) →
+      //     contraintes invalides.
+      // Ici : largeur fixée par un SizedBox, et minHeight: 0. Le
+      // contenu garde sa hauteur naturelle (~85px) même quand la
+      // barre est en cours d'animation, sans erreur d'overflow.
+      child: SizedBox(
+        width: 62,
+        child: OverflowBox(
+          minHeight: 0,
+          maxHeight: 90,
+          alignment: Alignment.topCenter,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 62,
+                height: 62,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    GestureDetector(
+                      onTap: _onMainTap,
+                      child: Container(
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: hasStory
+                                ? AppColors.accent
+                                : AppColors.border,
+                            width: hasStory ? 2.5 : 2,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: myPhotoUrl != null && myPhotoUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: myPhotoUrl!, fit: BoxFit.cover)
+                              : Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.accent,
+                                        AppColors.accent2
+                                      ],
+                                    ),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(Icons.person_rounded,
+                                        color: Colors.white, size: 28),
+                                  ),
                                 ),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.person_rounded,
-                                    color: Colors.white, size: 28),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -2,
-                  right: -2,
-                  child: GestureDetector(
-                    onTap: _onPlusTap,
-                    child: Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.gradientPink,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.bg, width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                              color: AppColors.accent.withOpacity(0.5),
-                              blurRadius: 8)
-                        ],
+                        ),
                       ),
-                      child: const Icon(Icons.add_rounded,
-                          color: Colors.white, size: 17),
                     ),
-                  ),
+                    Positioned(
+                      bottom: -2,
+                      right: -2,
+                      child: GestureDetector(
+                        onTap: _onPlusTap,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.gradientPink,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.bg, width: 2.5),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: AppColors.accent.withOpacity(0.5),
+                                  blurRadius: 8)
+                            ],
+                          ),
+                          child: const Icon(Icons.add_rounded,
+                              color: Colors.white, size: 17),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                hasStory ? 'Ma story' : 'Ajouter',
+                style: TextStyle(
+                  color: hasStory ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: hasStory ? FontWeight.w700 : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-          const SizedBox(height: 5),
-          Text(
-            hasStory ? 'Ma story' : 'Ajouter',
-            style: TextStyle(
-              color: hasStory ? AppColors.textPrimary : AppColors.textMuted,
-              fontSize: 11,
-              fontWeight: hasStory ? FontWeight.w700 : FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+        ),
       ),
     );
   }
 
   void _onMainTap() {
     if (hasStory && myStory != null) {
-      // ✅ Afficher toutes mes stories (pas juste la dernière) dans le viewer
       final ctrl = Get.find<HomeController>();
-      final myStories = ctrl.storiesForUser(myStory!.userId);
+      final chain = ctrl.buildStoryChain(myStory!.userId);
       Get.to(
         () => StoryViewerScreen(
-          stories: myStories.isNotEmpty ? myStories : [myStory!],
-          initialIndex: 0,
+          stories: chain.stories,
+          initialIndex: chain.startIndex,
         ),
         transition: Transition.fadeIn,
       );
@@ -174,7 +196,6 @@ class _StoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ isSeen = true seulement si TOUTES les stories de ce user sont vues
     final ctrl = Get.find<HomeController>();
     final allSeen = ctrl.userStoryIsSeen(story.userId);
 
@@ -182,64 +203,77 @@ class _StoryItem extends StatelessWidget {
       padding: const EdgeInsets.only(right: 12),
       child: GestureDetector(
         onTap: _openStory,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 62,
-              height: 62,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: allSeen ? null : AppColors.gradientPink,
-                color: allSeen ? const Color(0xFF2A2A3D) : null,
-              ),
-              padding: const EdgeInsets.all(2.5),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.bg, width: 2),
-                ),
-                child: ClipOval(
-                  child: story.userPhotoUrl != null &&
-                          story.userPhotoUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: story.userPhotoUrl!, fit: BoxFit.cover)
-                      : Container(
-                          decoration:  BoxDecoration(
-                            gradient: LinearGradient(
-                                colors: [AppColors.accent, AppColors.accent2]),
-                          ),
-                          child: Center(
-                            child: Text(
-                              story.userName.isNotEmpty
-                                  ? story.userName[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 20),
+        // ✅ CORRIGÉ — même correction que _MyStoryItem :
+        // largeur bornée + minHeight: 0.
+        child: SizedBox(
+          width: 62,
+          child: OverflowBox(
+            minHeight: 0,
+            maxHeight: 90,
+            alignment: Alignment.topCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: allSeen ? null : AppColors.gradientPink,
+                    color: allSeen ? AppColors.border : null,
+                  ),
+                  padding: const EdgeInsets.all(2.5),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.bg, width: 2),
+                    ),
+                    child: ClipOval(
+                      child: story.userPhotoUrl != null &&
+                              story.userPhotoUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: story.userPhotoUrl!, fit: BoxFit.cover)
+                          : Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: [
+                                  AppColors.accent,
+                                  AppColors.accent2
+                                ]),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  story.userName.isNotEmpty
+                                      ? story.userName[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 20),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 5),
-            SizedBox(
-              width: 62,
-              child: Text(
-                story.userName,
-                style: TextStyle(
-                  color: allSeen ? AppColors.textMuted : AppColors.textPrimary,
-                  fontSize: 11,
-                  fontWeight: allSeen ? FontWeight.w400 : FontWeight.w700,
+                const SizedBox(height: 5),
+                SizedBox(
+                  width: 62,
+                  child: Text(
+                    story.userName,
+                    style: TextStyle(
+                      color:
+                          allSeen ? AppColors.textMuted : AppColors.textPrimary,
+                      fontSize: 11,
+                      fontWeight: allSeen ? FontWeight.w400 : FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -247,16 +281,19 @@ class _StoryItem extends StatelessWidget {
 
   void _openStory() {
     final ctrl = Get.find<HomeController>();
-    // ✅ Ouvrir TOUTES les stories de cet utilisateur dans le viewer (défilement)
-    final userStories = ctrl.storiesForUser(story.userId);
-    if (userStories.isEmpty) return;
+
+    final chain = ctrl.buildStoryChain(story.userId);
+    if (chain.stories.isEmpty) return;
 
     Get.to(
-      () => StoryViewerScreen(stories: userStories, initialIndex: 0),
+      () => StoryViewerScreen(
+        stories: chain.stories,
+        initialIndex: chain.startIndex,
+      ),
       transition: Transition.fadeIn,
     );
-
-    // Marquer la première story comme vue
-    ctrl.markStoryAsSeen(userStories.first.id);
+    // ✅ Le marquage "vue" est désormais fait par StoryViewerScreen pour
+    // CHAQUE story réellement affichée (et plus seulement la première
+    // du profil), ce qui rend userStoryIsSeen cohérent.
   }
 }

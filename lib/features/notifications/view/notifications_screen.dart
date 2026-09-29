@@ -7,7 +7,6 @@ import 'package:rencontre/features/notifications/controller/notification_control
 import 'package:rencontre/features/notifications/model/notification_model.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
-import 'package:rencontre/features/home/view/main_navigation.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -24,7 +23,7 @@ class NotificationsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         elevation: 0,
-        title:  Text('Notifications',
+        title: Text('Notifications',
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
@@ -33,14 +32,14 @@ class NotificationsScreen extends StatelessWidget {
           Obx(() => ctrl.unreadCount.value > 0
               ? TextButton(
                   onPressed: ctrl.markAllAsRead,
-                  child:  Text('Tout marquer lu',
+                  child: Text('Tout marquer lu',
                       style: TextStyle(color: AppColors.accent, fontSize: 13)))
               : const SizedBox.shrink()),
         ],
       ),
       body: Obx(() {
         if (ctrl.isLoading.value && ctrl.notifications.isEmpty) {
-          return  Center(
+          return Center(
               child: CircularProgressIndicator(color: AppColors.accent));
         }
         if (ctrl.notifications.isEmpty) {
@@ -48,13 +47,13 @@ class NotificationsScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                 Icon(Icons.notifications_none_rounded,
+                Icon(Icons.notifications_none_rounded,
                     size: 56, color: AppColors.textMuted),
                 const SizedBox(height: 12),
-                 Text('Aucune notification pour le moment',
+                Text('Aucune notification pour le moment',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 const SizedBox(height: 4),
-                 Text('Stories et annonces des comptes que tu suis',
+                Text('Stories des comptes que tu suis',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
               ],
             ),
@@ -86,10 +85,6 @@ class _NotifTile extends StatelessWidget {
         return Icons.auto_awesome_mosaic_rounded;
       case 'like_story':
         return Icons.favorite_rounded;
-      case 'new_annonce':
-        return Icons.campaign_rounded;
-      case 'annonce_reaction':
-        return Icons.emoji_emotions_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -101,12 +96,6 @@ class _NotifTile extends StatelessWidget {
       case 'new_story':
       case 'like_story':
         _openStory();
-        break;
-      case 'new_annonce':
-      case 'annonce_reaction':
-        if (Get.isRegistered<NavigationController>()) {
-          Get.find<NavigationController>().goToAnnonces();
-        }
         break;
       default:
         break;
@@ -181,8 +170,7 @@ class _NotifTile extends StatelessWidget {
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style:  TextStyle(
-                      fontSize: 13, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
                   children: [
                     TextSpan(
                         text: '${notif.actorName} ',
@@ -195,14 +183,14 @@ class _NotifTile extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               timeago.format(notif.createdAt, locale: 'fr'),
-              style:  TextStyle(fontSize: 11, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
             if (!notif.isRead) ...[
               const SizedBox(width: 8),
               Container(
                 width: 8,
                 height: 8,
-                decoration:  BoxDecoration(
+                decoration: BoxDecoration(
                     color: AppColors.accent, shape: BoxShape.circle),
               ),
             ],

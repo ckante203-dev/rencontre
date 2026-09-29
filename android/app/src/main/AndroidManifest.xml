@@ -1,44 +1,88 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ================= Permissions ================= -->
+    <!-- ========================================================= -->
+    <!-- PERMISSIONS                                                -->
+    <!-- ========================================================= -->
 
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Internet -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Caméra -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Microphone -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Localisation -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- ========================================================= -->
+    <!-- GALERIE / MÉDIAS                                           -->
+    <!-- ========================================================= -->
 
     <!-- Android 13+ -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- Android 12 et inférieur -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
+        android:maxSdkVersion="32" />
 
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"
-        tools:replace="android:maxSdkVersion"/>
+        tools:replace="android:maxSdkVersion" />
 
-    <!-- Notifications & Arrière-plan -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- ========================================================= -->
+    <!-- NOTIFICATIONS / ARRIÈRE-PLAN                               -->
+    <!-- ========================================================= -->
 
-    <!-- Empêche définitivement les plugins tiers d'injecter la permission interdite -->
+    <!-- Notifications Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Vibration -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Redémarrage automatique -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Service en premier plan -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- ========================================================= -->
+    <!-- GOOGLE PLAY BILLING                                        -->
+    <!-- ========================================================= -->
+
+    <uses-permission android:name="com.android.vending.BILLING" />
+
+    <!-- ========================================================= -->
+    <!-- SÉCURITÉ GOOGLE PLAY                                       -->
+    <!-- ========================================================= -->
+
+    <!--
+        Empêche les plugins tiers d'ajouter
+        REQUEST_INSTALL_PACKAGES.
+    -->
     <uses-permission
         android:name="android.permission.REQUEST_INSTALL_PACKAGES"
         tools:node="remove" />
+
+    <!-- ========================================================= -->
+    <!-- APPLICATION                                                -->
+    <!-- ========================================================= -->
 
     <application
         android:name="${applicationName}"
         android:label="Zamu"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
+
+        <!-- ===================================================== -->
+        <!-- ACTIVITÉ PRINCIPALE                                    -->
+        <!-- ===================================================== -->
 
         <activity
             android:name=".MainActivity"
@@ -48,16 +92,25 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
+            <!-- Thème Flutter -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme"/>
+                android:resource="@style/NormalTheme" />
 
+            <!-- Point d'entrée de l'application -->
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
 
         </activity>
+
+        <!-- ===================================================== -->
+        <!-- FILE PROVIDER - IMAGE PICKER                           -->
+        <!-- ===================================================== -->
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -67,46 +120,78 @@
 
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/flutter_image_picker_file_paths"/>
+                android:resource="@xml/flutter_image_picker_file_paths" />
 
         </provider>
 
+        <!-- ===================================================== -->
+        <!-- FLUTTER EMBEDDING                                      -->
+        <!-- ===================================================== -->
+
         <meta-data
             android:name="flutterEmbedding"
-            android:value="2"/>
+            android:value="2" />
 
     </application>
 
+    <!-- ========================================================= -->
+    <!-- QUERIES                                                    -->
+    <!-- ========================================================= -->
+
     <queries>
 
+        <!-- Traitement de texte -->
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+
+            <data android:mimeType="text/plain" />
+
         </intent>
 
+        <!-- Ouvrir une URL HTTPS -->
         <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="https"/>
+
+            <action android:name="android.intent.action.VIEW" />
+
+            <data android:scheme="https" />
+
         </intent>
 
+        <!-- Ouvrir une URL HTTP -->
         <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="http"/>
+
+            <action android:name="android.intent.action.VIEW" />
+
+            <data android:scheme="http" />
+
         </intent>
 
+        <!-- Localisation / cartes -->
         <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="geo"/>
+
+            <action android:name="android.intent.action.VIEW" />
+
+            <data android:scheme="geo" />
+
         </intent>
 
+        <!-- SMS -->
         <intent>
-            <action android:name="android.intent.action.SENDTO"/>
-            <data android:scheme="smsto"/>
+
+            <action android:name="android.intent.action.SENDTO" />
+
+            <data android:scheme="smsto" />
+
         </intent>
 
+        <!-- WhatsApp -->
         <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="whatsapp"/>
+
+            <action android:name="android.intent.action.VIEW" />
+
+            <data android:scheme="whatsapp" />
+
         </intent>
 
     </queries>

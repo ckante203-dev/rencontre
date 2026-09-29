@@ -6,12 +6,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
+import 'package:rencontre/core/services/notification_service.dart';
+import 'package:rencontre/core/services/revenue_cat_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/core/theme/theme_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
+import 'package:rencontre/core/theme/app_theme.dart';
 
 class ControleurProfil extends GetxController {
   static ControleurProfil get to => Get.find();
@@ -28,6 +32,16 @@ class ControleurProfil extends GetxController {
   final RxBool isPremium = false.obs;
 
   final nomController = TextEditingController();
+  final usernameController = TextEditingController();
+  // Nom d'utilisateur actuel (affiché « @… » sur le profil)
+  final RxString monUsername = ''.obs;
+  // Valeur saisie (pour l'affichage réactif du champ)
+  final RxString usernameText = ''.obs;
+  // null = pas encore vérifié / en cours ; true = libre ; false = pris ou invalide
+  final Rx<bool?> usernameDispo = Rx<bool?>(null);
+  final RxBool verifUsername = false.obs;
+  int _usernameSeq = 0;
+  static final _usernameRegex = RegExp(r'^[a-z0-9_.]{3,20}$');
   final bioController = TextEditingController();
   final tailleController = TextEditingController();
   final poidsController = TextEditingController();
@@ -42,7 +56,6 @@ class ControleurProfil extends GetxController {
   final RxBool notifMessages = true.obs;
   final RxBool notifNearby = true.obs;
   final RxBool notifStories = true.obs;
-  final RxBool notifAnnonces = true.obs;
   final RxBool notifSon = true.obs;
   final RxBool profilPublic = true.obs;
   final RxBool showDistance = true.obs;
@@ -111,6 +124,66 @@ class ControleurProfil extends GetxController {
     super.onInit();
     _setOnlineEtCharger();
     _ecouterMonProfil();
+    PackageInfo.fromPlatform().then((i) {
+      versionApp.value = i.version;
+    }).catchError((_) {});
+  }
+
+  // ─── AIDE & ABONNEMENT (Paramètres) ─────────────────────────────
+
+  // Laisser vide = l'entrée est masquée dans les Paramètres.
+  static const String urlConfidentialite =
+      'https://flixcyjefjcyjwvjdiny.supabase.co/storage/v1/object/public/legal/politique-confidentialite-zamu.html';
+  static const String emailContact = 'support.snapmeet@gmail.com';
+  static const String _packageAndroid = 'com.vybestyle.zamu';
+
+  final RxString versionApp = ''.obs;
+
+  Future<void> ouvrirLien(String url) async {
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      _snackError('Impossible d\'ouvrir le lien');
+    }
+  }
+
+  Future<void> contacterSupport() async {
+    try {
+      final ok = await launchUrl(Uri.parse(
+          'mailto:$emailContact?subject=${Uri.encodeComponent('Zamu - aide')}'));
+      if (!ok) throw Exception();
+    } catch (_) {
+      await Clipboard.setData(const ClipboardData(text: emailContact));
+      _snackSuccess('Adresse copiée : $emailContact');
+    }
+  }
+
+  /// Gestion de l'abonnement = page Abonnements de Google Play.
+  Future<void> gererAbonnement() => ouvrirLien(
+      'https://play.google.com/store/account/subscriptions?package=$_packageAndroid');
+
+  void ouvrirPaywall() {
+    // RevenueCat pas encore configuré → pas de paywall (évite un crash
+    // sur Get.find<RevenueCatService>() dans l'écran paywall).
+    if (!Get.isRegistered<RevenueCatService>()) {
+      _snackError('Premium sera bientôt disponible');
+      return;
+    }
+    Get.toNamed(AppRoutes.paywall);
+  }
+
+  Future<void> restaurerAchats() async {
+    if (!Get.isRegistered<RevenueCatService>()) {
+      _snackError('Service d\'achat indisponible pour le moment');
+      return;
+    }
+    final premium = await Get.find<RevenueCatService>().restorePurchases();
+    if (premium) {
+      isPremium.value = true;
+      _snackSuccess('Abonnement Premium restauré');
+    } else {
+      _snackError('Aucun abonnement actif trouvé sur ce compte Google');
+    }
   }
 
   // ✅ setOnline(true) AVANT de lire le profil
@@ -137,6 +210,7 @@ class ControleurProfil extends GetxController {
     try {
       final uid = supabase.auth.currentUser?.id;
       if (uid == null) return;
+
       final data = await supabase
           .from('profiles')
           .select()
@@ -145,45 +219,64 @@ class ControleurProfil extends GetxController {
           .timeout(const Duration(seconds: 10));
 
       if (isClosed) return;
-      if (data == null) return;
+
+      if (data == null) {
+        debugPrint('chargerMonProfil: aucune ligne profile trouvée pour $uid');
+        return;
+      }
 
       final isOnline = SupabaseService.isReallyOnline(
         data['is_online'],
         data['last_seen'],
       );
 
-      final fetchedProfile =
-          await _service.fetchMyProfile().timeout(const Duration(seconds: 10));
+      // ✅ Un seul appel réseau : on construit le UserModel directement
+      // à partir de `data` au lieu de refaire un fetchMyProfile() redondant.
+      monProfil.value =
+          _service.profileToUser(data).copyWith(isOnline: isOnline);
 
-      if (isClosed) return;
+      // Formulaire / contrôleurs
+      nomController.text = data['name']?.toString() ?? '';
+      monUsername.value = data['username']?.toString() ?? '';
+      usernameController.text = monUsername.value;
+      usernameText.value = monUsername.value;
+      usernameDispo.value = null;
+      bioController.text = data['bio']?.toString() ?? '';
+      tailleController.text = data['taille']?.toString() ?? '';
+      poidsController.text = data['poids']?.toString() ?? '';
 
-      monProfil.value = fetchedProfile?.copyWith(isOnline: isOnline);
+      // Sélections sécurisées
+      selectedGender.value = data['gender']?.toString() ?? '';
+      selectedLookingFor.value = data['looking_for']?.toString() ?? '';
+      selectedMorphologie.value = data['morphologie']?.toString() ?? '';
+      selectedLieuRencontre.value = data['lieu_rencontre']?.toString() ?? '';
 
-      nomController.text = data['name'] ?? '';
-      bioController.text = data['bio'] ?? '';
-      tailleController.text =
-          data['taille'] != null ? data['taille'].toString() : '';
-      poidsController.text =
-          data['poids'] != null ? data['poids'].toString() : '';
-      selectedGender.value = data['gender'] ?? '';
-      selectedLookingFor.value = data['looking_for'] ?? '';
-      selectedMorphologie.value = data['morphologie'] ?? '';
-      selectedLieuRencontre.value = data['lieu_rencontre'] ?? '';
-      selectedInterests.value = List<String>.from(data['interests'] ?? []);
+      // ✅ Toujours réinitialisé (sinon l'ancienne valeur restait si null)
+      selectedInterests.value = data['interests'] is List
+          ? List<String>.from(data['interests'])
+          : <String>[];
+
+      // Booléens sécurisés
       showBirthdate.value = data['show_birthdate'] ?? true;
       notifMessages.value = data['notif_messages'] ?? true;
       notifNearby.value = data['notif_nearby'] ?? true;
       notifStories.value = data['notif_stories'] ?? true;
-      notifAnnonces.value = data['notif_annonces'] ?? true;
       notifSon.value = data['notif_son'] ?? true;
+      NotificationService.sonActive = notifSon.value;
       profilPublic.value = data['is_public'] ?? true;
       showDistance.value = data['show_distance'] ?? true;
-      selectedTheme.value = data['theme'] ?? 'dark';
       isPremium.value = data['is_premium'] ?? false;
-      photoUrls.value = List<String>.from(data['photo_urls'] ?? []);
-      if (data['birthdate'] != null) {
-        birthdate.value = DateTime.tryParse(data['birthdate'].toString());
-      }
+
+      // Thème et photos
+      selectedTheme.value = data['theme']?.toString() ?? 'dark';
+      photoUrls.value = data['photo_urls'] is List
+          ? List<String>.from(data['photo_urls'])
+          : <String>[];
+
+      // Date de naissance sécurisée
+      birthdate.value = data['birthdate'] != null
+          ? DateTime.tryParse(data['birthdate'].toString())
+          : null;
     } catch (e) {
       debugPrint('chargerMonProfil error: $e');
     } finally {
@@ -254,10 +347,13 @@ class ControleurProfil extends GetxController {
             file,
             fileOptions: const FileOptions(upsert: true),
           );
-      final baseUrl = supabase.storage.from('avatars').getPublicUrl(path);
+      // ✅ Même chemin à chaque upload → même URL → l'ancienne photo restait
+      // en cache. Le paramètre de version force le rechargement.
+      final baseUrl = '${supabase.storage.from('avatars').getPublicUrl(path)}'
+          '?v=${DateTime.now().millisecondsSinceEpoch}';
       await supabase.from('profiles').update({
         'photo_url': baseUrl,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       monProfil.value = await _service.fetchMyProfile();
       _snackSuccess('Photo mise à jour');
@@ -271,25 +367,25 @@ class ControleurProfil extends GetxController {
 
   Future<void> supprimerPhoto() async {
     final confirm = await Get.dialog<bool>(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Supprimer la photo ?',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: Colors.white)),
-      content: const Text('Ta photo de profil sera supprimée définitivement.',
-          style: TextStyle(color: Color(0xFF5A5A78), fontSize: 13)),
+      content: Text('Ta photo de profil sera supprimée définitivement.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child: const Text('Supprimer',
+            child: Text('Supprimer',
                 style: TextStyle(
-                    color: Color(0xFFFF3CAC), fontWeight: FontWeight.w700))),
+                    color: AppColors.accent, fontWeight: FontWeight.w700))),
       ],
     ));
     if (confirm != true) return;
@@ -297,7 +393,7 @@ class ControleurProfil extends GetxController {
       final uid = supabase.auth.currentUser!.id;
       await supabase.from('profiles').update({
         'photo_url': null,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       if (monProfil.value != null) {
         monProfil.value = monProfil.value!.copyWith(clearPhoto: true);
@@ -312,16 +408,16 @@ class ControleurProfil extends GetxController {
     return await Get.bottomSheet<ImageSource>(
       Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Color(0xFF11111C),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: const Color(0xFF252538),
+                  color: AppColors.surface2,
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
           const Text('Photo de profil',
@@ -391,7 +487,6 @@ class ControleurProfil extends GetxController {
     if (index < 0 || index >= photoUrls.length) return;
     final url = photoUrls[index];
     try {
-      final uid = supabase.auth.currentUser!.id;
       final uri = Uri.parse(url);
       final segments = uri.pathSegments;
       final bucketIdx = segments.indexOf('profile-photos');
@@ -424,7 +519,7 @@ class ControleurProfil extends GetxController {
     try {
       await supabase.from('profiles').update({
         'photo_urls': photoUrls.toList(),
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
     } catch (e) {
       debugPrint('_sauvegarderPhotoUrls error: $e');
@@ -451,20 +546,28 @@ class ControleurProfil extends GetxController {
 
   Future<void> choisirDateNaissance(BuildContext context) async {
     final now = DateTime.now();
+    // ✅ Bornes au jour près (18 ans aujourd'hui inclus, 100 ans comme à
+    // l'inscription) et date initiale ramenée dans l'intervalle : sinon
+    // assertion/plantage pour quelqu'un qui a eu 18 ans cette année.
+    final firstDate = DateTime(now.year - 100, now.month, now.day);
+    final lastDate = DateTime(now.year - 18, now.month, now.day);
+    var initialDate = birthdate.value ?? DateTime(now.year - 25);
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
+    if (initialDate.isBefore(firstDate)) initialDate = firstDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: birthdate.value ?? DateTime(now.year - 25),
-      firstDate: DateTime(now.year - 80),
-      lastDate: DateTime(now.year - 18),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: Color(0xFFFF3CAC),
+          colorScheme: ColorScheme.dark(
+            primary: AppColors.accent,
             onPrimary: Colors.white,
-            surface: Color(0xFF11111C),
+            surface: AppColors.surface,
             onSurface: Colors.white,
           ),
-          dialogBackgroundColor: const Color(0xFF11111C),
+          dialogBackgroundColor: AppColors.surface,
         ),
         child: child!,
       ),
@@ -487,6 +590,38 @@ class ControleurProfil extends GetxController {
     return age;
   }
 
+  // ─── NOM D'UTILISATEUR ───────────────────────────────────────────
+
+  /// Vérifie en direct la disponibilité (mêmes règles qu'à l'inscription).
+  Future<void> verifierUsername(String value) async {
+    final u = value.trim().toLowerCase();
+    final seq = ++_usernameSeq;
+    if (u == monUsername.value) {
+      usernameDispo.value = true;
+      verifUsername.value = false;
+      return;
+    }
+    if (!_usernameRegex.hasMatch(u)) {
+      usernameDispo.value = false;
+      verifUsername.value = false;
+      return;
+    }
+    verifUsername.value = true;
+    usernameDispo.value = null;
+    try {
+      final libre = await supabase
+          .rpc('username_available', params: {'p_username': u});
+      if (seq != _usernameSeq) return;
+      usernameDispo.value = libre == true;
+    } catch (_) {
+      if (seq != _usernameSeq) return;
+      // Réseau : on laisse la contrainte unique en base trancher à l'enregistrement
+      usernameDispo.value = null;
+    } finally {
+      if (seq == _usernameSeq) verifUsername.value = false;
+    }
+  }
+
   Future<void> sauvegarderInfos() async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) {
@@ -497,10 +632,24 @@ class ControleurProfil extends GetxController {
       _snackError('Le prénom est obligatoire');
       return;
     }
+    final username = usernameController.text.trim().toLowerCase();
+    final usernameChange = username != monUsername.value;
+    if (usernameChange) {
+      if (!_usernameRegex.hasMatch(username)) {
+        _snackError(
+            'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)');
+        return;
+      }
+      if (usernameDispo.value == false) {
+        _snackError('Ce nom d\'utilisateur est déjà pris');
+        return;
+      }
+    }
     isSaving.value = true;
     try {
       final updates = <String, dynamic>{
         'name': nomController.text.trim(),
+        if (usernameChange) 'username': username,
         'bio': bioController.text.trim().isEmpty
             ? null
             : bioController.text.trim(),
@@ -513,7 +662,7 @@ class ControleurProfil extends GetxController {
             : selectedLieuRencontre.value,
         'looking_for':
             selectedLookingFor.value.isEmpty ? null : selectedLookingFor.value,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
       final tailleStr = tailleController.text.trim();
       if (tailleStr.isNotEmpty) {
@@ -551,6 +700,14 @@ class ControleurProfil extends GetxController {
       // changement de route).
       _snackSuccess('Informations mises à jour');
       Get.until((route) => route.settings.name == AppRoutes.main); // ✅
+    } on PostgrestException catch (e) {
+      // 23505 = contrainte unique : nom pris entre la vérification et l'enregistrement
+      if (e.code == '23505') {
+        usernameDispo.value = false;
+        _snackError('Ce nom d\'utilisateur est déjà pris');
+      } else {
+        _snackError('Erreur : ${e.message}');
+      }
     } catch (e) {
       _snackError(
           'Erreur : ${e.toString().substring(0, e.toString().length.clamp(0, 120))}');
@@ -561,50 +718,47 @@ class ControleurProfil extends GetxController {
 
   // ─── PARAMÈTRES ─────────────────────────────────────────────────
 
-  void setGender(String v) => selectedGender.value = v;
-  void setLookingFor(String v) => selectedLookingFor.value = v;
-  void setTheme(String v) => selectedTheme.value = v;
+  void setGender(String v) {
+    selectedGender.value = v;
+    _enregistrerReglage('gender', v.isEmpty ? null : v);
+  }
 
-  Future<void> sauvegarderParametres() async {
+  void setLookingFor(String v) {
+    selectedLookingFor.value = v;
+    _enregistrerReglage('looking_for', v.isEmpty ? null : v);
+  }
+
+  /// Thème : appliqué tout de suite (ThemeController l'enregistre aussi
+  /// dans profiles.theme).
+  void setTheme(String v) {
+    selectedTheme.value = v;
+    ThemeController.to.setTheme(v);
+  }
+
+  /// ✅ Interrupteurs des paramètres : enregistrés dès qu'on les touche
+  /// (avant, un réglage était perdu si on quittait sans « Sauvegarder »).
+  void majReglage(RxBool reglage, String colonne, bool valeur) {
+    reglage.value = valeur;
+    if (colonne == 'notif_son') NotificationService.sonActive = valeur;
+    _enregistrerReglage(colonne, valeur, annuler: () {
+      reglage.value = !valeur;
+      if (colonne == 'notif_son') NotificationService.sonActive = !valeur;
+    });
+  }
+
+  Future<void> _enregistrerReglage(String colonne, Object? valeur,
+      {VoidCallback? annuler}) async {
     final uid = supabase.auth.currentUser?.id;
-    if (uid == null) {
-      _snackError('Utilisateur non connecté');
-      return;
-    }
-    isSaving.value = true;
+    if (uid == null) return;
     try {
       await supabase.from('profiles').update({
-        'gender': selectedGender.value.isEmpty ? null : selectedGender.value,
-        'looking_for':
-            selectedLookingFor.value.isEmpty ? null : selectedLookingFor.value,
-        'show_birthdate': showBirthdate.value,
-        'notif_messages': notifMessages.value,
-        'notif_nearby': notifNearby.value,
-        'notif_stories': notifStories.value,
-        'notif_annonces': notifAnnonces.value,
-        'notif_son': notifSon.value,
-        'is_public': profilPublic.value,
-        'show_distance': showDistance.value,
-        'theme': selectedTheme.value,
-        'updated_at': DateTime.now().toIso8601String(),
+        colonne: valeur,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
-
-      // ✅ FIX : on diffère le changement de thème + la navigation à la
-      // frame suivante. Changer le thème (touche un Obx global) juste
-      // avant Get.offAllNamed (qui reconstruit tout l'écran d'accueil,
-      // plein de nouveaux Obx) faisait chevaucher deux reconstructions
-      // dans la même frame → "setState() or markNeedsBuild() called
-      // during build".
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await ThemeController.to.setTheme(selectedTheme.value);
-        _snackSuccess('Paramètres sauvegardés');
-        Get.until((route) => route.settings.name == AppRoutes.main); // ✅
-      });
     } catch (e) {
-      _snackError(
-          'Erreur : ${e.toString().substring(0, e.toString().length.clamp(0, 120))}');
-    } finally {
-      isSaving.value = false;
+      debugPrint('_enregistrerReglage($colonne) error: $e');
+      annuler?.call();
+      _snackError('Réglage non enregistré, vérifie ta connexion');
     }
   }
 
@@ -619,7 +773,8 @@ class ControleurProfil extends GetxController {
     try {
       await supabase.auth.updateUser(UserAttributes(email: newEmail.trim()));
       _snackSuccess('Email mis à jour — vérifie ta boîte mail pour confirmer');
-      Get.back();
+      // ✅ Le dialog est déjà fermé par la vue : un 2e Get.back() fermait
+      // l'écran Paramètres.
     } catch (e) {
       _snackError('Impossible de modifier l\'email : $e');
     } finally {
@@ -636,7 +791,6 @@ class ControleurProfil extends GetxController {
     try {
       await supabase.auth.updateUser(UserAttributes(password: newPassword));
       _snackSuccess('Mot de passe mis à jour');
-      Get.back();
     } catch (e) {
       _snackError('Impossible de modifier le mot de passe : $e');
     } finally {
@@ -660,7 +814,7 @@ class ControleurProfil extends GetxController {
         current.add(targetId);
         await supabase.from('profiles').update({
           'blocked_users': current,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', uid);
       }
       if (Get.isRegistered<ChatListController>()) {
@@ -687,7 +841,7 @@ class ControleurProfil extends GetxController {
         'reporter_id': uid,
         'reported_id': targetId,
         'reason': reason,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       _snackSuccess('Signalement envoyé. Merci !');
     } on PostgrestException catch (e) {
@@ -743,7 +897,7 @@ class ControleurProfil extends GetxController {
       current.remove(blockedId);
       await supabase.from('profiles').update({
         'blocked_users': current,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       blockedProfiles.removeWhere((p) => p['id'] == blockedId);
       _snackSuccess('Utilisateur débloqué');
@@ -756,27 +910,27 @@ class ControleurProfil extends GetxController {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return;
     final confirmed = await Get.dialog<bool>(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Tout débloquer ?',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: Colors.white)),
-      content: const Text('Tous les profils bloqués seront débloqués.',
-          style: TextStyle(color: Color(0xFF5A5A78), fontSize: 13)),
+      content: Text('Tous les profils bloqués seront débloqués.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
             onTap: () => Get.back(result: true),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]),
+                  gradient: LinearGradient(
+                      colors: [AppColors.accent, AppColors.accent2]),
                   borderRadius: BorderRadius.circular(12)),
               child: const Text('Débloquer tout',
                   style: TextStyle(
@@ -788,7 +942,7 @@ class ControleurProfil extends GetxController {
     try {
       await supabase.from('profiles').update({
         'blocked_users': [],
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       blockedProfiles.clear();
       _snackSuccess('Tous les profils débloqués');
@@ -820,7 +974,7 @@ class ControleurProfil extends GetxController {
 
   void deconnexion() {
     Get.dialog(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Se déconnecter ?',
           style: TextStyle(
@@ -828,13 +982,13 @@ class ControleurProfil extends GetxController {
               fontWeight: FontWeight.w800,
               color: Colors.white,
               fontSize: 18)),
-      content: const Text('Tu devras te reconnecter pour accéder à ton compte.',
-          style: TextStyle(color: Color(0xFF5A5A78), fontSize: 13)),
+      content: Text('Tu devras te reconnecter pour accéder à ton compte.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
             Get.back();
@@ -843,10 +997,56 @@ class ControleurProfil extends GetxController {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]),
+                gradient: LinearGradient(
+                    colors: [AppColors.accent, AppColors.accent2]),
                 borderRadius: BorderRadius.circular(12)),
             child: const Text('Déconnexion',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ),
+      ],
+    ));
+  }
+
+  void supprimerCompte() {
+    Get.dialog(AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Supprimer ton compte ?',
+          style: TextStyle(
+              fontFamily: 'Syne',
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              fontSize: 18)),
+      content: Text(
+          'Cette action est irréversible. Toutes tes données (profil, photos, messages, matchs) seront définitivement supprimées.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
+        GestureDetector(
+          onTap: () async {
+            Get.back();
+            isSaving.value = true;
+            try {
+              await supabase.functions.invoke('delete-account');
+              await AuthController.to.signOut();
+              Get.offAllNamed('/login');
+            } catch (e) {
+              _snackError('Impossible de supprimer le compte : $e');
+            } finally {
+              isSaving.value = false;
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(12)),
+            child: const Text('Supprimer définitivement',
                 style: TextStyle(
                     color: Colors.white, fontWeight: FontWeight.w700)),
           ),
@@ -859,19 +1059,20 @@ class ControleurProfil extends GetxController {
 
   void _snackSuccess(String msg) => Get.snackbar('✅ $msg', '',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF00E676).withOpacity(0.15),
+      backgroundColor: AppColors.online.withOpacity(0.15),
       colorText: Colors.white,
       duration: const Duration(seconds: 2));
 
   void _snackError(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF13131A),
+      backgroundColor: AppColors.surface,
       colorText: Colors.white,
       duration: const Duration(seconds: 4));
 
   @override
   void onClose() {
     nomController.dispose();
+    usernameController.dispose();
     bioController.dispose();
     tailleController.dispose();
     poidsController.dispose();
@@ -902,7 +1103,7 @@ class _SheetBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: isCancel ? Colors.transparent : const Color(0xFF191926),
           borderRadius: BorderRadius.circular(14),
-          border: isCancel ? null : Border.all(color: const Color(0xFF252538)),
+          border: isCancel ? null : Border.all(color: AppColors.surface2),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(icon, style: const TextStyle(fontSize: 20)),
@@ -911,7 +1112,7 @@ class _SheetBtn extends StatelessWidget {
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isCancel ? const Color(0xFF5A5A78) : Colors.white)),
+                  color: isCancel ? AppColors.textMuted : Colors.white)),
         ]),
       ),
     );

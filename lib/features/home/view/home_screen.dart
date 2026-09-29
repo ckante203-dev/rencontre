@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -9,6 +11,7 @@ import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/widget/stories_row.dart';
 import 'package:rencontre/features/notifications/controller/notification_controller.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 
 // ─── CONTROLLER MESSAGES NON LUS ─────────────────────────────────
@@ -29,11 +32,6 @@ class UnreadMessagesController extends GetxController {
     final myId = _sb.auth.currentUser?.id;
     if (myId == null) return;
     try {
-      // ✅ FIX : il n'y a pas de colonne receiver_id sur messages — on
-      // retrouve d'abord les conversations où je participe, puis les
-      // messages non lus envoyés par l'autre personne dans ces
-      // conversations (cohérent avec le schéma utilisé partout ailleurs :
-      // conversations.user1_id / user2_id).
       final convData = await _sb
           .from('conversations')
           .select('id')
@@ -66,27 +64,34 @@ class UnreadMessagesController extends GetxController {
   void _listenRealtime() {
     final myId = _sb.auth.currentUser?.id;
     if (myId == null) return;
-    // ✅ FIX : pas de receiver_id à filtrer directement sur messages —
-    // on écoute tous les changements et loadUnread() refait le tri via
-    // la relation conversations. Nom de channel rendu unique par
-    // utilisateur (comme ailleurs dans l'app : 'mon_profil_$uid',
-    // 'chatlist:$uid') pour éviter toute collision entre comptes sur le
-    // même appareil.
     _channel = _sb
         .channel('public:messages:unread:$myId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'messages',
-          callback: (payload) => loadUnread(),
+          callback: (payload) => _scheduleLoadUnread(),
         )
         .subscribe();
+  }
+
+  // ✅ Anti-rebond : chaque événement messages déclenchait 2 requêtes ;
+  // une rafale de messages ne provoque plus qu'un seul rechargement.
+  Timer? _reloadDebounce;
+
+  void _scheduleLoadUnread() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 1500), () {
+      _reloadDebounce = null;
+      loadUnread();
+    });
   }
 
   int unreadFrom(String userId) => unreadByUser[userId] ?? 0;
 
   @override
   void onClose() {
+    _reloadDebounce?.cancel();
     _channel?.unsubscribe();
     super.onClose();
   }
@@ -214,23 +219,16 @@ class _TopBar extends GetView<HomeController> {
                 )
               : const SizedBox.shrink()),
           const SizedBox(width: 8),
-          _IconBtn(icon: Icons.search_rounded, onTap: () {}),
-          const SizedBox(width: 8),
-          // ✅ NOUVEAU — Notifications avec badge non-lu
-          _NotificationsBtn(),
-          const SizedBox(width: 8),
-          // ✅ NOUVEAU — Abonnés
-          _IconBtn(
-            icon: Icons.people_alt_rounded,
-            onTap: () => Get.toNamed(AppRoutes.followers),
-          ),
-          const SizedBox(width: 8),
           GestureDetector(
             onTap: () {
-              Get.snackbar('Boost', 'Profil boosté pour 30 minutes !',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: Colors.orange,
-                  colorText: Colors.white);
+              Get.snackbar(
+                '⚡ Boost',
+                'Bientôt disponible — reviens vite !',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: AppColors.surface,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 2),
+              );
             },
             child: Container(
               width: 42,
@@ -254,62 +252,6 @@ class _TopBar extends GetView<HomeController> {
                   const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ✅ NOUVEAU — Bouton notifications avec badge
-class _NotificationsBtn extends StatelessWidget {
-  const _NotificationsBtn();
-
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = Get.find<NotificationController>();
-    return GestureDetector(
-      onTap: () => Get.toNamed(AppRoutes.notifications),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.surface2,
-              border: Border.all(color: AppColors.border.withOpacity(0.5)),
-            ),
-            child: Icon(Icons.notifications_none_rounded,
-                size: 20, color: AppColors.textPrimary),
-          ),
-          Obx(() {
-            final count = ctrl.unreadCount.value;
-            if (count == 0) return const SizedBox.shrink();
-            return Positioned(
-              top: -2,
-              right: -2,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 18),
-                height: 18,
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradientPink,
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: AppColors.bg, width: 1.5),
-                ),
-                child: Center(
-                  child: Text(
-                    count > 9 ? '9+' : '$count',
-                    style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white),
-                  ),
-                ),
-              ),
-            );
-          }),
         ],
       ),
     );
@@ -462,7 +404,7 @@ class _FilterChipsState extends State<_FilterChips> {
   }
 }
 
-// ─── BOUTON FILTRES AVANCÉS (✅ CORRIGÉ — ouvre désormais un vrai bottom sheet) ──
+// ─── BOUTON FILTRES AVANCÉS ──
 
 class _AdvancedFilterBtn extends GetView<HomeController> {
   const _AdvancedFilterBtn();
@@ -518,7 +460,7 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
   }
 }
 
-// ─── ✅ NOUVEAU — BOTTOM SHEET FILTRES AVANCÉS (genre + distance) ──
+// ─── BOTTOM SHEET FILTRES AVANCÉS (genre + distance) ──
 
 class _AdvancedFilterSheet extends StatefulWidget {
   const _AdvancedFilterSheet();
@@ -568,9 +510,9 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
         top: 16,
         bottom: MediaQuery.of(context).padding.bottom + 20,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF11111C),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -581,7 +523,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFF252538),
+                color: AppColors.surface2,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -609,8 +551,6 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
             ],
           ),
           const SizedBox(height: 20),
-
-          // ── Genre ──────────────────────────────────────────
           Text(
             'JE VEUX VOIR',
             style: TextStyle(
@@ -661,10 +601,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               );
             }).toList(),
           ),
-
           const SizedBox(height: 24),
-
-          // ── Distance ───────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -703,10 +640,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               onChanged: (v) => setState(() => _distance = v),
             ),
           ),
-
           const SizedBox(height: 12),
-
-          // ── Bouton Appliquer ───────────────────────────────
           GestureDetector(
             onTap: _apply,
             child: Container(
@@ -742,10 +676,18 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
 }
 
 // ─── GRILLE UTILISATEURS ─────────────────────────────────────────
+// ✅ Façon Grindr : au-delà de `unlockedProfileCount` (HomeController),
+// les profils sont visibles (silhouette générique, pas la vraie
+// photo) mais un tap dessus ouvre le paywall Premium au lieu de
+// naviguer. Une bannière animée sépare les deux zones.
 
 class _UsersGridScrollable extends GetView<HomeController> {
   final ScrollController scrollCtrl;
   const _UsersGridScrollable({required this.scrollCtrl});
+
+  bool get _isPremium => Get.isRegistered<ControleurProfil>()
+      ? Get.find<ControleurProfil>().isPremium.value
+      : false;
 
   @override
   Widget build(BuildContext context) {
@@ -754,41 +696,88 @@ class _UsersGridScrollable extends GetView<HomeController> {
       final users = controller.filteredUsers;
       if (users.isEmpty) return _buildEmpty();
 
+      final isPremium = _isPremium;
+      // ✅ Lire trialActiveUntil.value ici (même indirectement, via
+      // unlockedProfileCount) permet à Obx() de réagir automatiquement
+      // dès que l'essai gratuit démarre.
+      final unlockedCount = controller.unlockedProfileCount;
+      final hasLockedSection = !isPremium && users.length > unlockedCount;
+
+      final unlockedUsers =
+          hasLockedSection ? users.sublist(0, unlockedCount) : users;
+      final lockedUsers =
+          hasLockedSection ? users.sublist(unlockedCount) : <UserModel>[];
+
       return RefreshIndicator(
         onRefresh: controller.loadProfiles,
         color: AppColors.accent,
-        child: GridView.builder(
+        child: CustomScrollView(
           controller: scrollCtrl,
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 100),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 0.75,
-          ),
-          itemCount: users.length,
-          itemBuilder: (_, i) {
-            final user = users[i];
-            return Obx(() {
-              final unreadCount =
-                  Get.find<UnreadMessagesController>().unreadFrom(user.id);
-              final hasStory = controller.userHasActiveStory(user.id);
-              final storyIsSeen = controller.userStoryIsSeen(user.id);
-              final likedMe = controller.userLikedMe(user.id);
-
-              return _UserCard(
-                user: user,
-                unreadCount: unreadCount,
-                hasActiveStory: hasStory,
-                storyIsSeen: storyIsSeen,
-                hasLikedMe: likedMe,
-                onTap: () => controller.openProfile(user),
-              );
-            });
-          },
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(8, 0, 8, hasLockedSection ? 0 : 100),
+              sliver: _buildGridSliver(
+                  users: unlockedUsers, context: context, locked: false),
+            ),
+            if (hasLockedSection) ...[
+              SliverToBoxAdapter(
+                child: _PremiumUnlockBanner(
+                  hiddenCount: lockedUsers.length,
+                  sampleName: lockedUsers.first.name,
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 100),
+                sliver: _buildGridSliver(
+                    users: lockedUsers, context: context, locked: true),
+              ),
+            ],
+          ],
         ),
       );
     });
+  }
+
+  Widget _buildGridSliver({
+    required List<UserModel> users,
+    required BuildContext context,
+    required bool locked,
+  }) {
+    return SliverGrid(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.75,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (_, i) {
+          final user = users[i];
+          return Obx(() {
+            final unreadCount =
+                Get.find<UnreadMessagesController>().unreadFrom(user.id);
+            final hasStory = controller.userHasActiveStory(user.id);
+            final storyIsSeen = controller.userStoryIsSeen(user.id);
+
+            return _UserCard(
+              user: user,
+              unreadCount: unreadCount,
+              hasActiveStory: hasStory,
+              storyIsSeen: storyIsSeen,
+              locked: locked,
+              onTap: () {
+                if (locked) {
+                  showProfileLimitPaywall(context);
+                  return;
+                }
+                controller.openProfile(user);
+              },
+            );
+          });
+        },
+        childCount: users.length,
+      ),
+    );
   }
 
   Widget _buildShimmer() {
@@ -841,6 +830,288 @@ class _UsersGridScrollable extends GetView<HomeController> {
   }
 }
 
+// ─── BANNIÈRE HORIZONTALE "DÉBLOQUER PLUS DE PROFILS" ────────────
+// ✅ Badge "🔥" avec pulsation légère pour attirer l'œil dans une
+// grille de photos, et message personnalisé avec le prénom du
+// premier profil verrouillé.
+
+class _PremiumUnlockBanner extends StatefulWidget {
+  final int hiddenCount;
+  final String sampleName;
+  const _PremiumUnlockBanner(
+      {required this.hiddenCount, required this.sampleName});
+
+  @override
+  State<_PremiumUnlockBanner> createState() => _PremiumUnlockBannerState();
+}
+
+class _PremiumUnlockBannerState extends State<_PremiumUnlockBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.hiddenCount == 1
+        ? '${widget.sampleName} t\'attend'
+        : '${widget.sampleName} et ${widget.hiddenCount - 1} autre${widget.hiddenCount - 1 > 1 ? 's' : ''} à découvrir';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      child: GestureDetector(
+        onTap: () => showProfileLimitPaywall(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: AppColors.gradientPink,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                  color: AppColors.accent.withOpacity(0.35), blurRadius: 14),
+            ],
+          ),
+          child: Row(
+            children: [
+              ScaleTransition(
+                scale: Tween(begin: 0.9, end: 1.15).animate(CurvedAnimation(
+                    parent: _pulseCtrl, curve: Curves.easeInOut)),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle),
+                  child: const Center(
+                      child: Text('🔥', style: TextStyle(fontSize: 20))),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14)),
+                    const Text('Passe Premium pour tous les débloquer',
+                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PAYWALL — bottom sheet quand un profil verrouillé est tapé ──
+// ✅ Propose l'essai gratuit de 30 minutes en premier (une seule fois par
+// appareil), avec l'offre Premium en option secondaire. Affiche
+// l'échéance de "l'offre de lancement" pour créer de l'urgence.
+
+void showProfileLimitPaywall(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const _ProfileLimitPaywallSheet(),
+  );
+}
+
+class _ProfileLimitPaywallSheet extends StatelessWidget {
+  const _ProfileLimitPaywallSheet();
+
+  String _formatCountdown(Duration d) {
+    if (d.isNegative) return '0h 00min';
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    return '${h}h ${m.toString().padLeft(2, '0')}min';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<HomeController>();
+    final canTrial = !controller.hasUsedTrial && !controller.hasActiveTrial;
+    final remaining = controller.offerDeadline.difference(DateTime.now());
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          24, 28, 24, 32 + MediaQuery.of(context).padding.bottom),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink, shape: BoxShape.circle),
+              child: const Icon(Icons.workspace_premium_rounded,
+                  color: Colors.white, size: 30),
+            ),
+            const SizedBox(height: 16),
+            Text('Débloque tous les profils',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('Passe Premium pour voir jusqu\'à 600 profils au lieu de 15.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+
+            // ── Bandeau d'urgence "offre de lancement" ──────────────
+            if (!remaining.isNegative) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer_outlined,
+                        size: 14, color: Colors.orange),
+                    const SizedBox(width: 6),
+                    Text(
+                        'Offre de lancement — encore ${_formatCountdown(remaining)}',
+                        style: const TextStyle(
+                            color: Colors.orange,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 20),
+
+            // ── CTA principal : essai gratuit si disponible ─────────
+            if (canTrial)
+              GestureDetector(
+                onTap: () async {
+                  await controller.startFreeTrial();
+                  if (context.mounted) {
+                    Get.back();
+                    Get.snackbar(
+                      '🎉 Essai activé',
+                      'Tu profites de Premium gratuitement pendant 30 minutes',
+                      snackPosition: SnackPosition.TOP,
+                      backgroundColor: AppColors.surface,
+                      colorText: Colors.white,
+                      duration: const Duration(seconds: 3),
+                    );
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                      gradient: AppColors.gradientPink,
+                      borderRadius: BorderRadius.circular(16)),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Essayer gratuitement 30 minutes',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                      SizedBox(height: 2),
+                      Text('Sans engagement, une seule fois',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            if (canTrial) const SizedBox(height: 10),
+
+            // ── CTA secondaire (ou principal si essai déjà utilisé) ─
+            GestureDetector(
+              onTap: () {
+                Get.back();
+                Get.toNamed(AppRoutes.paywall);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: canTrial ? AppColors.surface2 : null,
+                  gradient: canTrial ? null : AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(16),
+                  border: canTrial ? Border.all(color: AppColors.border) : null,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Passer Premium',
+                        style: TextStyle(
+                            color:
+                                canTrial ? AppColors.textPrimary : Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15)),
+                    const SizedBox(height: 2),
+                    Text('650 FCFA / mois',
+                        style: TextStyle(
+                            color: canTrial
+                                ? AppColors.textMuted
+                                : Colors.white.withOpacity(0.85),
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => Get.back(),
+              child: Text('Plus tard',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── CARTE UTILISATEUR ───────────────────────────────────────────
 
 class _UserCard extends StatelessWidget {
@@ -849,7 +1120,7 @@ class _UserCard extends StatelessWidget {
   final int unreadCount;
   final bool hasActiveStory;
   final bool storyIsSeen;
-  final bool hasLikedMe;
+  final bool locked;
 
   const _UserCard({
     required this.user,
@@ -857,69 +1128,51 @@ class _UserCard extends StatelessWidget {
     this.unreadCount = 0,
     this.hasActiveStory = false,
     this.storyIsSeen = false,
-    this.hasLikedMe = false,
+    this.locked = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool hasUnread = unreadCount > 0;
-    // Priorité d'affichage : messages non lus > like reçu > story active
-    final bool showUnreadBorder = hasUnread;
-    final bool showLikeBorder = !hasUnread && hasLikedMe;
-    final bool showStoryBorder = !hasUnread && !hasLikedMe && hasActiveStory;
+    final bool hasUnread = unreadCount > 0 && !locked;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: showUnreadBorder
+          border: hasUnread
               ? Border.all(color: const Color(0xFFFFD700), width: 2)
-              : showLikeBorder
-                  ? Border.all(color: const Color(0xFFFF3CAC), width: 2)
-                  : showStoryBorder
-                      ? Border.all(
-                          color:
-                              storyIsSeen ? AppColors.border : AppColors.accent,
-                          width: 2)
-                      : null,
-          boxShadow: showUnreadBorder
+              : null,
+          boxShadow: hasUnread
               ? [
                   BoxShadow(
                       color: const Color(0xFFFFD700).withOpacity(0.3),
                       blurRadius: 8)
                 ]
-              : showLikeBorder
-                  ? [
-                      BoxShadow(
-                          color: const Color(0xFFFF3CAC).withOpacity(0.4),
-                          blurRadius: 10,
-                          spreadRadius: 0)
-                    ]
-                  : showStoryBorder && !storyIsSeen
-                      ? [
-                          BoxShadow(
-                              color: AppColors.accent.withOpacity(0.35),
-                              blurRadius: 10,
-                              spreadRadius: 0)
-                        ]
-                      : null,
+              : null,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Photo ──────────────────────────────────────
-              user.photoUrl != null && user.photoUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: user.photoUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => _GradientAvatar(name: user.name),
-                      errorWidget: (_, __, ___) =>
-                          _GradientAvatar(name: user.name),
-                    )
-                  : _GradientAvatar(name: user.name),
+              // ── Photo : vraie photo floutée si verrouillé ──────
+              // (montrer le vrai visage flouté donne plus envie
+              // qu'un pictogramme générique — le flou empêche
+              // seulement de distinguer les traits précis)
+              locked
+                  ? _LockedBlurredPhoto(
+                      photoUrl: user.photoUrl, name: user.name)
+                  : (user.photoUrl != null && user.photoUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: user.photoUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) =>
+                              _GradientAvatar(name: user.name),
+                          errorWidget: (_, __, ___) =>
+                              _GradientAvatar(name: user.name),
+                        )
+                      : _GradientAvatar(name: user.name)),
 
               // ── Gradient bas ───────────────────────────────
               Positioned.fill(
@@ -930,7 +1183,7 @@ class _UserCard extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.8)
+                        Colors.black.withOpacity(locked ? 0.5 : 0.8)
                       ],
                       stops: const [0.5, 1.0],
                     ),
@@ -938,174 +1191,122 @@ class _UserCard extends StatelessWidget {
                 ),
               ),
 
-              // ── Nom + distance ─────────────────────────────
-              Positioned(
-                bottom: 8,
-                left: 8,
-                right: 8,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('${user.name}, ${user.age}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis),
-                    if (user.distanceMeters != null)
-                      Text(HomeController.formatDistance(user.distanceMeters),
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 9)),
-                  ],
-                ),
-              ),
-
-              // ── Badge "Nouveau" hors ligne ─────────────────
-              if (user.isNewMember && !user.isOnline)
+              if (!locked) ...[
+                // ── Nom + distance ─────────────────────────────
                 Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.gradientPink,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Nouveau',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 7,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3),
-                    ),
-                  ),
-                ),
-
-              // ── Badge "Nouveau" + dot en ligne ────────────
-              if (user.isNewMember && user.isOnline)
-                Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Row(
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                            color: Colors.green, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.gradientPink,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Nouveau',
-                          style: TextStyle(
+                      Text(
+                          user.showBirthdate
+                              ? '${user.name}, ${user.age}'
+                              : user.name,
+                          style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 7,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3),
-                        ),
-                      ),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis),
+                      if (user.distanceMeters != null && user.showDistance)
+                        Text(HomeController.formatDistance(user.distanceMeters),
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 9)),
                     ],
                   ),
                 ),
 
-              // ── Dot online seul (sans badge nouveau) ───────
-              if (user.isOnline && !user.isNewMember)
-                Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                            color: Colors.green, shape: BoxShape.circle))),
+                // ── Dot en ligne ─────────────────────────────────
+                if (user.isOnline)
+                  Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                              color: Colors.green, shape: BoxShape.circle))),
 
-              // ── Icône ❤️ "t'a liké" (priorité sur l'icône story) ──
-              if (showLikeBorder)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFFF3CAC),
-                    ),
-                    child: const Center(
-                      child: Text('❤️', style: TextStyle(fontSize: 11)),
+                // ── Badge messages non lus ─────────────────────
+                if (hasUnread)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                          color: Color(0xFFFFD700), shape: BoxShape.circle),
+                      child: Text(unreadCount > 9 ? '9+' : '$unreadCount',
+                          style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900)),
                     ),
                   ),
-                )
-              // ── Icône story (si pas de like à afficher) ────
-              else if (hasActiveStory && !hasUnread)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: storyIsSeen
-                          ? null
-                          : LinearGradient(
-                              colors: [
-                                AppColors.accent,
-                                AppColors.accent2,
-                                AppColors.accent3,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                      color: storyIsSeen ? AppColors.border : null,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black.withOpacity(0.3),
-                      ),
-                      child: const Icon(
-                        Icons.play_circle_filled_rounded,
-                        color: Colors.white,
-                        size: 11,
-                      ),
-                    ),
-                  ),
-                ),
+              ],
 
-              // ── Badge messages non lus ─────────────────────
-              if (hasUnread)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                        color: Color(0xFFFFD700), shape: BoxShape.circle),
-                    child: Text(unreadCount > 9 ? '9+' : '$unreadCount',
-                        style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900)),
+              // ── Verrou Premium avec effet doré scintillant ────
+              if (locked)
+                Positioned.fill(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Shimmer.fromColors(
+                          baseColor: Colors.amber.shade200,
+                          highlightColor: Colors.white,
+                          period: const Duration(milliseconds: 1400),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                                color: Colors.amber, shape: BoxShape.circle),
+                            child: const Icon(Icons.lock_rounded,
+                                color: Colors.white, size: 18),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text('Premium',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
                   ),
                 ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+// ✅ Vraie photo floutée pour les profils verrouillés — le flou
+// empêche de distinguer les traits précis mais laisse deviner un
+// visage, ce qui donne davantage envie de débloquer qu'un
+// pictogramme générique.
+class _LockedBlurredPhoto extends StatelessWidget {
+  final String? photoUrl;
+  final String name;
+  const _LockedBlurredPhoto({required this.photoUrl, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
+      child: hasPhoto
+          ? CachedNetworkImage(
+              imageUrl: photoUrl!,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => _GradientAvatar(name: name),
+              errorWidget: (_, __, ___) => _GradientAvatar(name: name),
+            )
+          : _GradientAvatar(name: name),
     );
   }
 }

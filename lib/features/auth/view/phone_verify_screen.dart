@@ -207,7 +207,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
     // ✅ Avertissement si format incorrect — on laisse quand même continuer
     if (_formatWarning != null) {
       final confirm = await Get.dialog<bool>(AlertDialog(
-        backgroundColor: const Color(0xFF11111C),
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Format inhabituel',
             style: TextStyle(
@@ -217,21 +217,21 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 fontSize: 16)),
         content: Text(
           '$_formatWarning\n\nTu peux quand même continuer si ton numéro est correct.',
-          style: const TextStyle(
-              color: Color(0xFF5A5A78), fontSize: 13, height: 1.5),
+          style: TextStyle(
+              color: AppColors.textMuted, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
               onPressed: () => Get.back(result: false),
-              child: const Text('Corriger',
-                  style: TextStyle(color: Color(0xFF5A5A78)))),
+              child: Text('Corriger',
+                  style: TextStyle(color: AppColors.textMuted))),
           GestureDetector(
             onTap: () => Get.back(result: true),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]),
+                gradient: LinearGradient(
+                    colors: [AppColors.accent, AppColors.accent2]),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text('Continuer quand même',

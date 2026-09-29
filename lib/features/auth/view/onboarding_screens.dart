@@ -320,7 +320,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       if (digits.length != 8) {
         Get.snackbar('Erreur', 'Date invalide. Entre JJ/MM/AAAA.',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
         return;
       }
@@ -344,7 +344,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       if (age < 18 || age > 100) {
         Get.snackbar('Erreur', 'Âge invalide ($age ans).',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
         return;
       }
@@ -362,7 +362,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       if (uid == null) {
         Get.snackbar('Erreur', 'Session expirée. Reconnecte-toi.',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
         Get.offAllNamed('/splash');
         return;
@@ -374,12 +374,15 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
 
       // Essayer update, puis insert si profil inexistant
       try {
-        await Supabase.instance.client.from('profiles').update({
+        final updated = await Supabase.instance.client.from('profiles').update({
           'name': nom,
           'birthdate': birthdateStr,
           'age': age,
-          'updated_at': now.toIso8601String(),
-        }).eq('id', uid);
+          'updated_at': now.toUtc().toIso8601String(),
+        }).eq('id', uid).select('id');
+        // ✅ Un update sur 0 ligne ne lève pas d'erreur : sans ce test
+        // l'insert de secours ne s'exécutait jamais.
+        if ((updated as List).isEmpty) throw Exception('profil absent');
         debugPrint('✅ Update OK');
       } catch (_) {
         await Supabase.instance.client.from('profiles').insert({
@@ -400,8 +403,8 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
           'followers_count': 0,
           'following_count': 0,
           'matches_count': 0,
-          'created_at': now.toIso8601String(),
-          'updated_at': now.toIso8601String(),
+          'created_at': now.toUtc().toIso8601String(),
+          'updated_at': now.toUtc().toIso8601String(),
         });
         debugPrint('✅ Insert OK');
       }
@@ -415,7 +418,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
               ? e.toString().substring(0, 100)
               : e.toString(),
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white,
           duration: const Duration(seconds: 6));
     } finally {
@@ -858,7 +861,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
       heroColor2: const Color(0xFF2d0a1e),
       emoji: '📸',
       tagColor: AppColors.accent,
-      tagBg: const Color(0x1AFF3CAC),
+      tagBg: AppColors.accent.withValues(alpha: 0.1),
       tag: '✨ Étape 1 / 5',
       title: 'Ajoute ta ',
       titleHighlight: 'photo',
@@ -1013,7 +1016,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
       heroColor2: const Color(0xFF0a1a2e),
       emoji: '💫',
       tagColor: AppColors.accent,
-      tagBg: const Color(0x1AFF3CAC),
+      tagBg: AppColors.accent.withValues(alpha: 0.1),
       tag: '💫 Étape 2 / 5',
       title: 'Qui ',
       titleHighlight: 'es-tu ?',
@@ -1274,7 +1277,7 @@ class OnboardingPermissionsScreen extends StatelessWidget {
       heroColor2: const Color(0xFF2e2a0a),
       emoji: '📍',
       tagColor: AppColors.accent2,
-      tagBg: const Color(0x1A7B2FFF),
+      tagBg: AppColors.accent2.withValues(alpha: 0.1),
       tag: '📍 Étape 4 / 4',
       title: 'Active ta ',
       titleHighlight: 'position',

@@ -1,7 +1,47 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Token mis en cache au niveau du module (persiste entre les requêtes du même worker)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+// ✅ NOUVEAU — n'accepte que les administrateurs.
+// La clé "anon" publique n'est PAS un utilisateur : elle est refusée (401).
+// Un utilisateur normal est refusé (403). Seul un compte présent dans la
+// table `admins` passe.
+async function requireAdmin(req: Request): Promise<Response | null> {
+  const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  if (!jwt) return jsonResponse({ error: 'Non autorisé' }, 401);
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+
+  const { data, error } = await supabase.auth.getUser(jwt);
+  const email = data?.user?.email;
+  if (error || !email) return jsonResponse({ error: 'Non autorisé' }, 401);
+
+  const { data: adminRow } = await supabase
+    .from('admins')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+  if (!adminRow) return jsonResponse({ error: 'Réservé aux administrateurs' }, 403);
+
+  return null;
+}
+
+// ── Token OAuth2 mis en cache (même mécanique que les autres fonctions) ──
 let _accessToken: string | null = null;
 let _tokenExpiry = 0;
 let _cryptoKey: CryptoKey | null = null;
@@ -53,90 +93,61 @@ async function getAccessToken(sa: any): Promise<string> {
 
   const data = await res.json();
   if (!data.access_token) throw new Error(`Token error: ${JSON.stringify(data)}`);
-  
+
   _accessToken = data.access_token;
   _tokenExpiry = now + 3000;
   return _accessToken!;
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*" } });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
+  // ✅ NOUVEAU — contrôle d'accès avant tout le reste
+  const denied = await requireAdmin(req);
+  if (denied) return denied;
+
   try {
-    const body = await req.json();
-    const record = body.record ?? body;
-    const { conversation_id, sender_id, content, type } = record;
+    const { token, title, body } = await req.json();
 
-    if (!conversation_id || !sender_id) {
-      return new Response("Missing fields", { status: 400 });
+    if (!token || !title || !body) {
+      return jsonResponse({ error: 'token, title et body sont obligatoires' }, 400);
+    }
+    if (String(title).length > 100 || String(body).length > 500) {
+      return jsonResponse({ error: 'title (100 max) ou body (500 max) trop long' }, 400);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const saRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!;
-    
+    const saRaw = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
+    if (!saRaw) {
+      return jsonResponse({ error: 'FIREBASE_SERVICE_ACCOUNT non configuré' }, 500);
+    }
     const sa = JSON.parse(saRaw);
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Récupère conversation + token OAuth2 en parallèle
-    const [{ data: conv }, accessToken] = await Promise.all([
-      supabase.from("conversations")
-        .select("user1_id, user2_id")
-        .eq("id", conversation_id)
-        .single(),
-      getAccessToken(sa),
-    ]);
-
-    if (!conv) {
-      console.log("Conversation not found:", conversation_id);
-      return new Response("conv not found", { status: 404 });
-    }
-
-    const recipientId = conv.user1_id === sender_id ? conv.user2_id : conv.user1_id;
-
-    const [{ data: recipient }, { data: sender }] = await Promise.all([
-      supabase.from("profiles").select("fcm_token").eq("id", recipientId).single(),
-      supabase.from("profiles").select("name").eq("id", sender_id).single(),
-    ]);
-
-    if (!recipient?.fcm_token) {
-      console.log("No FCM token for recipient:", recipientId);
-      return new Response("no fcm token", { status: 200 });
-    }
-
-    const senderName = sender?.name ?? "Quelqu'un";
-    const notifBody = type === "text"
-      ? (content?.length > 100 ? content.substring(0, 97) + "..." : content ?? "")
-      : type === "image" ? "📷 Photo"
-      : type === "audio" ? "🎤 Vocal"
-      : "Nouveau message";
+    const accessToken = await getAccessToken(sa);
 
     const fcmRes = await fetch(
       `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
       {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: {
-            token: recipient.fcm_token,
-            notification: { title: senderName, body: notifBody },
+            token,
+            notification: { title, body },
             data: {
-              type: "message",
-              conversationId: conversation_id,
-              senderId: sender_id,
-              senderName,
+              title,
+              body,
+              type: 'admin_notification',
+              click_action: 'FLUTTER_NOTIFICATION_CLICK',
             },
             android: {
-              priority: "high",
+              priority: 'high',
               notification: {
-                sound: "default",
-                channel_id: "messages",
-                click_action: "FLUTTER_NOTIFICATION_CLICK",
+                sound: 'default',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
               },
             },
           },
@@ -145,17 +156,11 @@ serve(async (req) => {
     );
 
     const result = await fcmRes.json();
-    console.log("✅ FCM result:", JSON.stringify(result));
+    console.log('✅ FCM send-notification result:', JSON.stringify(result));
 
-    return new Response(JSON.stringify({ success: true, result }), {
-      headers: { "Content-Type": "application/json" },
-    });
-
-  } catch (err) {
-    console.error("❌ Error:", String(err));
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: true, result });
+  } catch (err: any) {
+    console.error('❌ Error:', String(err));
+    return jsonResponse({ error: err.message }, 500);
   }
 });

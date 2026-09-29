@@ -68,12 +68,33 @@ class _ConversationScreenState extends State<ConversationScreen> {
   late String _convId;
   final _textController = TextEditingController();
 
+  // ✅ FIX — contrôleurs créés par un nouvel écran alors que l'écran
+  // précédent de la même conversation (en cours de fermeture) occupe
+  // encore le tag convId. Ils prennent le relais sous ce tag dès que
+  // l'ancien contrôleur est supprimé.
+  static final Map<String, ConversationController> _pendingByConv = {};
+
   @override
   void initState() {
     super.initState();
     final conv = Get.arguments as ConversationModel;
     _convId = conv.id;
-    ctrl = Get.put(ConversationController(), tag: _convId);
+    // ✅ FIX — chaque écran possède SA propre instance. Auparavant,
+    // Get.put renvoyait l'instance déjà enregistrée sous ce tag (ex :
+    // réouverture depuis une notification : Get.back puis toNamed),
+    // puis la suppression différée de l'ancien écran la fermait
+    // (ScrollController utilisé après dispose, Realtime perdu).
+    // L'enregistrement est "permanent" pour que le nettoyage automatique
+    // de GetX par route (qui supprime par clé, donc potentiellement
+    // l'instance du nouvel écran) ne s'applique pas : c'est dispose()
+    // ci-dessous qui gère la durée de vie.
+    ctrl = ConversationController();
+    if (Get.isRegistered<ConversationController>(tag: _convId)) {
+      ctrl.onStart();
+      _pendingByConv[_convId] = ctrl;
+    } else {
+      Get.put(ctrl, tag: _convId, permanent: true);
+    }
     ctrl.textController = _textController;
     _textController.addListener(ctrl.onTextChanged);
     ctrl.init(conv);
@@ -86,9 +107,31 @@ class _ConversationScreenState extends State<ConversationScreen> {
     } catch (_) {}
     _textController.dispose();
     final convId = _convId;
+    final mine = ctrl;
+    // ✅ FIX — si cet écran attendait encore de prendre le tag, il
+    // renonce à le faire.
+    if (identical(_pendingByConv[convId], mine)) {
+      _pendingByConv.remove(convId);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (Get.isRegistered<ConversationController>(tag: convId)) {
+      // ✅ FIX — on ne supprime l'enregistrement que s'il s'agit bien
+      // de l'instance créée par CET écran ; sinon on ferme seulement
+      // notre propre instance, sans toucher à celle d'un autre écran.
+      final registered = Get.isRegistered<ConversationController>(tag: convId)
+          ? Get.find<ConversationController>(tag: convId)
+          : null;
+      if (identical(registered, mine)) {
         Get.delete<ConversationController>(tag: convId, force: true);
+      } else {
+        mine.onDelete();
+      }
+      // ✅ FIX — un écran plus récent de la même conversation prend le
+      // relais sous le tag convId (utilisé par la liste, les stories…).
+      if (!Get.isRegistered<ConversationController>(tag: convId)) {
+        final next = _pendingByConv.remove(convId);
+        if (next != null && !next.isClosed) {
+          Get.put(next, tag: convId, permanent: true);
+        }
       }
     });
     super.dispose();
@@ -100,9 +143,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       backgroundColor: AppColors.bg,
       appBar: _buildAppBar(context),
       body: Column(children: [
-        Obx(() => ctrl.ephemeralMode.value
-            ? _EphemeralBanner(ctrl: ctrl)
-            : const SizedBox.shrink()),
+        const _EphemeralBanner(),
         Expanded(child: _MessageList(ctrl: ctrl)),
         _InputBar(ctrl: ctrl),
       ]),
@@ -470,25 +511,21 @@ class _Div extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 
 class _EphemeralBanner extends StatelessWidget {
-  final ConversationController ctrl;
-  const _EphemeralBanner({required this.ctrl});
+  const _EphemeralBanner();
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: AppColors.accent.withOpacity(0.07),
-      child: Row(children: [
-        Icon(Icons.timer_rounded, size: 13, color: AppColors.accent),
-        const SizedBox(width: 7),
-        Expanded(
-            child: Text(
-                'Mode éphémère activé — messages disparaissent après 24h',
-                style: TextStyle(fontSize: 11, color: AppColors.accent))),
-        GestureDetector(
-            onTap: ctrl.toggleEphemeralMode,
-            child: Icon(Icons.close_rounded,
-                size: 14, color: AppColors.textMuted)),
+      color: AppColors.surface2,
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.timer_outlined, size: 13, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text('Les messages disparaissent 24h après avoir été vus',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        ),
       ]),
     );
   }
@@ -820,60 +857,212 @@ class _ReactionsRow extends StatelessWidget {
 //  STORY / REPLY PREVIEW
 // ═══════════════════════════════════════════════════════════════════
 
+// ✅ MIS À JOUR — cadre agrandi + tap pour voir la story façon Snapchat
+// (plein écran, nom de l'auteur, bouton retour) au lieu de rester
+// statique dans la bulle de chat.
 class _StoryReplyPreview extends StatelessWidget {
   final StoryReplyData storyReply;
   final bool isMine;
   const _StoryReplyPreview({required this.storyReply, required this.isMine});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
-      margin: const EdgeInsets.only(bottom: 3),
-      decoration: BoxDecoration(
-        color: isMine ? Colors.white.withOpacity(0.1) : AppColors.surface2,
-        borderRadius: BorderRadius.circular(10),
-        border: Border(
-            left: BorderSide(
-                color: isMine ? Colors.white38 : AppColors.accent, width: 3)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        ClipRRect(
-          borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(8), bottomLeft: Radius.circular(8)),
-          child: SizedBox(
-              width: 40,
-              height: 50,
-              child: CachedNetworkImage(
-                  imageUrl: storyReply.storyPreviewUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(
-                      color: AppColors.surface,
-                      child: const Icon(Icons.photo_camera_rounded,
-                          color: Colors.white38, size: 16)))),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _StoryReplyFullScreen(storyReply: storyReply),
+          ),
+        );
+      },
+      child: Container(
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.68),
+        margin: const EdgeInsets.only(bottom: 3),
+        decoration: BoxDecoration(
+          color: isMine ? Colors.white.withOpacity(0.1) : AppColors.surface2,
+          borderRadius: BorderRadius.circular(12),
+          border: Border(
+              left: BorderSide(
+                  color: isMine ? Colors.white38 : AppColors.accent, width: 3)),
         ),
-        Flexible(
-            child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(storyReply.storyIsVideo ? '🎬 Vidéo' : '📸 Photo',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isMine ? Colors.white70 : AppColors.accent)),
-                const SizedBox(height: 2),
-                Text(
-                    storyReply.storyOwnerName.isNotEmpty
-                        ? 'Story de ${storyReply.storyOwnerName}'
-                        : 'Story',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(9), bottomLeft: Radius.circular(9)),
+            child: SizedBox(
+              // ✅ Cadre agrandi (56x72 au lieu de 40x50)
+              width: 56,
+              height: 72,
+              child: Stack(fit: StackFit.expand, children: [
+                CachedNetworkImage(
+                    imageUrl: storyReply.storyPreviewUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(
+                        color: AppColors.surface,
+                        child: const Icon(Icons.photo_camera_rounded,
+                            color: Colors.white38, size: 18))),
+                if (storyReply.storyIsVideo)
+                  Container(
+                    color: Colors.black26,
+                    child: const Center(
+                        child: Icon(Icons.play_circle_fill_rounded,
+                            color: Colors.white, size: 22)),
+                  ),
               ]),
-        )),
+            ),
+          ),
+          Flexible(
+              child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(storyReply.storyIsVideo ? '🎬 Vidéo' : '📸 Photo',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isMine ? Colors.white70 : AppColors.accent)),
+                  const SizedBox(height: 3),
+                  Text(
+                      storyReply.storyOwnerName.isNotEmpty
+                          ? 'Story de ${storyReply.storyOwnerName}'
+                          : 'Story',
+                      style:
+                          TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.visibility_rounded,
+                        size: 11, color: AppColors.textMuted),
+                    const SizedBox(width: 3),
+                    Text('Voir',
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600)),
+                  ]),
+                ]),
+          )),
+        ]),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ✅ NOUVEAU — VISIONNAGE DE LA STORY DEPUIS LE CHAT, FAÇON SNAPCHAT
+//  Plein écran, nom de l'auteur en en-tête, bouton retour. On ne
+//  rejoue pas la story originale (elle peut avoir expiré) : on
+//  affiche l'aperçu conservé au moment de la réponse.
+// ═══════════════════════════════════════════════════════════════════
+
+class _StoryReplyFullScreen extends StatefulWidget {
+  final StoryReplyData storyReply;
+  const _StoryReplyFullScreen({required this.storyReply});
+
+  @override
+  State<_StoryReplyFullScreen> createState() => _StoryReplyFullScreenState();
+}
+
+class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
+  VideoPlayerController? _videoCtrl;
+  bool _videoReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.storyReply.storyIsVideo) {
+      final ctrl = VideoPlayerController.networkUrl(
+          Uri.parse(widget.storyReply.storyPreviewUrl));
+      _videoCtrl = ctrl;
+      ctrl.initialize().then((_) {
+        if (!mounted) return;
+        setState(() => _videoReady = true);
+        ctrl.setLooping(true);
+        ctrl.play();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoCtrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final story = widget.storyReply;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(fit: StackFit.expand, children: [
+        Center(
+          child: story.storyIsVideo
+              ? (_videoReady && _videoCtrl != null
+                  ? AspectRatio(
+                      aspectRatio: _videoCtrl!.value.aspectRatio,
+                      child: VideoPlayer(_videoCtrl!))
+                  : const CircularProgressIndicator(color: Colors.white))
+              : CachedNetworkImage(
+                  imageUrl: story.storyPreviewUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white)),
+                  errorWidget: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image_rounded,
+                          color: Colors.white38, size: 48)),
+                ),
+        ),
+        // ── Dégradé + en-tête façon Snapchat ──
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+                12, MediaQuery.of(context).padding.top + 8, 12, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xCC000000), Colors.transparent],
+              ),
+            ),
+            child: Row(children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                      color: Colors.black38,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24)),
+                  child: const Icon(Icons.close_rounded,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  story.storyOwnerName.isNotEmpty
+                      ? 'Story de ${story.storyOwnerName}'
+                      : 'Story',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ]),
+          ),
+        ),
       ]),
     );
   }
@@ -1003,11 +1192,29 @@ class _SnapBubbleState extends State<_SnapBubble> {
     if (widget.msg.isOpened && widget.msg.expiresAt != null) _startCountdown();
   }
 
+  // ✅ FIX — le message devient "ouvert" APRÈS la création du widget
+  // (openSnap met à jour isOpened/expiresAt) : on démarre alors le
+  // compte à rebours, sinon "Snap expiré" s'affichait immédiatement.
+  @override
+  void didUpdateWidget(covariant _SnapBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final msg = widget.msg;
+    if (msg.isOpened &&
+        msg.expiresAt != null &&
+        (!oldWidget.msg.isOpened ||
+            oldWidget.msg.expiresAt != msg.expiresAt)) {
+      _startCountdown();
+    }
+  }
+
   void _startCountdown() {
     if (widget.msg.expiresAt == null) return;
+    _timer?.cancel(); // ✅ FIX — pas de double timer
     final rem = widget.msg.expiresAt!.difference(DateTime.now()).inSeconds;
     if (rem <= 0) return;
-    if (mounted) setState(() => _countdown = rem);
+    // ✅ FIX — appelé depuis initState/didUpdateWidget, un build suit
+    // toujours : affectation directe au lieu de setState.
+    _countdown = rem;
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
         t.cancel();
@@ -1577,6 +1784,10 @@ class _StatusIcon extends StatelessWidget {
 //  LOCATION BUBBLE
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+//  LOCATION BUBBLE — design moderne façon Telegram/WhatsApp
+// ═══════════════════════════════════════════════════════════════════
+
 class _LocationBubble extends StatelessWidget {
   final MessageModel msg;
   final bool isMine;
@@ -1604,90 +1815,187 @@ class _LocationBubble extends StatelessWidget {
     }
     final gUri = Uri.parse(
         'https://www.google.com/maps/search/?api=1&query=${pt.latitude},${pt.longitude}');
-    if (await canLaunchUrl(gUri))
+    if (await canLaunchUrl(gUri)) {
       await launchUrl(gUri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  String _coordsLabel(LatLng pt) {
+    return '${pt.latitude.toStringAsFixed(4)}, ${pt.longitude.toStringAsFixed(4)}';
   }
 
   @override
   Widget build(BuildContext context) {
     final pt = _parseLatLng();
     return Container(
-      width: 230,
+      width: 240,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-          gradient: isMine ? AppColors.gradientPink : null,
-          color: isMine ? null : AppColors.surface2,
-          borderRadius: BorderRadius.circular(16)),
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color:
+                isMine ? AppColors.accent.withOpacity(0.35) : AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: SizedBox(
-                height: 140,
-                child: pt != null
-                    ? FlutterMap(
+        // ── Carte avec pin flottant ──
+        GestureDetector(
+          onTap: pt != null ? () => _open(pt) : null,
+          child: SizedBox(
+            height: 150,
+            child: pt != null
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      FlutterMap(
                         options: MapOptions(
                             initialCenter: pt,
-                            initialZoom: 15,
+                            initialZoom: 15.5,
                             interactionOptions: const InteractionOptions(
                                 flags: InteractiveFlag.none)),
                         children: [
-                            TileLayer(
-                                urlTemplate:
-                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                userAgentPackageName: 'com.vybestyle.zamu'),
-                            MarkerLayer(markers: [
-                              Marker(
-                                  point: pt,
-                                  width: 30,
-                                  height: 30,
-                                  child: Container(
-                                      decoration: BoxDecoration(
-                                          color: AppColors.accent,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                              color: Colors.white, width: 2)),
-                                      child: const Icon(
-                                          Icons.location_on_rounded,
-                                          color: Colors.white,
-                                          size: 15)))
-                            ]),
-                          ])
-                    : Container(
-                        color: AppColors.surface,
-                        child: const Center(
-                            child: Icon(Icons.map_rounded,
-                                size: 32, color: Colors.white38))))),
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.vybestyle.zamu',
+                          ),
+                        ],
+                      ),
+                      // Léger voile pour unifier la carte avec le thème sombre
+                      Container(color: Colors.black.withOpacity(0.12)),
+                      // Pin central avec ombre douce, style goutte moderne
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: AppColors.gradientPink,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.accent.withOpacity(0.5),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(Icons.location_on_rounded,
+                                  color: Colors.white, size: 18),
+                            ),
+                            const SizedBox(height: 3),
+                            Container(
+                              width: 5,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withOpacity(0.35),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Badge "en direct" discret en haut à gauche
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.my_location_rounded,
+                                  size: 10, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text('Position',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Container(
+                    color: AppColors.surface,
+                    child: Center(
+                        child: Icon(Icons.map_outlined,
+                            size: 32, color: AppColors.textMuted)),
+                  ),
+          ),
+        ),
+
+        // ── Footer avec infos + bouton ──
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           child: Row(children: [
-            const Icon(Icons.location_on_rounded,
-                size: 15, color: Colors.white),
-            const SizedBox(width: 8),
-            const Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text('Ma position',
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent.withOpacity(0.12),
+              ),
+              child:
+                  Icon(Icons.place_rounded, size: 16, color: AppColors.accent),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Position partagée',
                       style: TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white)),
-                  Text('Appuie pour naviguer',
-                      style: TextStyle(fontSize: 10, color: Colors.white60)),
-                ])),
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  if (pt != null) ...[
+                    const SizedBox(height: 1),
+                    Text(_coordsLabel(pt),
+                        style: TextStyle(
+                            fontSize: 10.5, color: AppColors.textMuted)),
+                  ],
+                ],
+              ),
+            ),
             if (pt != null)
               GestureDetector(
-                  onTap: () => _open(pt),
-                  child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: const Text('Ouvrir',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600)))),
+                onTap: () => _open(pt),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradientPink,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.directions_rounded,
+                        size: 13, color: Colors.white),
+                    const SizedBox(width: 4),
+                    const Text('Itinéraire',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                  ]),
+                ),
+              ),
           ]),
         ),
       ]),
@@ -1981,11 +2289,6 @@ class _AttachMenu extends StatelessWidget {
             label: 'Position',
             color: const Color(0xFFFFD93D),
             onTap: ctrl.envoyerLocalisation),
-        _AttachItem(
-            icon: Icons.timer_outlined,
-            label: 'Éphémère',
-            color: const Color(0xFFFF6B6B),
-            onTap: ctrl.toggleEphemeralMode),
       ]),
     );
   }
@@ -2255,7 +2558,8 @@ class _PreviewSheetState extends State<_PreviewSheet> {
       final url = Supabase.instance.client.storage
           .from('snaps')
           .getPublicUrl(storagePath);
-      final now = DateTime.now().toIso8601String();
+      // ✅ FIX — horodatages envoyés en UTC (timestamptz)
+      final now = DateTime.now().toUtc().toIso8601String();
       await Supabase.instance.client.from('messages').insert({
         'conversation_id': widget.ctrl.conversation.id,
         'sender_id': widget.ctrl.myId,
@@ -2264,9 +2568,6 @@ class _PreviewSheetState extends State<_PreviewSheet> {
         'media_url': url,
         'status': 'sent',
         'created_at': now,
-        if (widget.ctrl.ephemeralMode.value)
-          'disappears_at':
-              DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
         if (_modeEphemere && _duree.seconds != null)
           'snap_duration': _duree.seconds,
       });

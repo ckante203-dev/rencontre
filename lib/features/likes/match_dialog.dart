@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
+import 'package:rencontre/core/theme/app_theme.dart';
 
 class MatchDialog extends StatefulWidget {
   final UserModel matchedUser;
@@ -51,15 +52,15 @@ class _MatchDialogState extends State<MatchDialog>
         child: Container(
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
           decoration: BoxDecoration(
-            color: const Color(0xFF13131A),
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: const Color(0xFFFF3CAC).withOpacity(0.35),
+              color: AppColors.accent.withOpacity(0.35),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFFF3CAC).withOpacity(0.2),
+                color: AppColors.accent.withOpacity(0.2),
                 blurRadius: 50,
                 spreadRadius: 5,
               ),
@@ -76,14 +77,14 @@ class _MatchDialogState extends State<MatchDialog>
                   height: 76,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
+                    gradient: LinearGradient(
+                      colors: [AppColors.accent, AppColors.accent2],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF3CAC).withOpacity(0.55),
+                        color: AppColors.accent.withOpacity(0.55),
                         blurRadius: 28,
                         spreadRadius: 4,
                       ),
@@ -97,8 +98,8 @@ class _MatchDialogState extends State<MatchDialog>
 
               // Titre
               ShaderMask(
-                shaderCallback: (b) => const LinearGradient(
-                  colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
+                shaderCallback: (b) => LinearGradient(
+                  colors: [AppColors.accent, AppColors.accent2],
                 ).createShader(b),
                 child: const Text(
                   "C'est un Match !",
@@ -140,15 +141,15 @@ class _MatchDialogState extends State<MatchDialog>
                 height: 52,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
+                    gradient: LinearGradient(
+                      colors: [AppColors.accent, AppColors.accent2],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF3CAC).withOpacity(0.4),
+                        color: AppColors.accent.withOpacity(0.4),
                         blurRadius: 18,
                         offset: const Offset(0, 5),
                       ),
@@ -240,14 +241,14 @@ class _MatchAvatar extends StatelessWidget {
       height: 92,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
+        gradient: LinearGradient(
+          colors: [AppColors.accent, AppColors.accent2],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF3CAC).withOpacity(0.4),
+            color: AppColors.accent.withOpacity(0.4),
             blurRadius: 22,
             spreadRadius: 2,
           ),
@@ -267,7 +268,7 @@ class _MatchAvatar extends StatelessWidget {
   }
 
   Widget _fallback(String name) => Container(
-        color: const Color(0xFF1C1C28),
+        color: AppColors.surface2,
         child: Center(
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : '?',

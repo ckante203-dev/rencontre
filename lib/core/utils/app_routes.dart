@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/auth/view/splash_screen.dart';
 import 'package:rencontre/features/auth/view/login_screen.dart';
@@ -15,8 +14,9 @@ import 'package:rencontre/features/profil/vue/ecran_parametres.dart';
 import 'package:rencontre/features/profil/vue/ecran_profils_bloques.dart';
 import 'package:rencontre/features/notifications/view/notifications_screen.dart';
 import 'package:rencontre/features/notifications/controller/notification_controller.dart';
-import 'package:rencontre/features/follow/view/followers_screen.dart';
-import 'package:rencontre/features/follow/controller/follow_controller.dart';
+import 'package:rencontre/features/likes/likes_insights_screen.dart';
+import 'package:rencontre/features/likes/likes_details_screen.dart';
+import 'package:rencontre/features/premium/view/paywall_screen.dart';
 
 class AppRoutes {
   static const splash = '/splash';
@@ -35,8 +35,11 @@ class AppRoutes {
   static const profilEdit = '/profile/edit';
   static const profilSettings = '/profile/settings';
   static const profilsBloques = '/profile/blocked';
-  static const notifications = '/notifications'; // ✅ NOUVEAU
-  static const followers = '/followers'; // ✅ NOUVEAU
+  static const notifications = '/notifications';
+  // ✅ NOUVEAU — paywall "qui m'a vu / liké"
+  static const likesInsights = '/likes/insights';
+  static const likesDetails = '/likes/details';
+  static const paywall = '/premium/paywall';
 
   static final pages = [
     GetPage(
@@ -97,7 +100,6 @@ class AppRoutes {
         name: profilsBloques,
         page: () => const EcranProfilsBloques(),
         transition: Transition.cupertino),
-    // ✅ NOUVEAU
     GetPage(
         name: notifications,
         page: () => const NotificationsScreen(),
@@ -106,13 +108,20 @@ class AppRoutes {
           Get.lazyPut<NotificationController>(() => NotificationController(),
               fenix: true);
         })),
-    // ✅ NOUVEAU
+    // ✅ NOUVEAU — écran des compteurs "qui m'a vu / liké" (paywall)
     GetPage(
-        name: followers,
-        page: () => const FollowersScreen(),
-        transition: Transition.rightToLeft,
-        binding: BindingsBuilder(() {
-          Get.lazyPut<FollowController>(() => FollowController(), fenix: true);
-        })),
+        name: likesInsights,
+        page: () => const LikesInsightsScreen(),
+        transition: Transition.rightToLeft),
+    // ✅ NOUVEAU — vraie liste débloquée (réservée aux premium)
+    GetPage(
+        name: likesDetails,
+        page: () => const LikesDetailsScreen(),
+        transition: Transition.rightToLeft),
+    // ✅ NOUVEAU — écran d'abonnement RevenueCat
+    GetPage(
+        name: paywall,
+        page: () => const PaywallScreen(),
+        transition: Transition.rightToLeft),
   ];
 }

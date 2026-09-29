@@ -35,6 +35,15 @@ class ChatListController extends GetxController {
   Timer? _pollingTimer;
   Timer? _watchdogTimer;
   DateTime? _lastSyncAt;
+  // ✅ FIX — état du canal Realtime, dernière resynchro complète, et
+  // drapeau de fermeture (les callbacks de statut arrivant après
+  // onClose ne doivent plus relancer de polling).
+  bool _realtimeSubscribed = false;
+  DateTime? _lastFullSyncAt;
+  bool _closed = false;
+  // ✅ FIX — nombre de non-lus déjà signalés "delivered" par conversation,
+  // pour ne pas renvoyer la requête à chaque rechargement.
+  final Map<String, int> _deliveredMarkedFor = {};
 
   int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
 
@@ -82,11 +91,12 @@ class ChatListController extends GetxController {
     _subscribeToMessages();
   }
 
-  Future<void> loadConversations() async {
-    isLoading.value = true;
+  Future<void> loadConversations({bool silent = false}) async {
+    if (!silent) isLoading.value = true;
     try {
       final uid = _service.currentUserId!;
       final data = await _service.fetchConversations();
+      if (_closed) return; // ✅ FIX — contrôleur fermé entre-temps
       conversations.value = data.map((row) {
         final isUser1 = row['user1_id'] == uid;
         final otherProfile = isUser1
@@ -123,10 +133,14 @@ class ChatListController extends GetxController {
       _sortConversations();
       // ✅ FIX Realtime — on marque l'heure de la dernière synchro réussie
       _lastSyncAt = DateTime.now();
+      _lastFullSyncAt = _lastSyncAt;
+      // ✅ FIX — l'expéditeur doit voir "distribué" dès que la liste
+      // reçoit ses messages (pas seulement à l'ouverture de la conv).
+      _markDeliveredForUnread();
     } catch (e) {
       debugPrint('ChatListController error: $e');
     } finally {
-      isLoading.value = false;
+      if (!silent) isLoading.value = false;
     }
     update();
   }
@@ -138,6 +152,21 @@ class ChatListController extends GetxController {
       return (b.lastActivity ?? DateTime(0))
           .compareTo(a.lastActivity ?? DateTime(0));
     });
+  }
+
+  // ✅ FIX — marque "delivered" (sans attendre, sans bloquer) les
+  // messages reçus des conversations ayant des non-lus. Une requête
+  // n'est renvoyée que si le nombre de non-lus a changé.
+  void _markDeliveredForUnread() {
+    for (final c in conversations) {
+      if (c.unreadCount <= 0) {
+        _deliveredMarkedFor.remove(c.id);
+        continue;
+      }
+      if (_deliveredMarkedFor[c.id] == c.unreadCount) continue;
+      _deliveredMarkedFor[c.id] = c.unreadCount;
+      unawaited(_service.markMessagesAsDelivered(c.id));
+    }
   }
 
   void togglePin(ConversationModel conv) {
@@ -172,6 +201,7 @@ class ChatListController extends GetxController {
           schema: 'public',
           table: 'messages',
           callback: (payload) async {
+            if (_closed) return; // ✅ FIX — contrôleur fermé
             final record = payload.newRecord;
             final senderId = record['sender_id'] as String?;
             final convId = record['conversation_id'] as String?;
@@ -182,17 +212,15 @@ class ChatListController extends GetxController {
             final isMine = senderId == uid;
             final isConvOpen =
                 Get.isRegistered<ConversationController>(tag: convId);
+            // ✅ FIX — message reçu par la liste : l'expéditeur doit le
+            // voir "distribué" (sans bloquer). Si la conversation est
+            // ouverte, elle le passe déjà en "lu".
+            if (!isMine && !isConvOpen) {
+              unawaited(_service.markMessagesAsDelivered(convId));
+            }
             final idx = conversations.indexWhere((c) => c.id == convId);
             if (idx != -1) {
               final c = conversations[idx];
-              if (!isMine && !isConvOpen) {
-                await NotificationService.showMessageNotification(
-                  senderName: c.userName,
-                  message: _getMessagePreview(record),
-                  senderPhoto: c.userPhotoUrl,
-                  conversationId: convId,
-                );
-              }
               conversations.removeAt(idx);
               conversations.insert(
                   0,
@@ -219,71 +247,69 @@ class ChatListController extends GetxController {
               _sortConversations();
               update();
             } else {
-              await loadConversations();
+              await loadConversations(silent: true);
             }
             _lastSyncAt = DateTime.now();
           },
         )
         .subscribe((status, [error]) {
+      // ✅ FIX — après onClose (removeChannel déclenche "closed"), on
+      // ignore les statuts : sinon un polling jamais annulé démarrait.
+      if (_closed) return;
       // ✅ Log de debug : confirme l'état de la connexion Realtime
       debugPrint('🔌 [Realtime ChatList] status=$status error=$error');
       if (status == RealtimeSubscribeStatus.subscribed) {
         // Connexion OK : on arrête le polling de secours s'il tournait
+        _realtimeSubscribed = true;
         _pollingTimer?.cancel();
         _pollingTimer = null;
         _lastSyncAt = DateTime.now();
       } else if (status == RealtimeSubscribeStatus.channelError ||
           status == RealtimeSubscribeStatus.timedOut ||
           status == RealtimeSubscribeStatus.closed) {
+        _realtimeSubscribed = false;
         // ✅ Fallback : Realtime en panne, on repasse en polling
         _startPolling();
       }
     });
 
-    // ✅ Watchdog — même si le statut Realtime reste "subscribed" sans
-    // jamais rien recevoir, on resynchronise automatiquement si rien
-    // n'est arrivé depuis plus de 15s. Filet de sécurité léger.
+    // ✅ FIX — Watchdog allégé : la liste n'est resynchronisée toutes
+    // les 20s QUE si le canal Realtime n'est pas abonné. Quand il l'est,
+    // on garde seulement une resynchro de sécurité toutes les 2 minutes
+    // (statuts lus/distribués, etc. non couverts par le canal).
     _watchdogTimer?.cancel();
     _watchdogTimer = Timer.periodic(const Duration(seconds: 20), (t) {
-      if (!Get.isRegistered<ChatListController>()) {
+      if (_closed || !Get.isRegistered<ChatListController>()) {
         t.cancel();
         return;
       }
+      final now = DateTime.now();
       final last = _lastSyncAt;
-      if (last == null || DateTime.now().difference(last).inSeconds > 15) {
+      final lastFull = _lastFullSyncAt;
+      final staleWhileDown = !_realtimeSubscribed &&
+          (last == null || now.difference(last).inSeconds > 15);
+      final safetyDue =
+          lastFull == null || now.difference(lastFull).inMinutes >= 2;
+      if (staleWhileDown || safetyDue) {
         debugPrint('⏱️ [ChatList] Resynchronisation périodique de sécurité');
-        loadConversations();
+        loadConversations(silent: true);
       }
     });
   }
 
   // ✅ FIX Realtime — polling de secours (3s) si le canal tombe en panne
   void _startPolling() {
+    if (_closed) return; // ✅ FIX — jamais après onClose
     if (_pollingTimer != null) return; // déjà en cours
     debugPrint('⚠️ [ChatList] Realtime indisponible → passage en polling (3s)');
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      await loadConversations();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (t) async {
+      if (_closed) {
+        t.cancel();
+        return;
+      }
+      await loadConversations(silent: true);
     });
-  }
-
-  String _getMessagePreview(Map<String, dynamic> r) {
-    if (r['story_id'] != null) return '📸 Story';
-    switch (r['type'] as String? ?? 'text') {
-      case 'image':
-        return '📷 Photo';
-      case 'audio':
-        return '🎤 Vocal';
-      case 'snap':
-        return '📸 Snap';
-      case 'location':
-        return '📍 Position';
-      // ✅ Aperçu pour réponse annonce
-      case 'annonce_reply':
-        return '📢 A répondu à une annonce';
-      default:
-        return r['content'] as String? ?? '';
-    }
   }
 
   void openConversation(ConversationModel conv) {
@@ -349,7 +375,6 @@ class ChatListController extends GetxController {
     };
   }
 
-  // ✅ _parseType avec annonce_reply ajouté
   MessageType _parseType(String? t) {
     switch (t) {
       case 'image':
@@ -360,8 +385,6 @@ class ChatListController extends GetxController {
         return MessageType.audio;
       case 'location':
         return MessageType.location;
-      case 'annonce_reply':
-        return MessageType.annonceReply;
       default:
         return MessageType.text;
     }
@@ -382,9 +405,19 @@ class ChatListController extends GetxController {
 
   @override
   void onClose() {
-    _channel?.unsubscribe();
+    // ✅ FIX — drapeau posé AVANT de fermer le canal : le statut
+    // "closed" qui en résulte ne relance plus le polling.
+    _closed = true;
     _pollingTimer?.cancel(); // ✅ FIX Realtime
+    _pollingTimer = null;
     _watchdogTimer?.cancel(); // ✅ FIX Realtime
+    _watchdogTimer = null;
+    // ✅ FIX — retire réellement le canal du client Realtime
+    final channel = _channel;
+    _channel = null;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel).catchError((_) => '');
+    }
     super.onClose();
   }
 }
@@ -407,7 +440,6 @@ class ConversationController extends GetxController {
   final Rx<MessageModel?> replyToMessage = Rx<MessageModel?>(null);
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
-  final RxBool ephemeralMode = false.obs;
   final Rx<DateTime?> lastReadAt = Rx<DateTime?>(null);
 
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
@@ -427,7 +459,19 @@ class ConversationController extends GetxController {
   Timer? _myTypingTimer;
   bool _isCurrentlyTyping = false;
   Timer? _pollingTimer;
+  // ✅ Retire de l'écran les messages lus depuis plus de 24h (règle
+  // éphémère), sans attendre leur suppression par le serveur.
+  Timer? _expirationTimer;
   final _imagePicker = ImagePicker();
+  // ✅ FIX — drapeau de fermeture : callbacks Realtime/polling ignorés
+  // après onClose.
+  bool _closed = false;
+  // ✅ FIX — suffixe unique par instance pour les noms de canaux
+  // Realtime : deux écrans de la même conversation (ancien en cours de
+  // fermeture + nouveau) ne partagent plus le même topic, sinon le
+  // désabonnement de l'ancien coupait le Realtime du nouveau.
+  late final String _channelSuffix =
+      '${identityHashCode(this)}_${DateTime.now().microsecondsSinceEpoch}';
 
   static const List<String> availableEmojis = [
     '❤️',
@@ -443,6 +487,7 @@ class ConversationController extends GetxController {
     isOtherOnline.value = conv.isOnline;
     _audioPlayer.onPlayerComplete.listen((_) => currentlyPlayingId.value = '');
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_closed) return; // ✅ FIX — écran déjà fermé
       _loadMessages();
       _subscribeToMessages();
       _subscribeToPresence(conv.userId);
@@ -518,14 +563,15 @@ class ConversationController extends GetxController {
         'conversation_id': conversation.id,
         'user_id': uid,
         'is_typing': typing,
-        'updated_at': DateTime.now().toIso8601String(),
+        // ✅ FIX — horodatage envoyé en UTC (timestamptz)
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (_) {}
   }
 
   void _subscribeToTyping(String convId, String otherUserId) {
     _typingChannel = Supabase.instance.client
-        .channel('typing:$convId')
+        .channel('typing:$convId:$_channelSuffix') // ✅ FIX — topic unique
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -565,40 +611,48 @@ class ConversationController extends GetxController {
       users.add(uid);
       currentReactions[emoji] = users;
     }
+    // ✅ FIX — intention de CET utilisateur (ajout ou retrait)
+    final adding = users.contains(uid);
     final idx = messages.indexWhere((m) => m.id == msg.id);
     if (idx != -1)
       messages[idx] = messages[idx].copyWith(reactions: currentReactions);
     try {
-      await Supabase.instance.client.from('messages').update({
-        'reactions': currentReactions.map((k, v) => MapEntry(k, v))
-      }).eq('id', msg.id);
+      // ✅ FIX — relit les réactions les plus récentes juste avant
+      // d'écrire et n'applique QUE le changement de cet utilisateur :
+      // on n'écrase plus les réactions posées entre-temps par l'autre.
+      final latestRow = await Supabase.instance.client
+          .from('messages')
+          .select('reactions')
+          .eq('id', msg.id)
+          .maybeSingle();
+      final rawLatest =
+          latestRow?['reactions'] as Map<String, dynamic>? ?? const {};
+      final merged = <String, List<String>>{
+        for (final e in rawLatest.entries)
+          e.key: List<String>.from(e.value as List? ?? []),
+      };
+      final latestUsers = merged[emoji] ?? <String>[];
+      latestUsers.remove(uid);
+      if (adding) latestUsers.add(uid);
+      if (latestUsers.isEmpty) {
+        merged.remove(emoji);
+      } else {
+        merged[emoji] = latestUsers;
+      }
+      await Supabase.instance.client
+          .from('messages')
+          .update({'reactions': merged}).eq('id', msg.id);
+      final i = messages.indexWhere((m) => m.id == msg.id);
+      if (i != -1) messages[i] = messages[i].copyWith(reactions: merged);
     } catch (_) {
-      if (idx != -1)
-        messages[idx] = messages[idx].copyWith(reactions: msg.reactions);
+      final i = messages.indexWhere((m) => m.id == msg.id);
+      if (i != -1) messages[i] = messages[i].copyWith(reactions: msg.reactions);
     }
-  }
-
-  void toggleEphemeralMode() {
-    ephemeralMode.toggle();
-    Get.snackbar(
-      ephemeralMode.value
-          ? '🔥 Mode éphémère activé'
-          : 'Mode éphémère désactivé',
-      ephemeralMode.value
-          ? 'Les nouveaux messages disparaîtront après 24h'
-          : 'Les messages ne disparaîtront plus',
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: ephemeralMode.value
-          ? AppColors.accent.withOpacity(0.9)
-          : AppColors.surface2,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 2),
-    );
   }
 
   void _subscribeToPresence(String otherUserId) {
     _presenceChannel = Supabase.instance.client
-        .channel('presence:$otherUserId')
+        .channel('presence:$otherUserId:$_channelSuffix') // ✅ FIX — topic unique
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
@@ -687,7 +741,7 @@ class ConversationController extends GetxController {
   void _subscribeToMessages() {
     final convId = conversation.id;
     _channel = Supabase.instance.client
-        .channel('conv_screen:$convId')
+        .channel('conv_screen:$convId:$_channelSuffix') // ✅ FIX — topic unique
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
@@ -698,6 +752,7 @@ class ConversationController extends GetxController {
             value: convId,
           ),
           callback: (payload) async {
+            if (_closed) return; // ✅ FIX — contrôleur fermé
             final record = payload.newRecord;
             MessageModel? replyTo;
             final replyId = record['reply_to_id'] as String?;
@@ -750,6 +805,7 @@ class ConversationController extends GetxController {
             value: convId,
           ),
           callback: (payload) {
+            if (_closed) return; // ✅ FIX — contrôleur fermé
             final updated = payload.newRecord;
             final idx = messages.indexWhere((m) => m.id == updated['id']);
             if (idx != -1) {
@@ -762,6 +818,9 @@ class ConversationController extends GetxController {
                 status: newStatus,
                 reactions: reactions,
                 isOpened: updated['is_opened'] ?? messages[idx].isOpened,
+                readAt: updated['read_at'] != null
+                    ? DateTime.tryParse(updated['read_at'].toString())
+                    : null,
               );
               if (newStatus == MessageStatus.read &&
                   messages[idx].senderId == myId) {
@@ -770,31 +829,116 @@ class ConversationController extends GetxController {
             }
           },
         )
+        // ✅ Messages supprimés par le serveur (purge éphémère) : les
+        // suppressions ne sont pas filtrables par conversation, on
+        // retire simplement l'id s'il est affiché.
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            if (_closed) return;
+            final id = payload.oldRecord['id'];
+            if (id != null) messages.removeWhere((m) => m.id == id);
+          },
+        )
         .subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.channelError ||
+      if (_closed) return; // ✅ FIX — statuts ignorés après onClose
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        // ✅ FIX — Realtime (re)connecté : on arrête le polling de secours
+        _pollingTimer?.cancel();
+        _pollingTimer = null;
+      } else if (status == RealtimeSubscribeStatus.channelError ||
           status == RealtimeSubscribeStatus.timedOut) {
         _startPolling();
       }
     });
     _service.markMessagesAsDelivered(convId);
+    _expirationTimer?.cancel();
+    _expirationTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (_closed) return;
+      if (messages.any((m) => m.isDisappeared)) {
+        messages.removeWhere((m) => m.isDisappeared);
+      }
+    });
   }
 
   void _startPolling() {
+    if (_closed) return; // ✅ FIX — jamais après onClose
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (t) async {
+      if (_closed) {
+        t.cancel();
+        return;
+      }
       try {
         final data = await _service.fetchMessages(conversation.id);
+        if (_closed) return;
         final msgById = {for (final m in messages) m.id: m};
+        bool receivedFromOther = false;
         for (final row in data) {
           final msg = _rowToMessage(row);
-          if (!messages.any((m) => m.id == msg.id)) {
-            final replyId = row['reply_to_id'] as String?;
-            messages.add(msg.copyWith(
-                replyTo: replyId != null ? msgById[replyId] : null));
+          final idx = messages.indexWhere((m) => m.id == msg.id);
+          if (idx != -1) {
+            // ✅ FIX — met à jour statut / réactions / ouverture des
+            // messages déjà affichés (comme le fait l'événement UPDATE).
+            final cur = messages[idx];
+            final wasRead = cur.status == MessageStatus.read;
+            if (cur.status != msg.status ||
+                cur.isOpened != msg.isOpened ||
+                cur.expiresAt != msg.expiresAt ||
+                cur.readAt != msg.readAt ||
+                !_sameReactions(cur.reactions, msg.reactions)) {
+              messages[idx] = cur.copyWith(
+                status: msg.status,
+                reactions: msg.reactions,
+                isOpened: msg.isOpened,
+                expiresAt: msg.expiresAt,
+                readAt: msg.readAt,
+              );
+              if (!wasRead &&
+                  msg.status == MessageStatus.read &&
+                  cur.senderId == myId) {
+                lastReadAt.value = DateTime.now();
+              }
+            }
+            continue;
           }
+          final replyId = row['reply_to_id'] as String?;
+          final withReply = msg.copyWith(
+              replyTo: replyId != null ? msgById[replyId] : null);
+          // ✅ FIX — remplace la bulle temporaire "en cours d'envoi"
+          // correspondante (même expéditeur + même contenu) au lieu
+          // d'ajouter un doublon.
+          final tempIdx = messages.indexWhere((m) =>
+              m.id.startsWith('temp_') &&
+              m.senderId == msg.senderId &&
+              m.text == msg.text);
+          if (tempIdx != -1) {
+            messages[tempIdx] = withReply;
+          } else {
+            messages.add(withReply);
+          }
+          if (msg.senderId != myId) receivedFromOther = true;
         }
+        // ✅ FIX — comme en Realtime : messages reçus => marqués lus
+        if (receivedFromOther) _markReadAndUpdateBadge(conversation.id);
       } catch (_) {}
     });
+  }
+
+  // ✅ FIX — comparaison de deux maps de réactions
+  bool _sameReactions(
+      Map<String, List<String>> a, Map<String, List<String>> b) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      final other = b[e.key];
+      if (other == null || other.length != e.value.length) return false;
+      for (int i = 0; i < other.length; i++) {
+        if (other[i] != e.value[i]) return false;
+      }
+    }
+    return true;
   }
 
   Future<void> sendText() async {
@@ -814,9 +958,6 @@ class ConversationController extends GetxController {
       status: MessageStatus.sending,
       createdAt: DateTime.now(),
       replyTo: reply,
-      disappearsAt: ephemeralMode.value
-          ? DateTime.now().add(const Duration(hours: 24))
-          : null,
     ));
     try {
       await _service.sendMessage(
@@ -824,52 +965,12 @@ class ConversationController extends GetxController {
         content: text,
         type: 'text',
         replyToId: reply?.id,
-        disappearsAt: ephemeralMode.value
-            ? DateTime.now().add(const Duration(hours: 24))
-            : null,
       );
     } catch (_) {
       messages.removeWhere((m) => m.id == tempId);
       Get.snackbar('Erreur', 'Message non envoyé',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
-          colorText: Colors.white);
-    }
-  }
-
-  // ✅ Envoyer une réponse à une annonce
-  Future<void> sendAnnonceReply({
-    required String conversationId,
-    required String text,
-    required AnnonceReplyData annonceData,
-  }) async {
-    final uid = _service.currentUserId;
-    if (uid == null) return;
-    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-    messages.add(MessageModel(
-      id: tempId,
-      senderId: uid,
-      text: text,
-      type: MessageType.annonceReply,
-      status: MessageStatus.sending,
-      createdAt: DateTime.now(),
-      annonceReply: annonceData,
-    ));
-    try {
-      await Supabase.instance.client.from('messages').insert({
-        'conversation_id': conversationId,
-        'sender_id': uid,
-        'type': 'annonce_reply',
-        'content': text,
-        'status': 'sent',
-        // ✅ Sérialise les données de l'annonce dans le champ payload
-        'payload': annonceData.toJson(),
-      });
-    } catch (e) {
-      messages.removeWhere((m) => m.id == tempId);
-      Get.snackbar('Erreur', "Impossible d'envoyer la réponse",
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }
@@ -891,6 +992,7 @@ class ConversationController extends GetxController {
       createdAt: DateTime.now(),
       storyReply: storyData,
     ));
+    bool sent = false;
     try {
       await Supabase.instance.client.from('messages').insert({
         'conversation_id': conversationId,
@@ -903,6 +1005,7 @@ class ConversationController extends GetxController {
         'story_is_video': storyData.storyIsVideo,
         'topic': '📸 Story de ${storyData.storyOwnerName}',
       });
+      sent = true;
     } catch (_) {
       try {
         await Supabase.instance.client.from('messages').insert({
@@ -912,10 +1015,36 @@ class ConversationController extends GetxController {
           'content': text,
           'status': 'sent',
         });
+        sent = true;
+        // ✅ FIX — le message réellement enregistré n'a pas de données
+        // de story : la bulle temporaire est ajustée pour correspondre
+        // (elle sera remplacée par le vrai message via Realtime/polling,
+        // qui fait la correspondance sur expéditeur + contenu).
+        final i = messages.indexWhere((m) => m.id == tempId);
+        if (i != -1) {
+          final t = messages[i];
+          messages[i] = MessageModel(
+            id: t.id,
+            senderId: t.senderId,
+            text: t.text,
+            type: t.type,
+            status: t.status,
+            createdAt: t.createdAt,
+          );
+        }
       } catch (e) {
         messages.removeWhere((m) => m.id == tempId);
       }
     }
+    if (!sent) return;
+    // ✅ FIX — comme sendMessage : la liste est triée par updated_at,
+    // et une réponse du destinataire accepte une demande en attente.
+    try {
+      await Supabase.instance.client.from('conversations').update({
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', conversationId);
+    } catch (_) {}
+    await _service.maybePromoteMessageRequest(conversationId);
   }
 
   Future<void> deleteMessage(MessageModel msg) async {
@@ -935,7 +1064,7 @@ class ConversationController extends GetxController {
       Clipboard.setData(ClipboardData(text: msg.text!));
       Get.snackbar('Copié', 'Message copié',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white,
           duration: const Duration(seconds: 2));
     }
@@ -1060,6 +1189,7 @@ class ConversationController extends GetxController {
         'expires_at': (duration == 0
                 ? DateTime.now()
                 : DateTime.now().add(Duration(seconds: duration)))
+            .toUtc() // ✅ FIX — horodatage envoyé en UTC (timestamptz)
             .toIso8601String(),
       }).eq('id', msg.id);
     } catch (_) {}
@@ -1104,7 +1234,7 @@ class ConversationController extends GetxController {
     } catch (e) {
       Get.snackbar('Erreur', "Impossible d'envoyer le snap",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }
@@ -1135,15 +1265,12 @@ class ConversationController extends GetxController {
         content: isSnap ? '📸 Photo éphémère' : '📷 Photo',
         type: isSnap ? 'snap' : 'image',
         mediaUrl: url,
-        disappearsAt: ephemeralMode.value
-            ? DateTime.now().add(const Duration(hours: 24))
-            : null,
         snapDurationSeconds: duree.seconds,
       );
     } catch (e) {
       Get.snackbar('Erreur', "Impossible d'envoyer la photo",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }
@@ -1156,7 +1283,7 @@ class ConversationController extends GetxController {
       Get.snackbar(
           'Permission refusée', 'Active le microphone dans les paramètres',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white,
           mainButton: TextButton(
               onPressed: () => openAppSettings(),
@@ -1179,7 +1306,7 @@ class ConversationController extends GetxController {
         _recorderOpen = false;
         Get.snackbar('Erreur', 'Enregistrement non supporté sur cet appareil',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
         return;
       }
@@ -1264,14 +1391,11 @@ class ConversationController extends GetxController {
         type: 'audio',
         mediaUrl: url,
         audioDuration: duration,
-        disappearsAt: ephemeralMode.value
-            ? DateTime.now().add(const Duration(hours: 24))
-            : null,
       );
     } catch (e) {
       Get.snackbar('Erreur', "Impossible d'envoyer le vocal",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }
@@ -1313,14 +1437,11 @@ class ConversationController extends GetxController {
         content: '📷 Photo',
         type: 'image',
         mediaUrl: url,
-        disappearsAt: ephemeralMode.value
-            ? DateTime.now().add(const Duration(hours: 24))
-            : null,
       );
     } catch (e) {
       Get.snackbar('Erreur', "Impossible d'envoyer la photo",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }
@@ -1332,7 +1453,7 @@ class ConversationController extends GetxController {
       if (!serviceEnabled) {
         Get.snackbar('GPS désactivé', 'Active la localisation',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: const Color(0xFF13131A),
+            backgroundColor: AppColors.surface,
             colorText: Colors.white);
         return;
       }
@@ -1357,14 +1478,13 @@ class ConversationController extends GetxController {
     } catch (e) {
       Get.snackbar('Erreur', 'Impossible de récupérer la position',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF13131A),
+          backgroundColor: AppColors.surface,
           colorText: Colors.white);
     }
   }
 
   String get myId => _service.currentUserId ?? '';
 
-  // ✅ _rowToMessage avec parsing AnnonceReplyData
   MessageModel _rowToMessage(Map<String, dynamic> row,
       {MessageModel? replyTo}) {
     // ── Story reply ──────────────────────────────────────────────
@@ -1380,17 +1500,7 @@ class ConversationController extends GetxController {
       );
     }
 
-    // ✅ Annonce reply — parse depuis le champ payload
-    AnnonceReplyData? annonceReply;
     final type = _parseType(row['type'] as String?);
-    if (type == MessageType.annonceReply && row['payload'] != null) {
-      try {
-        annonceReply = AnnonceReplyData.fromJson(
-            Map<String, dynamic>.from(row['payload'] as Map));
-      } catch (e) {
-        debugPrint('AnnonceReplyData parse error: $e');
-      }
-    }
 
     final rawReactions = row['reactions'] as Map<String, dynamic>? ?? {};
     final reactions = rawReactions
@@ -1413,9 +1523,11 @@ class ConversationController extends GetxController {
       disappearsAt: row['disappears_at'] != null
           ? DateTime.tryParse(row['disappears_at'])
           : null,
+      readAt: row['read_at'] != null
+          ? DateTime.tryParse(row['read_at'].toString())
+          : null,
       reactions: reactions,
       storyReply: storyReply,
-      annonceReply: annonceReply, // ✅
       replyTo: replyTo,
     );
   }
@@ -1427,7 +1539,6 @@ class ConversationController extends GetxController {
     return topic;
   }
 
-  // ✅ _parseType avec annonce_reply
   MessageType _parseType(String? t) {
     switch (t) {
       case 'image':
@@ -1438,8 +1549,6 @@ class ConversationController extends GetxController {
         return MessageType.audio;
       case 'location':
         return MessageType.location;
-      case 'annonce_reply':
-        return MessageType.annonceReply;
       default:
         return MessageType.text;
     }
@@ -1460,25 +1569,28 @@ class ConversationController extends GetxController {
 
   @override
   void onClose() {
-    _channel?.unsubscribe();
-    _presenceChannel?.unsubscribe();
-    _typingChannel?.unsubscribe();
+    // ✅ FIX — drapeau posé avant de fermer les canaux : les statuts
+    // "closed"/erreurs qui suivent ne relancent plus le polling.
+    _closed = true;
+    // ✅ FIX — retire réellement les canaux du client Realtime
+    for (final ch in [_channel, _presenceChannel, _typingChannel]) {
+      if (ch != null) {
+        Supabase.instance.client.removeChannel(ch).catchError((_) => '');
+      }
+    }
+    _channel = null;
+    _presenceChannel = null;
+    _typingChannel = null;
     _typingTimer?.cancel();
     _myTypingTimer?.cancel();
     _pollingTimer?.cancel();
+    _pollingTimer = null;
     _recordingSecondsTimer?.cancel();
     _updateTypingStatus(false);
     if (_recorderOpen) _recorder.closeRecorder().catchError((_) {});
+    _expirationTimer?.cancel();
     _audioPlayer.dispose();
     scrollController.dispose();
-    if (ephemeralMode.value) {
-      ephemeralMode.value = false;
-      Supabase.instance.client
-          .from('conversations')
-          .update({'ephemeral_mode': false})
-          .eq('id', conversation.id)
-          .catchError((_) {});
-    }
     super.onClose();
   }
 }

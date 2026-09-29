@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
+import 'package:rencontre/features/auth/view/cgu_screen.dart';
 
 class EcranParametres extends StatelessWidget {
   const EcranParametres({super.key});
@@ -188,26 +189,22 @@ class EcranParametres extends StatelessWidget {
             // ════ CONFIDENTIALITÉ ════════════════════════════════
             const _Titre('Confidentialité'),
             const SizedBox(height: 10),
+            // ✅ Chaque interrupteur est enregistré dès qu'on le touche.
             Obx(() => _Toggle(
                 icon: '🎂',
                 title: 'Afficher ma date de naissance',
                 subtitle: 'Visible sur ton profil public',
                 value: ctrl.showBirthdate.value,
-                onChanged: (v) => ctrl.showBirthdate.value = v)),
+                onChanged: (v) =>
+                    ctrl.majReglage(ctrl.showBirthdate, 'show_birthdate', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '📍',
                 title: 'Afficher ma distance',
-                subtitle: 'Les autres voient ta distance approximative',
+                subtitle: 'Les autres voient à quelle distance tu es',
                 value: ctrl.showDistance.value,
-                onChanged: (v) => ctrl.showDistance.value = v)),
-            const SizedBox(height: 10),
-            Obx(() => _Toggle(
-                icon: '🌍',
-                title: 'Profil public',
-                subtitle: 'Ton profil est visible par tous',
-                value: ctrl.profilPublic.value,
-                onChanged: (v) => ctrl.profilPublic.value = v)),
+                onChanged: (v) =>
+                    ctrl.majReglage(ctrl.showDistance, 'show_distance', v))),
             const SizedBox(height: 28),
 
             // ════ NOTIFICATIONS & SONS ═══════════════════════════
@@ -218,35 +215,16 @@ class EcranParametres extends StatelessWidget {
                 title: 'Messages',
                 subtitle: 'Notifier à chaque nouveau message',
                 value: ctrl.notifMessages.value,
-                onChanged: (v) => ctrl.notifMessages.value = v)),
-            const SizedBox(height: 10),
-            Obx(() => _Toggle(
-                icon: '📡',
-                title: 'Personnes à proximité',
-                subtitle: 'Notifier quand quelqu\'un est proche',
-                value: ctrl.notifNearby.value,
-                onChanged: (v) => ctrl.notifNearby.value = v)),
-            const SizedBox(height: 10),
-            Obx(() => _Toggle(
-                icon: '📖',
-                title: 'Stories',
-                subtitle: 'Notifier les nouvelles stories',
-                value: ctrl.notifStories.value,
-                onChanged: (v) => ctrl.notifStories.value = v)),
-            const SizedBox(height: 10),
-            Obx(() => _Toggle(
-                icon: '📢',
-                title: 'Annonces',
-                subtitle: 'Notifier les nouvelles annonces',
-                value: ctrl.notifAnnonces.value,
-                onChanged: (v) => ctrl.notifAnnonces.value = v)),
+                onChanged: (v) =>
+                    ctrl.majReglage(ctrl.notifMessages, 'notif_messages', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '🔔',
                 title: 'Son des notifications',
-                subtitle: 'Activer la sonnerie',
+                subtitle: 'Jouer un son à chaque notification',
                 value: ctrl.notifSon.value,
-                onChanged: (v) => ctrl.notifSon.value = v)),
+                onChanged: (v) =>
+                    ctrl.majReglage(ctrl.notifSon, 'notif_son', v))),
             const SizedBox(height: 28),
 
             // ════ THÈME ══════════════════════════════════════════
@@ -254,7 +232,70 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 10),
             Obx(() => _SelecteurTheme(
                   selected: ctrl.selectedTheme.value,
-                  onSelected: (id) => ctrl.selectedTheme.value = id,
+                  onSelected: ctrl.setTheme,
+                )),
+            const SizedBox(height: 28),
+
+            // ════ ABONNEMENT ═════════════════════════════════════
+            const _Titre('Abonnement'),
+            const SizedBox(height: 10),
+            Obx(() => _Tuile(
+                  icon: '👑',
+                  title: 'Zamu Premium',
+                  subtitle: ctrl.isPremium.value
+                      ? 'Actif · gérer mon abonnement'
+                      : 'Découvrir les avantages Premium',
+                  onTap: ctrl.isPremium.value
+                      ? ctrl.gererAbonnement
+                      : ctrl.ouvrirPaywall,
+                )),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '🔄',
+              title: 'Restaurer mes achats',
+              subtitle: 'Après un changement de téléphone',
+              onTap: ctrl.restaurerAchats,
+            ),
+            const SizedBox(height: 28),
+
+            // ════ AIDE & INFORMATIONS ════════════════════════════
+            const _Titre('Aide & informations'),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '📄',
+              title: 'Conditions d\'utilisation',
+              subtitle: 'Les règles de Zamu',
+              onTap: () => Get.to(() => const CguScreen()),
+            ),
+            if (ControleurProfil.urlConfidentialite.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _Tuile(
+                icon: '🛡️',
+                title: 'Politique de confidentialité',
+                subtitle: 'Comment tes données sont utilisées',
+                onTap: () => ctrl.ouvrirLien(ControleurProfil.urlConfidentialite),
+              ),
+            ],
+            if (ControleurProfil.emailContact.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _Tuile(
+                icon: '✉️',
+                title: 'Nous contacter',
+                subtitle: ControleurProfil.emailContact,
+                onTap: ctrl.contacterSupport,
+              ),
+            ],
+            const SizedBox(height: 10),
+            Obx(() => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                        ctrl.versionApp.value.isEmpty
+                            ? ''
+                            : 'Zamu · version ${ctrl.versionApp.value}',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textMuted)),
+                  ),
                 )),
             const SizedBox(height: 28),
 
@@ -328,45 +369,6 @@ class EcranParametres extends StatelessWidget {
             }),
             const SizedBox(height: 28),
 
-            // ── Bouton Sauvegarder ─────────────────────────────
-            Obx(() => GestureDetector(
-                  onTap:
-                      ctrl.isSaving.value ? null : ctrl.sauvegarderParametres,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: double.infinity,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient:
-                          ctrl.isSaving.value ? null : AppColors.gradientPink,
-                      color: ctrl.isSaving.value ? AppColors.surface2 : null,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: ctrl.isSaving.value
-                          ? []
-                          : [
-                              BoxShadow(
-                                  color: AppColors.accent.withOpacity(0.3),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 6))
-                            ],
-                    ),
-                    child: Center(
-                      child: ctrl.isSaving.value
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Text('Sauvegarder',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
-                    ),
-                  ),
-                )),
-            const SizedBox(height: 12),
-
             // ── Déconnexion ────────────────────────────────────
             GestureDetector(
               onTap: ctrl.deconnexion,
@@ -394,6 +396,22 @@ class EcranParametres extends StatelessWidget {
                 ),
               ),
             ),
+
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: ctrl.supprimerCompte,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Center(
+                  child: Text('Supprimer mon compte',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.error.withOpacity(0.7))),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -403,7 +421,7 @@ class EcranParametres extends StatelessWidget {
   void _dialogEmail(BuildContext context, ControleurProfil ctrl) {
     final emailCtrl = TextEditingController();
     Get.dialog(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Modifier l\'email',
           style: TextStyle(
@@ -420,8 +438,8 @@ class EcranParametres extends StatelessWidget {
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
             Get.back();
@@ -430,8 +448,8 @@ class EcranParametres extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]),
+              gradient: LinearGradient(
+                  colors: [AppColors.accent, AppColors.accent2]),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Text('Modifier',
@@ -450,7 +468,7 @@ class EcranParametres extends StatelessWidget {
     final showConfirm = false.obs;
 
     Get.dialog(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Modifier le mot de passe',
           style: TextStyle(
@@ -478,14 +496,14 @@ class EcranParametres extends StatelessWidget {
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Annuler',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
             if (newPassCtrl.text != confirmCtrl.text) {
               Get.snackbar('Erreur', 'Les mots de passe ne correspondent pas',
                   snackPosition: SnackPosition.TOP,
-                  backgroundColor: const Color(0xFF13131A),
+                  backgroundColor: AppColors.surface,
                   colorText: Colors.white);
               return;
             }
@@ -495,8 +513,8 @@ class EcranParametres extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]),
+              gradient: LinearGradient(
+                  colors: [AppColors.accent, AppColors.accent2]),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Text('Modifier',
@@ -511,7 +529,7 @@ class EcranParametres extends StatelessWidget {
   InputDecoration _passInputDeco(String hint, bool show, VoidCallback toggle) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF5A5A78)),
+      hintStyle: TextStyle(color: AppColors.textMuted),
       filled: true,
       fillColor: const Color(0xFF191926),
       suffixIcon: GestureDetector(
@@ -519,114 +537,22 @@ class EcranParametres extends StatelessWidget {
         child: Icon(
             show ? Icons.visibility_off_rounded : Icons.visibility_rounded,
             size: 18,
-            color: const Color(0xFF5A5A78)),
+            color: AppColors.textMuted),
       ),
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF252538))),
+          borderSide: BorderSide(color: AppColors.surface2)),
       enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF252538))),
+          borderSide: BorderSide(color: AppColors.surface2)),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFFF3CAC))),
+          borderSide: BorderSide(color: AppColors.accent)),
     );
   }
 }
 
 // ─── BLOC SOUTENIR ───────────────────────────────────────────────
-
-class _BlocSoutien extends StatelessWidget {
-  final ControleurProfil ctrl;
-  const _BlocSoutien({required this.ctrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.25)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Si tu aimes SnapMeet, soutiens le projet 🙏',
-            style: TextStyle(
-                fontSize: 13, color: AppColors.textMuted, height: 1.5)),
-        const SizedBox(height: 12),
-        _TuilePaiement(
-          logo: '🟡',
-          nom: 'MTN Money',
-          numero: '+225 05 66 83 01 95',
-          couleur: const Color(0xFFFFD700),
-          onCopier: () => ctrl.copierNumero('+225 05 66 83 01 95'),
-        ),
-        const SizedBox(height: 10),
-        _TuilePaiement(
-          logo: '🔵',
-          nom: 'Wave',
-          numero: '+225 05 66 83 01 95',
-          couleur: const Color(0xFF1E90FF),
-          onCopier: () => ctrl.copierNumero('+225 05 66 83 01 95'),
-        ),
-      ]),
-    );
-  }
-}
-
-class _TuilePaiement extends StatelessWidget {
-  final String logo, nom, numero;
-  final Color couleur;
-  final VoidCallback onCopier;
-  const _TuilePaiement(
-      {required this.logo,
-      required this.nom,
-      required this.numero,
-      required this.couleur,
-      required this.onCopier});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: couleur.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: couleur.withOpacity(0.25)),
-      ),
-      child: Row(children: [
-        Text(logo, style: const TextStyle(fontSize: 20)),
-        const SizedBox(width: 10),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(nom,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: couleur)),
-            Text(numero,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-          ]),
-        ),
-        GestureDetector(
-          onTap: onCopier,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: couleur.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text('Copier',
-                style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700, color: couleur)),
-          ),
-        ),
-      ]),
-    );
-  }
-}
 
 // ─── SÉLECTEUR THÈME ────────────────────────────────────────────
 

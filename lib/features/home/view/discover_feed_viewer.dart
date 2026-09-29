@@ -6,136 +6,72 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
-import 'package:rencontre/features/home/view/main_navigation.dart';
-import 'package:rencontre/features/annonces/controller/annonces_controller.dart';
-import 'package:rencontre/features/annonces/model/annonce_model.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
-
-// ══════════════════════════════════════════════════════════════════
-//  ÉLÉMENT DE FEED MIXTE (plein écran) — une story ou une annonce
-// ══════════════════════════════════════════════════════════════════
+import 'package:rencontre/features/chat/controller/chat_controller.dart';
+import 'package:rencontre/features/chat/model/message_model.dart';
 
 class DiscoverFeedItem {
-  final StoryModel? story;
-  final AnnonceModel? annonce;
+  final StoryModel story;
 
-  const DiscoverFeedItem.fromStory(StoryModel s)
-      : story = s,
-        annonce = null;
-
-  const DiscoverFeedItem.fromAnnonce(AnnonceModel a)
-      : annonce = a,
-        story = null;
-
-  bool get isStory => story != null;
+  const DiscoverFeedItem.fromStory(this.story);
 }
-
-// ══════════════════════════════════════════════════════════════════
-//  GROUPE D'ANNONCES — toutes les annonces d'un même auteur
-//  regroupées sous une seule carte (comme les stories, 1 par user)
-// ══════════════════════════════════════════════════════════════════
-
-class AnnonceGroup {
-  final List<AnnonceModel> items; // triées de la plus récente à la plus vieille
-  AnnonceGroup(this.items);
-
-  AnnonceModel get cover => items.first;
-  int get count => items.length;
-  String get userId => cover.userId;
-}
-
-List<AnnonceGroup> groupAnnoncesByUser(List<AnnonceModel> annonces) {
-  final map = <String, List<AnnonceModel>>{};
-  for (final a in annonces) {
-    map.putIfAbsent(a.userId, () => []).add(a);
-  }
-  final groups = map.values.map((list) {
-    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return AnnonceGroup(list);
-  }).toList();
-  groups.sort((a, b) => b.cover.createdAt.compareTo(a.cover.createdAt));
-  return groups;
-}
-
-// ══════════════════════════════════════════════════════════════════
-//  CARTE DE GRILLE — ce qui s'affiche dans "Découvrir"
-//  (1 carte = 1 story OU 1 groupe d'annonces d'un même auteur)
-// ══════════════════════════════════════════════════════════════════
 
 class DiscoverCard {
-  final StoryModel? story;
-  final AnnonceGroup? annonceGroup;
+  final List<StoryModel> stories;
 
-  const DiscoverCard.story(this.story) : annonceGroup = null;
-  const DiscoverCard.annonceGroup(this.annonceGroup) : story = null;
+  const DiscoverCard({required this.stories});
 
-  bool get isStory => story != null;
+  StoryModel get cover =>
+      stories.firstWhere((s) => !s.isSeen, orElse: () => stories.first);
+
+  bool get hasMultiple => stories.length > 1;
 }
 
-/// Mélange les stories et les groupes d'annonces façon Snapchat
-/// "Découvrir" : un groupe d'annonces inséré toutes les 3 stories,
-/// puis les groupes restants ajoutés à la fin.
-List<DiscoverCard> buildDiscoverCards(
-  List<StoryModel> stories,
-  List<AnnonceGroup> groups,
-) {
-  final result = <DiscoverCard>[];
-  var gIdx = 0;
-  for (var i = 0; i < stories.length; i++) {
-    result.add(DiscoverCard.story(stories[i]));
-    if ((i + 1) % 3 == 0 && gIdx < groups.length) {
-      result.add(DiscoverCard.annonceGroup(groups[gIdx]));
-      gIdx++;
+List<DiscoverCard> buildDiscoverCards(List<StoryModel> stories) {
+  final Map<String, List<StoryModel>> grouped = {};
+  final List<String> order = [];
+  for (final s in stories) {
+    if (!grouped.containsKey(s.userId)) {
+      grouped[s.userId] = [];
+      order.add(s.userId);
     }
+    grouped[s.userId]!.add(s);
   }
-  while (gIdx < groups.length) {
-    result.add(DiscoverCard.annonceGroup(groups[gIdx]));
-    gIdx++;
-  }
-  return result;
+  return order.map((uid) => DiscoverCard(stories: grouped[uid]!)).toList();
 }
 
-/// Transforme les cartes de la grille en liste "à plat" pour le
-/// swipe plein écran : un groupe d'annonces devient plusieurs items
-/// consécutifs (on peut ainsi swiper entre les annonces d'un même
-/// auteur avant de passer à l'élément suivant).
 List<DiscoverFeedItem> flattenDiscoverCards(List<DiscoverCard> cards) {
-  final result = <DiscoverFeedItem>[];
-  for (final c in cards) {
-    if (c.isStory) {
-      result.add(DiscoverFeedItem.fromStory(c.story!));
-    } else {
-      for (final a in c.annonceGroup!.items) {
-        result.add(DiscoverFeedItem.fromAnnonce(a));
-      }
-    }
-  }
-  return result;
+  return cards
+      .expand((c) => c.stories.map((s) => DiscoverFeedItem.fromStory(s)))
+      .toList();
 }
 
-/// Calcule à quel index de la liste "à plat" correspond le début
-/// de la carte tapée (cardIndex), pour ouvrir le viewer au bon endroit.
 int startIndexForCard(List<DiscoverCard> cards, int cardIndex) {
-  var idx = 0;
-  for (var i = 0; i < cardIndex; i++) {
-    idx += cards[i].isStory ? 1 : cards[i].annonceGroup!.count;
+  int idx = 0;
+  for (int i = 0; i < cardIndex; i++) {
+    idx += cards[i].stories.length;
   }
   return idx;
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  VIEWER PLEIN ÉCRAN — swipe horizontal entre stories et annonces
-// ══════════════════════════════════════════════════════════════════
-
 class DiscoverFeedViewerScreen extends StatefulWidget {
   final List<DiscoverFeedItem> items;
   final int initialIndex;
+  final bool showCloseButton;
+  final Future<void> Function()? onRefresh;
+  // ✅ indique si l'onglet contenant cet écran est actuellement
+  // affiché (vs monté en arrière-plan via IndexedStack). Permet de
+  // couper le son/la vidéo quand on change d'onglet.
+  final bool isActiveTab;
 
   const DiscoverFeedViewerScreen({
     super.key,
     required this.items,
     this.initialIndex = 0,
+    this.showCloseButton = true,
+    this.onRefresh,
+    this.isActiveTab = true,
   });
 
   @override
@@ -146,15 +82,105 @@ class DiscoverFeedViewerScreen extends StatefulWidget {
 class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
   late final PageController _pageCtrl;
   late int _current;
+  // ✅ Clés indexées par l'ID de la story (et non plus par la position) :
+  // si la liste change (realtime, actualisation), chaque page garde son
+  // propre état (vidéo, like) au lieu d'afficher la légende d'une story
+  // avec la vidéo et le like d'une autre.
+  final Map<String, GlobalKey<_StoryFeedPageState>> _pageKeys = {};
+
+  GlobalKey<_StoryFeedPageState> _keyFor(String storyId) {
+    return _pageKeys.putIfAbsent(
+        storyId, () => GlobalKey<_StoryFeedPageState>());
+  }
+
+  void _setPageVisible(int index, bool visible) {
+    if (index < 0 || index >= widget.items.length) return;
+    _pageKeys[widget.items[index].story.id]?.currentState?.setVisible(visible);
+  }
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    _current = widget.initialIndex.clamp(0, widget.items.length - 1);
+    _current = widget.items.isEmpty
+        ? 0
+        : widget.initialIndex.clamp(0, widget.items.length - 1);
     _pageCtrl = PageController(initialPage: _current);
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _markSeen(widget.items[_current]));
+    if (widget.items.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _markSeen(widget.items[_current]);
+        // ✅ Ne joue que si l'onglet Story est réellement affiché —
+        // évite l'autoplay en arrière-plan au démarrage de l'app.
+        _setPageVisible(_current, widget.isActiveTab);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant DiscoverFeedViewerScreen old) {
+    super.didUpdateWidget(old);
+
+    // ✅ Suit la story affichée par son ID si la liste a bougé (story
+    // ajoutée/supprimée avant elle) : on reste sur la même story.
+    final currentId = (_current >= 0 && _current < old.items.length)
+        ? old.items[_current].story.id
+        : null;
+    final newIds = widget.items.map((i) => i.story.id).toSet();
+    _pageKeys.removeWhere((id, _) => !newIds.contains(id));
+
+    if (widget.items.isNotEmpty && currentId != null) {
+      final newIndex =
+          widget.items.indexWhere((i) => i.story.id == currentId);
+      if (newIndex != -1 && newIndex != _current) {
+        _current = newIndex;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_pageCtrl.hasClients) return;
+          _pageCtrl.jumpToPage(newIndex);
+          // La page a pu être reconstruite pendant le saut : on la
+          // (re)déclare visible une fois construite à sa nouvelle place.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || _current != newIndex || !widget.isActiveTab) {
+              return;
+            }
+            final st =
+                _pageKeys[widget.items[newIndex].story.id]?.currentState;
+            if (st != null && !st._isVisible) st.setVisible(true);
+          });
+        });
+      } else if (newIndex == -1) {
+        // La story affichée a disparu : la page à cette position est
+        // désormais une autre story, qu'il faut rendre visible.
+        if (_current >= widget.items.length) {
+          _current = widget.items.length - 1;
+        }
+        final idx = _current;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || idx >= widget.items.length) return;
+          _setPageVisible(idx, widget.isActiveTab);
+          if (widget.isActiveTab) _markSeen(widget.items[idx]);
+        });
+      }
+    }
+
+    if (widget.items.isNotEmpty && _current >= widget.items.length) {
+      _current = widget.items.length - 1;
+    }
+
+    // ✅ Liste vide → non vide (stories chargées après l'ouverture de
+    // l'onglet) : la première page n'était jamais rendue visible.
+    if (old.items.isEmpty && widget.items.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _current >= widget.items.length) return;
+        _setPageVisible(_current, widget.isActiveTab);
+        if (widget.isActiveTab) _markSeen(widget.items[_current]);
+      });
+    }
+    // ✅ L'onglet devient actif/inactif dans la barre de navigation :
+    // on coupe/reprend la vidéo en cours au lieu de la laisser
+    // jouer en arrière-plan sur un autre onglet.
+    if (widget.isActiveTab != old.isActiveTab && widget.items.isNotEmpty) {
+      _setPageVisible(_current, widget.isActiveTab);
+    }
   }
 
   @override
@@ -164,75 +190,135 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
   }
 
   void _markSeen(DiscoverFeedItem item) {
-    if (item.isStory) {
-      if (Get.isRegistered<HomeController>()) {
-        Get.find<HomeController>().markStoryAsSeen(item.story!.id);
-      }
-    } else {
-      if (Get.isRegistered<AnnoncesController>()) {
-        final ctrl = Get.find<AnnoncesController>();
-        final fresh =
-            ctrl.annonces.firstWhereOrNull((a) => a.id == item.annonce!.id) ??
-                item.annonce!;
-        ctrl.marquerVue(fresh);
-      }
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().markStoryAsSeen(item.story.id);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
-          child:
-              Text('Rien à afficher', style: TextStyle(color: Colors.white54)),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('📸', style: TextStyle(fontSize: 56)),
+            const SizedBox(height: 12),
+            const Text('Rien à découvrir pour le moment',
+                style: TextStyle(color: Colors.white54, fontSize: 14)),
+            if (widget.onRefresh != null) ...[
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: widget.onRefresh,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: const Text('Actualiser',
+                      style: TextStyle(color: Colors.white70)),
+                ),
+              ),
+            ],
+          ]),
         ),
       );
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: PageView.builder(
-        controller: _pageCtrl,
-        scrollDirection: Axis.horizontal,
-        itemCount: widget.items.length,
-        onPageChanged: (i) {
-          setState(() => _current = i);
-          _markSeen(widget.items[i]);
-        },
-        itemBuilder: (_, i) {
-          final item = widget.items[i];
-          return item.isStory
-              ? _StoryFeedPage(story: item.story!)
-              : _AnnonceFeedPage(annonce: item.annonce!);
-        },
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageCtrl,
+            scrollDirection: Axis.vertical,
+            itemCount: widget.items.length,
+            onPageChanged: (i) {
+              // ✅ Saut programmatique (suivi de la story courante après
+              // une mise à jour de la liste) : rien à faire.
+              if (i == _current) return;
+              _setPageVisible(_current, false);
+              setState(() => _current = i);
+              _setPageVisible(i, true);
+              _markSeen(widget.items[i]);
+            },
+            itemBuilder: (_, i) => _StoryFeedPage(
+              key: _keyFor(widget.items[i].story.id),
+              story: widget.items[i].story,
+              showCloseButton: widget.showCloseButton,
+            ),
+          ),
+          if (widget.onRefresh != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              right: 12,
+              child: GestureDetector(
+                onTap: widget.onRefresh,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Icon(Icons.refresh_rounded,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  PAGE STORY (dans le feed mixte)
-// ══════════════════════════════════════════════════════════════════
-
 class _StoryFeedPage extends StatefulWidget {
   final StoryModel story;
-  const _StoryFeedPage({required this.story});
+  final bool showCloseButton;
+  const _StoryFeedPage(
+      {super.key, required this.story, required this.showCloseButton});
 
   @override
   State<_StoryFeedPage> createState() => _StoryFeedPageState();
 }
 
-class _StoryFeedPageState extends State<_StoryFeedPage> {
+// ✅ NOUVEAU — WidgetsBindingObserver ajouté : coupe la vidéo/le son
+// quand l'utilisateur quitte l'app entière (bouton Accueil du
+// téléphone, appel entrant, verrouillage d'écran...), symétrique au
+// fix déjà appliqué sur story_screen.dart. isActiveTab gérait déjà
+// le changement d'onglet À L'INTÉRIEUR de l'app ; ceci couvre le cas
+// où c'est le téléphone lui-même qui passe en arrière-plan.
+class _StoryFeedPageState extends State<_StoryFeedPage>
+    with WidgetsBindingObserver {
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
   bool _liked = false;
+  int _likeCount = 0;
+  bool _replyFocused = false;
+  bool _muted = false;
+  bool _isVisible = false;
   final String? _myUid = Supabase.instance.client.auth.currentUser?.id;
+
+  // ✅ tap simple = pause/lecture (comme TikTok)
+  bool _manuallyPaused = false;
+
+  // ✅ NOUVEAU — pause déclenchée par la mise en arrière-plan de
+  // l'app (pas par l'utilisateur) : ne doit reprendre QUE si c'est
+  // nous qui avions coupé, jamais si l'utilisateur avait pausé
+  // lui-même via un tap.
+  bool _pausedByLifecycle = false;
+
+  // ✅ double-tap = like, avec petite animation de cœur à l'endroit
+  // exact du tap.
+  Offset? _lastTapPosition;
+  bool _showLikeBurst = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadLikeState();
     if (widget.story.isVideo) {
       final ctrl =
@@ -241,31 +327,111 @@ class _StoryFeedPageState extends State<_StoryFeedPage> {
       ctrl.initialize().then((_) {
         if (!mounted) return;
         setState(() => _videoReady = true);
-        ctrl
-          ..setLooping(true)
-          ..play();
+        ctrl.setLooping(true);
+        if (_isVisible) {
+          ctrl.play();
+          ctrl.setVolume(_muted ? 0 : 1);
+        }
       });
     }
   }
 
+  // ✅ NOUVEAU
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        if (_videoCtrl != null && _videoCtrl!.value.isPlaying) {
+          _pausedByLifecycle = true;
+          _videoCtrl!.pause();
+        }
+        break;
+      case AppLifecycleState.resumed:
+        if (_pausedByLifecycle) {
+          _pausedByLifecycle = false;
+          // Ne reprend que si cette page est toujours celle affichée
+          // et que l'utilisateur n'avait pas lui-même mis en pause.
+          if (_isVisible && !_manuallyPaused) {
+            _videoCtrl?.play();
+          }
+        }
+        break;
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  void setVisible(bool visible) {
+    _isVisible = visible;
+    if (_videoCtrl == null || !_videoReady) return;
+    if (visible) {
+      // ✅ Une pause manuelle ne doit valoir que pour la visite en
+      // cours : en revenant sur cette story (swipe retour), elle
+      // reprend normalement, comme sur TikTok.
+      _manuallyPaused = false;
+      _videoCtrl!.play();
+      _videoCtrl!.setVolume(_muted ? 0 : 1);
+    } else {
+      _videoCtrl!.pause();
+    }
+  }
+
+  void _toggleMute() {
+    setState(() => _muted = !_muted);
+    _videoCtrl?.setVolume(_muted ? 0 : 1);
+  }
+
+  // ✅ tap simple sur l'écran : pause/relance la vidéo. Sans effet
+  // sur une story image (rien à mettre en pause).
+  void _handleSingleTap() {
+    if (!widget.story.isVideo || _videoCtrl == null || !_videoReady) return;
+    setState(() {
+      if (_videoCtrl!.value.isPlaying) {
+        _videoCtrl!.pause();
+        _manuallyPaused = true;
+      } else {
+        _videoCtrl!.play();
+        _manuallyPaused = false;
+      }
+    });
+  }
+
+  // ✅ double-tap : like uniquement (jamais unlike, comme
+  // TikTok/Instagram), avec un cœur qui apparaît puis s'efface.
+  void _handleDoubleTap() {
+    if (!_liked) {
+      _toggleLike();
+    }
+    setState(() => _showLikeBurst = true);
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _showLikeBurst = false);
+    });
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _videoCtrl?.pause();
     _videoCtrl?.dispose();
     super.dispose();
   }
 
   Future<void> _loadLikeState() async {
-    final uid = _myUid;
-    if (uid == null) return;
     try {
       final row = await Supabase.instance.client
           .from('stories')
           .select('liked_by')
           .eq('id', widget.story.id)
           .maybeSingle();
-      if (row == null) return;
-      final liked = List<String>.from(row['liked_by'] ?? []);
-      if (mounted) setState(() => _liked = liked.contains(uid));
+      final liked = List<String>.from(row?['liked_by'] ?? []);
+      if (mounted) {
+        setState(() {
+          _liked = _myUid != null && liked.contains(_myUid);
+          _likeCount = liked.length;
+        });
+      }
     } catch (_) {}
   }
 
@@ -274,31 +440,35 @@ class _StoryFeedPageState extends State<_StoryFeedPage> {
     final uid = _myUid;
     if (uid == null) return;
     final was = _liked;
-    setState(() => _liked = !was);
+    setState(() {
+      _liked = !was;
+      _likeCount += _liked ? 1 : -1;
+    });
     try {
-      final row = await Supabase.instance.client
-          .from('stories')
-          .select('liked_by')
-          .eq('id', widget.story.id)
-          .maybeSingle();
-      if (row == null) return;
-      final liked = List<String>.from(row['liked_by'] ?? []);
-      if (was) {
-        liked.remove(uid);
-      } else if (!liked.contains(uid)) {
-        liked.add(uid);
-      }
-      await Supabase.instance.client
-          .from('stories')
-          .update({'liked_by': liked}).eq('id', widget.story.id);
+      // ✅ RPC : la RLS n'autorise l'update de stories qu'au propriétaire
+      // (le like n'était jamais enregistré), et l'ajout est atomique.
+      await Supabase.instance.client.rpc('set_story_like',
+          params: {'p_story_id': widget.story.id, 'p_like': !was});
     } catch (_) {
-      if (mounted) setState(() => _liked = was);
+      if (mounted) {
+        setState(() {
+          _liked = was;
+          _likeCount += was ? 1 : -1;
+        });
+      }
     }
   }
 
   Future<void> _openProfile() async {
     final s = widget.story;
     if (s.userId == _myUid) return;
+
+    // ✅ Coupe la vidéo (et son son) AVANT de quitter vers le
+    // profil — sinon elle continue de jouer en arrière-plan tant
+    // que cette page reste montée sous l'écran de profil.
+    final wasPlaying = _videoCtrl?.value.isPlaying ?? false;
+    _videoCtrl?.pause();
+
     try {
       final data = await Supabase.instance.client
           .from('profiles')
@@ -318,8 +488,18 @@ class _StoryFeedPageState extends State<_StoryFeedPage> {
         lookingFor: data['looking_for'],
         isOnline: data['is_online'] ?? false,
       );
-      Get.toNamed('/profile/view', arguments: user);
-    } catch (_) {}
+      // ✅ On attend le retour de l'écran de profil pour savoir
+      // quand relancer la lecture.
+      await Get.toNamed('/profile/view', arguments: user);
+    } catch (_) {
+    } finally {
+      // ✅ Ne relance que si la vidéo jouait réellement avant (pas
+      // si l'utilisateur l'avait lui-même mise en pause par un tap),
+      // et seulement si cette page est toujours celle affichée.
+      if (mounted && _isVisible && wasPlaying && !_manuallyPaused) {
+        _videoCtrl?.play();
+      }
+    }
   }
 
   String _ago(DateTime d) {
@@ -334,417 +514,452 @@ class _StoryFeedPageState extends State<_StoryFeedPage> {
   Widget build(BuildContext context) {
     final s = widget.story;
     final isOwner = s.userId == _myUid;
+    final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
 
-    return Stack(fit: StackFit.expand, children: [
-      Container(color: Colors.black),
-      Center(
-        child: s.isVideo
-            ? (_videoReady && _videoCtrl != null
-                ? AspectRatio(
-                    aspectRatio: _videoCtrl!.value.aspectRatio,
-                    child: VideoPlayer(_videoCtrl!))
-                : const CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2))
-            : CachedNetworkImage(
-                imageUrl: s.mediaUrl,
-                fit: BoxFit.contain,
-                placeholder: (_, __) => const CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2),
-                errorWidget: (_, __, ___) => const Icon(
-                    Icons.broken_image_outlined,
-                    color: Colors.white38,
-                    size: 48),
-              ),
-      ),
-      const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.center,
-            colors: [Color(0xCC000000), Colors.transparent],
-          ),
-        ),
-      ),
-      const Align(
-        alignment: Alignment.bottomCenter,
-        child: SizedBox(
-          height: 160,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.center,
-                colors: [Color(0xBB000000), Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-      ),
-      // ── Header ──
-      Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 12,
-        right: 12,
-        child: Row(children: [
-          GestureDetector(
-            onTap: _openProfile,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: ClipOval(
-                child: s.userPhotoUrl != null && s.userPhotoUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
-                    : Container(
-                        color: AppColors.accent2,
-                        child: Center(
-                          child: Text(
-                            s.userName.isNotEmpty
-                                ? s.userName[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: GestureDetector(
-              onTap: _openProfile,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(s.userName,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700)),
-                  Text(_ago(s.createdAt),
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Get.back(),
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.black38,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24),
-              ),
-              child: const Icon(Icons.close_rounded,
-                  color: Colors.white, size: 18),
-            ),
-          ),
-        ]),
-      ),
-      // ── Caption + like ──
-      Positioned(
-        bottom: MediaQuery.of(context).padding.bottom + 24,
-        left: 16,
-        right: 16,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (s.caption != null && s.caption!.isNotEmpty)
-              Expanded(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(s.caption!,
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 14)),
-                ),
-              )
-            else
-              const Spacer(),
-            if (!isOwner) ...[
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: _toggleLike,
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color:
-                        _liked ? Colors.pink.withOpacity(0.3) : Colors.black54,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: _liked ? Colors.pink : Colors.white24),
-                  ),
-                  child: Center(
-                    child: Text(_liked ? '❤️' : '🤍',
-                        style: const TextStyle(fontSize: 20)),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    ]);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════
-//  PAGE ANNONCE (dans le feed mixte)
-// ══════════════════════════════════════════════════════════════════
-
-class _AnnonceFeedPage extends StatelessWidget {
-  final AnnonceModel annonce;
-  const _AnnonceFeedPage({required this.annonce});
-
-  void _openInAnnonces() {
-    Get.back();
-    if (Get.isRegistered<NavigationController>()) {
-      Get.find<NavigationController>().goToAnnonces();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasMedia = annonce.mediaUrl != null && annonce.mediaUrl!.isNotEmpty;
-
-    return Stack(fit: StackFit.expand, children: [
-      Container(color: const Color(0xFF13131A)),
-      if (hasMedia)
-        CachedNetworkImage(
-          imageUrl: annonce.mediaUrl!,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => const Center(
-              child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2)),
-          errorWidget: (_, __, ___) => const Center(
-              child: Icon(Icons.broken_image_outlined,
-                  color: Colors.white38, size: 48)),
-        )
-      else
+    // ✅ tout l'écran est enveloppé dans un GestureDetector gérant
+    // tap simple (pause) et double-tap (like). Les boutons internes
+    // (avatar, fermer, mute, cœur, réponse) restent cliquables
+    // normalement : Flutter donne toujours la priorité au
+    // GestureDetector le plus interne lors de la résolution du
+    // geste, donc aucun conflit avec ce calque global.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _handleSingleTap,
+      onDoubleTapDown: (details) => _lastTapPosition = details.localPosition,
+      onDoubleTap: _handleDoubleTap,
+      child: Stack(fit: StackFit.expand, children: [
+        Container(color: Colors.black),
         Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Text(
-              annonce.titre,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700),
+          child: s.isVideo
+              ? (_videoReady && _videoCtrl != null
+                  ? AspectRatio(
+                      aspectRatio: _videoCtrl!.value.aspectRatio,
+                      child: VideoPlayer(_videoCtrl!))
+                  : const CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+              : CachedNetworkImage(
+                  imageUrl: s.mediaUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (_, __) => const CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
+                  errorWidget: (_, __, ___) => const Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white38,
+                      size: 48),
+                ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.center,
+              colors: [Color(0xCC000000), Colors.transparent],
             ),
           ),
         ),
-      const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.center,
-            colors: [Color(0xCC000000), Colors.transparent],
-          ),
-        ),
-      ),
-      const Align(
-        alignment: Alignment.bottomCenter,
-        child: SizedBox(
-          height: 220,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.center,
-                colors: [Color(0xDD000000), Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-      ),
-      // ── Badge "Annonce" + fermer ──
-      Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 12,
-        right: 12,
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              gradient: AppColors.gradientPink,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.campaign_rounded, color: Colors.white, size: 13),
-              SizedBox(width: 5),
-              Text('Annonce',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800)),
-            ]),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => Get.back(),
-            child: Container(
-              width: 34,
-              height: 34,
+        const Align(
+          alignment: Alignment.bottomCenter,
+          child: SizedBox(
+            height: 160,
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.black38,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24),
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.center,
+                  colors: [Color(0xBB000000), Colors.transparent],
+                ),
               ),
-              child: const Icon(Icons.close_rounded,
-                  color: Colors.white, size: 18),
             ),
           ),
-        ]),
-      ),
-      // ── Bas : auteur, titre, réactions ──
-      Positioned(
-        bottom: MediaQuery.of(context).padding.bottom + 24,
-        left: 16,
-        right: 16,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(children: [
-              Container(
-                width: 32,
-                height: 32,
+        ),
+        // ✅ icône pause/lecture au centre, visible tant que la
+        // vidéo est manuellement en pause (façon TikTok).
+        if (widget.story.isVideo && _manuallyPaused)
+          const IgnorePointer(
+            child: Center(
+              child: Icon(Icons.play_arrow_rounded,
+                  color: Colors.white70, size: 72),
+            ),
+          ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 16,
+          left: 12,
+          right: 12,
+          child: Row(children: [
+            GestureDetector(
+              onTap: _openProfile,
+              child: Container(
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: ClipOval(
-                  child: annonce.userPhotoUrl != null &&
-                          annonce.userPhotoUrl!.isNotEmpty
+                  child: s.userPhotoUrl != null && s.userPhotoUrl!.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: annonce.userPhotoUrl!, fit: BoxFit.cover)
+                          imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
                       : Container(
                           color: AppColors.accent2,
                           child: Center(
                             child: Text(
-                                annonce.userName.isNotEmpty
-                                    ? annonce.userName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12)),
+                              s.userName.isNotEmpty
+                                  ? s.userName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800),
+                            ),
                           ),
                         ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(annonce.userName,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ]),
-            if (hasMedia) ...[
-              const SizedBox(height: 10),
-              Text(annonce.titre,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800)),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              annonce.description,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
-            const SizedBox(height: 14),
-            Row(children: [
-              _ReactionRow(annonce: annonce),
-              const Spacer(),
-              GestureDetector(
-                onTap: _openInAnnonces,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: const Text('Voir plus',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GestureDetector(
+                onTap: _openProfile,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(s.userName,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700)),
+                    Text(_ago(s.createdAt),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 11)),
+                  ],
                 ),
               ),
-            ]),
-          ],
+            ),
+            if (widget.showCloseButton)
+              GestureDetector(
+                onTap: () => Get.back(),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Icon(Icons.close_rounded,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+          ]),
         ),
-      ),
-    ]);
+        if (!_replyFocused && s.caption != null && s.caption!.isNotEmpty)
+          Positioned(
+            bottom: keyboardH > 0 ? keyboardH + 76 : bottomPad + 76,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(s.caption!,
+                  style: const TextStyle(color: Colors.white, fontSize: 14)),
+            ),
+          ),
+        if (s.isVideo)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 68,
+            right: 12,
+            child: GestureDetector(
+              onTap: _toggleMute,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                        _muted
+                            ? Icons.volume_off_rounded
+                            : Icons.volume_up_rounded,
+                        color: Colors.white,
+                        size: 15),
+                    const SizedBox(width: 4),
+                    Text(
+                      _muted ? 'Muet' : 'Son',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        // ✅ Bouton like — milieu à droite, façon TikTok.
+        if (!isOwner)
+          Positioned(
+            right: 12,
+            top: 0,
+            bottom: keyboardH > 0 ? keyboardH : bottomPad,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: _toggleLike,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: _liked
+                            ? Colors.pink.withOpacity(0.3)
+                            : Colors.black54,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: _liked ? Colors.pink : Colors.white24),
+                      ),
+                      child: Center(
+                        child: Text(_liked ? '❤️' : '🤍',
+                            style: const TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('$_likeCount',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        // La barre de réponse occupe toute la largeur disponible en bas.
+        if (!isOwner)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            bottom: keyboardH > 0 ? keyboardH + 8 : bottomPad + 16,
+            left: 16,
+            right: 16,
+            child: _ReplyBar(
+              story: s,
+              onFocusChanged: (focused) {
+                setState(() => _replyFocused = focused);
+              },
+            ),
+          ),
+        // ✅ cœur qui apparaît à l'endroit du double-tap et s'efface
+        // après un court instant.
+        if (_showLikeBurst)
+          Positioned(
+            left: (_lastTapPosition?.dx ?? 0) - 50,
+            top: (_lastTapPosition?.dy ?? 0) - 50,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _showLikeBurst ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: const Text('❤️', style: TextStyle(fontSize: 100)),
+              ),
+            ),
+          ),
+      ]),
+    );
   }
 }
 
-// ── Ligne de réactions rapides pour une annonce ────────────────────
+class _ReplyBar extends StatefulWidget {
+  final StoryModel story;
+  final ValueChanged<bool> onFocusChanged;
+  const _ReplyBar({required this.story, required this.onFocusChanged});
 
-class _ReactionRow extends StatelessWidget {
-  final AnnonceModel annonce;
-  const _ReactionRow({required this.annonce});
+  @override
+  State<_ReplyBar> createState() => _ReplyBarState();
+}
+
+class _ReplyBarState extends State<_ReplyBar> {
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+  bool _sending = false, _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => widget.onFocusChanged(_focus.hasFocus));
+    _ctrl.addListener(() {
+      final h = _ctrl.text.trim().isNotEmpty;
+      if (h != _hasText) setState(() => _hasText = h);
+    });
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty || _sending) return;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    if (uid == widget.story.userId) {
+      Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: Colors.white);
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      final res = await Supabase.instance.client
+          .from('conversations')
+          .select('id')
+          .or('and(user1_id.eq.$uid,user2_id.eq.${widget.story.userId}),'
+              'and(user1_id.eq.${widget.story.userId},user2_id.eq.$uid)')
+          .maybeSingle();
+      final String convId;
+      if (res != null) {
+        convId = res['id'] as String;
+      } else {
+        final created = await Supabase.instance.client
+            .from('conversations')
+            .insert({'user1_id': uid, 'user2_id': widget.story.userId})
+            .select('id')
+            .single();
+        convId = created['id'] as String;
+      }
+      final storyData = StoryReplyData(
+        storyId: widget.story.id,
+        storyPreviewUrl: widget.story.mediaUrl,
+        storyIsVideo: widget.story.isVideo,
+        storyOwnerName: widget.story.userName,
+      );
+      final safeContent = text.substring(0, text.length.clamp(0, 500));
+      if (Get.isRegistered<ConversationController>(tag: convId)) {
+        await Get.find<ConversationController>(tag: convId).sendStoryReply(
+          conversationId: convId,
+          text: safeContent,
+          storyData: storyData,
+        );
+      } else {
+        bool sent = false;
+        try {
+          await Supabase.instance.client.from('messages').insert({
+            'conversation_id': convId,
+            'sender_id': uid,
+            'type': 'text',
+            'content': safeContent,
+            'status': 'sent',
+            'story_id': widget.story.id,
+            'story_preview_url': widget.story.mediaUrl,
+            'story_is_video': widget.story.isVideo,
+            'topic': '📸 Story de ${widget.story.userName}',
+          });
+          sent = true;
+        } catch (_) {}
+        if (!sent) {
+          await Supabase.instance.client.from('messages').insert({
+            'conversation_id': convId,
+            'sender_id': uid,
+            'type': 'text',
+            'content': safeContent,
+            'status': 'sent',
+          });
+        }
+        await Supabase.instance.client.from('conversations').update(
+            {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId); // ✅ UTC
+      }
+      _ctrl.clear();
+      _focus.unfocus();
+      widget.onFocusChanged(false);
+      if (mounted) {
+        Get.snackbar('Réponse envoyée ✓', '',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.surface,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2));
+      }
+    } catch (e) {
+      debugPrint('replyStory error: $e');
+      if (mounted) {
+        Get.snackbar('Erreur', "Impossible d'envoyer le message",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.surface,
+            colorText: Colors.white);
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!Get.isRegistered<AnnoncesController>()) {
-      return const SizedBox.shrink();
-    }
-    final ctrl = Get.find<AnnoncesController>();
-
-    return Obx(() {
-      final fresh =
-          ctrl.annonces.firstWhereOrNull((a) => a.id == annonce.id) ?? annonce;
-      return GestureDetector(
-        onTap: () => ctrl.toggleReaction(fresh, '❤️'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: fresh.myReaction.isNotEmpty
-                ? Colors.pink.withOpacity(0.25)
-                : Colors.black45,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color:
-                    fresh.myReaction.isNotEmpty ? Colors.pink : Colors.white24),
+    return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      Expanded(
+          child: Container(
+        constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: _focus.hasFocus
+                ? AppColors.accent.withOpacity(0.6)
+                : Colors.white24,
+            width: _focus.hasFocus ? 1.5 : 1,
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(fresh.myReaction.isNotEmpty ? fresh.myReaction : '🤍',
-                style: const TextStyle(fontSize: 16)),
-            if (fresh.likes > 0) ...[
-              const SizedBox(width: 6),
-              Text('${fresh.likes}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700)),
-            ],
-          ]),
         ),
-      );
-    });
+        child: TextField(
+          controller: _ctrl,
+          focusNode: _focus,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          maxLines: 4,
+          minLines: 1,
+          maxLength: 500,
+          buildCounter: (_,
+                  {required currentLength, required isFocused, maxLength}) =>
+              null,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            hintText: 'Répondre à la story...',
+            hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      )),
+      const SizedBox(width: 8),
+      AnimatedOpacity(
+        opacity: _hasText ? 1.0 : 0.4,
+        duration: const Duration(milliseconds: 200),
+        child: GestureDetector(
+          onTap: _hasText && !_sending ? _send : null,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+                gradient: AppColors.gradientPink, shape: BoxShape.circle),
+            child: _sending
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+          ),
+        ),
+      ),
+    ]);
   }
 }

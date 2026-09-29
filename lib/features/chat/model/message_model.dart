@@ -83,6 +83,8 @@ class MessageModel {
   final DateTime createdAt;
   final DateTime? expiresAt;
   final DateTime? disappearsAt;
+  // Date de lecture par le destinataire (remplie par le serveur).
+  final DateTime? readAt;
   final bool isOpened;
   final int? audioDurationSec;
   final int? snapDurationSec;
@@ -103,6 +105,7 @@ class MessageModel {
     required this.createdAt,
     this.expiresAt,
     this.disappearsAt,
+    this.readAt,
     this.isOpened = false,
     this.audioDurationSec,
     this.snapDurationSec,
@@ -114,8 +117,13 @@ class MessageModel {
 
   bool get isSnap => type == MessageType.snap;
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
+  // ✅ Règle éphémère : un message disparaît 24h après avoir été lu
+  // (le serveur le supprime ensuite, fichier compris).
+  static const dureeApresLecture = Duration(hours: 24);
   bool get isDisappeared =>
-      disappearsAt != null && DateTime.now().isAfter(disappearsAt!);
+      (disappearsAt != null && DateTime.now().isAfter(disappearsAt!)) ||
+      (readAt != null &&
+          DateTime.now().isAfter(readAt!.add(dureeApresLecture)));
 
   // ✅ FIX : "isMine" ne peut pas être un getter sans argument — il ne
   // connaît jamais l'utilisateur courant. L'ancienne version comparait
@@ -143,6 +151,7 @@ class MessageModel {
     DateTime? createdAt,
     DateTime? expiresAt,
     DateTime? disappearsAt,
+    DateTime? readAt,
     bool? isOpened,
     int? audioDurationSec,
     int? snapDurationSec,
@@ -162,6 +171,7 @@ class MessageModel {
       createdAt: createdAt ?? this.createdAt,
       expiresAt: expiresAt ?? this.expiresAt,
       disappearsAt: disappearsAt ?? this.disappearsAt,
+      readAt: readAt ?? this.readAt,
       isOpened: isOpened ?? this.isOpened,
       audioDurationSec: audioDurationSec ?? this.audioDurationSec,
       snapDurationSec: snapDurationSec ?? this.snapDurationSec,

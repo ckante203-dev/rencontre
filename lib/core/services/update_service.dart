@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:rencontre/core/theme/app_theme.dart';
 
 class UpdateService {
   // ✅ Version lue automatiquement depuis pubspec.yaml
@@ -113,8 +114,8 @@ class UpdateService {
             children: [
               Text(
                 'Version $latestVersion disponible',
-                style: const TextStyle(
-                    color: Color(0xFFFF3CAC), fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: AppColors.accent, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
@@ -131,9 +132,9 @@ class UpdateService {
               ],
               if (forceUpdate) ...[
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '⚠️ Cette mise à jour est obligatoire.',
-                  style: TextStyle(color: Color(0xFFFF5252), fontSize: 13),
+                  style: TextStyle(color: AppColors.error, fontSize: 13),
                 ),
               ],
             ],
@@ -148,7 +149,7 @@ class UpdateService {
             ElevatedButton(
               onPressed: () => _downloadUpdate(downloadUrl),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF3CAC),
+                backgroundColor: AppColors.accent,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),

@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
+import 'package:rencontre/core/theme/app_theme.dart';
 
 class MapController extends GetxController {
   final _service = SupabaseService();
@@ -18,6 +21,9 @@ class MapController extends GetxController {
 
   // ── Filtres ──────────────────────────────────────────────────
   final RxDouble filterDistance = 10.0.obs;
+  // ✅ Rayon maximal du slider de distance (map_screen : max 50 km),
+  // utilisé pour la zone de recherche en base.
+  static const double _rayonRechercheMaxKm = 50.0;
   final RxString filterStatus = 'tous'.obs;
 
   // ── Vue : carte ou liste ─────────────────────────────────────
@@ -117,12 +123,19 @@ class MapController extends GetxController {
     try {
       final url =
           'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=5&countrycodes=ci,sn,ml,bf,bj,tg,cm,gn';
-      final response = await Supabase.instance.client.functions.invoke(
-        'geocode',
-        body: {'query': query},
-      );
-      // Fallback — utilise Nominatim directement via HTTP
-      return null;
+      // ✅ Nominatim (OpenStreetMap) directement : la fonction serveur
+      // « geocode » appelée avant n'existe pas, la recherche ne trouvait
+      // jamais rien. Nominatim exige un User-Agent identifiant l'app.
+      final res = await http.get(Uri.parse(url),
+          headers: {'User-Agent': 'Zamu/1.0 (support.snapmeet@gmail.com)'});
+      if (res.statusCode != 200) return null;
+      final results = jsonDecode(res.body) as List;
+      if (results.isEmpty) return null;
+      final first = results.first as Map<String, dynamic>;
+      final lat = double.tryParse('${first['lat']}');
+      final lon = double.tryParse('${first['lon']}');
+      if (lat == null || lon == null) return null;
+      return LatLng(lat, lon);
     } catch (e) {
       debugPrint('rechercherVille error: $e');
       return null;
@@ -149,10 +162,10 @@ class MapController extends GetxController {
       isPremium.value = data['is_premium'] ?? false;
       positionPrecision.value = data['position_precision'] ?? 'flouted';
       mapInvisibleUntil.value = data['map_invisible_until'] != null
-          ? DateTime.tryParse(data['map_invisible_until'])
+          ? _parseDbDate(data['map_invisible_until'])
           : null;
       ghostUntil.value = data['ghost_until'] != null
-          ? DateTime.tryParse(data['ghost_until'])
+          ? _parseDbDate(data['ghost_until'])
           : null;
     } catch (e) {
       debugPrint('_chargerPreferences error: $e');
@@ -175,8 +188,10 @@ class MapController extends GetxController {
       }
       await Supabase.instance.client.from('profiles').update({
         'map_visible': visible,
-        'map_invisible_until': until?.toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
+        // ✅ UTC explicite : un horodatage local "naïf" est interprété
+        // comme UTC par Postgres (décalage du fuseau).
+        'map_invisible_until': until?.toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       mapVisible.value = visible;
       mapInvisibleUntil.value = until;
@@ -199,7 +214,7 @@ class MapController extends GetxController {
       await Supabase.instance.client.from('profiles').update({
         'map_visible': true,
         'map_invisible_until': null,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(), // ✅ UTC
       }).eq('id', uid);
       mapVisible.value = true;
       mapInvisibleUntil.value = null;
@@ -226,8 +241,8 @@ class MapController extends GetxController {
           newGhost ? DateTime.now().add(const Duration(days: 30)) : null;
       await Supabase.instance.client.from('profiles').update({
         'is_ghost': newGhost,
-        'ghost_until': until?.toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
+        'ghost_until': until?.toUtc().toIso8601String(), // ✅ UTC
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       isGhost.value = newGhost;
       ghostUntil.value = until;
@@ -248,7 +263,7 @@ class MapController extends GetxController {
     try {
       await Supabase.instance.client.from('profiles').update({
         'position_precision': precision,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(), // ✅ UTC
       }).eq('id', uid);
       positionPrecision.value = precision;
       _snackSuccess('Précision mise à jour');
@@ -262,7 +277,7 @@ class MapController extends GetxController {
 
   void _showPremiumDialog() {
     Get.dialog(AlertDialog(
-      backgroundColor: const Color(0xFF11111C),
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Mode Fantôme 👻',
           style: TextStyle(
@@ -270,21 +285,21 @@ class MapController extends GetxController {
               fontWeight: FontWeight.w800,
               color: Colors.white,
               fontSize: 18)),
-      content: const Text(
+      content: Text(
           'Le mode fantôme est une fonctionnalité Premium.\n\nTu peux voir tous les profils sur la carte sans que personne ne te voit.',
           style:
-              TextStyle(color: Color(0xFF5A5A78), fontSize: 13, height: 1.5)),
+              TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.5)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Fermer',
-                style: TextStyle(color: Color(0xFF5A5A78)))),
+            child: Text('Fermer',
+                style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
             Get.back();
             Get.snackbar('👑 Premium', 'Bientôt disponible !',
                 snackPosition: SnackPosition.TOP,
-                backgroundColor: const Color(0xFF13131A),
+                backgroundColor: AppColors.surface,
                 colorText: Colors.white);
           },
           child: Container(
@@ -368,17 +383,36 @@ class MapController extends GetxController {
 
       final allExcluded = <String>{uid, ...myBlockedIds, ...blockedMeIds};
 
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select(
-              'id, name, bio, photo_url, photo_urls, latitude, longitude, is_online, gender, looking_for, birthdate, interests, taille, poids, morphologie, lieu_rencontre, followers_count, following_count, matches_count, is_suspended, map_visible, is_ghost, is_premium, map_invisible_until, ghost_until, position_precision')
-          .eq('is_suspended', false)
-          .not('latitude', 'is', null)
-          .not('longitude', 'is', null)
-          .limit(100);
-
       final myLat = myPosition.value?.latitude;
       final myLng = myPosition.value?.longitude;
+
+      var query = Supabase.instance.client
+          .from('profiles')
+          .select(
+              'id, name, bio, photo_url, photo_urls, latitude, longitude, is_online, gender, looking_for, birthdate, interests, taille, poids, morphologie, lieu_rencontre, followers_count, following_count, matches_count, is_suspended, map_visible, is_ghost, is_premium, map_invisible_until, ghost_until, position_precision, show_distance')
+          .eq('is_suspended', false)
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null);
+
+      // ✅ Les 100 profils étaient pris au hasard (aucun filtre ni tri) :
+      // les utilisateurs proches manquaient souvent. On restreint à une
+      // zone englobant le rayon de recherche maximal de la carte (le
+      // filtre de distance reste appliqué côté client) et on privilégie
+      // les profils actifs récemment.
+      if (myLat != null && myLng != null) {
+        const dLat = _rayonRechercheMaxKm / 111.32;
+        final cosLat = cos(_deg2rad(myLat)).abs().clamp(0.01, 1.0);
+        final dLng = _rayonRechercheMaxKm / (111.32 * cosLat);
+        query = query.gte('latitude', myLat - dLat).lte('latitude', myLat + dLat);
+        if (myLng - dLng >= -180 && myLng + dLng <= 180) {
+          query =
+              query.gte('longitude', myLng - dLng).lte('longitude', myLng + dLng);
+        }
+      }
+
+      final data = await query
+          .order('last_seen', ascending: false, nullsFirst: false)
+          .limit(100);
       final now = DateTime.now();
 
       final list = (data as List).where((row) {
@@ -387,11 +421,11 @@ class MapController extends GetxController {
         final rowGhost = row['is_ghost'] ?? false;
         final rowPremium = row['is_premium'] ?? false;
         final rowInvisibleUntil = row['map_invisible_until'] != null
-            ? DateTime.tryParse(row['map_invisible_until'])
+            ? _parseDbDate(row['map_invisible_until'])
             : null;
         if (rowGhost && rowPremium) {
           final ghostUntilRow = row['ghost_until'] != null
-              ? DateTime.tryParse(row['ghost_until'])
+              ? _parseDbDate(row['ghost_until'])
               : null;
           if (ghostUntilRow == null || now.isBefore(ghostUntilRow)) {
             return false;
@@ -451,12 +485,30 @@ class MapController extends GetxController {
     const r = 6371000.0;
     final dLat = _deg2rad(lat2 - lat1);
     final dLon = _deg2rad(lon2 - lon1);
-    final a = (dLat / 2) * (dLat / 2) +
-        _deg2rad(lat1) * _deg2rad(lat2) * (dLon / 2) * (dLon / 2);
-    return r * 2 * (a < 1 ? a : 1);
+    // ✅ Haversine complète (sin/cos/atan2 manquaient : distances ~100x
+    // trop petites).
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_deg2rad(lat1)) *
+            cos(_deg2rad(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    return r * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
   double _deg2rad(double deg) => deg * 3.141592653589793 / 180;
+
+  // ✅ Horodatage Supabase → DateTime. Sans indicateur de fuseau (colonne
+  // `timestamp` sans tz), la valeur est en UTC : on l'indique à Dart au
+  // lieu de la lire comme heure locale (les dates sont écrites en UTC).
+  static DateTime? _parseDbDate(dynamic raw) {
+    if (raw == null) return null;
+    final s = raw.toString().trim();
+    final hasTime = s.contains('T') || s.contains(' ');
+    if (hasTime && !RegExp(r'(Z|z|[+-]\d{2}(:?\d{2})?)$').hasMatch(s)) {
+      return DateTime.tryParse('${s}Z');
+    }
+    return DateTime.tryParse(s);
+  }
 
   int _calcAge(dynamic birthdate) {
     if (birthdate == null) return 18;
@@ -505,6 +557,7 @@ class MapController extends GetxController {
       poids: row['poids'] as int?,
       morphologie: row['morphologie'] as String?,
       lieuRencontre: row['lieu_rencontre'] as String?,
+      showDistance: row['show_distance'] ?? true,
     );
   }
 
@@ -519,13 +572,13 @@ class MapController extends GetxController {
 
   void _snackSuccess(String msg) => Get.snackbar('✅ $msg', '',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF00E676).withOpacity(0.15),
+      backgroundColor: AppColors.online.withOpacity(0.15),
       colorText: Colors.white,
       duration: const Duration(seconds: 2));
 
   void _snackError(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF13131A),
+      backgroundColor: AppColors.surface,
       colorText: Colors.white,
       duration: const Duration(seconds: 4));
 }
