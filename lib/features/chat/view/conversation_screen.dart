@@ -145,6 +145,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       body: Column(children: [
         const _EphemeralBanner(),
         Expanded(child: _MessageList(ctrl: ctrl)),
+        _BandeauEnvoi(ctrl: ctrl),
         _InputBar(ctrl: ctrl),
       ]),
     );
@@ -509,6 +510,39 @@ class _Div extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 //  BANNIÈRE ÉPHÉMÈRE
 // ═══════════════════════════════════════════════════════════════════
+
+// ✅ Messages directs : explique pourquoi l'envoi est bloqué
+// (limite de messages sans réponse, ou blocage).
+class _BandeauEnvoi extends StatelessWidget {
+  final ConversationController ctrl;
+  const _BandeauEnvoi({required this.ctrl});
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final String? texte = ctrl.bloque.value
+          ? 'Tu ne peux plus écrire à cette personne'
+          : ctrl.limiteAtteinte.value
+              ? 'Tu as envoyé '
+                  '${ConversationController.limiteSansReponse} messages. '
+                  'Attends sa réponse pour continuer.'
+              : null;
+      if (texte == null) return const SizedBox.shrink();
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: AppColors.surface2,
+        child: Row(children: [
+          Icon(Icons.hourglass_top_rounded, size: 14, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texte,
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          ),
+        ]),
+      );
+    });
+  }
+}
 
 class _EphemeralBanner extends StatelessWidget {
   const _EphemeralBanner();
@@ -2530,6 +2564,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
   }
 
   Future<void> _envoyer() async {
+    if (!widget.ctrl.peutEnvoyer()) return;
     setState(() => _uploading = true);
     try {
       final file = File(widget.filePath);
@@ -2576,6 +2611,10 @@ class _PreviewSheetState extends State<_PreviewSheet> {
           .update({'updated_at': now}).eq('id', widget.ctrl.conversation.id);
       if (mounted) Get.back();
     } catch (e) {
+      if (widget.ctrl.gererRefusServeur(e)) {
+        if (mounted) setState(() => _uploading = false);
+        return;
+      }
       Get.snackbar('Erreur',
           e.toString().substring(0, e.toString().length.clamp(0, 100)),
           snackPosition: SnackPosition.TOP,

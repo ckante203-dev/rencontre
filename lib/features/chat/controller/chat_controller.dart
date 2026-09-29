@@ -441,6 +441,13 @@ class ConversationController extends GetxController {
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
   final Rx<DateTime?> lastReadAt = Rx<DateTime?>(null);
+  // ✅ Messages directs : limite de 3 messages tant que l'autre n'a pas
+  // répondu (sans match), et blocage. Règles appliquées par le serveur ;
+  // ces valeurs servent à prévenir l'utilisateur.
+  static const int limiteSansReponse = 3;
+  final RxBool limiteAtteinte = false.obs;
+  final RxBool bloque = false.obs;
+  bool _enAttenteDeReponse = false;
 
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _recorderOpen = false;
@@ -486,6 +493,8 @@ class ConversationController extends GetxController {
     conversation = conv;
     isOtherOnline.value = conv.isOnline;
     _audioPlayer.onPlayerComplete.listen((_) => currentlyPlayingId.value = '');
+    // Recalcule la limite dès que la liste des messages change
+    ever(messages, (_) => _majLimite());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_closed) return; // ✅ FIX — écran déjà fermé
       _loadMessages();
@@ -494,8 +503,77 @@ class ConversationController extends GetxController {
       _subscribeToTyping(conv.id, conv.userId);
       _markReadAndUpdateBadge(conv.id);
       _fetchOtherOnlineStatus(conv.userId);
+      _chargerStatutConversation();
     });
   }
+
+  /// Statut de la conversation : en attente de réponse (sans match) ?
+  Future<void> _chargerStatutConversation() async {
+    try {
+      final c = await Supabase.instance.client
+          .from('conversations')
+          .select('request_status, initiated_by')
+          .eq('id', conversation.id)
+          .maybeSingle();
+      if (c == null || _closed) return;
+      var enAttente = c['request_status'] == 'pending' &&
+          c['initiated_by'] == myId;
+      if (enAttente) {
+        try {
+          final match = await Supabase.instance.client.rpc('ont_un_match',
+              params: {'a': myId, 'b': conversation.userId});
+          if (match == true) enAttente = false;
+        } catch (_) {}
+      }
+      _enAttenteDeReponse = enAttente;
+      _majLimite();
+    } catch (_) {}
+  }
+
+  void _majLimite() {
+    if (!_enAttenteDeReponse) {
+      limiteAtteinte.value = false;
+      return;
+    }
+    final mesMessages = messages
+        .where((m) => m.senderId == myId && !m.id.startsWith('temp_'))
+        .length;
+    limiteAtteinte.value = mesMessages >= limiteSansReponse;
+  }
+
+  /// À appeler avant chaque envoi : prévient au lieu d'envoyer pour rien.
+  bool peutEnvoyer() {
+    if (bloque.value) {
+      _snackRefus('Tu ne peux plus écrire à cette personne');
+      return false;
+    }
+    if (limiteAtteinte.value) {
+      _snackRefus('Attends sa réponse pour envoyer d\x27autres messages');
+      return false;
+    }
+    return true;
+  }
+
+  /// Erreur renvoyée par le serveur (limite ou blocage) : message clair.
+  bool gererRefusServeur(Object e) {
+    final t = e.toString();
+    if (t.contains('limite_sans_reponse')) {
+      limiteAtteinte.value = true;
+      _snackRefus('Attends sa réponse pour envoyer d\x27autres messages');
+      return true;
+    }
+    if (t.contains('bloque')) {
+      bloque.value = true;
+      _snackRefus('Tu ne peux plus écrire à cette personne');
+      return true;
+    }
+    return false;
+  }
+
+  void _snackRefus(String texte) => Get.snackbar('Message non envoyé', texte,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: AppColors.surface,
+      colorText: Colors.white);
 
   Future<void> _fetchOtherOnlineStatus(String otherUserId) async {
     try {
@@ -792,7 +870,14 @@ class ConversationController extends GetxController {
                 } catch (_) {}
               }
             }
-            if (newMsg.senderId != myId) _markReadAndUpdateBadge(convId);
+            if (newMsg.senderId != myId) {
+              _markReadAndUpdateBadge(convId);
+              // L'autre a répondu : la conversation devient normale
+              _enAttenteDeReponse = false;
+              limiteAtteinte.value = false;
+            } else {
+              _majLimite();
+            }
           },
         )
         .onPostgresChanges(
@@ -944,6 +1029,7 @@ class ConversationController extends GetxController {
   Future<void> sendText() async {
     final text = textController.text.trim();
     if (text.isEmpty) return;
+    if (!peutEnvoyer()) return;
     final reply = replyToMessage.value;
     textController.clear();
     replyToMessage.value = null;
@@ -966,8 +1052,9 @@ class ConversationController extends GetxController {
         type: 'text',
         replyToId: reply?.id,
       );
-    } catch (_) {
+    } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
+      if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', 'Message non envoyé',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
@@ -980,6 +1067,7 @@ class ConversationController extends GetxController {
     required String text,
     required StoryReplyData storyData,
   }) async {
+    if (!peutEnvoyer()) return;
     final uid = _service.currentUserId;
     if (uid == null) return;
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
@@ -1207,6 +1295,7 @@ class ConversationController extends GetxController {
   }
 
   Future<void> envoyerPhotoEphemere() async {
+    if (!peutEnvoyer()) return;
     showAttachMenu.value = false;
     final picked = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -1232,6 +1321,7 @@ class ConversationController extends GetxController {
         snapDurationSeconds: 10,
       );
     } catch (e) {
+      if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', "Impossible d'envoyer le snap",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
@@ -1241,6 +1331,7 @@ class ConversationController extends GetxController {
 
   Future<void> envoyerPhotoAvecDuree(
       {required bool camera, required SnapDuration duree}) async {
+    if (!peutEnvoyer()) return;
     showAttachMenu.value = false;
     final picked = await _imagePicker.pickImage(
       source: camera ? ImageSource.camera : ImageSource.gallery,
@@ -1268,6 +1359,7 @@ class ConversationController extends GetxController {
         snapDurationSeconds: duree.seconds,
       );
     } catch (e) {
+      if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', "Impossible d'envoyer la photo",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
@@ -1278,6 +1370,7 @@ class ConversationController extends GetxController {
   void toggleAttachMenu() => showAttachMenu.toggle();
 
   Future<void> startRecording() async {
+    if (!peutEnvoyer()) return;
     final micStatus = await Permission.microphone.request();
     if (!micStatus.isGranted) {
       Get.snackbar(
@@ -1393,6 +1486,7 @@ class ConversationController extends GetxController {
         audioDuration: duration,
       );
     } catch (e) {
+      if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', "Impossible d'envoyer le vocal",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
@@ -1416,6 +1510,7 @@ class ConversationController extends GetxController {
   }
 
   Future<void> envoyerPhoto({bool camera = false}) async {
+    if (!peutEnvoyer()) return;
     showAttachMenu.value = false;
     final picked = await _imagePicker.pickImage(
         source: camera ? ImageSource.camera : ImageSource.gallery,
@@ -1439,6 +1534,7 @@ class ConversationController extends GetxController {
         mediaUrl: url,
       );
     } catch (e) {
+      if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', "Impossible d'envoyer la photo",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
@@ -1447,6 +1543,7 @@ class ConversationController extends GetxController {
   }
 
   Future<void> envoyerLocalisation() async {
+    if (!peutEnvoyer()) return;
     showAttachMenu.value = false;
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();

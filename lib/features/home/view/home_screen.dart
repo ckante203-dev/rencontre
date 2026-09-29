@@ -285,6 +285,11 @@ class _IconBtn extends StatelessWidget {
 
 // ─── FILTRES (avec curseur animé qui glisse vers l'onglet actif) ──
 
+// ✅ Grille de l'accueil : 2 colonnes, cartes plus grandes.
+// Pour revenir à l'ancienne grille : 3 colonnes et ratio 0.75.
+const int _colonnesGrille = 2;
+const double _ratioCarte = 0.72;
+
 class _FilterItem {
   final String mode, label, icon;
   const _FilterItem(
@@ -745,10 +750,10 @@ class _UsersGridScrollable extends GetView<HomeController> {
   }) {
     return SliverGrid(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.75,
+        crossAxisCount: _colonnesGrille,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: _ratioCarte,
       ),
       delegate: SliverChildBuilderDelegate(
         (_, i) {
@@ -784,10 +789,10 @@ class _UsersGridScrollable extends GetView<HomeController> {
     return GridView.builder(
       padding: const EdgeInsets.all(8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 0.75),
+          crossAxisCount: _colonnesGrille,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: _ratioCarte),
       itemCount: 12,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: AppColors.surface2,
@@ -1194,9 +1199,9 @@ class _UserCard extends StatelessWidget {
               if (!locked) ...[
                 // ── Nom + distance ─────────────────────────────
                 Positioned(
-                  bottom: 8,
-                  left: 8,
-                  right: 8,
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -1207,14 +1212,14 @@ class _UserCard extends StatelessWidget {
                               : user.name,
                           style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold),
                           overflow: TextOverflow.ellipsis),
                       if (user.distanceMeters != null && user.showDistance)
                         Text(HomeController.formatDistance(user.distanceMeters),
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 9)),
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 12)),
                     ],
                   ),
                 ),
@@ -1222,11 +1227,11 @@ class _UserCard extends StatelessWidget {
                 // ── Dot en ligne ─────────────────────────────────
                 if (user.isOnline)
                   Positioned(
-                      top: 8,
-                      left: 8,
+                      top: 10,
+                      left: 10,
                       child: Container(
-                          width: 8,
-                          height: 8,
+                          width: 11,
+                          height: 11,
                           decoration: const BoxDecoration(
                               color: Colors.green, shape: BoxShape.circle))),
 
@@ -1242,7 +1247,7 @@ class _UserCard extends StatelessWidget {
                       child: Text(unreadCount > 9 ? '9+' : '$unreadCount',
                           style: const TextStyle(
                               color: Colors.black,
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w900)),
                     ),
                   ),
@@ -1264,14 +1269,14 @@ class _UserCard extends StatelessWidget {
                             decoration: const BoxDecoration(
                                 color: Colors.amber, shape: BoxShape.circle),
                             child: const Icon(Icons.lock_rounded,
-                                color: Colors.white, size: 18),
+                                color: Colors.white, size: 22),
                           ),
                         ),
                         const SizedBox(height: 6),
                         const Text('Premium',
                             style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800)),
                       ],
                     ),

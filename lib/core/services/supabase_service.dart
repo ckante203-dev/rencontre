@@ -252,17 +252,9 @@ class SupabaseService {
           : row['user1_id'] as String;
       if (allExcluded.contains(otherId)) return false;
 
-      // ✅ NOUVEAU — n'affiche PAS ici une demande en attente reçue
-      // par moi (je ne l'ai pas encore acceptée) : elle vit dans
-      // fetchMessageRequests() à la place. En revanche, si c'est
-      // MOI qui ai envoyé la demande, je la vois quand même dans ma
-      // propre liste (avec son statut 'pending' pour affichage,
-      // voir _unread_count qui restera à 0 tant que ce n'est pas
-      // accepté côté destinataire).
-      final isPending = row['request_status'] == 'pending';
-      final iAmInitiator = row['initiated_by'] == uid;
-      if (isPending && !iAmInitiator) return false;
-
+      // ✅ Messages directs : les conversations « pending » (sans match,
+      // pas encore de réponse) s'affichent aussi chez le destinataire.
+      // Avant, elles lui étaient cachées et aucun écran ne les montrait.
       return true;
     }).toList();
 

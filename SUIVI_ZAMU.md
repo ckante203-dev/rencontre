@@ -1,6 +1,8 @@
 # Suivi Zamu — à faire au retour
 
-Mis à jour le 29/09/2026. Rien n'a été exécuté sur la base ni déployé pendant ton absence : tout ce qui suit attend ton action.
+Mis à jour le 29/09/2026.
+
+**État :** tous les scripts SQL (000000 à 000009) sont appliqués ; toutes les fonctions serveur sont déployées (notifications testées OK le 29/09) ; commit `7723aed`. Restent les points 4 et 5.
 
 ## 1. Vérifier quels scripts SQL sont déjà passés
 
@@ -75,6 +77,8 @@ Après les étapes 1 et 3 : `flutter build appbundle`, puis publication sur Goog
 - liste des conversations : « Aucun nouveau message » quand tout a expiré ;
 - changer de thème : plus d'éléments qui restent roses (vérifier aussi le bouton « Supprimer » du dialogue de suppression de photo, qui suit maintenant la couleur du thème) ;
 - carte : la recherche de ville trouve enfin des résultats ;
+- accueil : grille en 2 colonnes (pour revenir à 3 : `_colonnesGrille` / `_ratioCarte` dans home_screen.dart) ;
+- messages directs sans match : le destinataire voit la conversation, limite de 3 messages sans réponse, blocage efficace ;
 - Paramètres > mot de passe : la jauge de force suit les couleurs du thème.
 
 ## 5. Plus tard
