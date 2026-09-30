@@ -1,0 +1,27 @@
+# Codemagic — construction de Zamu sur des Mac en ligne.
+#
+# ios-verification : vérifie que l'app iPhone compile, SANS compte Apple
+# (pas de signature, rien n'est envoyé sur l'App Store). À lancer à la
+# main depuis codemagic.io > Start new build.
+#
+# Une fois le compte Apple Developer créé, on ajoutera un workflow
+# « ios-testflight » (signature + envoi sur TestFlight).
+
+workflows:
+  ios-verification:
+    name: iOS - vérification (sans signature)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Dépendances Flutter
+        script: flutter pub get
+      - name: Modules iOS (CocoaPods)
+        script: cd ios && pod install --repo-update
+      - name: Construction iOS sans signature
+        script: flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/iphoneos/*.app
