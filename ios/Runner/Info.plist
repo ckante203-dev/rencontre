@@ -63,6 +63,23 @@
 		<string>mailto</string>
 		<string>whatsapp</string>
 	</array>
+	<!-- Connexion Google (client OAuth iOS « Zamu iOS » du projet zamu-dcffa).
+	     GIDServerClientID = client Web, audience vérifiée par Supabase. -->
+	<key>GIDClientID</key>
+	<string>70132643190-6c3po7iuqnov0feru6r5ufg0823ffajg.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>70132643190-skak491hsn89vg2qgmfe00ja04rcnb9j.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.70132643190-6c3po7iuqnov0feru6r5ufg0823ffajg</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

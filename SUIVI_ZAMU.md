@@ -117,8 +117,8 @@ Déjà fait dans le code : nom « Zamu », textes des autorisations (caméra, ph
 
 Reste à faire :
 1. Créer le compte Apple Developer (99 $/an).
-2. Firebase : ajouter une app iOS `com.vybestyle.zamu`, placer `GoogleService-Info.plist` dans `ios/Runner/` ; clé APNs (Apple) à envoyer dans Firebase > Cloud Messaging.
-3. Google Cloud : client OAuth iOS → ajouter `GIDClientID` et le schéma d'URL inversé dans `Info.plist`.
+2. ~~Firebase : app iOS + `GoogleService-Info.plist`~~ (fait le 01/10) ; reste la clé APNs (Apple) à envoyer dans Firebase > Cloud Messaging.
+3. ~~Google Cloud : client OAuth iOS « Zamu iOS » dans `Info.plist`~~ (fait le 01/10) ; Supabase > Auth > Google : ajouter l'ID client iOS aux Client IDs et activer « Skip nonce checks ».
 4. Apple : App ID avec « Sign in with Apple » et « Push Notifications » ; Supabase > Auth > Providers > Apple (Client ID `com.vybestyle.zamu`).
 5. App Store Connect : créer l'app, l'abonnement Premium ; RevenueCat : app iOS → clé `appl_…` dans `kRevenueCatIosApiKey`.
 6. Codemagic : relier le dépôt GitHub, clé API App Store Connect, fichier `codemagic.yaml`, puis envoi sur TestFlight.
