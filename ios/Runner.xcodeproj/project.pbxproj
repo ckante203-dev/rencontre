@@ -368,6 +368,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vybestyle.zamu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -548,6 +549,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vybestyle.zamu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -571,6 +573,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vybestyle.zamu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
