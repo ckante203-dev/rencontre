@@ -113,6 +113,8 @@ Construction via **Codemagic** (pas de Mac). Identifiant : `com.vybestyle.zamu`.
 
 Déjà fait dans le code : nom « Zamu », textes des autorisations (caméra, photos, micro, position), portrait uniquement, notifications en arrière-plan, Podfile (iOS 13, autorisations), capacités push + Apple, bouton « Continuer avec Apple » (iPhone seulement), Premium désactivé sur iPhone tant que la clé RevenueCat iOS est vide (`kRevenueCatIosApiKey`).
 
+**Construction iPhone vérifiée le 01/10** sur Codemagic (build n° 4, commit `e355813`, workflow « iOS - vérification », Flutter 3.38.5). Relancer : Start new build > **Build branch** `main` (pas « Build commit ») > workflow.
+
 Reste à faire :
 1. Créer le compte Apple Developer (99 $/an).
 2. Firebase : ajouter une app iOS `com.vybestyle.zamu`, placer `GoogleService-Info.plist` dans `ios/Runner/` ; clé APNs (Apple) à envoyer dans Firebase > Cloud Messaging.
