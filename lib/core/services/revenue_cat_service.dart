@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 const String kRevenueCatAndroidApiKey = 'goog_BciSaSAifHmoslXIAxphkDBxLUT';
+// Clé « appl_… » de l'app iOS dans RevenueCat (à créer avec le compte
+// Apple Developer). Vide → Premium indisponible sur iPhone, sans erreur.
+const String kRevenueCatIosApiKey = '';
 const String kPremiumEntitlementId = 'zamu_premium';
 
 class RevenueCatService extends GetxService {
@@ -12,8 +16,13 @@ class RevenueCatService extends GetxService {
   final RxBool isProcessing = false.obs;
 
   Future<RevenueCatService> init() async {
+    final cle = Platform.isIOS ? kRevenueCatIosApiKey : kRevenueCatAndroidApiKey;
+    if (cle.isEmpty) {
+      debugPrint('RevenueCat : pas de clé pour cette plateforme');
+      return this;
+    }
     await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.error);
-    final configuration = PurchasesConfiguration(kRevenueCatAndroidApiKey);
+    final configuration = PurchasesConfiguration(cle);
     await Purchases.configure(configuration);
     Purchases.addCustomerInfoUpdateListener(_onCustomerInfoUpdate);
     final customerInfo = await Purchases.getCustomerInfo();

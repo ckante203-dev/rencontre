@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Rencontre</string>
+	<string>Zamu</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>rencontre</string>
+	<string>Zamu</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -31,8 +31,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -41,6 +39,32 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Autorisations (textes affichés par iOS ; sans eux l'app plante) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Zamu utilise l'appareil photo pour prendre ta photo de profil, publier des stories et envoyer des photos dans le chat.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Zamu accède à tes photos pour choisir ta photo de profil, publier des stories et envoyer des photos dans le chat.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Zamu enregistre les photos que tu choisis de sauvegarder.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Zamu utilise le micro pour enregistrer les messages vocaux et le son des vidéos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Zamu utilise ta position pour te montrer les personnes proches de toi et afficher la distance.</string>
+	<!-- Notifications push (Firebase) -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<!-- Liens ouverts par l'app (e-mail, WhatsApp, pages web) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>mailto</string>
+		<string>whatsapp</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

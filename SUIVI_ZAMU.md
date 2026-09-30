@@ -106,3 +106,18 @@ Après les étapes 1 et 3 : `flutter build appbundle`, puis publication sur Goog
 - **Section 3 de `000008`** (réserver aux Premium la liste « Qui m'a vu ») : à exécuter seulement quand presque tous les utilisateurs ont la nouvelle version de l'app.
 - **Colonne `is_pinned`** des stories : inutile depuis le retrait des publications épinglées ; supprimable plus tard avec `ALTER TABLE public.stories DROP COLUMN IF EXISTS is_pinned;`.
 - **Commit git** : rien n'est encore enregistré dans git depuis le début des corrections.
+
+## 6. Version iPhone (commencée le 30/09)
+
+Construction via **Codemagic** (pas de Mac). Identifiant : `com.vybestyle.zamu`.
+
+Déjà fait dans le code : nom « Zamu », textes des autorisations (caméra, photos, micro, position), portrait uniquement, notifications en arrière-plan, Podfile (iOS 13, autorisations), capacités push + Apple, bouton « Continuer avec Apple » (iPhone seulement), Premium désactivé sur iPhone tant que la clé RevenueCat iOS est vide (`kRevenueCatIosApiKey`).
+
+Reste à faire :
+1. Créer le compte Apple Developer (99 $/an).
+2. Firebase : ajouter une app iOS `com.vybestyle.zamu`, placer `GoogleService-Info.plist` dans `ios/Runner/` ; clé APNs (Apple) à envoyer dans Firebase > Cloud Messaging.
+3. Google Cloud : client OAuth iOS → ajouter `GIDClientID` et le schéma d'URL inversé dans `Info.plist`.
+4. Apple : App ID avec « Sign in with Apple » et « Push Notifications » ; Supabase > Auth > Providers > Apple (Client ID `com.vybestyle.zamu`).
+5. App Store Connect : créer l'app, l'abonnement Premium ; RevenueCat : app iOS → clé `appl_…` dans `kRevenueCatIosApiKey`.
+6. Codemagic : relier le dépôt GitHub, clé API App Store Connect, fichier `codemagic.yaml`, puis envoi sur TestFlight.
+

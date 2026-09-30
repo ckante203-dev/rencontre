@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -163,6 +164,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: 'Continuer avec Google',
                   onTap: ctrl.signInWithGoogle,
                 ),
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  _GradientBorderButton(
+                    icon: '\uF8FF',
+                    label: 'Continuer avec Apple',
+                    onTap: ctrl.signInWithApple,
+                  ),
+                ],
 
                 const SizedBox(height: 32),
 

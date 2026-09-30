@@ -21,6 +21,8 @@ dependencies:
 
   # ── Auth providers ────────────────────────────────────────────
   google_sign_in: ^6.2.1
+  sign_in_with_apple: ^7.0.1   # obligatoire sur iOS (App Store)
+  crypto: ^3.0.7               # nonce de la connexion Apple
 
   # ── Achats intégrés (RevenueCat) ─────────────────────────────
   purchases_flutter: ^9.15.0

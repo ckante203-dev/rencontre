@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/services/update_service.dart';
@@ -447,6 +450,64 @@ class AuthController extends GetxController {
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
       errorMessage.value = 'Connexion Google échouée. Réessaie.';
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ─── SIGN IN WITH APPLE (iOS) ──────────────────────────────
+  // Exigé par l'App Store dès qu'une connexion Google est proposée.
+  // Nécessite le fournisseur Apple activé dans Supabase (Auth > Providers)
+  // avec l'identifiant com.vybestyle.zamu.
+
+  Future<void> signInWithApple() async {
+    _setLoading(true);
+    try {
+      final rawNonce = supabase.auth.generateRawNonce();
+      final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        errorMessage.value = 'Connexion Apple échouée. Réessaie.';
+        return;
+      }
+
+      final res = await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+        nonce: rawNonce,
+      );
+
+      if (res.user != null) {
+        final existing = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', res.user!.id)
+            .maybeSingle();
+        if (existing == null) {
+          // Apple ne donne le prénom qu'à la toute première connexion.
+          final prenom = (credential.givenName ?? '').trim();
+          await _createProfile(res.user!,
+              name: prenom.isNotEmpty ? prenom : null);
+        }
+      }
+      errorMessage.value = '';
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code != AuthorizationErrorCode.canceled) {
+        debugPrint('Apple Sign-In error: $e');
+        errorMessage.value = 'Connexion Apple échouée. Réessaie.';
+      }
+    } catch (e) {
+      debugPrint('Apple Sign-In error: $e');
+      errorMessage.value = 'Connexion Apple échouée. Réessaie.';
     } finally {
       _setLoading(false);
     }

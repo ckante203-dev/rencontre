@@ -1,5 +1,6 @@
 // lib/features/auth/view/signup_screen.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -189,6 +190,14 @@ class _SignupForm extends StatelessWidget {
                 icon: 'G',
                 onTap: ctrl.signInWithGoogle,
               ),
+              if (Platform.isIOS) ...[
+                const SizedBox(height: 12),
+                AuthSocialButton(
+                  label: 'Continuer avec Apple',
+                  icon: '\uF8FF',
+                  onTap: ctrl.signInWithApple,
+                ),
+              ],
               const SizedBox(height: 20),
 
               Center(

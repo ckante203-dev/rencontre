@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -232,11 +233,13 @@ Future<void> _demanderPermissions() async {
     await [
       Permission.camera,
       Permission.microphone,
-      Permission.location,
+      // iOS : position « pendant l'utilisation » uniquement, pas de
+      // stockage (n'existe pas) — cf. macros du Podfile.
+      if (!Platform.isIOS) Permission.location,
       Permission.locationWhenInUse,
       Permission.notification,
       Permission.photos,
-      Permission.storage,
+      if (!Platform.isIOS) Permission.storage,
     ].request();
   } catch (e) {
     debugPrint('Permissions error: $e');
