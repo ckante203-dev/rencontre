@@ -13,15 +13,15 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
-      flutter: stable
+      flutter: 3.38.5   # même version que le PC de développement
       xcode: latest
       cocoapods: default
     scripts:
       - name: Dépendances Flutter
         script: flutter pub get
-      - name: Modules iOS (CocoaPods)
-        script: cd ios && pod install --repo-update
-      - name: Construction iOS sans signature
-        script: flutter build ios --release --no-codesign
+      - name: Construction iOS sans signature (installe aussi les modules iOS)
+        script: |
+          pod repo update
+          flutter build ios --release --no-codesign
     artifacts:
       - build/ios/iphoneos/*.app
