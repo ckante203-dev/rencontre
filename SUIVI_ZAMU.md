@@ -6,6 +6,8 @@ Mis à jour le 30/09/2026.
 
 **Fait le 30/09 :** script `000014` appliqué (sourdine par conversation, signalement des messages) et `smooth-action` redéployée.
 
+**Play Store :** version 1.0.11 (2021) envoyée pour examen le 30/09, Côte d'Ivoire uniquement (choix de lancement). Pages légales (confidentialité, suppression de compte) sur GitHub Pages et déclarées dans la Play Console. Si rien au bout de 7 jours : Play Console > Aide > Contacter l'assistance.
+
 **Modération des photos (Sightengine, offre gratuite : 2 000 photos/mois, 500/jour) :** clés enregistrées sur le serveur le 30/09.
 - Plus tard, quand presque tout le monde a la nouvelle version : `20260930000013_moderation_verrouillage.sql` (empêche de contourner la modération).
 - Photos « pending » (douteuses) : cachées, à valider (requêtes en tête du script 000012, en attendant le panneau admin).
