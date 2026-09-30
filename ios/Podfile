@@ -42,6 +42,9 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      # Xcode récent : « Using bridging headers with module interfaces is
+      # unsupported » si un module est compilé en mode distribution.
+      config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
       # permission_handler : seules les autorisations utilisées par Zamu
       # sont compilées (sinon Apple refuse l'app pour des autorisations
       # déclarées sans texte d'explication).
