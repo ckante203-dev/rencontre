@@ -93,6 +93,7 @@ Après les étapes 1 et 3 : `flutter build appbundle`, puis publication sur Goog
 - menu Story : toutes les stories de chaque personne, regroupées (avant : une seule) ;
 - répondre à une story texte : le texte apparaît dans la conversation (nécessite le script `000010`) ;
 - menu ⋮ d'une conversation : en-tête (appui → profil), couper les notifications (plus de push de cette conversation), appel vidéo grisé « Bientôt », fond d'écran (6 choix, gardé par conversation), signaler / bloquer la personne, effacer l'historique (ne revient plus en rouvrant, aperçu de la liste vidé), supprimer l'échange ;
+- liste des messages : loupe en haut à droite (recherche), filtres Tous / Non lus / En ligne ; appui long sur une conversation : marquer lu / non lu et épingler (gardés après redémarrage), couper les notifications (icône 🔕 sur la conversation) ;
 - appui long sur un message reçu > Signaler : choix du motif puis confirmation ;
 - messages directs sans match : le destinataire voit la conversation, limite de 3 messages sans réponse, blocage efficace ;
 - Paramètres > mot de passe : la jauge de force suit les couleurs du thème.

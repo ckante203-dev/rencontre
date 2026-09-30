@@ -18,7 +18,7 @@ import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
-enum ChatFilter { all, unread, online, nearby, media }
+enum ChatFilter { all, unread, online }
 
 class ChatListController extends GetxController {
   final _service = SupabaseService();
@@ -28,7 +28,14 @@ class ChatListController extends GetxController {
   final RxBool isSearching = false.obs;
   final RxString searchQuery = ''.obs;
   RealtimeChannel? _channel;
+  // Épinglées et « marquées non lues » : mémorisées sur cet appareil.
   final RxSet<String> pinnedIds = <String>{}.obs;
+  final RxSet<String> nonLuesForcees = <String>{}.obs;
+  // Conversations en sourdine (table conversation_sourdines).
+  final RxSet<String> sourdineIds = <String>{}.obs;
+  final _box = GetStorage();
+  String get _cleEpingles => 'chat_epingles_${myId ?? ''}';
+  String get _cleNonLues => 'chat_non_lues_${myId ?? ''}';
   // ✅ NOUVEAU — expose l'ID de l'utilisateur courant pour que
   // chat_list_screen.dart puisse appeler msg.isMine(controller.myId)
   String? get myId => _service.currentUserId;
@@ -58,23 +65,7 @@ class ChatListController extends GetxController {
       case ChatFilter.online:
         list = conversations.where((c) => c.isOnline).toList();
         break;
-      case ChatFilter.nearby:
-        final cutoff = DateTime.now().subtract(const Duration(hours: 1));
-        list = conversations
-            .where((c) =>
-                c.lastActivity != null && c.lastActivity!.isAfter(cutoff))
-            .toList();
-        break;
-      case ChatFilter.media:
-        list = conversations
-            .where((c) =>
-                c.lastMessage != null &&
-                (c.lastMessage!.type == MessageType.image ||
-                    c.lastMessage!.type == MessageType.snap))
-            .toList();
-        break;
       case ChatFilter.all:
-      default:
         list = conversations.toList();
     }
     final q = searchQuery.value.trim().toLowerCase();
@@ -89,6 +80,9 @@ class ChatListController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    pinnedIds.addAll(List<String>.from(_box.read<List>(_cleEpingles) ?? []));
+    nonLuesForcees
+        .addAll(List<String>.from(_box.read<List>(_cleNonLues) ?? []));
     loadConversations();
     _subscribeToMessages();
   }
@@ -99,19 +93,24 @@ class ChatListController extends GetxController {
       final uid = _service.currentUserId!;
       final data = await _service.fetchConversations();
       if (_closed) return; // ✅ FIX — contrôleur fermé entre-temps
+      unawaited(_chargerSourdines(uid));
       conversations.value = data.map((row) {
         final isUser1 = row['user1_id'] == uid;
         final otherProfile = isUser1
             ? _extractProfile(row, 'user2')
             : _extractProfile(row, 'user1');
         final lastMsg = row['_last_message'] as Map<String, dynamic>?;
-        final unread = (row['_unread_count'] as int?) ?? 0;
+        var unread = (row['_unread_count'] as int?) ?? 0;
+        if (unread == 0 && nonLuesForcees.contains(row['id'])) unread = 1;
         return ConversationModel(
           id: row['id'],
           userId: otherProfile['id'] ?? '',
           userName: otherProfile['name'] ?? 'Utilisateur',
           userPhotoUrl: otherProfile['photo_url'],
-          isOnline: otherProfile['is_online'] ?? false,
+          // En ligne = vu il y a moins de 30 min (is_online seul peut
+          // rester à true si l'app a été fermée brutalement).
+          isOnline: SupabaseService.isReallyOnline(
+              otherProfile['is_online'], otherProfile['last_seen']),
           unreadCount: unread,
           lastActivity: row['updated_at'] != null
               ? DateTime.tryParse(row['updated_at'])
@@ -171,11 +170,61 @@ class ChatListController extends GetxController {
     }
   }
 
+  Future<void> _chargerSourdines(String uid) async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('conversation_sourdines')
+          .select('conversation_id')
+          .eq('user_id', uid);
+      if (_closed) return;
+      sourdineIds
+        ..clear()
+        ..addAll(rows.map((r) => r['conversation_id'].toString()));
+    } catch (_) {}
+  }
+
+  /// Coupe / réactive les notifications d'une conversation.
+  Future<void> basculerSourdine(ConversationModel conv) async {
+    final uid = myId;
+    if (uid == null) return;
+    final activer = !sourdineIds.contains(conv.id);
+    activer ? sourdineIds.add(conv.id) : sourdineIds.remove(conv.id);
+    try {
+      final db = Supabase.instance.client.from('conversation_sourdines');
+      if (activer) {
+        await db.upsert({'user_id': uid, 'conversation_id': conv.id});
+      } else {
+        await db.delete().eq('user_id', uid).eq('conversation_id', conv.id);
+      }
+      _snackInfo(activer
+          ? 'Notifications coupées pour ${conv.userName}'
+          : 'Notifications réactivées pour ${conv.userName}');
+    } catch (e) {
+      debugPrint('basculerSourdine error: $e');
+      activer ? sourdineIds.remove(conv.id) : sourdineIds.add(conv.id);
+      _snackInfo('Impossible de modifier les notifications');
+    }
+  }
+
+  void _snackInfo(String texte) => Get.snackbar(texte, '',
+      titleText: Text(texte,
+          style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary)),
+      messageText: const SizedBox.shrink(),
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: AppColors.surface2,
+      margin: const EdgeInsets.all(12),
+      borderRadius: 14,
+      duration: const Duration(seconds: 2));
+
   void togglePin(ConversationModel conv) {
     final idx = conversations.indexWhere((c) => c.id == conv.id);
     if (idx == -1) return;
     final nowPinned = !conv.isPinned;
     nowPinned ? pinnedIds.add(conv.id) : pinnedIds.remove(conv.id);
+    _box.write(_cleEpingles, pinnedIds.toList());
     conversations[idx] = ConversationModel(
       id: conv.id,
       userId: conv.userId,
@@ -315,6 +364,7 @@ class ChatListController extends GetxController {
   }
 
   void openConversation(ConversationModel conv) {
+    _retirerNonLueForcee(conv.id);
     final idx = conversations.indexWhere((c) => c.id == conv.id);
     if (idx != -1) {
       conversations[idx] = ConversationModel(
@@ -334,10 +384,27 @@ class ChatListController extends GetxController {
     Get.toNamed('/chat/conversation', arguments: conv);
   }
 
+  void _retirerNonLueForcee(String convId) {
+    if (nonLuesForcees.remove(convId)) {
+      _box.write(_cleNonLues, nonLuesForcees.toList());
+    }
+  }
+
+  /// « Marquer comme lu » : lu aussi côté serveur (l'expéditeur voit
+  /// « Lu »). « Marquer comme non lu » : pastille gardée sur cet appareil
+  /// jusqu'à la prochaine ouverture de la conversation.
   void toggleReadStatus(ConversationModel conv) {
     final idx = conversations.indexWhere((c) => c.id == conv.id);
     if (idx == -1) return;
     final c = conversations[idx];
+    if (c.unreadCount > 0) {
+      _retirerNonLueForcee(c.id);
+      unawaited(_service.markMessagesAsRead(c.id));
+      NotificationService.clearConversationNotifications(c.id);
+    } else {
+      nonLuesForcees.add(c.id);
+      _box.write(_cleNonLues, nonLuesForcees.toList());
+    }
     conversations[idx] = ConversationModel(
       id: c.id,
       userId: c.userId,
@@ -354,6 +421,8 @@ class ChatListController extends GetxController {
 
   Future<void> deleteConversation(String convId) async {
     conversations.removeWhere((c) => c.id == convId);
+    _retirerNonLueForcee(convId);
+    if (pinnedIds.remove(convId)) _box.write(_cleEpingles, pinnedIds.toList());
     update();
     try {
       await Supabase.instance.client
@@ -567,6 +636,10 @@ class ConversationController extends GetxController {
             .eq('user_id', uid)
             .eq('conversation_id', conversation.id);
       }
+      if (Get.isRegistered<ChatListController>()) {
+        final ids = Get.find<ChatListController>().sourdineIds;
+        activer ? ids.add(conversation.id) : ids.remove(conversation.id);
+      }
       _snackInfo(activer
           ? 'Notifications coupées pour cette conversation'
           : 'Notifications réactivées');
@@ -720,11 +793,12 @@ class ConversationController extends GetxController {
     try {
       final data = await Supabase.instance.client
           .from('profiles')
-          .select('is_online')
+          .select('is_online, last_seen')
           .eq('id', otherUserId)
           .maybeSingle();
       if (data != null) {
-        isOtherOnline.value = data['is_online'] == true;
+        isOtherOnline.value = SupabaseService.isReallyOnline(
+            data['is_online'], data['last_seen']);
       }
     } catch (_) {}
   }
@@ -882,7 +956,9 @@ class ConversationController extends GetxController {
             value: otherUserId,
           ),
           callback: (payload) {
-            isOtherOnline.value = payload.newRecord['is_online'] == true;
+            final r = payload.newRecord;
+            isOtherOnline.value =
+                SupabaseService.isReallyOnline(r['is_online'], r['last_seen']);
           },
         )
         .subscribe();

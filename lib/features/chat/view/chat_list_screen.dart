@@ -44,23 +44,45 @@ class ChatListScreen extends StatelessWidget {
                     color: Colors.white)),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.surface2,
-                border: Border.all(color: AppColors.border),
-              ),
-              child:
-                  const Icon(Icons.edit_rounded, size: 18, color: Colors.white),
-            ),
-          ),
+          const _BoutonRecherche(),
         ],
       ),
     );
+  }
+}
+
+// ─── BOUTON RECHERCHE ─────────────────────────────────────────────
+
+class _BoutonRecherche extends GetView<ChatListController> {
+  const _BoutonRecherche();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final actif = controller.isSearching.value;
+      return GestureDetector(
+        onTap: () {
+          controller.isSearching.toggle();
+          if (!controller.isSearching.value) {
+            controller.searchQuery.value = '';
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: actif ? AppColors.gradientPink : null,
+            color: actif ? null : AppColors.surface2,
+            border: Border.all(
+                color: actif ? Colors.transparent : AppColors.border),
+          ),
+          child: Icon(actif ? Icons.close_rounded : Icons.search_rounded,
+              size: 19, color: Colors.white),
+        ),
+      );
+    });
   }
 }
 
@@ -123,39 +145,6 @@ class _FilterBar extends GetView<ChatListController> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              GestureDetector(
-                onTap: () {
-                  controller.isSearching.toggle();
-                  if (!controller.isSearching.value) {
-                    controller.searchQuery.value = '';
-                  }
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
-                  width: 36,
-                  decoration: BoxDecoration(
-                    gradient: controller.isSearching.value
-                        ? AppColors.gradientPink
-                        : null,
-                    color: controller.isSearching.value
-                        ? null
-                        : AppColors.surface2,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: controller.isSearching.value
-                            ? Colors.transparent
-                            : AppColors.border),
-                  ),
-                  child: Icon(
-                    controller.isSearching.value
-                        ? Icons.close_rounded
-                        : Icons.search_rounded,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
               _FilterChip(
                 label: 'Tous',
                 icon: Icons.chat_bubble_outline_rounded,
@@ -176,18 +165,6 @@ class _FilterBar extends GetView<ChatListController> {
                 iconColor: AppColors.online,
                 active: controller.activeFilter.value == ChatFilter.online,
                 onTap: () => controller.setFilter(ChatFilter.online),
-              ),
-              _FilterChip(
-                label: 'Proches',
-                icon: Icons.location_on_outlined,
-                active: controller.activeFilter.value == ChatFilter.nearby,
-                onTap: () => controller.setFilter(ChatFilter.nearby),
-              ),
-              _FilterChip(
-                label: 'Médias',
-                icon: Icons.photo_library_outlined,
-                active: controller.activeFilter.value == ChatFilter.media,
-                onTap: () => controller.setFilter(ChatFilter.media),
               ),
             ],
           )),
@@ -358,9 +335,7 @@ class _ConversationList extends GetView<ChatListController> {
     final filter = controller.activeFilter.value;
     final msgs = {
       ChatFilter.unread: 'Aucun message non lu',
-      ChatFilter.online: 'Personne en ligne',
-      ChatFilter.nearby: 'Aucun contact proche',
-      ChatFilter.media: 'Aucun échange de médias',
+      ChatFilter.online: 'Personne en ligne pour le moment',
     };
     return Center(
       child: Column(
@@ -431,6 +406,13 @@ class _ConversationTile extends GetView<ChatListController> {
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary)),
                       ),
+                      Obx(() => controller.sourdineIds.contains(conv.id)
+                          ? Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(Icons.notifications_off_rounded,
+                                  size: 13, color: AppColors.textMuted),
+                            )
+                          : const SizedBox.shrink()),
                       if (conv.isPinned)
                         Padding(
                           padding: EdgeInsets.only(right: 4),
@@ -650,14 +632,16 @@ class _ConversationOptions extends GetView<ChatListController> {
             },
           ),
           _Option(
-            icon: Icons.notifications_off_outlined,
-            label: 'Désactiver les notifications',
-            onTap: () => Get.back(),
-          ),
-          _Option(
-            icon: Icons.archive_outlined,
-            label: 'Archiver la conversation',
-            onTap: () => Get.back(),
+            icon: controller.sourdineIds.contains(conv.id)
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_off_outlined,
+            label: controller.sourdineIds.contains(conv.id)
+                ? 'Réactiver les notifications'
+                : 'Couper les notifications',
+            onTap: () {
+              Get.back();
+              controller.basculerSourdine(conv);
+            },
           ),
           _Option(
             icon: Icons.delete_outline_rounded,
