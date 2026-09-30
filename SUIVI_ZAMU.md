@@ -1,6 +1,13 @@
 # Suivi Zamu — à faire au retour
 
-Mis à jour le 29/09/2026.
+Mis à jour le 30/09/2026.
+
+**Fait le 30/09 :** scripts `000010`, `000011` et `000012` appliqués ; fonction `moderate-image` déployée (clés Sightengine vérifiées).
+
+**Modération des photos (Sightengine, offre gratuite : 2 000 photos/mois, 500/jour) :** clés enregistrées sur le serveur le 30/09.
+- Plus tard, quand presque tout le monde a la nouvelle version : `20260930000013_moderation_verrouillage.sql` (empêche de contourner la modération).
+- Photos « pending » (douteuses) : cachées, à valider (requêtes en tête du script 000012, en attendant le panneau admin).
+- Photos « unchecked » : publiées sans analyse (quota dépassé, vidéos) — à contrôler de temps en temps. Les signalements de stories arrivent dans la table `reports` avec `story_id` rempli : les traiter vite, la story et son fichier sont purgés à l'expiration.
 
 **État :** tous les scripts SQL (000000 à 000009) sont appliqués ; toutes les fonctions serveur sont déployées (notifications testées OK le 29/09) ; commit `7723aed`. Restent les points 4 et 5.
 
@@ -77,7 +84,12 @@ Après les étapes 1 et 3 : `flutter build appbundle`, puis publication sur Goog
 - liste des conversations : « Aucun nouveau message » quand tout a expiré ;
 - changer de thème : plus d'éléments qui restent roses (vérifier aussi le bouton « Supprimer » du dialogue de suppression de photo, qui suit maintenant la couleur du thème) ;
 - carte : la recherche de ville trouve enfin des résultats ;
-- accueil : grille en 2 colonnes (pour revenir à 3 : `_colonnesGrille` / `_ratioCarte` dans home_screen.dart) ;
+- accueil : grille en 3 colonnes (retour à l'ancienne grille le 30/09) ;
+- menu Story : stories texte affichées, traits de progression, vues/likes de mes stories, point « en ligne » et distance, bouton « Publier ma story » si vide ;
+- modération : changer de photo de profil, ajouter une photo à la galerie, photo d'inscription, publier une story photo → message si refusée / en vérification ;
+- signaler une story (bouton ⋮ en haut, dans le menu Story et dans le visualiseur) : elle disparaît pour la personne qui la signale ;
+- menu Story : toutes les stories de chaque personne, regroupées (avant : une seule) ;
+- répondre à une story texte : le texte apparaît dans la conversation (nécessite le script `000010`) ;
 - messages directs sans match : le destinataire voit la conversation, limite de 3 messages sans réponse, blocage efficace ;
 - Paramètres > mot de passe : la jauge de force suit les couleurs du thème.
 

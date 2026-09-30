@@ -5,7 +5,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/home/view/story_screen.dart';
+import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
@@ -189,6 +192,30 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
     super.dispose();
   }
 
+  Future<void> _openAddStory() async {
+    final result = await Get.to(() => const AddStoryScreen(),
+        transition: Transition.cupertino);
+    if (result == true && Get.isRegistered<HomeController>()) {
+      await Get.find<HomeController>().loadStories();
+    }
+  }
+
+  // Position de la story i parmi les stories consécutives du même
+  // auteur (les items sont regroupés par auteur).
+  ({int index, int count}) _positionInGroup(int i) {
+    final uid = widget.items[i].story.userId;
+    var start = i;
+    while (start > 0 && widget.items[start - 1].story.userId == uid) {
+      start--;
+    }
+    var end = i;
+    while (end < widget.items.length - 1 &&
+        widget.items[end + 1].story.userId == uid) {
+      end++;
+    }
+    return (index: i - start, count: end - start + 1);
+  }
+
   void _markSeen(DiscoverFeedItem item) {
     if (Get.isRegistered<HomeController>()) {
       Get.find<HomeController>().markStoryAsSeen(item.story.id);
@@ -206,6 +233,28 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
             const SizedBox(height: 12),
             const Text('Rien à découvrir pour le moment',
                 style: TextStyle(color: Colors.white54, fontSize: 14)),
+            const SizedBox(height: 6),
+            const Text('Sois le premier à partager un moment !',
+                style: TextStyle(color: Colors.white38, fontSize: 12)),
+            const SizedBox(height: 22),
+            GestureDetector(
+              onTap: _openAddStory,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 6),
+                  Text('Publier ma story',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ),
             if (widget.onRefresh != null) ...[
               const SizedBox(height: 20),
               GestureDetector(
@@ -243,11 +292,16 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
               _setPageVisible(i, true);
               _markSeen(widget.items[i]);
             },
-            itemBuilder: (_, i) => _StoryFeedPage(
-              key: _keyFor(widget.items[i].story.id),
-              story: widget.items[i].story,
-              showCloseButton: widget.showCloseButton,
-            ),
+            itemBuilder: (_, i) {
+              final pos = _positionInGroup(i);
+              return _StoryFeedPage(
+                key: _keyFor(widget.items[i].story.id),
+                story: widget.items[i].story,
+                showCloseButton: widget.showCloseButton,
+                groupIndex: pos.index,
+                groupCount: pos.count,
+              );
+            },
           ),
           if (widget.onRefresh != null)
             Positioned(
@@ -277,8 +331,16 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
 class _StoryFeedPage extends StatefulWidget {
   final StoryModel story;
   final bool showCloseButton;
-  const _StoryFeedPage(
-      {super.key, required this.story, required this.showCloseButton});
+  // Position de cette story parmi celles du même auteur (ex. 2/3).
+  final int groupIndex;
+  final int groupCount;
+  const _StoryFeedPage({
+    super.key,
+    required this.story,
+    required this.showCloseButton,
+    this.groupIndex = 0,
+    this.groupCount = 1,
+  });
 
   @override
   State<_StoryFeedPage> createState() => _StoryFeedPageState();
@@ -502,12 +564,30 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     }
   }
 
+  // Signaler la story : la vidéo est mise en pause pendant le choix ;
+  // si la story est signalée, elle disparaît du fil (hideStory).
+  Future<void> _report() async {
+    final wasPlaying = _videoCtrl?.value.isPlaying ?? false;
+    _videoCtrl?.pause();
+    final reported = await showStoryReportSheet(widget.story);
+    if (!reported && mounted && _isVisible && wasPlaying && !_manuallyPaused) {
+      _videoCtrl?.play();
+    }
+  }
+
   String _ago(DateTime d) {
     final diff = DateTime.now().difference(d);
     if (diff.inDays > 0) return 'il y a ${diff.inDays}j';
     if (diff.inHours > 0) return 'il y a ${diff.inHours}h';
     if (diff.inMinutes > 0) return 'il y a ${diff.inMinutes}min';
     return "à l'instant";
+  }
+
+  // "il y a 2h · 3.4 km" — distance masquée si l'auteur l'a désactivée.
+  String _subtitle(StoryModel s, bool isOwner) {
+    final ago = _ago(s.createdAt);
+    if (isOwner || !s.showDistance || s.distanceKm == null) return ago;
+    return '$ago · ${HomeController.formatDistance(s.distanceKm! * 1000)}';
   }
 
   @override
@@ -530,6 +610,11 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
       onDoubleTap: _handleDoubleTap,
       child: Stack(fit: StackFit.expand, children: [
         Container(color: Colors.black),
+        // ✅ Story texte : pas de média, on affiche le texte sur sa
+        // couleur de fond (avant : image vide → icône d'image cassée).
+        if (s.isTextStory)
+          _TextStoryContent(story: s)
+        else
         Center(
           child: s.isVideo
               ? (_videoReady && _videoCtrl != null
@@ -582,6 +667,30 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                   color: Colors.white70, size: 72),
             ),
           ),
+        if (widget.groupCount > 1)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 6,
+            left: 12,
+            right: 12,
+            child: IgnorePointer(
+              child: Row(
+                children: List.generate(widget.groupCount, (k) {
+                  return Expanded(
+                    child: Container(
+                      height: 3,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: k <= widget.groupIndex
+                            ? Colors.white
+                            : Colors.white30,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
         Positioned(
           top: MediaQuery.of(context).padding.top + 16,
           left: 12,
@@ -624,18 +733,51 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(s.userName,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700)),
-                    Text(_ago(s.createdAt),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(
+                        child: Text(s.userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                      if (s.isOnline && !isOwner) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                              color: Colors.green, shape: BoxShape.circle),
+                        ),
+                      ],
+                    ]),
+                    Text(_subtitle(s, isOwner),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 11)),
                   ],
                 ),
               ),
             ),
+            if (!isOwner)
+              GestureDetector(
+                onTap: _report,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Icon(Icons.more_vert_rounded,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+            // Dans l'onglet Story, le bouton Actualiser occupe ce coin.
+            if (!widget.showCloseButton) const SizedBox(width: 34),
             if (widget.showCloseButton)
               GestureDetector(
                 onTap: () => Get.back(),
@@ -744,6 +886,42 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
               ),
             ),
           ),
+        // ✅ Ma propre story : nombre de vues et de likes.
+        if (isOwner)
+          Positioned(
+            left: 16,
+            bottom: bottomPad + 20,
+            child: IgnorePointer(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.visibility_rounded,
+                      color: Colors.white, size: 16),
+                  const SizedBox(width: 5),
+                  Text('${s.viewedBy.where((id) => id != _myUid).length}',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 14),
+                  const Icon(Icons.favorite_rounded,
+                      color: Colors.pinkAccent, size: 16),
+                  const SizedBox(width: 5),
+                  Text('$_likeCount',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ),
+          ),
         // La barre de réponse occupe toute la largeur disponible en bas.
         if (!isOwner)
           AnimatedPositioned(
@@ -775,6 +953,46 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
             ),
           ),
       ]),
+    );
+  }
+}
+
+class _TextStoryContent extends StatelessWidget {
+  final StoryModel story;
+  const _TextStoryContent({required this.story});
+
+  static Color _colorFromHex(String? hex) {
+    var h = (hex ?? '').replaceFirst('#', '');
+    if (h.length == 6) h = 'FF$h';
+    return Color(int.tryParse(h, radix: 16) ?? 0xFF7B2FFF);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pad = MediaQuery.of(context).padding;
+    return Container(
+      color: _colorFromHex(story.bgColor),
+      alignment: Alignment.center,
+      // Laisse la place à l'en-tête, au bouton like et à la barre de
+      // réponse pour que le texte ne passe pas dessous.
+      padding: EdgeInsets.fromLTRB(64, pad.top + 80, 64, pad.bottom + 90),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width - 128),
+          child: Text(
+            story.textContent ?? '',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -817,28 +1035,17 @@ class _ReplyBarState extends State<_ReplyBar> {
     }
     setState(() => _sending = true);
     try {
-      final res = await Supabase.instance.client
-          .from('conversations')
-          .select('id')
-          .or('and(user1_id.eq.$uid,user2_id.eq.${widget.story.userId}),'
-              'and(user1_id.eq.${widget.story.userId},user2_id.eq.$uid)')
-          .maybeSingle();
-      final String convId;
-      if (res != null) {
-        convId = res['id'] as String;
-      } else {
-        final created = await Supabase.instance.client
-            .from('conversations')
-            .insert({'user1_id': uid, 'user2_id': widget.story.userId})
-            .select('id')
-            .single();
-        convId = created['id'] as String;
-      }
+      // Point d'entrée centralisé : applique la règle "sans match, la
+      // conversation démarre en demande de message".
+      final convId =
+          await SupabaseService().getOrCreateConversation(widget.story.userId);
       final storyData = StoryReplyData(
         storyId: widget.story.id,
         storyPreviewUrl: widget.story.mediaUrl,
         storyIsVideo: widget.story.isVideo,
         storyOwnerName: widget.story.userName,
+        storyText: widget.story.isTextStory ? widget.story.textContent : null,
+        storyBgColor: widget.story.isTextStory ? widget.story.bgColor : null,
       );
       final safeContent = text.substring(0, text.length.clamp(0, 500));
       if (Get.isRegistered<ConversationController>(tag: convId)) {
@@ -848,32 +1055,15 @@ class _ReplyBarState extends State<_ReplyBar> {
           storyData: storyData,
         );
       } else {
-        bool sent = false;
-        try {
-          await Supabase.instance.client.from('messages').insert({
-            'conversation_id': convId,
-            'sender_id': uid,
-            'type': 'text',
-            'content': safeContent,
-            'status': 'sent',
-            'story_id': widget.story.id,
-            'story_preview_url': widget.story.mediaUrl,
-            'story_is_video': widget.story.isVideo,
-            'topic': '📸 Story de ${widget.story.userName}',
-          });
-          sent = true;
-        } catch (_) {}
-        if (!sent) {
-          await Supabase.instance.client.from('messages').insert({
-            'conversation_id': convId,
-            'sender_id': uid,
-            'type': 'text',
-            'content': safeContent,
-            'status': 'sent',
-          });
-        }
+        await ConversationController.insertStoryReplyRow(
+          conversationId: convId,
+          senderId: uid,
+          text: safeContent,
+          storyData: storyData,
+        );
         await Supabase.instance.client.from('conversations').update(
-            {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId); // ✅ UTC
+            {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId);
+        await SupabaseService().maybePromoteMessageRequest(convId);
       }
       _ctrl.clear();
       _focus.unfocus();

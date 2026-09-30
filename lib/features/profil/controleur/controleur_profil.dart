@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
+import 'package:rencontre/core/services/moderation_service.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -341,22 +342,30 @@ class ControleurProfil extends GetxController {
       final uid = supabase.auth.currentUser!.id;
       final file = File(picked.path);
       final ext = picked.path.split('.').last;
-      final path = '$uid/photo.$ext';
-      await supabase.storage.from('avatars').upload(
-            path,
-            file,
-            fileOptions: const FileOptions(upsert: true),
-          );
-      // ✅ Même chemin à chaque upload → même URL → l'ancienne photo restait
-      // en cache. Le paramètre de version force le rechargement.
-      final baseUrl = '${supabase.storage.from('avatars').getPublicUrl(path)}'
-          '?v=${DateTime.now().millisecondsSinceEpoch}';
-      await supabase.from('profiles').update({
-        'photo_url': baseUrl,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', uid);
+      // ✅ Nom unique à chaque envoi : une photo refusée ou en attente
+      // n'écrase plus la photo actuelle (et plus de souci de cache).
+      final path = '$uid/photo_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await supabase.storage.from('avatars').upload(path, file);
+      final url = supabase.storage.from('avatars').getPublicUrl(path);
+      // ✅ Modération : c'est le serveur qui pose la photo sur le profil
+      // si elle est acceptée.
+      final result = await ModerationService.photoProfil(url);
       monProfil.value = await _service.fetchMyProfile();
-      _snackSuccess('Photo mise à jour');
+      switch (result) {
+        case ModerationResult.approved:
+          _snackSuccess('Photo mise à jour');
+          break;
+        case ModerationResult.pending:
+          _snackSuccess(ModerationService.messageAttente);
+          break;
+        case ModerationResult.rejected:
+          _snackError(ModerationService.messageRefus);
+          break;
+        case ModerationResult.full:
+        case ModerationResult.error:
+          _snackError('Impossible de vérifier la photo. Réessaie.');
+          break;
+      }
     } catch (e) {
       debugPrint('changerPhoto error: $e');
       _snackError('Impossible de changer la photo : $e');
@@ -472,9 +481,28 @@ class ControleurProfil extends GetxController {
       final path = '$uid/$fileName';
       await supabase.storage.from('profile-photos').upload(path, file);
       final url = supabase.storage.from('profile-photos').getPublicUrl(path);
-      photoUrls.add(url);
-      await _sauvegarderPhotoUrls();
-      _snackSuccess('Photo ajoutée');
+      // ✅ Modération : le serveur ajoute la photo à la galerie si elle
+      // est acceptée ; on relit ensuite la galerie depuis la base.
+      final result = await ModerationService.photoGalerie(url);
+      await _rechargerPhotoUrls();
+      switch (result) {
+        case ModerationResult.approved:
+          _snackSuccess('Photo ajoutée');
+          break;
+        case ModerationResult.pending:
+          _snackSuccess(ModerationService.messageAttente);
+          break;
+        case ModerationResult.rejected:
+          _snackError(ModerationService.messageRefus);
+          break;
+        case ModerationResult.full:
+          _snackError('Maximum $maxPhotos photos (en comptant celles en '
+              'cours de vérification)');
+          break;
+        case ModerationResult.error:
+          _snackError('Impossible de vérifier la photo. Réessaie.');
+          break;
+      }
     } catch (e) {
       debugPrint('ajouterPhotoProfil error: $e');
       _snackError('Impossible d\'ajouter la photo : $e');
@@ -511,6 +539,23 @@ class ControleurProfil extends GetxController {
     final item = photoUrls.removeAt(oldIndex);
     photoUrls.insert(newIndex, item);
     _sauvegarderPhotoUrls();
+  }
+
+  Future<void> _rechargerPhotoUrls() async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      final data = await supabase
+          .from('profiles')
+          .select('photo_urls')
+          .eq('id', uid)
+          .maybeSingle();
+      photoUrls.value = data?['photo_urls'] is List
+          ? List<String>.from(data!['photo_urls'])
+          : <String>[];
+    } catch (e) {
+      debugPrint('_rechargerPhotoUrls error: $e');
+    }
   }
 
   Future<void> _sauvegarderPhotoUrls() async {

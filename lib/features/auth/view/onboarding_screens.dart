@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
+import 'package:rencontre/core/services/moderation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -745,6 +746,14 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
   bool _isUploading = false;
   final _picker = ImagePicker();
 
+  void _snack(String msg) {
+    Get.snackbar('Photo', msg,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: AppColors.surface,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4));
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(
@@ -831,14 +840,27 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
       final ctrl = Get.find<AuthController>();
       final uid = ctrl.currentUser.value?.id;
       if (uid != null) {
-        final path = 'avatars/$uid/profile.jpg';
+        // ✅ Nom unique + modération : c'est le serveur qui pose la
+        // photo sur le profil si elle est acceptée.
+        final path =
+            'avatars/$uid/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
         await Supabase.instance.client.storage.from('avatars').upload(
             path, _photo!,
-            fileOptions:
-                const FileOptions(upsert: true, contentType: 'image/jpeg'));
+            fileOptions: const FileOptions(contentType: 'image/jpeg'));
         final url =
             Supabase.instance.client.storage.from('avatars').getPublicUrl(path);
-        await ctrl.updateProfile(photoUrl: url);
+        final result = await ModerationService.photoProfil(url);
+        if (result == ModerationResult.rejected) {
+          _snack(ModerationService.messageRefus);
+          return; // on reste sur l'écran pour choisir une autre photo
+        }
+        if (result == ModerationResult.error) {
+          _snack('Impossible de vérifier la photo. Réessaie.');
+          return;
+        }
+        if (result == ModerationResult.pending) {
+          _snack(ModerationService.messageAttente);
+        }
       }
     } catch (e) {
       debugPrint('Upload photo error: $e');

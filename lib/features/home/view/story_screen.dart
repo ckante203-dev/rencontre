@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
@@ -572,6 +573,18 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
+  // Story d'un autre : signalement. Une story signalée est masquée ;
+  // on ferme alors le viewer (sa liste de stories est figée).
+  Future<void> _reportStory(StoryModel story) async {
+    final reported = await showStoryReportSheet(story);
+    if (!mounted) return;
+    if (reported) {
+      Get.back();
+    } else {
+      _resumeWhenVisible();
+    }
+  }
+
   void _showStoryOptions(StoryModel story) {
     Get.bottomSheet(
       Container(
@@ -825,11 +838,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                 style: const TextStyle(
                                     color: Colors.white70, fontSize: 11)),
                           ]))),
-              if (isOwner) ...[
+              ...[
                 GestureDetector(
                   onTap: () {
                     _pause();
-                    _showStoryOptions(s);
+                    if (isOwner) {
+                      _showStoryOptions(s);
+                    } else {
+                      _reportStory(s);
+                    }
                   },
                   child: Container(
                     width: 34,
@@ -1579,6 +1596,8 @@ class _ReplyBarState extends State<_ReplyBar> {
         storyPreviewUrl: widget.story.mediaUrl,
         storyIsVideo: widget.story.isVideo,
         storyOwnerName: widget.story.userName,
+        storyText: widget.story.isTextStory ? widget.story.textContent : null,
+        storyBgColor: widget.story.isTextStory ? widget.story.bgColor : null,
       );
       final safeContent = text.substring(0, text.length.clamp(0, 500));
       if (Get.isRegistered<ConversationController>(tag: convId)) {
@@ -1588,30 +1607,12 @@ class _ReplyBarState extends State<_ReplyBar> {
           storyData: storyData,
         );
       } else {
-        bool sent = false;
-        try {
-          await Supabase.instance.client.from('messages').insert({
-            'conversation_id': convId,
-            'sender_id': uid,
-            'type': 'text',
-            'content': safeContent,
-            'status': 'sent',
-            'story_id': widget.story.id,
-            'story_preview_url': widget.story.mediaUrl,
-            'story_is_video': widget.story.isVideo,
-            'topic': '📸 Story de ${widget.story.userName}',
-          });
-          sent = true;
-        } catch (_) {}
-        if (!sent) {
-          await Supabase.instance.client.from('messages').insert({
-            'conversation_id': convId,
-            'sender_id': uid,
-            'type': 'text',
-            'content': safeContent,
-            'status': 'sent',
-          });
-        }
+        await ConversationController.insertStoryReplyRow(
+          conversationId: convId,
+          senderId: uid,
+          text: safeContent,
+          storyData: storyData,
+        );
         await Supabase.instance.client.from('conversations').update(
             {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId); // ✅ UTC
         // ✅ Si je réponds à la story de quelqu'un qui m'avait

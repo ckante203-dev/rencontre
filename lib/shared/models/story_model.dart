@@ -15,6 +15,9 @@ class StoryModel {
   final bool isPinned;
   final bool isPremium;
   final String visibility;
+  // Auteur : en ligne (last_seen < 30 min) et accepte d'afficher sa distance.
+  final bool isOnline;
+  final bool showDistance;
 
   // ✅ NOUVEAU — story texte pur (pas de photo/vidéo)
   final String? textContent;
@@ -37,6 +40,8 @@ class StoryModel {
     this.isPinned = false,
     this.isPremium = false,
     this.visibility = 'public',
+    this.isOnline = false,
+    this.showDistance = true,
     this.textContent, // ✅ NOUVEAU
     this.bgColor, // ✅ NOUVEAU
   });
@@ -96,6 +101,8 @@ class StoryModel {
       isPinned: isPinned ?? this.isPinned,
       isPremium: isPremium ?? this.isPremium,
       visibility: visibility ?? this.visibility,
+      isOnline: isOnline,
+      showDistance: showDistance,
       textContent: textContent,
       bgColor: bgColor,
     );

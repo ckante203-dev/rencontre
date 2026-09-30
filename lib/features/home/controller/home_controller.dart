@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
+import 'package:rencontre/core/services/moderation_service.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -30,6 +31,14 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   final RxList<StoryModel> _allStories = <StoryModel>[].obs;
   final Set<String> _viewedStoryIds = {};
   final RxList<StoryModel> _discoverOrder = <StoryModel>[].obs;
+
+  // Stories signalées par moi : masquées définitivement (mémorisé sur
+  // l'appareil ; elles expirent de toute façon côté serveur).
+  static const _kHiddenStoriesKey = 'hidden_story_ids';
+  late final Set<String> _hiddenStoryIds = {
+    ...(_storageBox.read<List>(_kHiddenStoriesKey) ?? const [])
+        .whereType<String>(),
+  };
 
   final RxSet<String> likedMeIds = <String>{}.obs;
   RealtimeChannel? _likesChannel;
@@ -194,28 +203,41 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   void _buildDiscoverOrder() {
     final myUid = _myUid ?? '';
-    final list = stories;
+    bool vu(StoryModel s) =>
+        s.isSeen || s.viewedBy.contains(myUid) || _viewedStoryIds.contains(s.id);
 
-    final unseen = <StoryModel>[];
-    final dejaVues = <StoryModel>[];
-    for (final s in list) {
-      final vu = s.isSeen ||
-          s.viewedBy.contains(myUid) ||
-          _viewedStoryIds.contains(s.id);
-      if (vu) {
-        dejaVues.add(s);
-      } else {
-        unseen.add(s);
-      }
+    // ✅ Toutes les stories de chaque profil (et plus seulement la
+    // première), regroupées par profil dans l'ordre chronologique.
+    final byUser = <String, List<StoryModel>>{};
+    for (final s
+        in _allStories.where((s) => s.userId != _myUid && s.isActive)) {
+      byUser
+          .putIfAbsent(s.userId, () => [])
+          .add(s.copyWith(isSeen: _viewedStoryIds.contains(s.id)));
+    }
+    for (final l in byUser.values) {
+      l.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+
+    // Ordre des profils : ceux qui ont du nouveau d'abord (Premium en
+    // tête, le reste mélangé), puis ceux déjà entièrement vus.
+    final unseen = <List<StoryModel>>[];
+    final dejaVues = <List<StoryModel>>[];
+    for (final l in byUser.values) {
+      (l.every(vu) ? dejaVues : unseen).add(l);
     }
 
     unseen.shuffle(Random());
-    final premiumUnseen = unseen.where((s) => s.isPremium).toList();
-    final autresUnseen = unseen.where((s) => !s.isPremium).toList();
+    final premiumUnseen = unseen.where((l) => l.first.isPremium);
+    final autresUnseen = unseen.where((l) => !l.first.isPremium);
 
-    dejaVues.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    dejaVues.sort((a, b) => a.last.createdAt.compareTo(b.last.createdAt));
 
-    final fresh = [...premiumUnseen, ...autresUnseen, ...dejaVues];
+    final fresh = [
+      ...premiumUnseen,
+      ...autresUnseen,
+      ...dejaVues,
+    ].expand((l) => l).toList();
 
     // ✅ Ordre STABLE : la liste est affichée en continu dans le fil
     // Découvrir. La remélanger à chaque loadStories (realtime, reprise,
@@ -564,6 +586,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  // Masque une story (après signalement) et la retire des listes.
+  void hideStory(String storyId) {
+    _hiddenStoryIds.add(storyId);
+    try {
+      _storageBox.write(_kHiddenStoriesKey, _hiddenStoryIds.toList());
+    } catch (_) {}
+    _allStories.removeWhere((s) => s.id == storyId);
+    _buildDiscoverOrder();
+  }
+
   void removeUser(String userId) {
     _allUsers.removeWhere((u) => u.id == userId);
     profiles.removeWhere((u) => u.id == userId);
@@ -703,13 +735,15 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       final data = await Supabase.instance.client
           .from('stories')
           .select(
-              '*, profiles(name, photo_url, latitude, longitude, is_premium)')
+              '*, profiles(name, photo_url, latitude, longitude, is_premium, '
+              'is_online, last_seen, show_distance)')
           // ✅ UTC : une date locale "naïve" est lue comme UTC par Postgres
           .gt('expires_at', DateTime.now().toUtc().toIso8601String())
           .order('created_at', ascending: false);
 
       final stories = <StoryModel>[];
       for (final row in (data as List)) {
+        if (_hiddenStoryIds.contains(row['id']?.toString())) continue;
         final profile = row['profiles'] as Map<String, dynamic>?;
         stories.add(_rowToStory(row, profile, hasChatted: true));
       }
@@ -731,6 +765,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   // sans l'afficher. Appelable depuis l'écran d'accueil (ex: onTapDown
   // sur un cercle de story) pour rendre l'ouverture du viewer instantanée.
   Future<void> preloadStoryMedia(StoryModel story) async {
+    // Story texte : aucun média à précharger.
+    if (story.isTextStory) return;
     if (story.isVideo) {
       if (storyVideoCache.containsKey(story.id)) return;
       try {
@@ -819,6 +855,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       isPinned: row['is_pinned'] ?? false,
       isPremium: profile?['is_premium'] ?? false,
       visibility: row['visibility'] ?? 'public',
+      isOnline: SupabaseService.isReallyOnline(
+          profile?['is_online'], profile?['last_seen']),
+      showDistance: profile?['show_distance'] ?? true,
       textContent: row['text_content'],
       bgColor: row['bg_color'],
     );
@@ -932,7 +971,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       final expiresAt =
           DateTime.now().add(Duration(minutes: (durationHours * 60).round()));
 
-      await Supabase.instance.client.from('stories').insert({
+      final inserted = await Supabase.instance.client.from('stories').insert({
         'user_id': uid,
         'media_url': mediaUrl,
         'is_video': isVideo,
@@ -942,18 +981,39 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         'expires_at': expiresAt.toUtc().toIso8601String(),
         'viewed_by': [],
         'visibility': visibility,
-      });
+      }).select('id').single();
+      storyUploadProgress.value = 0.8;
+
+      // ✅ Modération : une story explicite est supprimée par le
+      // serveur, une story douteuse reste cachée jusqu'à validation.
+      final result =
+          await ModerationService.story(inserted['id'].toString());
 
       storyUploadProgress.value = 1.0;
       await loadStories();
 
+      final (titre, message) = switch (result) {
+        ModerationResult.rejected => (
+            'Story refusée',
+            'Elle ne respecte pas nos règles (nudité ou contenu explicite).'
+          ),
+        ModerationResult.pending => (
+            'Story en vérification',
+            "Elle sera visible par les autres dès qu'elle sera validée."
+          ),
+        _ => (
+            'Story publiée ✓',
+            'Visible pendant ${_formatDurationLabel(durationHours)}'
+          ),
+      };
       Get.snackbar(
-        'Story publiée ✓',
-        'Visible pendant ${_formatDurationLabel(durationHours)}',
+        titre,
+        message,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
         colorText: Colors.white,
-        duration: const Duration(seconds: 2),
+        duration: Duration(
+            seconds: result == ModerationResult.approved ? 2 : 4),
       );
     } catch (e) {
       debugPrint('publishStory error: $e');

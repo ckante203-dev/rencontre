@@ -15,13 +15,31 @@ class StoryReplyData {
   final String storyPreviewUrl;
   final bool storyIsVideo;
   final String storyOwnerName;
+  // Story texte : texte et couleur de fond conservés dans le message
+  // (colonnes messages.story_text / story_bg_color).
+  final String? storyText;
+  final String? storyBgColor;
 
   const StoryReplyData({
     required this.storyId,
     required this.storyPreviewUrl,
     required this.storyIsVideo,
     required this.storyOwnerName,
+    this.storyText,
+    this.storyBgColor,
   });
+
+  bool get isTextStory => storyPreviewUrl.isEmpty;
+
+  /// Colonnes de `messages` décrivant la story à laquelle on répond.
+  Map<String, dynamic> toColumns({bool withText = true}) => {
+        'story_id': storyId,
+        'story_preview_url': storyPreviewUrl,
+        'story_is_video': storyIsVideo,
+        'topic': '📸 Story de $storyOwnerName',
+        if (withText && storyText != null) 'story_text': storyText,
+        if (withText && storyBgColor != null) 'story_bg_color': storyBgColor,
+      };
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -1062,6 +1062,40 @@ class ConversationController extends GetxController {
     }
   }
 
+  /// Enregistre une réponse à une story. Essaie avec le texte de la
+  /// story (colonnes story_text / story_bg_color), puis sans (si la
+  /// migration 20260930000010 n'est pas encore appliquée), puis en
+  /// simple message. Renvoie false si le lien vers la story est perdu ;
+  /// lève une exception si même le simple message échoue.
+  static Future<bool> insertStoryReplyRow({
+    required String conversationId,
+    required String senderId,
+    required String text,
+    required StoryReplyData storyData,
+  }) async {
+    final db = Supabase.instance.client.from('messages');
+    final base = {
+      'conversation_id': conversationId,
+      'sender_id': senderId,
+      'type': 'text',
+      'content': text,
+      'status': 'sent',
+    };
+    final hasText = storyData.storyText != null;
+    try {
+      await db.insert({...base, ...storyData.toColumns(withText: hasText)});
+      return true;
+    } catch (_) {}
+    if (hasText) {
+      try {
+        await db.insert({...base, ...storyData.toColumns(withText: false)});
+        return true;
+      } catch (_) {}
+    }
+    await db.insert(base);
+    return false;
+  }
+
   Future<void> sendStoryReply({
     required String conversationId,
     required String text,
@@ -1082,28 +1116,14 @@ class ConversationController extends GetxController {
     ));
     bool sent = false;
     try {
-      await Supabase.instance.client.from('messages').insert({
-        'conversation_id': conversationId,
-        'sender_id': uid,
-        'type': 'text',
-        'content': text,
-        'status': 'sent',
-        'story_id': storyData.storyId,
-        'story_preview_url': storyData.storyPreviewUrl,
-        'story_is_video': storyData.storyIsVideo,
-        'topic': '📸 Story de ${storyData.storyOwnerName}',
-      });
+      final keptStory = await insertStoryReplyRow(
+        conversationId: conversationId,
+        senderId: uid,
+        text: text,
+        storyData: storyData,
+      );
       sent = true;
-    } catch (_) {
-      try {
-        await Supabase.instance.client.from('messages').insert({
-          'conversation_id': conversationId,
-          'sender_id': uid,
-          'type': 'text',
-          'content': text,
-          'status': 'sent',
-        });
-        sent = true;
+      if (!keptStory) {
         // ✅ FIX — le message réellement enregistré n'a pas de données
         // de story : la bulle temporaire est ajustée pour correspondre
         // (elle sera remplacée par le vrai message via Realtime/polling,
@@ -1120,9 +1140,9 @@ class ConversationController extends GetxController {
             createdAt: t.createdAt,
           );
         }
-      } catch (e) {
-        messages.removeWhere((m) => m.id == tempId);
       }
+    } catch (e) {
+      messages.removeWhere((m) => m.id == tempId);
     }
     if (!sent) return;
     // ✅ FIX — comme sendMessage : la liste est triée par updated_at,
@@ -1594,6 +1614,8 @@ class ConversationController extends GetxController {
         storyPreviewUrl: storyPreviewUrl,
         storyIsVideo: row['story_is_video'] as bool? ?? false,
         storyOwnerName: _parseStoryOwnerName(row['topic'] as String?),
+        storyText: row['story_text'] as String?,
+        storyBgColor: row['story_bg_color'] as String?,
       );
     }
 

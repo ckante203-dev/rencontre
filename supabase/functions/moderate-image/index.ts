@@ -1,5 +1,12 @@
 // supabase/functions/moderate-image/index.ts
 // Appelée par l'app avec le JWT utilisateur (verify_jwt activé).
+//
+// Statuts renvoyés :
+//   approved  → publiée
+//   unchecked → publiée, mais NON analysée (quota Sightengine dépassé,
+//               service indisponible, vidéo) : à contrôler par l'admin
+//   pending   → douteuse : cachée jusqu'à validation par l'admin
+//   rejected  → explicite : refusée, fichier supprimé
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,7 +31,9 @@ function json(obj: unknown, status = 200): Response {
   });
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type Status = "approved" | "unchecked" | "pending" | "rejected";
+
+const MAX_GALLERY = 4; // = ControleurProfil.maxPhotos
 
 // ── Authentification ─────────────────────────────────────────────────────
 // La gateway (verify_jwt) accepte aussi la clé anon : on vérifie donc ici
@@ -42,14 +51,14 @@ async function getAuthUser(req: Request): Promise<{ id: string; email?: string }
   return data.user;
 }
 
-function decide(n: any): "approved" | "pending" | "rejected" {
+function decide(n: any): Status {
   const explicit = Math.max(n?.sexual_activity ?? 0, n?.sexual_display ?? 0);
   if (explicit >= 0.85) return "rejected";
   if (explicit >= 0.45 || (n?.erotica ?? 0) >= 0.75) return "pending";
   return "approved";
 }
 
-async function scan(url: string): Promise<"approved" | "pending" | "rejected"> {
+async function scan(url: string): Promise<Status> {
   try {
     const q = new URLSearchParams({
       url,
@@ -59,10 +68,16 @@ async function scan(url: string): Promise<"approved" | "pending" | "rejected"> {
     });
     const r = await fetch(`https://api.sightengine.com/1.0/check.json?${q}`);
     const j = await r.json();
-    if (j.status !== "success") return "pending"; // en cas de doute → admin
+    if (j.status !== "success") {
+      // Quota dépassé, clé invalide, image illisible… : on ne bloque pas
+      // l'utilisateur, la photo est publiée et marquée « à contrôler ».
+      console.error("sightengine:", JSON.stringify(j.error ?? j));
+      return "unchecked";
+    }
     return decide(j.nudity);
-  } catch (_) {
-    return "pending";
+  } catch (e) {
+    console.error("sightengine fetch:", String(e));
+    return "unchecked";
   }
 }
 
@@ -70,30 +85,46 @@ async function scan(url: string): Promise<"approved" | "pending" | "rejected"> {
 // Formats acceptés : <prefix><bucket>/<uid>/...   (ex. profile-photos/<uid>/x.jpg, avatars/<uid>/photo.jpg)
 //                    <prefix><bucket>/<sous-dossier>/<uid>/...   (ex. avatars/avatars/<uid>/profile.jpg)
 const PUBLIC_PREFIX = `${SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/`;
-const PROFILE_BUCKETS = ["avatars", "profile-photos"];
 const KNOWN_SUBFOLDERS = ["avatars", "photos", "stories"];
 
-function isOwnPublicUrl(url: unknown, uid: string, buckets: string[]): boolean {
-  if (typeof url !== "string" || !url.startsWith(PUBLIC_PREFIX)) return false;
+// Renvoie { bucket, path } si l'URL est un fichier de l'utilisateur, sinon null.
+function ownStorageObject(
+  url: unknown,
+  uid: string,
+  buckets: string[],
+): { bucket: string; path: string } | null {
+  if (typeof url !== "string" || !url.startsWith(PUBLIC_PREFIX)) return null;
   let rest = url.slice(PUBLIC_PREFIX.length).split(/[?#]/)[0];
   try {
     rest = decodeURIComponent(rest);
   } catch (_) {
-    return false;
+    return null;
   }
   const segs = rest.split("/");
-  if (segs.some((s) => s === "" || s === "." || s === ".." || s.includes("\\"))) return false;
+  if (segs.some((s) => s === "" || s === "." || s === ".." || s.includes("\\"))) return null;
   const [bucket, ...path] = segs;
-  if (!buckets.includes(bucket)) return false;
+  if (!buckets.includes(bucket)) return null;
   // path = [<uid>, fichier...]  ou  [<sous-dossier>, <uid>, fichier...]
-  if (path.length >= 2 && path[0] === uid) return true;
-  if (path.length >= 3 && KNOWN_SUBFOLDERS.includes(path[0]) && path[1] === uid) return true;
-  return false;
+  const ok = (path.length >= 2 && path[0] === uid) ||
+    (path.length >= 3 && KNOWN_SUBFOLDERS.includes(path[0]) && path[1] === uid);
+  return ok ? { bucket, path: path.join("/") } : null;
+}
+
+async function removeFile(obj: { bucket: string; path: string } | null) {
+  if (!obj) return;
+  const { error } = await admin.storage.from(obj.bucket).remove([obj.path]);
+  if (error) console.error("remove file:", error.message);
+}
+
+function asList(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 }
 
 // ── Handler principal ─────────────────────────────────────────────────────
-// Appel app (JWT) : { kind: "profile", url } ou { kind: "story", id }
-// (url / isVideo éventuellement envoyés pour une story sont ignorés : on lit la ligne en base).
+// Appel app (JWT) :
+//   { kind: "profile", url }  photo principale (avatars)
+//   { kind: "gallery", url }  photo de la galerie (profile-photos)
+//   { kind: "story",   id }   story déjà insérée (on lit la ligne en base)
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -105,22 +136,52 @@ serve(async (req) => {
     const payload = await req.json().catch(() => null);
     if (!payload || typeof payload !== "object") return json({ error: "invalid body" }, 400);
     const { kind, url, id } = payload as Record<string, unknown>;
-    let status: "approved" | "pending" | "rejected";
+    let status: Status;
 
     if (kind === "profile") {
-      if (!isOwnPublicUrl(url, uid, PROFILE_BUCKETS)) {
-        return json({ error: "forbidden" }, 403);
-      }
+      const obj = ownStorageObject(url, uid, ["avatars", "profile-photos"]);
+      if (!obj) return json({ error: "forbidden" }, 403);
       const photoUrl = url as string;
       status = await scan(photoUrl);
-      const update = status === "approved"
-        ? { photo_url: photoUrl, pending_photo_url: null, photo_status: "approved" }
+
+      const update = status === "approved" || status === "unchecked"
+        ? { photo_url: photoUrl, pending_photo_url: null, photo_status: status }
         : status === "pending"
         ? { pending_photo_url: photoUrl, photo_status: "pending" }
         : { pending_photo_url: null, photo_status: "rejected" };
       const { error } = await admin.from("profiles").update(update).eq("id", uid);
       if (error) throw new Error(`DB error: ${error.message}`);
-    } else {
+      if (status === "rejected") await removeFile(obj);
+    } else if (kind === "gallery") {
+      const obj = ownStorageObject(url, uid, ["profile-photos"]);
+      if (!obj) return json({ error: "forbidden" }, 403);
+      const photoUrl = url as string;
+
+      const { data: prof, error: pErr } = await admin.from("profiles")
+        .select("photo_urls, pending_photo_urls").eq("id", uid).maybeSingle();
+      if (pErr) throw new Error(`DB error: ${pErr.message}`);
+      const photos = asList(prof?.photo_urls);
+      const pendings = asList(prof?.pending_photo_urls);
+      if (photos.length + pendings.length >= MAX_GALLERY) {
+        await removeFile(obj);
+        return json({ error: "gallery full" }, 409);
+      }
+
+      status = await scan(photoUrl);
+      if (status === "approved" || status === "unchecked") {
+        if (!photos.includes(photoUrl)) photos.push(photoUrl);
+        const { error } = await admin.from("profiles")
+          .update({ photo_urls: photos }).eq("id", uid);
+        if (error) throw new Error(`DB error: ${error.message}`);
+      } else if (status === "pending") {
+        if (!pendings.includes(photoUrl)) pendings.push(photoUrl);
+        const { error } = await admin.from("profiles")
+          .update({ pending_photo_urls: pendings }).eq("id", uid);
+        if (error) throw new Error(`DB error: ${error.message}`);
+      } else {
+        await removeFile(obj);
+      }
+    } else if (kind === "story") {
       if ((typeof id !== "string" && typeof id !== "number") || id === "") {
         return json({ error: "Missing fields" }, 400);
       }
@@ -130,10 +191,20 @@ serve(async (req) => {
       if (!story) return json({ error: "forbidden" }, 403);
       if (!story.media_url) return json({ error: "no media" }, 400);
 
-      // Vidéos : revue manuelle pour l'instant (analyse vidéo à ajouter plus tard)
-      status = story.is_video === true ? "pending" : await scan(story.media_url);
-      const { error } = await admin.from("stories").update({ moderation_status: status }).eq("id", story.id);
-      if (error) throw new Error(`DB error: ${error.message}`);
+      // Vidéos : pas d'analyse (bien plus coûteuse) → publiées, à contrôler.
+      status = story.is_video === true ? "unchecked" : await scan(story.media_url);
+
+      if (status === "rejected") {
+        const { error } = await admin.from("stories").delete().eq("id", story.id);
+        if (error) throw new Error(`DB error: ${error.message}`);
+        await removeFile(ownStorageObject(story.media_url, uid, ["stories"]));
+      } else {
+        const { error } = await admin.from("stories")
+          .update({ moderation_status: status }).eq("id", story.id);
+        if (error) throw new Error(`DB error: ${error.message}`);
+      }
+    } else {
+      return json({ error: "unknown kind" }, 400);
     }
 
     return json({ status });

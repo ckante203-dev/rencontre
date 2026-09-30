@@ -930,6 +930,30 @@ class _StoryReplyPreview extends StatelessWidget {
               width: 56,
               height: 72,
               child: Stack(fit: StackFit.expand, children: [
+                // ✅ Story texte : pas d'image à montrer.
+                if (storyReply.isTextStory)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: storyReply.storyBgColor != null
+                          ? _storyBgColor(storyReply.storyBgColor)
+                          : null,
+                      gradient: storyReply.storyBgColor == null
+                          ? AppColors.gradientPink
+                          : null,
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Center(
+                        child: Text(storyReply.storyText ?? 'Aa',
+                            textAlign: TextAlign.center,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize:
+                                    storyReply.storyText == null ? 18 : 8,
+                                fontWeight: FontWeight.w800))),
+                  )
+                else
                 CachedNetworkImage(
                     imageUrl: storyReply.storyPreviewUrl,
                     fit: BoxFit.cover,
@@ -954,7 +978,12 @@ class _StoryReplyPreview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(storyReply.storyIsVideo ? '🎬 Vidéo' : '📸 Photo',
+                  Text(
+                      storyReply.storyIsVideo
+                          ? '🎬 Vidéo'
+                          : storyReply.isTextStory
+                              ? '✍️ Texte'
+                              : '📸 Photo',
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -1041,7 +1070,24 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                       aspectRatio: _videoCtrl!.value.aspectRatio,
                       child: VideoPlayer(_videoCtrl!))
                   : const CircularProgressIndicator(color: Colors.white))
-              : CachedNetworkImage(
+              : story.isTextStory
+                  ? Container(
+                      color: story.storyBgColor != null
+                          ? _storyBgColor(story.storyBgColor)
+                          : Colors.black,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(story.storyText ?? '✍️ Story texte',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: story.storyText != null
+                                  ? Colors.white
+                                  : Colors.white70,
+                              fontSize: story.storyText != null ? 28 : 20,
+                              fontWeight: FontWeight.w800,
+                              height: 1.3)),
+                    )
+                  : CachedNetworkImage(
                   imageUrl: story.storyPreviewUrl,
                   fit: BoxFit.contain,
                   placeholder: (_, __) => const Center(
@@ -2954,4 +3000,11 @@ class _AvatarWithStoryRing extends StatelessWidget {
     );
     homeCtrl.markStoryAsSeen(userStories.first.id);
   }
+}
+
+// Couleur de fond d'une story texte, stockée en hex ("#7B2FFF").
+Color _storyBgColor(String? hex) {
+  var h = (hex ?? '').replaceFirst('#', '');
+  if (h.length == 6) h = 'FF$h';
+  return Color(int.tryParse(h, radix: 16) ?? 0xFF7B2FFF);
 }
