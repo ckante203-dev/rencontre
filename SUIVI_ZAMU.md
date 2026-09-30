@@ -4,7 +4,7 @@ Mis à jour le 30/09/2026.
 
 **Fait le 30/09 :** scripts `000010`, `000011` et `000012` appliqués ; fonction `moderate-image` déployée (clés Sightengine vérifiées).
 
-**À faire :** exécuter `20260930000014_chat_sourdine_signalement_messages.sql` (couper les notifications d'une conversation, signaler un message). La fonction `smooth-action` qui en tient compte est déjà déployée (30/09).
+**Fait le 30/09 :** script `000014` appliqué (sourdine par conversation, signalement des messages) et `smooth-action` redéployée.
 
 **Modération des photos (Sightengine, offre gratuite : 2 000 photos/mois, 500/jour) :** clés enregistrées sur le serveur le 30/09.
 - Plus tard, quand presque tout le monde a la nouvelle version : `20260930000013_moderation_verrouillage.sql` (empêche de contourner la modération).
