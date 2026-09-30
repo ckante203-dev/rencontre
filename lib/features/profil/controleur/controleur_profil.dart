@@ -134,7 +134,7 @@ class ControleurProfil extends GetxController {
 
   // Laisser vide = l'entrée est masquée dans les Paramètres.
   static const String urlConfidentialite =
-      'https://flixcyjefjcyjwvjdiny.supabase.co/storage/v1/object/public/legal/politique-confidentialite-zamu.html';
+      'https://supportsnapmeet-jpg.github.io/zamu-legal/politique-confidentialite.html';
   static const String emailContact = 'support.snapmeet@gmail.com';
   static const String _packageAndroid = 'com.vybestyle.zamu';
 

@@ -18,9 +18,9 @@ class CguScreen extends StatefulWidget {
 class _CguScreenState extends State<CguScreen> {
   bool _accepted = false;
 
-  // ✅ Remplace cette URL par ton lien Notion une fois les CGU hébergées
-  // Exemple : https://snapmeet.notion.site/conditions-utilisation
-  static const String _cguUrl = 'https://snapmeet.notion.site/conditions';
+  // Version en ligne : legal/conditions-utilisation.html, hébergée sur GitHub Pages (dépôt zamu-legal)
+  static const String _cguUrl =
+      'https://supportsnapmeet-jpg.github.io/zamu-legal/conditions-utilisation.html';
 
   Future<void> _openOnline() async {
     try {
@@ -105,7 +105,7 @@ class _CguScreenState extends State<CguScreen> {
                 ),
 
                 _buildSection('1. Présentation',
-                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant SnapMeet, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'),
+                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'),
 
                 _buildSection('2. Conditions d\'accès',
                     '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'),
@@ -120,16 +120,16 @@ class _CguScreenState extends State<CguScreen> {
                     'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'),
 
                 _buildSection('6. Abonnement Premium',
-                    'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à SnapMeet.'),
+                    'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à Zamu.'),
 
                 _buildSection('7. Modération et sanctions',
                     'En cas de violation des CGU :\n• Avertissement\n• Suspension temporaire\n• Suppression définitive du compte\n• Signalement aux autorités pour actes illégaux\n\nSignalez tout comportement inapproprié directement depuis l\'application.'),
 
                 _buildSection('8. Propriété intellectuelle',
-                    'Le nom SnapMeet, son logo et son code sont protégés. Toute reproduction sans autorisation est interdite.\n\nVotre contenu vous appartient. En le publiant, vous accordez à SnapMeet une licence limitée au fonctionnement de l\'application.'),
+                    'Le nom Zamu, son logo et son code sont protégés. Toute reproduction sans autorisation est interdite.\n\nVotre contenu vous appartient. En le publiant, vous accordez à Zamu une licence limitée au fonctionnement de l\'application.'),
 
                 _buildSection('9. Modifications',
-                    'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser SnapMeet après notification vaut acceptation.'),
+                    'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser Zamu après notification vaut acceptation.'),
 
                 _buildSection('10. Contact',
                     'Pour toute question ou réclamation :\n📧 support.snapmeet@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'),
@@ -143,7 +143,7 @@ class _CguScreenState extends State<CguScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.border)),
                   child: Text(
-                    'En utilisant SnapMeet, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 SnapMeet — Tous droits réservés',
+                    'En utilisant Zamu, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 Zamu — Tous droits réservés',
                     style: TextStyle(
                         color: AppColors.textMuted, fontSize: 12, height: 1.6),
                     textAlign: TextAlign.center,
