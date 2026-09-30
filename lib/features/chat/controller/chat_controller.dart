@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
@@ -15,6 +16,7 @@ import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
 enum ChatFilter { all, unread, online, nearby, media }
 
@@ -449,6 +451,17 @@ class ConversationController extends GetxController {
   final RxBool bloque = false.obs;
   bool _enAttenteDeReponse = false;
 
+  // ─── Menu ⋮ de la conversation ───
+  // Sourdine : lue par le serveur (table conversation_sourdines).
+  final RxBool sourdine = false.obs;
+  final RxBool sourdineEnCours = false.obs;
+  // Fond d'écran et historique effacé : propres à cet appareil.
+  final RxString fond = 'defaut'.obs;
+  final Rx<DateTime?> effaceAvant = Rx<DateTime?>(null);
+  final _box = GetStorage();
+  String get _cleFond => 'chat_fond_${conversation.id}';
+  String get _cleEfface => 'chat_efface_${conversation.id}';
+
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _recorderOpen = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -492,6 +505,9 @@ class ConversationController extends GetxController {
   void init(ConversationModel conv) {
     conversation = conv;
     isOtherOnline.value = conv.isOnline;
+    fond.value = _box.read<String>(_cleFond) ?? 'defaut';
+    final efface = _box.read<String>(_cleEfface);
+    effaceAvant.value = efface == null ? null : DateTime.tryParse(efface);
     _audioPlayer.onPlayerComplete.listen((_) => currentlyPlayingId.value = '');
     // Recalcule la limite dès que la liste des messages change
     ever(messages, (_) => _majLimite());
@@ -504,8 +520,133 @@ class ConversationController extends GetxController {
       _markReadAndUpdateBadge(conv.id);
       _fetchOtherOnlineStatus(conv.userId);
       _chargerStatutConversation();
+      _chargerSourdine();
     });
   }
+
+  /// Date jusqu'à laquelle l'historique a été effacé sur cet appareil.
+  static DateTime? historiqueEffaceAvant(String convId) {
+    final v = GetStorage().read<String>('chat_efface_$convId');
+    return v == null ? null : DateTime.tryParse(v);
+  }
+
+  /// Messages affichés : hors messages expirés et historique effacé.
+  bool estVisible(MessageModel m) {
+    if (m.isDisappeared) return false;
+    final avant = effaceAvant.value;
+    return avant == null || m.createdAt.isAfter(avant);
+  }
+
+  Future<void> _chargerSourdine() async {
+    final uid = _service.currentUserId;
+    if (uid == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('conversation_sourdines')
+          .select('user_id')
+          .eq('user_id', uid)
+          .eq('conversation_id', conversation.id)
+          .maybeSingle();
+      if (!_closed) sourdine.value = row != null;
+    } catch (_) {}
+  }
+
+  Future<void> basculerSourdine() async {
+    final uid = _service.currentUserId;
+    if (uid == null || sourdineEnCours.value) return;
+    final activer = !sourdine.value;
+    sourdine.value = activer;
+    sourdineEnCours.value = true;
+    try {
+      final db = Supabase.instance.client.from('conversation_sourdines');
+      if (activer) {
+        await db.upsert({'user_id': uid, 'conversation_id': conversation.id});
+      } else {
+        await db
+            .delete()
+            .eq('user_id', uid)
+            .eq('conversation_id', conversation.id);
+      }
+      _snackInfo(activer
+          ? 'Notifications coupées pour cette conversation'
+          : 'Notifications réactivées');
+    } catch (e) {
+      debugPrint('basculerSourdine error: $e');
+      sourdine.value = !activer;
+      _snackInfo('Impossible de modifier les notifications');
+    } finally {
+      sourdineEnCours.value = false;
+    }
+  }
+
+  void choisirFond(String id) {
+    fond.value = id;
+    if (id == 'defaut') {
+      _box.remove(_cleFond);
+    } else {
+      _box.write(_cleFond, id);
+    }
+  }
+
+  /// Masque, sur cet appareil, tous les messages reçus ou envoyés jusqu'ici.
+  void effacerHistorique() {
+    final maintenant = DateTime.now();
+    effaceAvant.value = maintenant;
+    _box.write(_cleEfface, maintenant.toIso8601String());
+    cancelReply();
+    _snackInfo('Historique effacé sur cet appareil');
+  }
+
+  /// Signale un message reçu : motif, puis enregistrement dans `reports`
+  /// avec une copie du contenu (le message disparaît après lecture).
+  Future<void> signalerMessage(MessageModel msg) async {
+    final uid = _service.currentUserId;
+    if (uid == null || msg.senderId == uid) return;
+    final raison = await choisirMotifSignalement('Pourquoi signaler ce message ?');
+    if (raison == null) return;
+    final db = Supabase.instance.client.from('reports');
+    final base = {
+      'reporter_id': uid,
+      'reported_id': msg.senderId,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    try {
+      try {
+        await db.insert({
+          ...base,
+          'reason': raison,
+          'message_id': msg.id,
+          if ((msg.text ?? '').isNotEmpty) 'message_contenu': msg.text,
+          if ((msg.mediaUrl ?? '').isNotEmpty) 'message_media_url': msg.mediaUrl,
+        });
+      } on PostgrestException catch (e) {
+        if (e.code == '23505') rethrow;
+        // Colonnes message_* absentes (script 000014 pas appliqué) :
+        // signalement enregistré sur le profil.
+        await db.insert({...base, 'reason': 'Message : $raison (${msg.id})'});
+      }
+      _snackInfo("Signalement envoyé. Merci, notre équipe va l'examiner.");
+    } on PostgrestException catch (e) {
+      _snackInfo(e.code == '23505'
+          ? 'Tu as déjà signalé ce message'
+          : "Impossible d'envoyer le signalement");
+    } catch (_) {
+      _snackInfo("Impossible d'envoyer le signalement");
+    }
+  }
+
+  void _snackInfo(String texte) => Get.snackbar(texte, '',
+      titleText: Text(texte,
+          style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary)),
+      messageText: const SizedBox.shrink(),
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: AppColors.surface2,
+      margin: const EdgeInsets.all(12),
+      borderRadius: 14,
+      duration: const Duration(seconds: 2));
 
   /// Statut de la conversation : en attente de réponse (sans match) ?
   Future<void> _chargerStatutConversation() async {
@@ -1273,7 +1414,10 @@ class ConversationController extends GetxController {
                 icon: Icons.flag_outlined,
                 label: 'Signaler',
                 color: const Color(0xFFFF9500),
-                onTap: () => Get.back()),
+                onTap: () {
+                  Get.back();
+                  signalerMessage(msg);
+                }),
         ]),
       ),
     );

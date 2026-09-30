@@ -4,6 +4,8 @@ Mis à jour le 30/09/2026.
 
 **Fait le 30/09 :** scripts `000010`, `000011` et `000012` appliqués ; fonction `moderate-image` déployée (clés Sightengine vérifiées).
 
+**À faire :** exécuter `20260930000014_chat_sourdine_signalement_messages.sql` (couper les notifications d'une conversation, signaler un message). La fonction `smooth-action` qui en tient compte est déjà déployée (30/09).
+
 **Modération des photos (Sightengine, offre gratuite : 2 000 photos/mois, 500/jour) :** clés enregistrées sur le serveur le 30/09.
 - Plus tard, quand presque tout le monde a la nouvelle version : `20260930000013_moderation_verrouillage.sql` (empêche de contourner la modération).
 - Photos « pending » (douteuses) : cachées, à valider (requêtes en tête du script 000012, en attendant le panneau admin).
@@ -90,13 +92,14 @@ Après les étapes 1 et 3 : `flutter build appbundle`, puis publication sur Goog
 - signaler une story (bouton ⋮ en haut, dans le menu Story et dans le visualiseur) : elle disparaît pour la personne qui la signale ;
 - menu Story : toutes les stories de chaque personne, regroupées (avant : une seule) ;
 - répondre à une story texte : le texte apparaît dans la conversation (nécessite le script `000010`) ;
+- menu ⋮ d'une conversation : en-tête (appui → profil), couper les notifications (plus de push de cette conversation), appel vidéo grisé « Bientôt », fond d'écran (6 choix, gardé par conversation), signaler / bloquer la personne, effacer l'historique (ne revient plus en rouvrant, aperçu de la liste vidé), supprimer l'échange ;
+- appui long sur un message reçu > Signaler : choix du motif puis confirmation ;
 - messages directs sans match : le destinataire voit la conversation, limite de 3 messages sans réponse, blocage efficace ;
 - Paramètres > mot de passe : la jauge de force suit les couleurs du thème.
 
 ## 5. Plus tard
 
 - **Pages légales** (fait le 30/09) : hébergées sur GitHub Pages, compte `supportsnapmeet-jpg`, dépôt `zamu-legal` (sources dans `legal/`). Conditions : https://supportsnapmeet-jpg.github.io/zamu-legal/conditions-utilisation.html — Confidentialité : https://supportsnapmeet-jpg.github.io/zamu-legal/politique-confidentialite.html. **À faire :** coller l'adresse de la politique dans la Play Console (Contenu de l'appli > Règles de confidentialité). Pour modifier un texte : éditer le fichier dans `legal/` puis le renvoyer sur le dépôt.
-- **Signaler un message** : le bouton du chat ne fait rien pour l'instant (ferme juste le menu).
 - **Section 3 de `000008`** (réserver aux Premium la liste « Qui m'a vu ») : à exécuter seulement quand presque tous les utilisateurs ont la nouvelle version de l'app.
 - **Colonne `is_pinned`** des stories : inutile depuis le retrait des publications épinglées ; supprimable plus tard avec `ALTER TABLE public.stories DROP COLUMN IF EXISTS is_pinned;`.
 - **Commit git** : rien n'est encore enregistré dans git depuis le début des corrections.

@@ -11,6 +11,8 @@ import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
+import 'package:rencontre/features/home/widget/story_report_sheet.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -144,7 +146,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
       appBar: _buildAppBar(context),
       body: Column(children: [
         const _EphemeralBanner(),
-        Expanded(child: _MessageList(ctrl: ctrl)),
+        Expanded(
+          child: Obx(() => _FondConversation(
+                id: ctrl.fond.value,
+                child: _MessageList(ctrl: ctrl),
+              )),
+        ),
         _BandeauEnvoi(ctrl: ctrl),
         _InputBar(ctrl: ctrl),
       ]),
@@ -290,7 +297,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ConvMenu(ctrl: ctrl, conv: conv),
+      isScrollControlled: true,
+      builder: (_) => _ConvMenu(
+        ctrl: ctrl,
+        conv: conv,
+        onVoirProfil: () => _ouvrirProfil(conv),
+      ),
     );
   }
 }
@@ -302,14 +314,498 @@ class _ConversationScreenState extends State<ConversationScreen> {
 class _ConvMenu extends StatelessWidget {
   final ConversationController ctrl;
   final ConversationModel conv;
-  const _ConvMenu({required this.ctrl, required this.conv});
+  final VoidCallback onVoirProfil;
+  const _ConvMenu(
+      {required this.ctrl, required this.conv, required this.onVoirProfil});
+
+  @override
+  Widget build(BuildContext context) {
+    final prenom = conv.userName;
+    return Container(
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+            16, 0, 16, MediaQuery.of(context).padding.bottom + 16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2))),
+          _EnTeteMenu(
+            ctrl: ctrl,
+            conv: conv,
+            onTap: () {
+              Get.back();
+              onVoirProfil();
+            },
+          ),
+          const SizedBox(height: 16),
+          _GroupeMenu(children: [
+            Obx(() => _MenuItem(
+                  icon: ctrl.sourdine.value
+                      ? Icons.notifications_off_outlined
+                      : Icons.notifications_outlined,
+                  label: 'Couper les notifications',
+                  sousTitre: ctrl.sourdine.value
+                      ? 'Tu ne reçois plus d\'alerte pour cette conversation'
+                      : null,
+                  onTap: ctrl.basculerSourdine,
+                  trailing: Switch.adaptive(
+                    value: ctrl.sourdine.value,
+                    onChanged: (_) => ctrl.basculerSourdine(),
+                    activeColor: AppColors.accent,
+                  ),
+                )),
+            const _MenuItem(
+              icon: Icons.videocam_outlined,
+              label: 'Appel vidéo',
+              desactive: true,
+              trailing: _BadgeBientot(),
+            ),
+            Obx(() => _MenuItem(
+                  icon: Icons.wallpaper_rounded,
+                  label: 'Fond d\'écran',
+                  onTap: () {
+                    Get.back();
+                    _choisirFond(context);
+                  },
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_FondsChat.nom(ctrl.fond.value),
+                        style: TextStyle(
+                            fontSize: 13, color: AppColors.textMuted)),
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textMuted, size: 20),
+                  ]),
+                )),
+          ]),
+          const SizedBox(height: 12),
+          _GroupeMenu(children: [
+            _MenuItem(
+              icon: Icons.flag_outlined,
+              label: 'Signaler $prenom',
+              color: AppColors.yellow,
+              onTap: () async {
+                Get.back();
+                final raison = await choisirMotifSignalement(
+                    'Pourquoi signaler $prenom ?');
+                if (raison != null) {
+                  ControleurProfil.to.signalerProfil(conv.userId, raison);
+                }
+              },
+            ),
+            _MenuItem(
+              icon: Icons.block_rounded,
+              label: 'Bloquer $prenom',
+              color: AppColors.error,
+              onTap: () {
+                Get.back();
+                _confirmerBloquer(context);
+              },
+            ),
+          ]),
+          const SizedBox(height: 12),
+          _GroupeMenu(children: [
+            _MenuItem(
+              icon: Icons.cleaning_services_outlined,
+              label: 'Effacer l\'historique',
+              onTap: () {
+                Get.back();
+                _confirmerEffacer(context);
+              },
+            ),
+            _MenuItem(
+              icon: Icons.delete_outline_rounded,
+              label: 'Supprimer l\'échange',
+              color: AppColors.error,
+              onTap: () {
+                Get.back();
+                _confirmerSupprimer(context);
+              },
+            ),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  void _choisirFond(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ChoixFond(ctrl: ctrl),
+    );
+  }
+
+  Future<bool?> _confirmer(BuildContext context,
+      {required String titre,
+      required String texte,
+      required String action}) {
+    return showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: Text(titre,
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17)),
+              content: Text(texte,
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 14, height: 1.4)),
+              actions: [
+                TextButton(
+                    onPressed: () => Get.back(result: false),
+                    child: Text('Annuler',
+                        style: TextStyle(color: AppColors.textMuted))),
+                TextButton(
+                  onPressed: () => Get.back(result: true),
+                  child: Text(action,
+                      style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ));
+  }
+
+  Future<void> _confirmerBloquer(BuildContext context) async {
+    final ok = await _confirmer(context,
+        titre: 'Bloquer ${conv.userName} ?',
+        texte: '${conv.userName} ne pourra plus te voir ni t\'écrire, et '
+            'cette conversation disparaîtra. Tu pourras annuler depuis '
+            'Paramètres > Profils bloqués.',
+        action: 'Bloquer');
+    if (ok == true) await ControleurProfil.to.bloquerProfil(conv.userId);
+  }
+
+  Future<void> _confirmerEffacer(BuildContext context) async {
+    final ok = await _confirmer(context,
+        titre: 'Effacer l\'historique ?',
+        texte: 'Les messages seront effacés sur ton téléphone uniquement. '
+            '${conv.userName} les verra toujours.',
+        action: 'Effacer');
+    if (ok == true) ctrl.effacerHistorique();
+  }
+
+  Future<void> _confirmerSupprimer(BuildContext context) async {
+    final ok = await _confirmer(context,
+        titre: 'Supprimer l\'échange ?',
+        texte: 'Cette conversation sera supprimée définitivement, '
+            'pour toi et pour ${conv.userName}.',
+        action: 'Supprimer');
+    if (ok != true) return;
+    try {
+      await Supabase.instance.client
+          .from('conversations')
+          .delete()
+          .eq('id', conv.id);
+      Get.back();
+      if (Get.isRegistered<ChatListController>()) {
+        Get.find<ChatListController>()
+            .conversations
+            .removeWhere((c) => c.id == conv.id);
+      }
+    } catch (e) {
+      debugPrint('supprimer error: $e');
+    }
+  }
+}
+
+class _EnTeteMenu extends StatelessWidget {
+  final ConversationController ctrl;
+  final ConversationModel conv;
+  final VoidCallback onTap;
+  const _EnTeteMenu(
+      {required this.ctrl, required this.conv, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            _AvatarWithStoryRing(
+              userId: conv.userId,
+              name: conv.userName,
+              photoUrl: conv.userPhotoUrl,
+              size: 52,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(conv.userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 3),
+                    Obx(() {
+                      final enLigne = ctrl.isOtherOnline.value;
+                      return Row(children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: enLigne
+                                  ? AppColors.online
+                                  : AppColors.textMuted),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(enLigne ? 'En ligne' : 'Hors ligne',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textMuted)),
+                        Flexible(
+                          child: Text('  ·  Voir le profil',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.accent)),
+                        ),
+                      ]);
+                    }),
+                  ]),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: AppColors.textMuted, size: 22),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupeMenu extends StatelessWidget {
+  final List<Widget> children;
+  const _GroupeMenu({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final lignes = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      if (i > 0) lignes.add(_Div());
+      lignes.add(children[i]);
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Material(
+        color: AppColors.surface,
+        child: Column(mainAxisSize: MainAxisSize.min, children: lignes),
+      ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? sousTitre;
+  final VoidCallback? onTap;
+  final Color? color;
+  final Widget? trailing;
+  final bool desactive;
+  const _MenuItem(
+      {required this.icon,
+      required this.label,
+      this.sousTitre,
+      this.onTap,
+      this.color,
+      this.trailing,
+      this.desactive = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? AppColors.textPrimary;
+    return Opacity(
+      opacity: desactive ? 0.5 : 1,
+      child: InkWell(
+        onTap: desactive ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                  color: c.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, color: c, size: 19),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 15,
+                            color: c,
+                            fontWeight: FontWeight.w500)),
+                    if (sousTitre != null) ...[
+                      const SizedBox(height: 2),
+                      Text(sousTitre!,
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                  ]),
+            ),
+            if (trailing != null) trailing!,
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgeBientot extends StatelessWidget {
+  const _BadgeBientot();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+          color: AppColors.accent.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20)),
+      child: Text('Bientôt',
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.accent)),
+    );
+  }
+}
+
+class _Div extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Divider(
+      height: 0.5, thickness: 0.5, color: AppColors.border, indent: 62);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FONDS D'ÉCRAN DE CONVERSATION
+// ═══════════════════════════════════════════════════════════════════
+
+class _FondsChat {
+  static const ids = ['defaut', 'doux', 'degrade', 'aurore', 'points', 'nuit'];
+
+  static String nom(String id) =>
+      const {
+        'defaut': 'Aucun',
+        'doux': 'Doux',
+        'degrade': 'Dégradé',
+        'aurore': 'Aurore',
+        'points': 'Motif',
+        'nuit': 'Nuit',
+      }[id] ??
+      'Aucun';
+
+  static Color _teinte(Color c, double force) =>
+      Color.alphaBlend(c.withOpacity(force), AppColors.bg);
+
+  static BoxDecoration decoration(String id) {
+    switch (id) {
+      case 'doux':
+        return BoxDecoration(color: _teinte(AppColors.accent, 0.06));
+      case 'degrade':
+        return BoxDecoration(
+            gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.bg, _teinte(AppColors.accent, 0.16)]));
+      case 'aurore':
+        return BoxDecoration(
+            gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+              _teinte(AppColors.accent, 0.14),
+              AppColors.bg,
+              _teinte(AppColors.accent2, 0.14),
+            ]));
+      case 'nuit':
+        return BoxDecoration(
+            color:
+                Color.alphaBlend(Colors.black.withOpacity(0.45), AppColors.bg));
+      default:
+        return BoxDecoration(color: AppColors.bg);
+    }
+  }
+}
+
+/// Fond de la liste des messages, selon le choix de l'utilisateur.
+class _FondConversation extends StatelessWidget {
+  final String id;
+  final Widget child;
+  const _FondConversation({required this.id, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: _FondsChat.decoration(id),
+      child: id == 'points'
+          ? CustomPaint(
+              painter: _MotifPoints(AppColors.textMuted), child: child)
+          : child,
+    );
+  }
+}
+
+class _MotifPoints extends CustomPainter {
+  final Color couleur;
+  _MotifPoints(this.couleur);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = couleur.withOpacity(0.10);
+    const pas = 22.0;
+    var ligne = 0;
+    for (double y = pas / 2; y < size.height; y += pas, ligne++) {
+      final decalage = ligne.isEven ? 0.0 : pas / 2;
+      for (double x = pas / 2 + decalage; x < size.width; x += pas) {
+        canvas.drawCircle(Offset(x, y), 1.4, p);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MotifPoints old) => old.couleur != couleur;
+}
+
+class _ChoixFond extends StatelessWidget {
+  final ConversationController ctrl;
+  const _ChoixFond({required this.ctrl});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: EdgeInsets.fromLTRB(
+          16, 0, 16, MediaQuery.of(context).padding.bottom + 20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+        color: AppColors.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
@@ -319,192 +815,108 @@ class _ConvMenu extends StatelessWidget {
             decoration: BoxDecoration(
                 color: AppColors.border,
                 borderRadius: BorderRadius.circular(2))),
-        _MenuItem(
-            icon: Icons.notifications_outlined,
-            label: 'Notifications',
-            trailing: Icon(Icons.chevron_right_rounded,
-                color: AppColors.textMuted, size: 18),
-            onTap: () {
-              Get.back();
-              Get.snackbar('Notifications', 'Bientôt disponible',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: AppColors.surface2,
-                  colorText: Colors.white);
-            }),
-        _Div(),
-        _MenuItem(
-            icon: Icons.videocam_outlined,
-            label: 'Appel vidéo',
-            onTap: () {
-              Get.back();
-              Get.snackbar('📹 Appel vidéo', 'Bientôt disponible',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: AppColors.surface2,
-                  colorText: Colors.white);
-            }),
-        _Div(),
-        _MenuItem(
-            icon: Icons.search_rounded,
-            label: 'Rechercher',
-            onTap: () {
-              Get.back();
-              Get.snackbar('🔍 Recherche', 'Bientôt disponible',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: AppColors.surface2,
-                  colorText: Colors.white);
-            }),
-        _Div(),
-        _MenuItem(
-            icon: Icons.wallpaper_rounded,
-            label: 'Fond d\'écran',
-            onTap: () {
-              Get.back();
-              Get.snackbar('Fond d\'écran', 'Bientôt disponible',
-                  snackPosition: SnackPosition.TOP,
-                  backgroundColor: AppColors.surface2,
-                  colorText: Colors.white);
-            }),
-        _Div(),
-        _MenuItem(
-            icon: Icons.cleaning_services_outlined,
-            label: 'Effacer l\'historique',
-            onTap: () {
-              Get.back();
-              _confirmerEffacer(context);
-            }),
-        _Div(),
-        _MenuItem(
-            icon: Icons.delete_outline_rounded,
-            label: 'Supprimer l\'échange',
-            color: AppColors.error,
-            onTap: () {
-              Get.back();
-              _confirmerSupprimer(context);
-            }),
-        SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+        Text('Fond d\'écran',
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        const SizedBox(height: 4),
+        Text('Visible uniquement par toi',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+        const SizedBox(height: 18),
+        Obx(() => GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.72,
+              children: _FondsChat.ids.map((id) {
+                final choisi = ctrl.fond.value == id;
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    ctrl.choisirFond(id);
+                  },
+                  child: Column(children: [
+                    Expanded(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color:
+                                  choisi ? AppColors.accent : AppColors.border,
+                              width: choisi ? 2 : 1),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: _FondConversation(
+                            id: id,
+                            child: _ApercuBulles(choisi: choisi),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(_FondsChat.nom(id),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                                choisi ? FontWeight.w700 : FontWeight.w500,
+                            color: choisi
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted)),
+                  ]),
+                );
+              }).toList(),
+            )),
       ]),
     );
   }
-
-  void _confirmerEffacer(BuildContext context) {
-    showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              title: Text('Effacer l\'historique ?',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              content: Text(
-                  'Les messages seront masqués dans votre vue uniquement.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              actions: [
-                TextButton(
-                    onPressed: () => Get.back(),
-                    child: Text('Annuler',
-                        style: TextStyle(color: AppColors.textMuted))),
-                TextButton(
-                  onPressed: () {
-                    Get.back();
-                    ctrl.messages.clear();
-                    Get.snackbar('Historique effacé', 'Votre vue a été effacée',
-                        snackPosition: SnackPosition.TOP,
-                        backgroundColor: AppColors.surface2,
-                        colorText: Colors.white,
-                        duration: const Duration(seconds: 2));
-                  },
-                  child:
-                      Text('Effacer', style: TextStyle(color: AppColors.error)),
-                ),
-              ],
-            ));
-  }
-
-  void _confirmerSupprimer(BuildContext context) {
-    showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              title: Text('Supprimer l\'échange ?',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              content: Text('Cette conversation sera supprimée définitivement.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              actions: [
-                TextButton(
-                    onPressed: () => Get.back(),
-                    child: Text('Annuler',
-                        style: TextStyle(color: AppColors.textMuted))),
-                TextButton(
-                  onPressed: () async {
-                    Get.back();
-                    try {
-                      await Supabase.instance.client
-                          .from('conversations')
-                          .delete()
-                          .eq('id', conv.id);
-                      Get.back();
-                      if (Get.isRegistered<ChatListController>()) {
-                        Get.find<ChatListController>()
-                            .conversations
-                            .removeWhere((c) => c.id == conv.id);
-                      }
-                    } catch (e) {
-                      debugPrint('supprimer error: $e');
-                    }
-                  },
-                  child: Text('Supprimer',
-                      style: TextStyle(color: AppColors.error)),
-                ),
-              ],
-            ));
-  }
 }
 
-class _MenuItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
-  final Widget? trailing;
-  const _MenuItem(
-      {required this.icon,
-      required this.label,
-      required this.onTap,
-      this.color,
-      this.trailing});
+/// Mini-conversation dessinée dans l'aperçu d'un fond.
+class _ApercuBulles extends StatelessWidget {
+  final bool choisi;
+  const _ApercuBulles({required this.choisi});
+
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.textPrimary;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        child: Row(children: [
-          Icon(icon, color: c, size: 22),
-          const SizedBox(width: 16),
-          Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                      fontSize: 15, color: c, fontWeight: FontWeight.w400))),
-          if (trailing != null) trailing!,
+    Widget bulle(double largeur, bool moi) => Align(
+          alignment: moi ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: largeur,
+            height: 12,
+            margin: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+                color: moi ? AppColors.accent : AppColors.surface2,
+                borderRadius: BorderRadius.circular(6)),
+          ),
+        );
+    return Stack(children: [
+      Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+          bulle(44, false),
+          bulle(56, true),
+          bulle(36, false),
         ]),
       ),
-    );
+      if (choisi)
+        Positioned(
+          top: 6,
+          right: 6,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration:
+                BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+            child:
+                const Icon(Icons.check_rounded, size: 13, color: Colors.white),
+          ),
+        ),
+    ]);
   }
-}
-
-class _Div extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) =>
-      Divider(height: 0.5, color: AppColors.border, indent: 58);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -577,8 +989,8 @@ class _MessageList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       if (ctrl.isLoading.value) return _buildShimmer();
-      if (ctrl.messages.isEmpty) return _buildEmpty();
-      final msgs = ctrl.messages.where((m) => !m.isDisappeared).toList();
+      final msgs = ctrl.messages.where(ctrl.estVisible).toList();
+      if (msgs.isEmpty) return _buildEmpty();
       final items = <_ChatItem>[];
       for (int i = 0; i < msgs.length; i++) {
         final msg = msgs[i];

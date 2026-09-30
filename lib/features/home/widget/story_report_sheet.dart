@@ -23,7 +23,16 @@ const _raisons = [
 /// Ouvre le choix du motif puis envoie le signalement.
 /// Renvoie true si la story a été signalée (et donc masquée).
 Future<bool> showStoryReportSheet(StoryModel story) async {
-  final raison = await Get.bottomSheet<String>(
+  final raison = await choisirMotifSignalement('Pourquoi signaler cette story ?');
+  if (raison == null) return false;
+  return _envoyerSignalement(story, raison);
+}
+
+/// Choix du motif d'un signalement (story, message, personne).
+/// Renvoie le motif choisi, ou null si l'utilisateur annule.
+Future<String?> choisirMotifSignalement(String titre,
+    {String sousTitre = "La personne ne saura pas que c'est toi."}) {
+  return Get.bottomSheet<String>(
     Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       decoration: BoxDecoration(
@@ -39,14 +48,14 @@ Future<bool> showStoryReportSheet(StoryModel story) async {
                   borderRadius: BorderRadius.circular(2))),
         ),
         const SizedBox(height: 16),
-        Text('Pourquoi signaler cette story ?',
+        Text(titre,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary)),
         const SizedBox(height: 4),
-        Text("L'auteur ne saura pas que c'est toi.",
+        Text(sousTitre,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         const SizedBox(height: 16),
         ..._raisons.map((r) => GestureDetector(
@@ -79,8 +88,6 @@ Future<bool> showStoryReportSheet(StoryModel story) async {
     ),
     isScrollControlled: true,
   );
-  if (raison == null) return false;
-  return _envoyerSignalement(story, raison);
 }
 
 Future<bool> _envoyerSignalement(StoryModel story, String raison) async {

@@ -499,7 +499,14 @@ class _ConversationTile extends GetView<ChatListController> {
   }
 
   Widget _buildLastMessage() {
-    final msg = conv.lastMessage;
+    var msg = conv.lastMessage;
+    // Historique effacé sur cet appareil : l'aperçu ne le montre plus.
+    final effaceAvant = ConversationController.historiqueEffaceAvant(conv.id);
+    if (msg != null &&
+        effaceAvant != null &&
+        !msg.createdAt.isAfter(effaceAvant)) {
+      msg = null;
+    }
     // ✅ Tous les messages ont expiré (règle éphémère) : la conversation
     // reste, avec un aperçu neutre.
     if (msg == null) {

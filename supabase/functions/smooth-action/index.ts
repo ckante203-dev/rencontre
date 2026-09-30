@@ -156,6 +156,18 @@ serve(async (req) => {
     if (recipient.notif_messages === false) {
       return new Response("notif messages désactivées", { status: 200 });
     }
+    // Conversation mise en sourdine par le destinataire (menu ⋮ du chat).
+    // Table absente (script 000014 pas appliqué) → on notifie normalement.
+    const { data: sourdine } = await supabase
+      .from("conversation_sourdines")
+      .select("user_id")
+      .eq("user_id", recipientId)
+      .eq("conversation_id", conversation_id)
+      .maybeSingle();
+    if (sourdine) {
+      return new Response("conversation en sourdine", { status: 200 });
+    }
+
     // Réglage « Son des notifications » désactivé → canal silencieux
     const silencieux = recipient.notif_son === false;
 
