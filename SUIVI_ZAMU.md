@@ -6,6 +6,8 @@ Mis à jour le 30/09/2026.
 
 **Fait le 30/09 :** script `000014` appliqué (sourdine par conversation, signalement des messages) et `smooth-action` redéployée.
 
+**Prochaine session :** fonction « Offrir Premium à quelqu'un ». Piste : produit Google Play **non renouvelable** (pass 1 semaine / 1 mois, acheté par celui qui offre), puis une fonction serveur qui accorde le Premium au destinataire (droit promotionnel RevenueCat ou date de fin Premium dans Supabase), avec une notification « X t'a offert Premium ». Prix Premium actuel : **650 FCFA / semaine** (offre `weekly2`, voulu). Premier vrai paiement validé le 01/10 (test interne 1.0.12). Prochaine version : 1.0.14 (correctif prix « / semaine »).
+
 **Play Store :** version 1.0.11 (2021) envoyée pour examen le 30/09, Côte d'Ivoire uniquement (choix de lancement). Pages légales (confidentialité, suppression de compte) sur GitHub Pages et déclarées dans la Play Console. Si rien au bout de 7 jours : Play Console > Aide > Contacter l'assistance.
 
 **Modération des photos (Sightengine, offre gratuite : 2 000 photos/mois, 500/jour) :** clés enregistrées sur le serveur le 30/09.
