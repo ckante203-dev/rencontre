@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1089,7 +1090,12 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text('650 FCFA / mois',
+                    Text(
+                        (Get.isRegistered<RevenueCatService>()
+                                ? Get.find<RevenueCatService>()
+                                    .libellePrixCourant
+                                : null) ??
+                            'Voir les offres',
                         style: TextStyle(
                             color: canTrial
                                 ? AppColors.textMuted

@@ -272,7 +272,7 @@ class _PackageTile extends StatelessWidget {
               ),
             ),
             Text(
-              product.priceString,
+              RevenueCatService.libellePrix(product),
               style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,

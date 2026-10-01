@@ -89,6 +89,41 @@ class RevenueCatService extends GetxService {
     }
   }
 
+  /// « 650 FCFA / semaine » : prix ET période réels lus dans Google Play
+  /// (jamais écrits en dur, pour ne pas annoncer un autre rythme que
+  /// celui qui est facturé).
+  static String libellePrix(StoreProduct p) {
+    final periode = libellePeriode(p.subscriptionPeriod);
+    return periode == null ? p.priceString : '${p.priceString} / $periode';
+  }
+
+  /// Période ISO 8601 de Google Play (P1W, P1M, P3M, P1Y…) en français.
+  static String? libellePeriode(String? iso) {
+    switch (iso) {
+      case 'P1W':
+      case 'P7D':
+        return 'semaine';
+      case 'P1M':
+      case 'P4W':
+        return 'mois';
+      case 'P3M':
+        return '3 mois';
+      case 'P6M':
+        return '6 mois';
+      case 'P1Y':
+      case 'P12M':
+        return 'an';
+      default:
+        return null;
+    }
+  }
+
+  /// Prix de la première formule de l'offre courante, ou null.
+  String? get libellePrixCourant {
+    final pkgs = offerings.value?.current?.availablePackages ?? const [];
+    return pkgs.isEmpty ? null : libellePrix(pkgs.first.storeProduct);
+  }
+
   void _onCustomerInfoUpdate(CustomerInfo customerInfo) =>
       _updatePremiumStatus(customerInfo);
 
