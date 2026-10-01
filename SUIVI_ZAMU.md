@@ -104,6 +104,7 @@ Après les étapes 1 et 3 : `flutter build appbundle`, puis publication sur Goog
 
 - **Pages légales** (fait le 30/09) : hébergées sur GitHub Pages, compte `supportsnapmeet-jpg`, dépôt `zamu-legal` (sources dans `legal/`). Conditions : https://supportsnapmeet-jpg.github.io/zamu-legal/conditions-utilisation.html — Confidentialité : https://supportsnapmeet-jpg.github.io/zamu-legal/politique-confidentialite.html. **À faire :** coller l'adresse de la politique dans la Play Console (Contenu de l'appli > Règles de confidentialité). Pour modifier un texte : éditer le fichier dans `legal/` puis le renvoyer sur le dépôt.
 - **Section 3 de `000008`** (réserver aux Premium la liste « Qui m'a vu ») : à exécuter seulement quand presque tous les utilisateurs ont la nouvelle version de l'app.
+- **Plusieurs langues (anglais…)** : prévu plus tard (ouverture pays anglophones / diaspora / App Store). Méthode : traductions GetX (`'cle'.tr`, fichiers fr/en), choix « Langue » dans Paramètres, langue mémorisée pour les notifications serveur, pages légales et fiche Play Store traduites. ~800-1000 textes.
 - **Colonne `is_pinned`** des stories : inutile depuis le retrait des publications épinglées ; supprimable plus tard avec `ALTER TABLE public.stories DROP COLUMN IF EXISTS is_pinned;`.
 - **Commit git** : rien n'est encore enregistré dans git depuis le début des corrections.
 
