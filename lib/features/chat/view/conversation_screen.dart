@@ -212,7 +212,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                               // ✅ Fix 2 : taille réduite
                               fontSize: 11,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.textPrimary,
+                              color: AppColors.online,
                               fontStyle: FontStyle.italic));
                     }
                     return Text(

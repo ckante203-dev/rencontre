@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rencontre/core/utils/video_init.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
@@ -191,7 +193,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
       if (!alreadyInitialized) {
         try {
-          await ctrl.initialize();
+          await initialiserUneFois(ctrl);
         } catch (e) {
           debugPrint('_loadCurrentStory video init error: $e');
         }
@@ -243,9 +245,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   void _markSeen(StoryModel s) {
     if (s.id.isEmpty || s.userId == _myUid) return;
     if (!_markedSeenIds.add(s.id)) return;
-    if (Get.isRegistered<HomeController>()) {
-      Get.find<HomeController>().markStoryAsSeen(s.id);
-    }
+    // ✅ Après la frame : appelé depuis initState, la mise à jour de la
+    // liste réactive reconstruisait la rangée de l'accueil pendant le build
+    // (« setState() called during build »).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().markStoryAsSeen(s.id);
+      }
+    });
   }
 
   /// Garde uniquement les contrôleurs vidéo de la story courante et
@@ -282,7 +289,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         if (!_videoCache.containsKey(s.id)) {
           final ctrl = VideoPlayerController.networkUrl(Uri.parse(s.mediaUrl));
           _videoCache[s.id] = ctrl;
-          ctrl.initialize().catchError((e) {
+          initialiserUneFois(ctrl).catchError((e) {
             debugPrint('_preloadAdjacent video error: $e');
           });
         }
@@ -695,6 +702,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           _resume();
           setState(() => _longPressing = false);
         },
+        // ✅ Balayer vers le bas = fermer (comme WhatsApp / Snapchat)
+        onVerticalDragEnd: (d) {
+          if (_replyFocused) return;
+          if ((d.primaryVelocity ?? 0) > 600) Get.back();
+        },
         onTapUp: (d) {
           if (_replyFocused) {
             FocusScope.of(context).unfocus();
@@ -720,27 +732,57 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 : const BouncingScrollPhysics(),
             itemCount: _groups.length,
             onPageChanged: _onPageChanged,
-            itemBuilder: (_, profileIdx) => _buildProfilePage(profileIdx),
+            // ✅ Effet cube 3D entre deux profils (comme WhatsApp)
+            itemBuilder: (_, profileIdx) => AnimatedBuilder(
+              animation: _pageCtrl,
+              child: _buildProfilePage(profileIdx),
+              builder: (_, child) {
+                var page = _profileIndex.toDouble();
+                if (_pageCtrl.hasClients &&
+                    _pageCtrl.position.haveDimensions) {
+                  page = _pageCtrl.page ?? page;
+                }
+                final delta = profileIdx - page; // -1 … 1 pendant le geste
+                if (delta == 0 || delta.abs() >= 1) return child!;
+                return Transform(
+                  alignment: delta < 0
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateY(-pi / 2 * delta),
+                  child: child,
+                );
+              },
+            ),
           ),
-          const DecoratedBox(
-              decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.center,
-                      colors: [Color(0xCC000000), Colors.transparent]))),
-          const Align(
-              alignment: Alignment.bottomCenter,
-              child: SizedBox(
-                  height: 200,
-                  child: DecoratedBox(
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.center,
-                              colors: [
-                        Color(0xBB000000),
-                        Colors.transparent
-                      ]))))),
+          // ✅ IgnorePointer : un DecoratedBox à dégradé « attrape » les
+          // touchers. Ces deux voiles (moitié haute + 200 px du bas)
+          // empêchaient le PageView de recevoir le balayage : il fallait
+          // viser le milieu de l'écran ou taper pour changer de story.
+          const IgnorePointer(
+            child: DecoratedBox(
+                decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.center,
+                        colors: [Color(0xCC000000), Colors.transparent]))),
+          ),
+          const IgnorePointer(
+            child: Align(
+                alignment: Alignment.bottomCenter,
+                child: SizedBox(
+                    height: 200,
+                    child: DecoratedBox(
+                        decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.center,
+                                colors: [
+                          Color(0xBB000000),
+                          Colors.transparent
+                        ]))))),
+          ),
           // ✅ Barre de progression — un segment par story DU PROFIL
           // COURANT UNIQUEMENT (se réinitialise à chaque changement
           // de profil), façon WhatsApp/Instagram.

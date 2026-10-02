@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:rencontre/core/utils/video_init.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/services/moderation_service.dart';
@@ -761,6 +762,13 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       if (discoverStories.isNotEmpty) {
         unawaited(preloadStoryMedia(discoverStories.first));
       }
+      // ✅ Idem pour les premiers cercles de la rangée de l'accueil : avant,
+      // le viewer ouvert depuis l'accueil téléchargeait tout au moment du
+      // tap (alors que l'onglet Story, monté dès le lancement, était prêt).
+      for (final s in stories.take(3)) {
+        final premiere = storiesForUser(s.userId).firstOrNull;
+        if (premiere != null) unawaited(preloadStoryMedia(premiere));
+      }
     } catch (e) {
       debugPrint('loadStories error: $e');
     }
@@ -780,7 +788,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         storyVideoCache[story.id] = ctrl;
         _videoCacheOrder.add(story.id);
         _evictOldVideosIfNeeded();
-        await ctrl.initialize();
+        await initialiserUneFois(ctrl);
       } catch (e) {
         debugPrint('preloadStoryMedia video error: $e');
       }

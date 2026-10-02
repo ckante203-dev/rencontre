@@ -111,7 +111,9 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
     _pageCtrl = PageController(initialPage: _current);
     if (widget.items.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _markSeen(widget.items[_current]);
+        // ✅ Vue seulement si l'onglet est affiché : monté en arrière-plan
+        // au lancement, il marquait vue une story jamais regardée.
+        if (widget.isActiveTab) _markSeen(widget.items[_current]);
         // ✅ Ne joue que si l'onglet Story est réellement affiché —
         // évite l'autoplay en arrière-plan au démarrage de l'app.
         _setPageVisible(_current, widget.isActiveTab);
@@ -183,6 +185,15 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
     // jouer en arrière-plan sur un autre onglet.
     if (widget.isActiveTab != old.isActiveTab && widget.items.isNotEmpty) {
       _setPageVisible(_current, widget.isActiveTab);
+      // ✅ La story affichée en arrivant sur l'onglet est regardée : elle
+      // n'était jamais marquée vue (seulement celles atteintes en swipant),
+      // et son rond restait coloré sur l'accueil et dans les messages.
+      if (widget.isActiveTab) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _current >= widget.items.length) return;
+          _markSeen(widget.items[_current]);
+        });
+      }
     }
   }
 

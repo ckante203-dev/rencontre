@@ -202,6 +202,12 @@ class _StoryItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 12),
       child: GestureDetector(
+        // Précharge dès que le doigt touche le cercle (~100-300 ms gagnées)
+        onTapDown: (_) {
+          final ctrl = Get.find<HomeController>();
+          final premiere = ctrl.storiesForUser(story.userId).firstOrNull;
+          if (premiere != null) ctrl.preloadStoryMedia(premiere);
+        },
         onTap: _openStory,
         // ✅ CORRIGÉ — même correction que _MyStoryItem :
         // largeur bornée + minHeight: 0.
