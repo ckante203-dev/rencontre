@@ -170,7 +170,7 @@ class _CguScreenState extends State<CguScreen> {
                           SizedBox(width: 8),
                           Text('Voir la version en ligne',
                               style: TextStyle(
-                                  color: AppColors.accent,
+                                  color: AppColors.textPrimary,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600)),
                         ]),

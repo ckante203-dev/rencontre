@@ -212,7 +212,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                               // ✅ Fix 2 : taille réduite
                               fontSize: 11,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.accent,
+                              color: AppColors.textPrimary,
                               fontStyle: FontStyle.italic));
                     }
                     return Text(
@@ -581,7 +581,7 @@ class _EnTeteMenu extends StatelessWidget {
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.accent)),
+                                  color: AppColors.textPrimary)),
                         ),
                       ]);
                     }),
@@ -693,7 +693,7 @@ class _BadgeBientot extends StatelessWidget {
           style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: AppColors.accent)),
+              color: AppColors.textPrimary)),
     );
   }
 }
@@ -1288,7 +1288,7 @@ class _ReactionsRow extends StatelessWidget {
                     Text('$count',
                         style: TextStyle(
                             fontSize: 10,
-                            color: me ? AppColors.accent : AppColors.textMuted,
+                            color: me ? AppColors.textPrimary : AppColors.textMuted,
                             fontWeight: FontWeight.w600))
                   ],
                 ]),
@@ -1399,7 +1399,7 @@ class _StoryReplyPreview extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isMine ? Colors.white70 : AppColors.accent)),
+                          color: isMine ? Colors.white70 : AppColors.textPrimary)),
                   const SizedBox(height: 3),
                   Text(
                       storyReply.storyOwnerName.isNotEmpty
@@ -1601,7 +1601,7 @@ class _ReplyPreview extends StatelessWidget {
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isMine ? Colors.white70 : AppColors.accent)),
+                color: isMine ? Colors.white70 : AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(_preview,
             maxLines: 1,
@@ -2256,13 +2256,11 @@ class _StatusIcon extends StatelessWidget {
         if (readAt != null) {
           final h = readAt!.hour.toString().padLeft(2, '0');
           final m = readAt!.minute.toString().padLeft(2, '0');
-          return ShaderMask(
-              shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-              child: Text('Lu $h:$m',
+          return Text('Lu $h:$m',
                   style: const TextStyle(
                       fontSize: 10,
                       color: Colors.white,
-                      fontWeight: FontWeight.w600)));
+                      fontWeight: FontWeight.w600));
         }
         return ShaderMask(
             shaderCallback: (b) => AppColors.gradientPink.createShader(b),
@@ -2631,7 +2629,7 @@ class _ReplyBar extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.accent)),
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 2),
           Text(_preview(msg),
               maxLines: 1,
@@ -2964,7 +2962,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                         style: TextStyle(
                             fontSize: 12,
                             color: _modeEphemere
-                                ? AppColors.accent
+                                ? AppColors.textPrimary
                                 : AppColors.textMuted,
                             fontWeight: FontWeight.w500)),
                     if (_modeEphemere) ...[
@@ -3194,7 +3192,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color:
-                                    isMine ? Colors.white70 : AppColors.accent,
+                                    isMine ? Colors.white70 : AppColors.textPrimary,
                               ),
                             ),
                           ],

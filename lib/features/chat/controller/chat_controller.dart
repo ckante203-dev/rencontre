@@ -1621,7 +1621,7 @@ class ConversationController extends GetxController {
           mainButton: TextButton(
               onPressed: () => openAppSettings(),
               child: Text('Paramètres',
-                  style: TextStyle(color: AppColors.accent))));
+                  style: TextStyle(color: AppColors.textPrimary))));
       return;
     }
     if (_recorderOpen) {

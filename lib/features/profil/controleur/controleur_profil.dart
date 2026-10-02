@@ -14,12 +14,23 @@ import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
+import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/theme_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 
 class ControleurProfil extends GetxController {
   static ControleurProfil get to => Get.find();
+
+  /// Premium = profil (webhook RevenueCat) OU RevenueCat en direct : juste
+  /// après un achat, le profil n'est pas encore à jour.
+  static bool estPremiumMaintenant() {
+    final profil = Get.isRegistered<ControleurProfil>() &&
+        Get.find<ControleurProfil>().isPremium.value;
+    final rc = Get.isRegistered<RevenueCatService>() &&
+        Get.find<RevenueCatService>().isPremium.value;
+    return profil || rc;
+  }
 
   final _service = SupabaseService();
   final _picker = ImagePicker();
@@ -269,7 +280,11 @@ class ControleurProfil extends GetxController {
       isPremium.value = data['is_premium'] ?? false;
 
       // Thème et photos
-      selectedTheme.value = data['theme']?.toString() ?? 'dark';
+      // Thème retiré (ex. gold, forest) → on affiche celui réellement actif.
+      final theme = data['theme']?.toString();
+      selectedTheme.value = AppPalettes.all.containsKey(theme)
+          ? theme!
+          : ThemeController.to.palette.value.id;
       photoUrls.value = data['photo_urls'] is List
           ? List<String>.from(data['photo_urls'])
           : <String>[];
@@ -394,7 +409,7 @@ class ControleurProfil extends GetxController {
             onPressed: () => Get.back(result: true),
             child: Text('Supprimer',
                 style: TextStyle(
-                    color: AppColors.accent, fontWeight: FontWeight.w700))),
+                    color: AppColors.textPrimary, fontWeight: FontWeight.w700))),
       ],
     ));
     if (confirm != true) return;

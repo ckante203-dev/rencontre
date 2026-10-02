@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
@@ -561,56 +562,13 @@ class _SelecteurTheme extends StatelessWidget {
   final void Function(String) onSelected;
   const _SelecteurTheme({required this.selected, required this.onSelected});
 
+  // Couleurs lues dans AppPalettes : la pastille montre le vrai thème.
   static const _themes = [
-    {
-      'id': 'dark',
-      'label': 'Néon rose',
-      'emoji': '💗',
-      'c1': Color(0xFFFF3CAC),
-      'c2': Color(0xFF7B2FFF)
-    },
-    {
-      'id': 'blue',
-      'label': 'Bleu élec.',
-      'emoji': '💙',
-      'c1': Color(0xFF2E63FF),
-      'c2': Color(0xFF00C2FF)
-    },
-    {
-      'id': 'ocean',
-      'label': 'Océan',
-      'emoji': '🌊',
-      'c1': Color(0xFF00E0D0),
-      'c2': Color(0xFF00A8CC)
-    },
-    {
-      'id': 'sunset',
-      'label': 'Sunset',
-      'emoji': '🌅',
-      'c1': Color(0xFFFF6B6B),
-      'c2': Color(0xFFFF3CAC)
-    },
-    {
-      'id': 'forest',
-      'label': 'Émeraude',
-      'emoji': '🌿',
-      'c1': Color(0xFF00D68F),
-      'c2': Color(0xFF00B894)
-    },
-    {
-      'id': 'gold',
-      'label': 'Or',
-      'emoji': '✨',
-      'c1': Color(0xFFFFD700),
-      'c2': Color(0xFFFF8A00)
-    },
-    {
-      'id': 'violet',
-      'label': 'Galaxie',
-      'emoji': '🔮',
-      'c1': Color(0xFF7B2FFF),
-      'c2': Color(0xFFB026FF)
-    },
+    {'id': 'dark', 'label': 'Néon rose', 'emoji': '💗'},
+    {'id': 'aurore', 'label': 'Aurore', 'emoji': '🌌'},
+    {'id': 'lagon', 'label': 'Lagon', 'emoji': '🏝️'},
+    {'id': 'sunset', 'label': 'Sunset', 'emoji': '🌅'},
+    {'id': 'or_noir', 'label': 'Or noir', 'emoji': '👑'},
   ];
 
   @override
@@ -627,8 +585,9 @@ class _SelecteurTheme extends StatelessWidget {
           runSpacing: 12,
           children: _themes.map((t) {
             final isSelected = selected == t['id'] as String;
-            final c1 = t['c1'] as Color;
-            final c2 = t['c2'] as Color;
+            final palette = AppPalettes.all[t['id']]!;
+            final c1 = palette.accent;
+            final c2 = palette.accent2;
             return GestureDetector(
               onTap: () => onSelected(t['id'] as String),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -689,7 +648,7 @@ class _Titre extends StatelessWidget {
           fontFamily: 'Syne',
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: AppColors.accent,
+          color: AppColors.textPrimary,
           letterSpacing: 0.5));
 }
 

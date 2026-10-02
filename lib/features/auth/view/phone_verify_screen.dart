@@ -169,14 +169,14 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                       title: Text(c.name,
                           style: TextStyle(
                               color: isSel
-                                  ? AppColors.accent
+                                  ? AppColors.textPrimary
                                   : AppColors.textPrimary,
                               fontWeight:
                                   isSel ? FontWeight.w700 : FontWeight.w400)),
                       trailing: Text('${c.code} · ${c.digits} chiffres',
                           style: TextStyle(
                               color: isSel
-                                  ? AppColors.accent
+                                  ? AppColors.textPrimary
                                   : AppColors.textMuted,
                               fontSize: 11,
                               fontWeight: FontWeight.w600)),
@@ -324,16 +324,13 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text('Ajoute ton\nnuméro 📱',
+                const Text('Ajoute ton\nnuméro 📱',
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                           height: 1.2)),
-                ),
                 const SizedBox(height: 8),
                  Text(
                   'Ton numéro sera sauvegardé pour sécuriser ton compte et faciliter la récupération.',

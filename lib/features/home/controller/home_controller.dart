@@ -173,9 +173,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   // la limite chargée) ; sinon, limite gratuite. Au-delà, le tap doit
   // proposer le passage Premium au lieu de naviguer vers le profil.
   int get unlockedProfileCount {
-    final isPremium = Get.isRegistered<ControleurProfil>()
-        ? Get.find<ControleurProfil>().isPremium.value
-        : false;
+    final isPremium = ControleurProfil.estPremiumMaintenant();
     if (isPremium || hasActiveTrial) return 600;
     return 15;
   }
@@ -672,9 +670,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     // (_UsersGridScrollable) : pour un non-premium, seul le sous-ensemble
     // déverrouillé est transmis au carrousel — sinon un simple swipe
     // permettait de consulter les profils au-delà de la limite gratuite.
-    final isPremium = Get.isRegistered<ControleurProfil>()
-        ? Get.find<ControleurProfil>().isPremium.value
-        : false;
+    final isPremium = ControleurProfil.estPremiumMaintenant();
     final unlockedCount = unlockedProfileCount;
     final hasLockedSection = !isPremium && list.length > unlockedCount;
     if (hasLockedSection && idx >= unlockedCount) return true; // bloqué

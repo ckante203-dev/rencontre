@@ -43,9 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 28),
 
                 // ── HEADER : Nom ──
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text(
+                const Text(
                     'Zamu',
                     style: TextStyle(
                       fontFamily: 'Syne',
@@ -55,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       letterSpacing: -0.5,
                     ),
                   ),
-                ),
 
                 const SizedBox(height: 40),
 
@@ -114,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Mot de passe oublié ?',
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.accent,
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -190,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextSpan(
                             text: 'S\'inscrire',
                             style: TextStyle(
-                              color: AppColors.accent,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                             ),

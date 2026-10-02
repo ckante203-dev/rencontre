@@ -1897,7 +1897,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           child: Text('Annuler',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: AppColors.accent,
+                                  color: AppColors.textPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700)))),
                 ]))));
@@ -1940,7 +1940,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     const SizedBox(height: 4),
                     Text(_formatDuration(_durationHours),
                         style: TextStyle(
-                            color: AppColors.accent,
+                            color: AppColors.textPrimary,
                             fontSize: 22,
                             fontWeight: FontWeight.w900)),
                     Slider(
@@ -2364,7 +2364,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                         Text('Légende',
                                             style: TextStyle(
                                                 color: _showCaption
-                                                    ? AppColors.accent
+                                                    ? AppColors.textPrimary
                                                     : Colors.white,
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600)),

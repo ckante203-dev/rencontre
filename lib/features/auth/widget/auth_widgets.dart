@@ -82,7 +82,7 @@ class AuthInputField extends StatelessWidget {
                   ? Padding(
                       padding: const EdgeInsets.only(right: 14),
                       child: Text(suffixText!,
-                        style:  TextStyle(fontSize: 12, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                        style:  TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
                     )
                   : null,
               suffixIconConstraints: const BoxConstraints(minHeight: 0),

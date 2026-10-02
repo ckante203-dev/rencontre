@@ -462,7 +462,7 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: hasActiveFilters
-                          ? AppColors.accent
+                          ? AppColors.textPrimary
                           : AppColors.textMuted)),
             ],
           ),
@@ -557,7 +557,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                 onPressed: _reset,
                 child: Text(
                   'Réinitialiser',
-                  style: TextStyle(color: AppColors.accent, fontSize: 13),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                 ),
               ),
             ],
@@ -602,7 +602,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: isActive
-                                ? AppColors.accent
+                                ? AppColors.textPrimary
                                 : AppColors.textPrimary,
                           ),
                         ),
@@ -631,7 +631,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.accent,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -697,9 +697,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
   final ScrollController scrollCtrl;
   const _UsersGridScrollable({required this.scrollCtrl});
 
-  bool get _isPremium => Get.isRegistered<ControleurProfil>()
-      ? Get.find<ControleurProfil>().isPremium.value
-      : false;
+  bool get _isPremium => ControleurProfil.estPremiumMaintenant();
 
   @override
   Widget build(BuildContext context) {

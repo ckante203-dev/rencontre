@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/view/home_screen.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
@@ -138,15 +139,21 @@ class _BarreNavigation extends StatelessWidget {
             index: 2,
             currentIndex: currentIndex,
             onTap: onTap,
+            // Nouveaux likes / vues depuis la dernière visite de l'onglet
+            badge: Obx(() {
+              if (!Get.isRegistered<ProfileInsightsController>()) {
+                return const SizedBox.shrink();
+              }
+              final n = Get.find<ProfileInsightsController>().badgeNouveaux;
+              return n == 0 ? const SizedBox.shrink() : _Pastille(n);
+            }),
           ),
           _NavItemStory(
             index: 3,
             currentIndex: currentIndex,
             onTap: onTap,
           ),
-          _NavItem(
-            icon: Icons.person_rounded,
-            label: 'Profil',
+          _NavItemProfil(
             index: 4,
             currentIndex: currentIndex,
             onTap: onTap,
@@ -225,16 +232,6 @@ class _NavItemStory extends StatelessWidget {
                 );
               }),
             ]),
-            const SizedBox(height: 2),
-            Text(
-              'STORY',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-                color: isActive ? AppColors.accent : AppColors.textMuted,
-              ),
-            ),
           ],
         ),
       ),
@@ -307,13 +304,6 @@ class _NavItemMessages extends StatelessWidget {
                 },
               ),
             ]),
-            const SizedBox(height: 2),
-            Text('MESSAGES',
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: isActive ? AppColors.accent : AppColors.textMuted)),
           ],
         ),
       ),
@@ -321,19 +311,93 @@ class _NavItemMessages extends StatelessWidget {
   }
 }
 
-// ─── NAV ITEM STANDARD (Accueil, Likes, Profil) ──────────────────
+// ─── NAV ITEM PROFIL : ma photo en petit rond (bonhomme si pas de photo) ──
+
+class _NavItemProfil extends StatelessWidget {
+  final int index, currentIndex;
+  final ValueChanged<int> onTap;
+  const _NavItemProfil(
+      {required this.index, required this.currentIndex, required this.onTap});
+
+  bool get isActive => currentIndex == index;
+
+  Widget _bonhomme() => Icon(Icons.person_rounded,
+      size: 22, color: isActive ? AppColors.accent : AppColors.textMuted);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Obx(() {
+              String? photo;
+              if (Get.isRegistered<ControleurProfil>()) {
+                final ctrl = Get.find<ControleurProfil>();
+                photo = ctrl.monProfil.value?.photoUrl;
+                if (photo == null || photo.isEmpty) {
+                  photo = ctrl.photoUrls.firstWhereOrNull((u) => u.isNotEmpty);
+                }
+              }
+              if (photo == null || photo.isEmpty) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.accent.withOpacity(0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _bonhomme(),
+                );
+              }
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 34,
+                height: 34,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: isActive ? AppColors.accent : Colors.transparent,
+                      width: 2),
+                ),
+                child: ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: photo,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _bonhomme(),
+                    errorWidget: (_, __, ___) => _bonhomme(),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── NAV ITEM STANDARD (Accueil, Likes) ──────────────────
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final int index, currentIndex;
   final ValueChanged<int> onTap;
+  final Widget? badge;
   const _NavItem({
     required this.icon,
     required this.label,
     required this.index,
     required this.currentIndex,
     required this.onTap,
+    this.badge,
   });
 
   bool get isActive => currentIndex == index;
@@ -347,27 +411,54 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.accent.withOpacity(0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
+            Stack(clipBehavior: Clip.none, children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.accent.withOpacity(0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon,
+                    size: 22,
+                    color: isActive ? AppColors.accent : AppColors.textMuted),
               ),
-              child: Icon(icon,
-                  size: 22,
-                  color: isActive ? AppColors.accent : AppColors.textMuted),
-            ),
-            const SizedBox(height: 2),
-            Text(label.toUpperCase(),
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: isActive ? AppColors.accent : AppColors.textMuted)),
+              if (badge != null) Positioned(top: -2, right: -6, child: badge!),
+            ]),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PASTILLE DE COMPTEUR (onglets) ──────────────────────────────
+
+class _Pastille extends StatelessWidget {
+  final int count;
+  const _Pastille(this.count);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 16),
+      height: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      decoration: BoxDecoration(
+        gradient: AppColors.gradientPink,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white, width: 1),
+      ),
+      child: Center(
+        child: Text(
+          count > 9 ? '9+' : '$count',
+          style: const TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
         ),
       ),
     );

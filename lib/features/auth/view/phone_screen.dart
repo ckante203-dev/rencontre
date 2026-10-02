@@ -137,7 +137,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                       title: Text(c.name,
                           style: TextStyle(
                               color: isSelected
-                                  ? AppColors.accent
+                                  ? AppColors.textPrimary
                                   : AppColors.textPrimary,
                               fontWeight: isSelected
                                   ? FontWeight.w700
@@ -145,7 +145,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                       trailing: Text(c.code,
                           style: TextStyle(
                               color: isSelected
-                                  ? AppColors.accent
+                                  ? AppColors.textPrimary
                                   : AppColors.textMuted,
                               fontWeight: FontWeight.w600)),
                       onTap: () {
@@ -196,16 +196,13 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 const Text('📱', style: TextStyle(fontSize: 48)),
                 const SizedBox(height: 16),
 
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text('Connexion par\ntéléphone',
+                const Text('Connexion par\ntéléphone',
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                           height: 1.2)),
-                ),
                 const SizedBox(height: 8),
                  Text(
                   'Connecte-toi avec ton numéro de téléphone via SMS.',

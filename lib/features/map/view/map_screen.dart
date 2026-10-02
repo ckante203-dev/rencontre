@@ -324,7 +324,7 @@ class _MapScreenState extends State<MapScreen>
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.accent)),
+                                  color: AppColors.textPrimary)),
                         ),
                       ]),
                     ),
@@ -397,15 +397,12 @@ class _Header extends StatelessWidget {
         ),
       ),
       child: Row(children: [
-        ShaderMask(
-          shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-          child: const Text('Carte',
+        const Text('Carte',
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: Colors.white)),
-        ),
         const Spacer(),
 
         // ✅ Bouton Vue liste/carte avec tooltip
@@ -909,7 +906,7 @@ class _CarteProfilListe extends StatelessWidget {
                             child: Text(interest,
                                 style:  TextStyle(
                                     fontSize: 10,
-                                    color: AppColors.accent,
+                                    color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w600)),
                           ))
                       .toList(),
@@ -1908,7 +1905,7 @@ class _SectionTitre extends StatelessWidget {
                 fontFamily: 'Syne',
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: AppColors.accent,
+                color: AppColors.textPrimary,
                 letterSpacing: 0.3)),
       );
 }
@@ -2007,7 +2004,7 @@ class _OptionPrecision extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: isSelected
-                          ? AppColors.accent
+                          ? AppColors.textPrimary
                           : AppColors.textPrimary)),
               Text(sublabel,
                   style:  TextStyle(

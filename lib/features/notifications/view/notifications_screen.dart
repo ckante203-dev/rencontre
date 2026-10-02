@@ -33,7 +33,7 @@ class NotificationsScreen extends StatelessWidget {
               ? TextButton(
                   onPressed: ctrl.markAllAsRead,
                   child: Text('Tout marquer lu',
-                      style: TextStyle(color: AppColors.accent, fontSize: 13)))
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 13)))
               : const SizedBox.shrink()),
         ],
       ),

@@ -88,16 +88,13 @@ class _SignupForm extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              ShaderMask(
-                shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                child: const Text('Crée ton\ncompte 🚀',
+              const Text('Crée ton\ncompte 🚀',
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 30,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                         height: 1.2)),
-              ),
               const SizedBox(height: 8),
               Text('Rejoins des milliers de personnes autour de toi',
                   style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
@@ -212,7 +209,7 @@ class _SignupForm extends StatelessWidget {
                         TextSpan(
                           text: 'Se connecter',
                           style: TextStyle(
-                              color: AppColors.accent,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -240,11 +237,11 @@ class _SignupForm extends StatelessWidget {
                         "Conditions d'utilisation",
                         style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.accent,
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                             height: 1.6,
                             decoration: TextDecoration.underline,
-                            decorationColor: AppColors.accent),
+                            decorationColor: AppColors.textPrimary),
                       ),
                     ),
                     Text(
@@ -260,11 +257,11 @@ class _SignupForm extends StatelessWidget {
                         'Politique de confidentialité',
                         style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.accent,
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                             height: 1.6,
                             decoration: TextDecoration.underline,
-                            decorationColor: AppColors.accent),
+                            decorationColor: AppColors.textPrimary),
                       ),
                     ),
                   ],
@@ -466,16 +463,13 @@ class _EmailOtpScreen extends StatelessWidget {
                     child: Text('📧', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 28),
-              ShaderMask(
-                shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                child: const Text('Vérifie\nton email',
+              const Text('Vérifie\nton email',
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                         height: 1.1)),
-              ),
               const SizedBox(height: 12),
               Text(
                 'On a envoyé un code à 8 chiffres à\n${ctrl.emailController.text.trim()}',
@@ -498,7 +492,7 @@ class _EmailOtpScreen extends StatelessWidget {
                     child: Text(
                       'Tu pourras valider ton email plus tard depuis ton profil.',
                       style: TextStyle(
-                          fontSize: 11, color: AppColors.accent, height: 1.4),
+                          fontSize: 11, color: AppColors.textPrimary, height: 1.4),
                     ),
                   ),
                 ]),
@@ -526,7 +520,7 @@ class _EmailOtpScreen extends StatelessWidget {
                         TextSpan(
                           text: 'Renvoyer',
                           style: TextStyle(
-                              color: AppColors.accent,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 14),
                         ),

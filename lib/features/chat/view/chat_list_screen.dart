@@ -34,15 +34,12 @@ class ChatListScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
       child: Row(
         children: [
-          ShaderMask(
-            shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-            child: const Text('Messages',
+          const Text('Messages',
                 style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                     color: Colors.white)),
-          ),
           const Spacer(),
           const _BoutonRecherche(),
         ],
@@ -424,7 +421,7 @@ class _ConversationTile extends GetView<ChatListController> {
                             style: TextStyle(
                               fontSize: 11,
                               color: conv.unreadCount > 0
-                                  ? AppColors.accent
+                                  ? AppColors.textPrimary
                                   : AppColors.textMuted,
                               fontWeight: conv.unreadCount > 0
                                   ? FontWeight.w600
@@ -519,7 +516,7 @@ class _ConversationTile extends GetView<ChatListController> {
                   : (isOpened ? 'Snap ouvert' : 'Snap reçu'),
               style: TextStyle(
                   fontSize: 13,
-                  color: isOpened ? AppColors.textMuted : AppColors.accent,
+                  color: isOpened ? AppColors.textMuted : AppColors.textPrimary,
                   fontWeight: isOpened ? FontWeight.w400 : FontWeight.w600)),
         ],
       );

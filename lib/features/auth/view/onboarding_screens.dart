@@ -163,17 +163,13 @@ class _OnboardBase extends StatelessWidget {
                       ),
                       children: [
                         WidgetSpan(
-                          child: ShaderMask(
-                            shaderCallback: (b) =>
-                                AppColors.gradientPink.createShader(b),
-                            child: Text(titleHighlight,
+                          child: Text(titleHighlight,
                                 style: const TextStyle(
                                   fontFamily: 'Syne',
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                 )),
-                          ),
                         ),
                       ],
                     ),
@@ -589,16 +585,13 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
 
                 const Text('🎂', style: TextStyle(fontSize: 40)),
                 const SizedBox(height: 16),
-                ShaderMask(
-                  shaderCallback: (b) => AppColors.gradientPink.createShader(b),
-                  child: const Text('Ta date de\nnaissance',
+                const Text('Ta date de\nnaissance',
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                           height: 1.2)),
-                ),
                 const SizedBox(height: 8),
                 Text(
                   'Nous avons besoin de ta date de naissance pour vérifier que tu as au moins 18 ans.',
@@ -1385,7 +1378,7 @@ class _PermissionCard extends StatelessWidget {
                   child: Text('Requis',
                       style: TextStyle(
                           fontSize: 9,
-                          color: AppColors.accent,
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w700))),
             ],
           ]),

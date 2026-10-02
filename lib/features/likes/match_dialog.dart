@@ -97,11 +97,7 @@ class _MatchDialogState extends State<MatchDialog>
               const SizedBox(height: 20),
 
               // Titre
-              ShaderMask(
-                shaderCallback: (b) => LinearGradient(
-                  colors: [AppColors.accent, AppColors.accent2],
-                ).createShader(b),
-                child: const Text(
+              const Text(
                   "C'est un Match !",
                   style: TextStyle(
                     fontSize: 28,
@@ -110,7 +106,6 @@ class _MatchDialogState extends State<MatchDialog>
                     letterSpacing: -0.5,
                   ),
                 ),
-              ),
               const SizedBox(height: 20),
 
               // Avatar

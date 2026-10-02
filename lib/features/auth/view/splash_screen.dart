@@ -131,10 +131,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           const SizedBox(height: 28),
-                          ShaderMask(
-                            shaderCallback: (b) =>
-                                AppColors.gradientPink.createShader(b),
-                            child: const Text(
+                          const Text(
                               'Zamu',
                               style: TextStyle(
                                 fontFamily: 'Syne',
@@ -144,7 +141,6 @@ class _SplashScreenState extends State<SplashScreen>
                                 letterSpacing: -1.5,
                               ),
                             ),
-                          ),
                           const SizedBox(height: 10),
                            Text(
                             'Rencontre. Connecte. Vis.',

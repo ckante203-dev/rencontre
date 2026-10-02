@@ -115,7 +115,7 @@ class UpdateService {
               Text(
                 'Version $latestVersion disponible',
                 style: TextStyle(
-                    color: AppColors.accent, fontWeight: FontWeight.w600),
+                    color: AppColors.textPrimary, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
