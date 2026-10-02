@@ -403,6 +403,7 @@ class _ConversationTile extends GetView<ChatListController> {
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary)),
                       ),
+                      BadgeFlamme(conv: conv),
                       Obx(() => controller.sourdineIds.contains(conv.id)
                           ? Padding(
                               padding: const EdgeInsets.only(right: 4),
@@ -877,5 +878,28 @@ class _AvatarWithStoryRing extends StatelessWidget {
       transition: Transition.fadeIn,
     );
     homeCtrl.markStoryAsSeen(userStories.first.id);
+  }
+}
+
+// ─── 🔥 SÉRIE (liste + en-tête de conversation) ───────────────────
+
+/// « 🔥 5 » à partir de 2 jours d'affilée ; « ⏳ » si personne n'a encore
+/// écrit aujourd'hui (la série s'éteint à minuit).
+class BadgeFlamme extends StatelessWidget {
+  final ConversationModel conv;
+  const BadgeFlamme({super.key, required this.conv});
+
+  @override
+  Widget build(BuildContext context) {
+    final n = conv.flammes;
+    if (n < 2) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, right: 4),
+      child: Text(
+        conv.flammeEnDanger ? '🔥$n ⏳' : '🔥$n',
+        style: const TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+      ),
+    );
   }
 }

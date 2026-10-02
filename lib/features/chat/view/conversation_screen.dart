@@ -9,6 +9,8 @@ import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
+import 'package:rencontre/features/chat/view/chat_list_screen.dart'
+    show BadgeFlamme;
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
@@ -197,14 +199,26 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(conv.userName,
-                      style: TextStyle(
-                          // ✅ Fix 1 : taille réduite, plus sobre
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Row(children: [
+                    Flexible(
+                      child: Text(conv.userName,
+                          style: TextStyle(
+                              // ✅ Fix 1 : taille réduite, plus sobre
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    // 🔥 Série, lue dans la liste (mise à jour en direct)
+                    if (Get.isRegistered<ChatListController>())
+                      GetBuilder<ChatListController>(builder: (list) {
+                        final c = list.conversations
+                            .firstWhereOrNull((x) => x.id == conv.id);
+                        if (c == null) return const SizedBox.shrink();
+                        return BadgeFlamme(conv: c);
+                      }),
+                  ]),
                   Obx(() {
                     if (ctrl.isOtherTyping.value) {
                       return Text('en train d\'écrire...',
@@ -1207,9 +1221,10 @@ class _MessageBubble extends StatelessWidget {
                               fontSize: 10, color: AppColors.textMuted)),
                       if (isMine) ...[
                         const SizedBox(width: 3),
-                        // ✅ Fix 4 : passer lastReadAt pour "Lu HH:MM"
-                        Obx(() => _StatusIcon(
-                            status: msg.status, readAt: ctrl.lastReadAt.value)),
+                        // ✅ Heure de lecture de CE message (read_at, posé par
+                        // le serveur). Avant : la même heure — souvent celle
+                        // d'envoi du dernier message lu — sur tous les messages.
+                        _StatusIcon(status: msg.status, readAt: msg.readAt),
                       ],
                     ]),
                   ],

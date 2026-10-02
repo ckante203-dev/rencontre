@@ -36,6 +36,9 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   late NavigationController _navCtrl;
+  // ✅ Balayer à gauche / à droite = onglet suivant / précédent (Snapchat)
+  final PageController _pageCtrl = PageController();
+  Worker? _suiviOnglet;
 
   @override
   void initState() {
@@ -58,6 +61,20 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!Get.isRegistered<ControleurProfil>()) {
       Get.put(ControleurProfil(), permanent: true);
     }
+
+    // Tap sur la barre du bas → la page suit (glissée si onglet voisin).
+    _suiviOnglet = ever(_navCtrl.currentIndex, (int i) {
+      if (!_pageCtrl.hasClients) return;
+      final actuelle = (_pageCtrl.page ?? i.toDouble()).round();
+      if (actuelle == i) return;
+      if ((actuelle - i).abs() == 1) {
+        _pageCtrl.animateToPage(i,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut);
+      } else {
+        _pageCtrl.jumpToPage(i);
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navCtrl.currentIndex.value =
@@ -86,16 +103,52 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   @override
+  void dispose() {
+    _suiviOnglet?.dispose();
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Obx(() => Scaffold(
-          backgroundColor: AppColors.bg,
-          body: IndexedStack(
-              index: _navCtrl.currentIndex.value, children: _screens),
-          bottomNavigationBar: _BarreNavigation(
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: PageView(
+        controller: _pageCtrl,
+        onPageChanged: (i) {
+          if (_navCtrl.currentIndex.value != i) _navCtrl.goTo(i);
+        },
+        // Chaque onglet garde son état (défilement, vidéo…) comme avant
+        // avec IndexedStack.
+        children: [for (final s in _screens) _GarderEnVie(child: s)],
+      ),
+      bottomNavigationBar: Obx(() => _BarreNavigation(
             currentIndex: _navCtrl.currentIndex.value,
             onTap: (i) => _navCtrl.goTo(i),
-          ),
-        ));
+          )),
+    );
+  }
+}
+
+// ─── GARDE UN ONGLET EN MÉMOIRE DANS LE PageView ─────────────────
+
+class _GarderEnVie extends StatefulWidget {
+  final Widget child;
+  const _GarderEnVie({required this.child});
+
+  @override
+  State<_GarderEnVie> createState() => _GarderEnVieState();
+}
+
+class _GarderEnVieState extends State<_GarderEnVie>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

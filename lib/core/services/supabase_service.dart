@@ -259,17 +259,27 @@ class SupabaseService {
 
     final allExcluded = <String>{...myBlockedIds, ...blockedMeIds};
 
-    final data = await supabase
-        .from('conversations')
-        .select('''
-          id, updated_at, user1_id, user2_id, request_status, initiated_by,
+    Future<List<dynamic>> conversationsAvec(String colonnesEnPlus) async =>
+        await supabase
+            .from('conversations')
+            .select('''
+          id, updated_at, user1_id, user2_id, request_status, initiated_by,$colonnesEnPlus
           user1_profile:profiles!conversations_user1_id_fkey(id, name, photo_url, is_online, last_seen),
           user2_profile:profiles!conversations_user2_id_fkey(id, name, photo_url, is_online, last_seen)
         ''')
-        .or('user1_id.eq.$uid,user2_id.eq.$uid')
-        .order('updated_at', ascending: false);
+            .or('user1_id.eq.$uid,user2_id.eq.$uid')
+            .order('updated_at', ascending: false);
 
-    final filtered = (data as List).where((row) {
+    // 🔥 Série : colonnes ajoutées par 20261002000017_flammes.sql. Tant que
+    // le script n'est pas exécuté, la liste se charge sans elles.
+    List<dynamic> data;
+    try {
+      data = await conversationsAvec(' flamme_compte, flamme_dernier_jour,');
+    } on PostgrestException {
+      data = await conversationsAvec('');
+    }
+
+    final filtered = data.where((row) {
       final otherId = row['user1_id'] == uid
           ? row['user2_id'] as String
           : row['user1_id'] as String;

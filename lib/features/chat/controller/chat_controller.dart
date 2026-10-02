@@ -116,6 +116,9 @@ class ChatListController extends GetxController {
               ? DateTime.tryParse(row['updated_at'])
               : null,
           isPinned: pinnedIds.contains(row['id']),
+          flammeCompte: (row['flamme_compte'] as int?) ?? 0,
+          flammeDernierJour:
+              DateTime.tryParse(row['flamme_dernier_jour']?.toString() ?? ''),
           lastMessage: lastMsg != null
               ? MessageModel(
                   id: lastMsg['id'] ?? '',
@@ -225,17 +228,7 @@ class ChatListController extends GetxController {
     final nowPinned = !conv.isPinned;
     nowPinned ? pinnedIds.add(conv.id) : pinnedIds.remove(conv.id);
     _box.write(_cleEpingles, pinnedIds.toList());
-    conversations[idx] = ConversationModel(
-      id: conv.id,
-      userId: conv.userId,
-      userName: conv.userName,
-      userPhotoUrl: conv.userPhotoUrl,
-      isOnline: conv.isOnline,
-      lastMessage: conv.lastMessage,
-      unreadCount: conv.unreadCount,
-      lastActivity: conv.lastActivity,
-      isPinned: nowPinned,
-    );
+    conversations[idx] = conv.copyWith(isPinned: nowPinned);
     _sortConversations();
     update();
   }
@@ -275,13 +268,8 @@ class ChatListController extends GetxController {
               conversations.removeAt(idx);
               conversations.insert(
                   0,
-                  ConversationModel(
-                    id: c.id,
-                    userId: c.userId,
-                    userName: c.userName,
-                    userPhotoUrl: c.userPhotoUrl,
-                    isOnline: c.isOnline,
-                    isPinned: c.isPinned,
+                  // 🔥 série mise à jour tout de suite (comme le trigger SQL)
+                  c.avecMessageAujourdhui().copyWith(
                     unreadCount: (!isMine && !isConvOpen)
                         ? c.unreadCount + 1
                         : c.unreadCount,
@@ -367,17 +355,7 @@ class ChatListController extends GetxController {
     _retirerNonLueForcee(conv.id);
     final idx = conversations.indexWhere((c) => c.id == conv.id);
     if (idx != -1) {
-      conversations[idx] = ConversationModel(
-        id: conv.id,
-        userId: conv.userId,
-        userName: conv.userName,
-        userPhotoUrl: conv.userPhotoUrl,
-        isOnline: conv.isOnline,
-        isPinned: conv.isPinned,
-        unreadCount: 0,
-        lastActivity: conv.lastActivity,
-        lastMessage: conv.lastMessage,
-      );
+      conversations[idx] = conv.copyWith(unreadCount: 0);
       update();
     }
     NotificationService.clearConversationNotifications(conv.id);
@@ -405,17 +383,7 @@ class ChatListController extends GetxController {
       nonLuesForcees.add(c.id);
       _box.write(_cleNonLues, nonLuesForcees.toList());
     }
-    conversations[idx] = ConversationModel(
-      id: c.id,
-      userId: c.userId,
-      userName: c.userName,
-      userPhotoUrl: c.userPhotoUrl,
-      isOnline: c.isOnline,
-      isPinned: c.isPinned,
-      unreadCount: c.unreadCount > 0 ? 0 : 1,
-      lastActivity: c.lastActivity,
-      lastMessage: c.lastMessage,
-    );
+    conversations[idx] = c.copyWith(unreadCount: c.unreadCount > 0 ? 0 : 1);
     update();
   }
 
@@ -497,7 +465,8 @@ class ChatListController extends GetxController {
 //  CONVERSATION CONTROLLER
 // ══════════════════════════════════════════════════════════════════
 
-class ConversationController extends GetxController {
+class ConversationController extends GetxController
+    with WidgetsBindingObserver {
   final _service = SupabaseService();
   late ConversationModel conversation;
 
@@ -580,6 +549,7 @@ class ConversationController extends GetxController {
     _audioPlayer.onPlayerComplete.listen((_) => currentlyPlayingId.value = '');
     // Recalcule la limite dès que la liste des messages change
     ever(messages, (_) => _majLimite());
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_closed) return; // ✅ FIX — écran déjà fermé
       _loadMessages();
@@ -964,6 +934,27 @@ class ConversationController extends GetxController {
         .subscribe();
   }
 
+  /// Message reçu pendant que l'appli est en arrière-plan (écran verrouillé
+  /// sur la conversation) : marqué lu seulement au retour.
+  bool _lectureEnAttente = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _lectureEnAttente && !_closed) {
+      _lectureEnAttente = false;
+      _markReadAndUpdateBadge(conversation.id);
+    }
+  }
+
+  /// ✅ Avant, un message reçu écran éteint passait « Lu » chez l'expéditeur.
+  void _marquerLuSiVisible(String convId) {
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _markReadAndUpdateBadge(convId);
+    } else {
+      _lectureEnAttente = true;
+    }
+  }
+
   void _markReadAndUpdateBadge(String convId) {
     _service.markMessagesAsRead(convId);
     NotificationService.clearConversationNotifications(convId);
@@ -973,17 +964,7 @@ class ConversationController extends GetxController {
       final idx = listCtrl.conversations.indexWhere((c) => c.id == convId);
       if (idx != -1) {
         final c = listCtrl.conversations[idx];
-        listCtrl.conversations[idx] = ConversationModel(
-          id: c.id,
-          userId: c.userId,
-          userName: c.userName,
-          userPhotoUrl: c.userPhotoUrl,
-          isOnline: c.isOnline,
-          isPinned: c.isPinned,
-          unreadCount: 0,
-          lastActivity: c.lastActivity,
-          lastMessage: c.lastMessage,
-        );
+        listCtrl.conversations[idx] = c.copyWith(unreadCount: 0);
         listCtrl.update();
       }
     });
@@ -1088,7 +1069,7 @@ class ConversationController extends GetxController {
               }
             }
             if (newMsg.senderId != myId) {
-              _markReadAndUpdateBadge(convId);
+              _marquerLuSiVisible(convId);
               // L'autre a répondu : la conversation devient normale
               _enAttenteDeReponse = false;
               limiteAtteinte.value = false;
@@ -1122,6 +1103,7 @@ class ConversationController extends GetxController {
                 isOpened: updated['is_opened'] ?? messages[idx].isOpened,
                 readAt: updated['read_at'] != null
                     ? DateTime.tryParse(updated['read_at'].toString())
+                        ?.toLocal()
                     : null,
               );
               if (newStatus == MessageStatus.read &&
@@ -1224,7 +1206,7 @@ class ConversationController extends GetxController {
           if (msg.senderId != myId) receivedFromOther = true;
         }
         // ✅ FIX — comme en Realtime : messages reçus => marqués lus
-        if (receivedFromOther) _markReadAndUpdateBadge(conversation.id);
+        if (receivedFromOther) _marquerLuSiVisible(conversation.id);
       } catch (_) {}
     });
   }
@@ -1271,6 +1253,11 @@ class ConversationController extends GetxController {
       );
     } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
+      // ✅ Le texte n'est plus perdu : il revient dans le champ
+      if (textController.text.isEmpty) {
+        textController.text = text;
+        inputText.value = text;
+      }
       if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', 'Message non envoyé',
           snackPosition: SnackPosition.TOP,
@@ -1852,7 +1839,8 @@ class ConversationController extends GetxController {
       mediaUrl: row['media_url'],
       type: type,
       status: _parseStatus(row['status']),
-      createdAt: DateTime.tryParse(row['created_at'] ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(row['created_at'] ?? '')?.toLocal() ??
+          DateTime.now(),
       isOpened: row['is_opened'] ?? false,
       audioDurationSec: row['audio_duration'],
       snapDurationSec: row['snap_duration'] as int?,
@@ -1863,7 +1851,7 @@ class ConversationController extends GetxController {
           ? DateTime.tryParse(row['disappears_at'])
           : null,
       readAt: row['read_at'] != null
-          ? DateTime.tryParse(row['read_at'].toString())
+          ? DateTime.tryParse(row['read_at'].toString())?.toLocal()
           : null,
       reactions: reactions,
       storyReply: storyReply,
@@ -1911,6 +1899,7 @@ class ConversationController extends GetxController {
     // ✅ FIX — drapeau posé avant de fermer les canaux : les statuts
     // "closed"/erreurs qui suivent ne relancent plus le polling.
     _closed = true;
+    WidgetsBinding.instance.removeObserver(this);
     // ✅ FIX — retire réellement les canaux du client Realtime
     for (final ch in [_channel, _presenceChannel, _typingChannel]) {
       if (ch != null) {

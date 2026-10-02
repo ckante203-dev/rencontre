@@ -215,6 +215,10 @@ class ConversationModel {
   final int unreadCount;
   final DateTime? lastActivity;
   final bool isPinned;
+  // Série 🔥 : jours consécutifs avec au moins un message (calculée par la
+  // base, conversations.flamme_compte / flamme_dernier_jour).
+  final int flammeCompte;
+  final DateTime? flammeDernierJour;
 
   const ConversationModel({
     required this.id,
@@ -226,5 +230,67 @@ class ConversationModel {
     this.unreadCount = 0,
     this.lastActivity,
     this.isPinned = false,
+    this.flammeCompte = 0,
+    this.flammeDernierJour,
   });
+
+  static DateTime _jour(DateTime d) {
+    final u = d.toUtc(); // jour d'Abidjan = jour UTC
+    return DateTime.utc(u.year, u.month, u.day);
+  }
+
+  /// Série encore vivante : dernier message aujourd'hui ou hier.
+  int get flammes {
+    final dernier = flammeDernierJour;
+    if (dernier == null) return 0;
+    final ecart = _jour(DateTime.now()).difference(_jour(dernier)).inDays;
+    return ecart <= 1 ? flammeCompte : 0;
+  }
+
+  /// Personne n'a encore écrit aujourd'hui : la série s'éteint à minuit.
+  bool get flammeEnDanger {
+    final dernier = flammeDernierJour;
+    if (dernier == null || flammes < 2) return false;
+    return _jour(DateTime.now()).difference(_jour(dernier)).inDays == 1;
+  }
+
+  /// Même règle que le trigger SQL, appliquée tout de suite à l'écran
+  /// quand un message part ou arrive.
+  ConversationModel avecMessageAujourdhui() {
+    final aujourdhui = _jour(DateTime.now());
+    final dernier =
+        flammeDernierJour == null ? null : _jour(flammeDernierJour!);
+    if (dernier == aujourdhui) return this;
+    final suite = dernier != null && aujourdhui.difference(dernier).inDays == 1;
+    return copyWith(
+      flammeCompte: suite ? flammeCompte + 1 : 1,
+      flammeDernierJour: aujourdhui,
+    );
+  }
+
+  ConversationModel copyWith({
+    String? userName,
+    String? userPhotoUrl,
+    bool? isOnline,
+    MessageModel? lastMessage,
+    int? unreadCount,
+    DateTime? lastActivity,
+    bool? isPinned,
+    int? flammeCompte,
+    DateTime? flammeDernierJour,
+  }) {
+    return ConversationModel(
+      id: id,
+      userId: userId,
+      userName: userName ?? this.userName,
+      userPhotoUrl: userPhotoUrl ?? this.userPhotoUrl,
+      isOnline: isOnline ?? this.isOnline,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      lastActivity: lastActivity ?? this.lastActivity,
+      isPinned: isPinned ?? this.isPinned,
+      flammeCompte: flammeCompte ?? this.flammeCompte,
+      flammeDernierJour: flammeDernierJour ?? this.flammeDernierJour,
+    );
+  }
 }
