@@ -9,6 +9,10 @@ const String kRevenueCatAndroidApiKey = 'goog_BciSaSAifHmoslXIAxphkDBxLUT';
 // Apple Developer). Vide → Premium indisponible sur iPhone, sans erreur.
 const String kRevenueCatIosApiKey = '';
 const String kPremiumEntitlementId = 'zamu_premium';
+// Offres RevenueCat de cette version. L'offre « current » reste celle de
+// la 1.0.11 en production (semaine seule) : ne pas y ajouter de formule.
+const String kOffrePremium = 'premium_v2'; // semaine, 1, 3 et 12 mois
+const String kOffreBoosts = 'boosts'; // boost_1h, boost_2h, boost_24h
 
 class RevenueCatService extends GetxService {
   final RxBool isPremium = false.obs;
@@ -118,10 +122,64 @@ class RevenueCatService extends GetxService {
     }
   }
 
-  /// Prix de la première formule de l'offre courante, ou null.
+  /// Formules Premium, de la plus courte à la plus longue.
+  List<Package> get formulesPremium {
+    final o = offerings.value;
+    final pkgs = List<Package>.from(
+        (o?.all[kOffrePremium] ?? o?.current)?.availablePackages ?? const []);
+    pkgs.sort((a, b) => joursPeriode(a.storeProduct.subscriptionPeriod)
+        .compareTo(joursPeriode(b.storeProduct.subscriptionPeriod)));
+    return pkgs;
+  }
+
+  /// Boosts disponibles, du plus court au plus long (prix croissant).
+  List<Package> get boosts {
+    final pkgs = List<Package>.from(
+        offerings.value?.all[kOffreBoosts]?.availablePackages ?? const []);
+    pkgs.sort((a, b) => a.storeProduct.price.compareTo(b.storeProduct.price));
+    return pkgs;
+  }
+
+  /// Durée approximative en jours d'une période ISO (pour trier/comparer).
+  static int joursPeriode(String? iso) {
+    final m = RegExp(r'^P(\d+)([DWMY])$').firstMatch(iso ?? '');
+    if (m == null) return 0;
+    final n = int.parse(m.group(1)!);
+    switch (m.group(2)) {
+      case 'D':
+        return n;
+      case 'W':
+        return n * 7;
+      case 'M':
+        return n * 30;
+      default:
+        return n * 365;
+    }
+  }
+
+  /// Prix de la formule la moins chère par semaine, ou null.
   String? get libellePrixCourant {
-    final pkgs = offerings.value?.current?.availablePackages ?? const [];
+    final pkgs = formulesPremium;
     return pkgs.isEmpty ? null : libellePrix(pkgs.first.storeProduct);
+  }
+
+  /// Achète un Boost. Le Boost lui-même est accordé par le serveur
+  /// (webhook RevenueCat) : renvoie true si le paiement a abouti.
+  Future<bool> acheterBoost(Package package) async {
+    if (isProcessing.value) return false;
+    isProcessing.value = true;
+    try {
+      await Purchases.purchasePackage(package);
+      return true;
+    } on PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      if (errorCode != PurchasesErrorCode.purchaseCancelledError) {
+        debugPrint('RevenueCat boost error: $errorCode');
+      }
+      return false;
+    } finally {
+      isProcessing.value = false;
+    }
   }
 
   void _onCustomerInfoUpdate(CustomerInfo customerInfo) =>

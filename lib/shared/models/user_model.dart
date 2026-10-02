@@ -26,6 +26,7 @@ class UserModel {
   final bool isPremium; // ✅ NOUVEAU — badge certifié
   final bool showBirthdate; // ✅ NOUVEAU — masque l'âge si false
   final bool showDistance; // ✅ réglage « Afficher ma distance »
+  final DateTime? boostJusqua; // Boost acheté : fin de la mise en avant
 
   const UserModel({
     required this.id,
@@ -53,6 +54,7 @@ class UserModel {
     this.isPremium = false, // ✅ NOUVEAU
     this.showBirthdate = true, // ✅ NOUVEAU
     this.showDistance = true,
+    this.boostJusqua,
   });
 
   // ✅ Nouveau membre = inscrit depuis moins de 7 jours
@@ -60,6 +62,10 @@ class UserModel {
     if (createdAt == null) return false;
     return DateTime.now().difference(createdAt!).inDays < 7;
   }
+
+  /// Profil mis en avant (Boost en cours).
+  bool get estBooste =>
+      boostJusqua != null && boostJusqua!.isAfter(DateTime.now());
 
   UserModel copyWith({
     String? id,
@@ -88,6 +94,7 @@ class UserModel {
     bool? isPremium,
     bool? showBirthdate,
     bool? showDistance,
+    DateTime? boostJusqua,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -115,6 +122,7 @@ class UserModel {
         isPremium: isPremium ?? this.isPremium,
         showBirthdate: showBirthdate ?? this.showBirthdate,
         showDistance: showDistance ?? this.showDistance,
+        boostJusqua: boostJusqua ?? this.boostJusqua,
       );
 
   /// "175cm · 70kg"

@@ -14,6 +14,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const REVENUECAT_WEBHOOK_SECRET = Deno.env.get('REVENUECAT_WEBHOOK_SECRET') ?? '';
 const PREMIUM_ENTITLEMENT_ID = 'zamu_premium';
 
+// Boosts (produits Google Play à usage unique) → durée en minutes.
+const BOOST_MINUTES: Record<string, number> = {
+  boost_1h: 60,
+  boost_2h: 120,
+  boost_24h: 24 * 60,
+};
+
+/** « boost_1h » ou « boost_1h:xxx » → minutes, sinon null. */
+function boostMinutes(productId: unknown): number | null {
+  if (typeof productId !== 'string') return null;
+  return BOOST_MINUTES[productId.split(':')[0]] ?? null;
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -107,6 +120,35 @@ serve(async (req) => {
         console.warn('TRANSFER : aucun profil trouvé pour transferred_to', JSON.stringify(event.transferred_to));
       }
       return new Response('OK', { status: 200 });
+    }
+
+    // ── BOOST : achat unique, accordé par le serveur ──────────────────────
+    const minutes = boostMinutes(event.product_id);
+    if (minutes !== null) {
+      if (type !== 'NON_RENEWING_PURCHASE' && type !== 'INITIAL_PURCHASE') {
+        return new Response('OK', { status: 200 });
+      }
+      const ids = uuidCandidates(event.app_user_id, event.original_app_user_id, event.aliases);
+      const transaction = String(event.transaction_id ?? event.id ?? '');
+      if (ids.length === 0 || !transaction) {
+        console.warn(`Boost ignoré (user=${event.app_user_id}, transaction=${transaction})`);
+        return new Response('Ignored (boost without user/transaction)', { status: 200 });
+      }
+      for (const id of ids) {
+        const { data, error } = await supabase.rpc('appliquer_boost', {
+          p_user: id,
+          p_transaction: transaction,
+          p_produit: String(event.product_id),
+          p_minutes: minutes,
+        });
+        if (error) throw new Error(`appliquer_boost: ${error.message}`);
+        if (data) {
+          console.log(`⚡ Boost ${event.product_id} → ${id} jusqu'à ${data} (${environment})`);
+          return new Response('OK', { status: 200 });
+        }
+      }
+      console.warn(`Boost : aucun profil pour ${ids.join(', ')}`);
+      return new Response('Ignored (profile not found)', { status: 200 });
     }
 
     if (!entitlementIds.includes(PREMIUM_ENTITLEMENT_ID)) {

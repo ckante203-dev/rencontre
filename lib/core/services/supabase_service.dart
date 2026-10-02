@@ -55,7 +55,30 @@ class SupabaseService {
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
 
-    List<UserModel> users = (data as List)
+    var rows = List<Map<String, dynamic>>.from(data as List);
+
+    // ⚡ Profils boostés : chargés à part (la pagination par date de
+    // création ne les ramènerait pas forcément) et placés en tête.
+    if (offset == 0) {
+      try {
+        final boostes = await supabase
+            .from('profiles')
+            .select()
+            .eq('is_suspended', false)
+            .gt('boost_jusqua', DateTime.now().toUtc().toIso8601String())
+            .limit(50);
+        final ids = rows.map((r) => r['id']).toSet();
+        rows = [
+          ...List<Map<String, dynamic>>.from(boostes)
+              .where((r) => !ids.contains(r['id'])),
+          ...rows,
+        ];
+      } catch (_) {
+        // Colonne absente (script 000015 pas appliqué) : liste normale.
+      }
+    }
+
+    List<UserModel> users = rows
         .map((row) => profileToUser(row))
         .where((u) => !allExcluded.contains(u.id))
         .toList();
@@ -630,6 +653,9 @@ class SupabaseService {
       isPremium: row['is_premium'] ?? false,
       showBirthdate: row['show_birthdate'] ?? true,
       showDistance: row['show_distance'] ?? true,
+      boostJusqua: row['boost_jusqua'] != null
+          ? DateTime.tryParse(row['boost_jusqua'].toString())?.toLocal()
+          : null,
     );
   }
 }

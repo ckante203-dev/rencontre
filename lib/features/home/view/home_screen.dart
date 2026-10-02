@@ -11,6 +11,7 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/widget/stories_row.dart';
+import 'package:rencontre/features/premium/view/boost_sheet.dart';
 import 'package:rencontre/features/notifications/controller/notification_controller.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/shared/models/user_model.dart';
@@ -221,16 +222,7 @@ class _TopBar extends GetView<HomeController> {
               : const SizedBox.shrink()),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () {
-              Get.snackbar(
-                '⚡ Boost',
-                'Bientôt disponible — reviens vite !',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: AppColors.surface,
-                colorText: Colors.white,
-                duration: const Duration(seconds: 2),
-              );
-            },
+            onTap: showBoostSheet,
             child: Container(
               width: 42,
               height: 42,
@@ -249,8 +241,27 @@ class _TopBar extends GetView<HomeController> {
                   )
                 ],
               ),
-              child:
-                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
+              child: Stack(clipBehavior: Clip.none, children: [
+                const Center(
+                    child: Icon(Icons.bolt_rounded,
+                        color: Colors.white, size: 24)),
+                // Point vert : Boost en cours
+                Obx(() => (controller.myProfile?.estBooste ?? false)
+                    ? Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: AppColors.online,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.bg, width: 2),
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink()),
+              ]),
             ),
           ),
         ],
@@ -1235,6 +1246,23 @@ class _UserCard extends StatelessWidget {
                           height: 8,
                           decoration: const BoxDecoration(
                               color: Colors.green, shape: BoxShape.circle))),
+
+                // ── Badge Boost ⚡ ───────────────────────────────
+                if (user.estBooste)
+                  Positioned(
+                    top: hasUnread ? 30 : 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                      ),
+                      child: const Icon(Icons.bolt_rounded,
+                          size: 12, color: Colors.white),
+                    ),
+                  ),
 
                 // ── Badge messages non lus ─────────────────────
                 if (hasUnread)

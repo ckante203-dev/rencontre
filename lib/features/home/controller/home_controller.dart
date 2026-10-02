@@ -462,6 +462,13 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     _myProfile.value = await _service.fetchMyProfile();
   }
 
+  /// Recharge mon profil (ex. : Boost accordé par le serveur).
+  Future<void> rafraichirMonProfil() async {
+    try {
+      await _loadMyProfile();
+    } catch (_) {}
+  }
+
   Future<void> _locateMe() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -633,6 +640,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }).toList();
 
     list.sort((a, b) {
+      // ⚡ Boost en cours : toujours en tête
+      if (a.estBooste != b.estBooste) return a.estBooste ? -1 : 1;
       final da = a.distanceMeters;
       final db = b.distanceMeters;
       if (da == null && db == null) return 0;
