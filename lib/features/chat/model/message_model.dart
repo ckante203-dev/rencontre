@@ -109,6 +109,8 @@ class MessageModel {
   final Map<String, List<String>> reactions;
   final MessageModel? replyTo;
   final StoryReplyData? storyReply;
+  // Date de modification du texte (null = jamais modifié)
+  final DateTime? modifieLe;
 
   // Réponse à une annonce (style WhatsApp statut)
   final AnnonceReplyData? annonceReply;
@@ -131,7 +133,16 @@ class MessageModel {
     this.replyTo,
     this.storyReply,
     this.annonceReply,
+    this.modifieLe,
   });
+
+  /// On peut modifier son message texte pendant 15 minutes (WhatsApp).
+  static const delaiModification = Duration(minutes: 15);
+  bool get modifiable =>
+      type == MessageType.text &&
+      storyReply == null &&
+      !id.startsWith('temp_') &&
+      DateTime.now().difference(createdAt) < delaiModification;
 
   bool get isSnap => type == MessageType.snap;
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
@@ -177,6 +188,7 @@ class MessageModel {
     MessageModel? replyTo,
     StoryReplyData? storyReply,
     AnnonceReplyData? annonceReply,
+    DateTime? modifieLe,
     bool clearPhoto = false,
   }) {
     return MessageModel(
@@ -197,6 +209,7 @@ class MessageModel {
       replyTo: replyTo ?? this.replyTo,
       storyReply: storyReply ?? this.storyReply,
       annonceReply: annonceReply ?? this.annonceReply,
+      modifieLe: modifieLe ?? this.modifieLe,
     );
   }
 }

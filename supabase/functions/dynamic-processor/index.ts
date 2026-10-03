@@ -108,11 +108,43 @@ async function sendFCM(
 // ✅ Distingue proprement follow / like / match, chacun avec son titre,
 // son texte et son channel Android — au lieu d'afficher systématiquement
 // "t'a liké" même pour un nouvel abonné.
+type EventType =
+  | "follow" | "like" | "match"
+  // ⭐ Favoris (trigger SQL sur profiles, 20261002000021_favoris.sql)
+  | "favori_en_ligne" | "favori_proche" | "favori_ville" | "favori_story";
+
 function buildNotificationContent(
-  eventType: "follow" | "like" | "match",
-  fromName: string
+  eventType: EventType,
+  fromName: string,
+  distanceKm?: number
 ): { title: string; body: string; channelId: string } {
   switch (eventType) {
+    case "favori_en_ligne":
+      return {
+        title: `⭐ ${fromName} est en ligne`,
+        body: `Ton favori ${fromName} vient de se connecter. Dis-lui bonjour !`,
+        channelId: "likes",
+      };
+    case "favori_proche":
+      return {
+        title: `⭐ ${fromName} est près de toi`,
+        body: distanceKm != null && distanceKm < 1
+          ? `Ton favori est à moins d'1 km de toi`
+          : `Ton favori est à environ ${Math.round(distanceKm ?? 0)} km de toi`,
+        channelId: "likes",
+      };
+    case "favori_story":
+      return {
+        title: `⭐ ${fromName} a publié une story`,
+        body: `Va vite la voir avant qu'elle disparaisse 👀`,
+        channelId: "likes",
+      };
+    case "favori_ville":
+      return {
+        title: `⭐ ${fromName} est dans ta ville`,
+        body: `Ton favori ${fromName} vient d'arriver près de chez toi`,
+        channelId: "likes",
+      };
     case "match":
       return {
         title: "💘 Nouveau Match !",
@@ -194,9 +226,10 @@ serve(async (req) => {
     // ✅ "type" est optionnel pour rester compatible avec les appels
     // existants qui n'envoient que { from_user_id, to_user_id, is_match }.
     // Si absent, on déduit le type depuis is_match (comportement historique).
-    const explicitType = payload.type as "follow" | "like" | "match" | undefined;
-    const eventType: "follow" | "like" | "match" =
+    const explicitType = payload.type as EventType | undefined;
+    const eventType: EventType =
       explicitType ?? (is_match ? "match" : "like");
+    const estFavori = eventType.startsWith("favori");
 
     if (!from_user_id || !to_user_id) {
       return new Response("Missing fields", { status: 400 });
@@ -232,9 +265,15 @@ serve(async (req) => {
       return new Response("no fcm token", { status: 200 });
     }
 
+    // Réglage « Alertes de mes favoris » désactivé
+    if (estFavori && toProfile.notif_favoris === false) {
+      return new Response("favoris coupés", { status: 200 });
+    }
+
     const { title, body, channelId } = buildNotificationContent(
       eventType,
-      fromProfile.name
+      fromProfile.name,
+      typeof payload.distance_km === "number" ? payload.distance_km : undefined
     );
 
     const data: Record<string, string> = {

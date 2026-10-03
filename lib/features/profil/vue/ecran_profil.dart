@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -42,6 +43,8 @@ class EcranProfil extends StatelessWidget {
                 _Stats(),
                 const SizedBox(height: 14),
                 _CartePremium(ctrl: ctrl),
+                const SizedBox(height: 14),
+                const _CarteAlbum(),
                 const SizedBox(height: 14),
                 _BoutonsLigne(ctrl: ctrl),
                 const SizedBox(height: 40),
@@ -484,6 +487,60 @@ class _CartePremium extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+// ─── ALBUM PRIVÉ ─────────────────────────────────────────────────
+
+class _CarteAlbum extends StatelessWidget {
+  const _CarteAlbum();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: () => Get.to(() => const EcranMonAlbum()),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: AppColors.gradientPink,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.lock_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Mon album privé',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text('Des photos visibles seulement par qui tu choisis',
+                      style:
+                          TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+          ]),
+        ),
+      ),
+    );
   }
 }
 

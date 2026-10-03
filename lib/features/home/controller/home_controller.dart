@@ -17,6 +17,14 @@ import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 
+/// Ville proposée par le mode voyage.
+class VilleVoyage {
+  final String nom;
+  final double lat;
+  final double lng;
+  const VilleVoyage(this.nom, this.lat, this.lng);
+}
+
 class HomeController extends GetxController with WidgetsBindingObserver {
   final _service = SupabaseService();
   final _storageBox = GetStorage();
@@ -56,10 +64,99 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   double? _myLat;
   double? _myLng;
 
+  // ✈️ MODE VOYAGE (Premium) : les profils et distances sont calculés depuis
+  // une ville choisie au lieu de ma position. Ma vraie position reste celle
+  // publiée (les autres ne me voient pas « déplacé »).
+  static const villesVoyage = <VilleVoyage>[
+    VilleVoyage('Abidjan', 5.3600, -4.0083),
+    VilleVoyage('Bouaké', 7.6906, -5.0303),
+    VilleVoyage('Yamoussoukro', 6.8276, -5.2893),
+    VilleVoyage('San-Pédro', 4.7485, -6.6363),
+    VilleVoyage('Korhogo', 9.4580, -5.6296),
+    VilleVoyage('Daloa', 6.8774, -6.4502),
+    VilleVoyage('Man', 7.4125, -7.5536),
+    VilleVoyage('Gagnoa', 6.1319, -5.9506),
+    VilleVoyage('Grand-Bassam', 5.2118, -3.7388),
+    VilleVoyage('Assinie', 5.1300, -3.2900),
+  ];
+  static const _kVilleVoyage = 'ville_voyage';
+  final Rxn<String> villeVoyage = Rxn<String>();
+
+  VilleVoyage? get _villeActive {
+    final nom = villeVoyage.value;
+    if (nom == null || !ControleurProfil.estPremiumMaintenant()) return null;
+    return villesVoyage.firstWhereOrNull((v) => v.nom == nom);
+  }
+
+  /// Ville explorée (null = ma position). Ignorée si le Premium a expiré.
+  String? get villeVoyageActive => _villeActive?.nom;
+
+  double? get _latRecherche => _villeActive?.lat ?? _myLat;
+  double? get _lngRecherche => _villeActive?.lng ?? _myLng;
+
+  /// null = revenir à ma position.
+  Future<void> choisirVilleVoyage(String? nom) async {
+    villeVoyage.value = nom;
+    if (nom == null) {
+      _storageBox.remove(_kVilleVoyage);
+    } else {
+      _storageBox.write(_kVilleVoyage, nom);
+    }
+    await loadProfiles();
+    await loadStories();
+  }
+
   final RxBool locationError = false.obs;
   final RxString filterMode = 'all'.obs;
   final RxString filterGender = 'tous'.obs;
   final RxDouble filterDistance = 50.0.obs;
+  // Filtre par âge (70 = « 70 ans et plus »)
+  static const ageMin = 18.0, ageMax = 70.0;
+  final Rx<RangeValues> filterAge = const RangeValues(ageMin, ageMax).obs;
+  bool get filtreAgeActif =>
+      filterAge.value.start > ageMin || filterAge.value.end < ageMax;
+
+  // ⭐ FAVORIS (privés : la personne ne sait pas qu'elle est en favori)
+  final RxSet<String> favoris = <String>{}.obs;
+
+  bool estFavori(String userId) => favoris.contains(userId);
+
+  Future<void> chargerFavoris() async {
+    final uid = _myUid;
+    if (uid == null) return;
+    try {
+      final rows = await Supabase.instance.client
+          .from('favoris')
+          .select('favori_id')
+          .eq('user_id', uid);
+      favoris.assignAll((rows as List).map((r) => r['favori_id'] as String));
+    } catch (e) {
+      debugPrint('chargerFavoris error: $e'); // table absente : script SQL
+    }
+  }
+
+  /// Ajoute / retire un favori. Renvoie le nouvel état (null = échec).
+  Future<bool?> basculerFavori(String userId) async {
+    final uid = _myUid;
+    if (uid == null || uid == userId) return null;
+    final ajouter = !favoris.contains(userId);
+    ajouter ? favoris.add(userId) : favoris.remove(userId);
+    try {
+      final db = Supabase.instance.client.from('favoris');
+      if (ajouter) {
+        // ignoreDuplicates : pas de règle UPDATE sur favoris (double tap)
+        await db.upsert({'user_id': uid, 'favori_id': userId},
+            ignoreDuplicates: true);
+      } else {
+        await db.delete().eq('user_id', uid).eq('favori_id', userId);
+      }
+      return ajouter;
+    } catch (e) {
+      debugPrint('basculerFavori error: $e');
+      ajouter ? favoris.remove(userId) : favoris.add(userId);
+      return null;
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // ✅ NOUVEAU — état d'upload de story façon Snapchat/TikTok
@@ -270,7 +367,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
+    villeVoyage.value = _storageBox.read<String>(_kVilleVoyage);
     _init();
+    chargerFavoris();
   }
 
   // ✅ Chaque étape est isolée : une erreur réseau sur l'une d'elles
@@ -446,8 +545,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> _silentRefresh() async {
     try {
       final fetched = await _service.fetchProfiles(
-        myLat: _myLat,
-        myLng: _myLng,
+        myLat: _latRecherche,
+        myLng: _lngRecherche,
         limit: _profileLimit,
       );
       _allUsers.value = fetched;
@@ -563,6 +662,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   }
 
   void _updateDistancesLocally() {
+    // En mode voyage, les distances sont relatives à la ville choisie.
+    if (_villeActive != null) return;
     if (_myLat == null || _myLng == null) return;
     final updated = _allUsers.map((u) {
       if (u.latitude != null && u.longitude != null) {
@@ -579,8 +680,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     isLoading.value = true;
     try {
       final fetched = await _service.fetchProfiles(
-        myLat: _myLat,
-        myLng: _myLng,
+        myLat: _latRecherche,
+        myLng: _lngRecherche,
         limit: _profileLimit,
       );
       _allUsers.value = fetched;
@@ -614,8 +715,18 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   // En ligne / Proche...). Les profils sans distance connue
   // (localisation indisponible) sont relégués en fin de liste.
   List<UserModel> get filteredUsers {
+    final age = filterAge.value;
     final list = profiles.where((u) {
       if (filterMode.value == 'online' && !u.isOnline) return false;
+      if (filterMode.value == 'favoris' && !favoris.contains(u.id)) {
+        return false;
+      }
+      // Âge : les personnes qui cachent leur âge ne sont pas filtrées
+      // (sinon le filtre révélerait leur tranche d'âge).
+      if (filtreAgeActif && u.showBirthdate) {
+        if (u.age < age.start) return false;
+        if (age.end < ageMax && u.age > age.end) return false;
+      }
       if (filterMode.value == 'new' && !u.isNewMember)
         return false; // ← ligne ajoutée
       if (filterMode.value == 'nearby') {
@@ -843,11 +954,12 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     final viewedBy = List<String>.from(row['viewed_by'] ?? []);
     final uid = _myUid ?? '';
     double? distanceKm;
-    if (_myLat != null && _myLng != null) {
+    final refLat = _latRecherche, refLng = _lngRecherche;
+    if (refLat != null && refLng != null) {
       final lat = profile?['latitude']?.toDouble();
       final lng = profile?['longitude']?.toDouble();
       if (lat != null && lng != null) {
-        distanceKm = _distanceKm(_myLat!, _myLng!, lat, lng);
+        distanceKm = _distanceKm(refLat, refLng, lat, lng);
       }
     }
     return StoryModel(

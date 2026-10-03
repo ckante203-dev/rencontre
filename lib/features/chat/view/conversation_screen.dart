@@ -1,14 +1,18 @@
+import 'dart:ui' show ImageFilter;
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/album/album_service.dart';
+import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
+import 'package:rencontre/features/chat/view/sticker_sheet.dart';
 import 'package:rencontre/features/chat/view/chat_list_screen.dart'
     show BadgeFlamme;
 import 'package:rencontre/features/home/controller/home_controller.dart';
@@ -378,6 +382,7 @@ class _ConvMenu extends StatelessWidget {
                     activeColor: AppColors.accent,
                   ),
                 )),
+            _ItemAlbum(ctrl: ctrl),
             const _MenuItem(
               icon: Icons.videocam_outlined,
               label: 'Appel vidéo',
@@ -694,6 +699,225 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
+/// 🔞 Photo sensible : floutée jusqu'à ce que la personne choisisse de la voir.
+class _FlouSensible extends StatefulWidget {
+  final Widget child;
+  const _FlouSensible({required this.child});
+
+  @override
+  State<_FlouSensible> createState() => _FlouSensibleState();
+}
+
+class _FlouSensibleState extends State<_FlouSensible> {
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_visible) return widget.child;
+    return GestureDetector(
+      onTap: () => setState(() => _visible = true),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(alignment: Alignment.center, children: [
+          IgnorePointer(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: widget.child,
+            ),
+          ),
+          const Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('🔞', style: TextStyle(fontSize: 30)),
+            SizedBox(height: 6),
+            Text('Photo sensible',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+            SizedBox(height: 2),
+            Text('Touche pour voir',
+                style: TextStyle(fontSize: 12, color: Colors.white)),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Message « album privé partagé » : une carte qui ouvre l'album.
+class _CarteAlbumPartage extends StatefulWidget {
+  final MessageModel msg;
+  final bool isMine;
+  final ConversationController ctrl;
+  const _CarteAlbumPartage(
+      {required this.msg, required this.isMine, required this.ctrl});
+
+  @override
+  State<_CarteAlbumPartage> createState() => _CarteAlbumPartageState();
+}
+
+class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
+  bool _ouverture = false;
+
+  Future<void> _ouvrir() async {
+    if (widget.isMine) {
+      Get.to(() => const EcranMonAlbum());
+      return;
+    }
+    setState(() => _ouverture = true);
+    try {
+      final photos = await AlbumService.photosDe(widget.msg.senderId);
+      if (photos.isEmpty) {
+        Get.snackbar('Album privé', "L'accès à cet album a été retiré",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.surface,
+            colorText: Colors.white);
+      } else {
+        Get.to(() => EcranAlbumDe(
+            nom: widget.ctrl.conversation.userName, photos: photos));
+      }
+    } catch (_) {
+      Get.snackbar('Album privé', "Impossible d'ouvrir l'album",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _ouverture = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nom = widget.ctrl.conversation.userName;
+    return GestureDetector(
+      onTap: _ouvrir,
+      child: Container(
+        width: 230,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: AppColors.gradientPink,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: _ouverture
+                ? const Padding(
+                    padding: EdgeInsets.all(11),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.lock_open_rounded,
+                    color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Album privé',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+                const SizedBox(height: 2),
+                Text(
+                    widget.isMine
+                        ? 'Tu as partagé ton album avec $nom'
+                        : 'Touche pour voir les photos',
+                    style: const TextStyle(fontSize: 12, color: Colors.white)),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Partager / retirer mon album privé avec la personne de la conversation.
+class _ItemAlbum extends StatefulWidget {
+  final ConversationController ctrl;
+  const _ItemAlbum({required this.ctrl});
+
+  @override
+  State<_ItemAlbum> createState() => _ItemAlbumState();
+}
+
+class _ItemAlbumState extends State<_ItemAlbum> {
+  bool? _partage; // null = chargement
+  bool _enCours = false;
+
+  String get _autre => widget.ctrl.conversation.userId;
+
+  @override
+  void initState() {
+    super.initState();
+    AlbumService.partageAvec(_autre).then((v) {
+      if (mounted) setState(() => _partage = v);
+    }).catchError((_) {
+      if (mounted) setState(() => _partage = false);
+    });
+  }
+
+  Future<void> _basculer() async {
+    if (_partage == null || _enCours) return;
+    final partager = !_partage!;
+    setState(() => _enCours = true);
+    try {
+      if (partager) {
+        // Même chemin que ➕ Album : partage + carte dans la discussion,
+        // sans écraser le texte en cours de saisie (avant : sendText()).
+        final ok = await widget.ctrl.partagerAlbum();
+        if (ok == null) return; // échec : message déjà affiché
+        if (!ok) {
+          Get.snackbar('Ton album privé est vide',
+              'Ajoute des photos depuis ton profil, puis partage-le',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: AppColors.surface,
+              colorText: Colors.white);
+          return;
+        }
+      } else {
+        await AlbumService.retirer(_autre);
+      }
+      if (mounted) setState(() => _partage = partager);
+    } catch (_) {
+      Get.snackbar('Album privé', 'Action impossible, réessaie',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _enCours = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prenom = widget.ctrl.conversation.userName;
+    return _MenuItem(
+      icon: _partage == true ? Icons.lock_open_rounded : Icons.lock_rounded,
+      label: 'Partager mon album privé',
+      sousTitre: _partage == true ? '$prenom peut voir ton album' : null,
+      onTap: _basculer,
+      trailing: _partage == null || _enCours
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.accent))
+          : Switch.adaptive(
+              value: _partage!,
+              onChanged: (_) => _basculer(),
+              activeColor: AppColors.accent,
+            ),
+    );
+  }
+}
+
 class _BadgeBientot extends StatelessWidget {
   const _BadgeBientot();
   @override
@@ -1005,6 +1229,11 @@ class _MessageList extends StatelessWidget {
       if (ctrl.isLoading.value) return _buildShimmer();
       final msgs = ctrl.messages.where(ctrl.estVisible).toList();
       if (msgs.isEmpty) return _buildEmpty();
+      // « Lu HH:MM » seulement sous mon dernier message lu (✓✓ ailleurs)
+      final dernierLuId = msgs
+          .reversed.toList().firstWhereOrNull((m) =>
+              m.senderId == ctrl.myId && m.status == MessageStatus.read)
+          ?.id;
       final items = <_ChatItem>[];
       for (int i = 0; i < msgs.length; i++) {
         final msg = msgs[i];
@@ -1035,7 +1264,8 @@ class _MessageList extends StatelessWidget {
               msg: item.msg!,
               ctrl: ctrl,
               isFirst: item.isFirst,
-              isLast: item.isLast);
+              isLast: item.isLast,
+              dernierLu: item.msg!.id == dernierLuId);
         },
       );
     });
@@ -1066,21 +1296,65 @@ class _MessageList extends StatelessWidget {
     );
   }
 
+  // Phrases pour briser la glace (comme Grindr / Bumble) : un tap les met
+  // dans le champ, on peut les modifier avant d'envoyer.
+  static const _brisGlace = [
+    'Salut ! Comment tu vas ? 😊',
+    'Coucou, on fait connaissance ? 👋',
+    "Ton profil m'a fait sourire 😄",
+    'Tu fais quoi de beau ce week-end ?',
+    "J'adore ta photo 🔥",
+  ];
+
   Widget _buildEmpty() {
     return Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(Icons.chat_bubble_outline_rounded,
-          size: 44, color: AppColors.textMuted),
-      SizedBox(height: 12),
-      Text('Dis bonjour !',
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary)),
-      SizedBox(height: 4),
-      Text('Commence la conversation',
-          style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-    ]));
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.chat_bubble_outline_rounded,
+              size: 44, color: AppColors.textMuted),
+          const SizedBox(height: 12),
+          Text('Dis bonjour à ${ctrl.conversation.userName} !',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 4),
+          Text('Choisis une phrase pour commencer',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final phrase in _brisGlace)
+                GestureDetector(
+                  onTap: () {
+                    ctrl.textController.text = phrase;
+                    ctrl.inputText.value = phrase;
+                    ctrl.textController.selection =
+                        TextSelection.collapsed(offset: phrase.length);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(phrase,
+                        style: TextStyle(
+                            fontSize: 13, color: AppColors.textPrimary)),
+                  ),
+                ),
+            ],
+          ),
+        ]),
+      ),
+    );
   }
 }
 
@@ -1162,11 +1436,13 @@ class _MessageBubble extends StatelessWidget {
   final ConversationController ctrl;
   final bool isFirst;
   final bool isLast;
+  final bool dernierLu;
   const _MessageBubble(
       {required this.msg,
       required this.ctrl,
       this.isFirst = true,
-      this.isLast = true});
+      this.isLast = true,
+      this.dernierLu = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1216,6 +1492,12 @@ class _MessageBubble extends StatelessWidget {
                     _buildContent(isMine, context),
                     const SizedBox(height: 2),
                     Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (msg.modifieLe != null)
+                        Text('modifié · ',
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontStyle: FontStyle.italic,
+                                color: AppColors.textMuted)),
                       Text('$h:$m',
                           style: TextStyle(
                               fontSize: 10, color: AppColors.textMuted)),
@@ -1224,7 +1506,9 @@ class _MessageBubble extends StatelessWidget {
                         // ✅ Heure de lecture de CE message (read_at, posé par
                         // le serveur). Avant : la même heure — souvent celle
                         // d'envoi du dernier message lu — sur tous les messages.
-                        _StatusIcon(status: msg.status, readAt: msg.readAt),
+                        _StatusIcon(
+                            status: msg.status,
+                            readAt: dernierLu ? msg.readAt : null),
                       ],
                     ]),
                   ],
@@ -1249,12 +1533,34 @@ class _MessageBubble extends StatelessWidget {
       case MessageType.audio:
         return _AudioBubble(msg: msg, isMine: isMine, ctrl: ctrl);
       case MessageType.image:
+        if (msg.text == ConversationController.texteSticker &&
+            (msg.mediaUrl ?? '').isNotEmpty) {
+          return CachedNetworkImage(
+            imageUrl: msg.mediaUrl!,
+            width: 140,
+            height: 140,
+            fit: BoxFit.contain,
+            placeholder: (_, __) => const SizedBox(width: 140, height: 140),
+            errorWidget: (_, __, ___) =>
+                _MediaBubble(msg: msg, isMine: isMine, isVideo: false),
+          );
+        }
+        final sensible = !isMine &&
+            (msg.text ?? '').startsWith(ConversationController.prefixeSensible) &&
+            ConversationController.flouterSensibles;
+        if (sensible) {
+          return _FlouSensible(
+              child: _MediaBubble(msg: msg, isMine: isMine, isVideo: false));
+        }
         return _MediaBubble(msg: msg, isMine: isMine, isVideo: false);
       case MessageType.location:
         return _LocationBubble(msg: msg, isMine: isMine);
       case MessageType.annonceReply:
         return _AnnonceReplyBubble(msg: msg, isMine: isMine);
       default:
+        if (msg.text == ConversationController.texteAlbum) {
+          return _CarteAlbumPartage(msg: msg, isMine: isMine, ctrl: ctrl);
+        }
         return _TextBubble(
             msg: msg, isMine: isMine, isFirst: isFirst, isLast: isLast);
     }
@@ -2002,6 +2308,34 @@ class _MediaBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (msg.mediaUrl == null || msg.mediaUrl!.isEmpty) return _fallback();
+    // ✅ Une vidéo n'est pas une image : CachedNetworkImage échouait et
+    // affichait une image cassée, sans le bouton lecture.
+    final vignetteVideo = _isVideoUrl
+        ? Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.surface2, AppColors.bg],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.play_circle_filled_rounded,
+                    color: Colors.white, size: 56),
+                SizedBox(height: 6),
+                Text('Vidéo',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          )
+        : null;
     return GestureDetector(
       onTap: () {
         final ctx = Get.context ?? context;
@@ -2013,7 +2347,8 @@ class _MediaBubble extends StatelessWidget {
       },
       child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
-          child: Stack(children: [
+          child: vignetteVideo ??
+              Stack(children: [
             CachedNetworkImage(
                 imageUrl: msg.mediaUrl!,
                 width: 220,
@@ -2029,13 +2364,6 @@ class _MediaBubble extends StatelessWidget {
                         child: CircularProgressIndicator(
                             color: AppColors.accent, strokeWidth: 2))),
                 errorWidget: (_, __, ___) => _fallback()),
-            if (_isVideoUrl)
-              Positioned.fill(
-                  child: Container(
-                      color: Colors.black38,
-                      child: const Center(
-                          child: Icon(Icons.play_circle_filled_rounded,
-                              color: Colors.white, size: 52)))),
           ])),
     );
   }
@@ -2183,6 +2511,24 @@ class _AudioBubble extends StatelessWidget {
                     fontSize: 11,
                     color: Colors.white70,
                     fontWeight: FontWeight.w500)),
+            if (isPlaying) ...[
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: ctrl.changerVitesseAudio,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Text(ctrl.vitesseAudioLabel,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
           ]),
         ),
       );
@@ -2529,6 +2875,9 @@ class _InputBar extends StatelessWidget {
             Obx(() => ctrl.replyToMessage.value != null
                 ? _ReplyBar(ctrl: ctrl)
                 : const SizedBox.shrink()),
+            Obx(() => ctrl.enModification.value != null
+                ? _BandeauModification(ctrl: ctrl)
+                : const SizedBox.shrink()),
             Obx(() => ctrl.isRecording.value
                 ? _RecordingIndicator(ctrl: ctrl)
                 : const SizedBox.shrink()),
@@ -2622,6 +2971,48 @@ class _InputBar extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 //  REPLY BAR
 // ═══════════════════════════════════════════════════════════════════
+
+class _BandeauModification extends StatelessWidget {
+  final ConversationController ctrl;
+  const _BandeauModification({required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
+      ),
+      child: Row(children: [
+        Icon(Icons.edit_rounded, size: 16, color: AppColors.accent),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Modifier le message',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              Text(ctrl.enModification.value?.text ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            ],
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
+          onPressed: ctrl.annulerModification,
+        ),
+      ]),
+    );
+  }
+}
 
 class _ReplyBar extends StatelessWidget {
   final ConversationController ctrl;
@@ -2794,6 +3185,35 @@ class _AttachMenu extends StatelessWidget {
             label: 'Position',
             color: const Color(0xFFFFD93D),
             onTap: ctrl.envoyerLocalisation),
+        _AttachItem(
+            icon: Icons.lock_rounded,
+            label: 'Album',
+            color: const Color(0xFFFF8FB1),
+            onTap: () async {
+              final ok = await ctrl.partagerAlbum();
+              if (ok == false) {
+                Get.snackbar('Ton album privé est vide',
+                    'Ajoute des photos, puis partage-le',
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: AppColors.surface,
+                    colorText: Colors.white,
+                    mainButton: TextButton(
+                        onPressed: () => Get.to(() => const EcranMonAlbum()),
+                        child: const Text('Ajouter',
+                            style: TextStyle(color: Colors.white))));
+              }
+            }),
+        _AttachItem(
+            icon: Icons.emoji_emotions_rounded,
+            label: 'Sticker',
+            color: const Color(0xFF7CFFB2),
+            onTap: () async {
+              ctrl.showAttachMenu.value = false;
+              final choix = await choisirSticker(context);
+              if (choix != null) {
+                ctrl.envoyerSticker(choix.url, gif: choix.estGif);
+              }
+            }),
       ]),
     );
   }
@@ -2850,6 +3270,7 @@ class _PreviewSheet extends StatefulWidget {
 
 class _PreviewSheetState extends State<_PreviewSheet> {
   bool _modeEphemere = false;
+  bool _sensible = false; // 🔞 floutée chez le destinataire
   SnapDuration _duree = SnapDuration.s10;
   bool _showDureePicker = false;
   bool _uploading = false;
@@ -2995,6 +3416,31 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                   ]),
                 ),
               ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => setState(() => _sensible = !_sensible),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _sensible
+                        ? AppColors.error.withOpacity(0.18)
+                        : AppColors.surface2,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: _sensible
+                            ? AppColors.error.withOpacity(0.6)
+                            : AppColors.border),
+                  ),
+                  child: Text(_sensible ? '🔞 Sensible' : '🔞',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: _sensible
+                              ? AppColors.textPrimary
+                              : AppColors.textMuted,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: _uploading ? null : _envoyer,
@@ -3057,6 +3503,11 @@ class _PreviewSheetState extends State<_PreviewSheet> {
         contentType = 'image/jpeg';
         msgType = 'image';
         msgContent = '📷 Photo';
+      }
+      if (_sensible) {
+        // Le texte sert de marqueur : « 🔞 Photo », « 🔞 Vidéo »…
+        msgContent = '${ConversationController.prefixeSensible} '
+            '${msgContent.substring(msgContent.indexOf(' ') + 1)}';
       }
       await Supabase.instance.client.storage.from('snaps').upload(
           storagePath, file,

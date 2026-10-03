@@ -172,10 +172,19 @@ serve(async (req) => {
     const silencieux = recipient.notif_son === false;
 
     const senderName = sender?.name ?? "Quelqu'un";
+    // Image : l'app met le genre dans le texte (« 🎨 Sticker », « 🎞️ GIF »,
+    // « 🎬 Vidéo », « 🔞 Photo »…). Une photo sensible reste discrète.
+    const texte: string = content ?? "";
     const notifBody = type === "text"
-      ? (content?.length > 100 ? content.substring(0, 97) + "..." : content ?? "")
-      : type === "image" ? "📷 Photo"
+      ? (texte.length > 100 ? texte.substring(0, 97) + "..." : texte)
+      : type === "image"
+        ? (texte.startsWith("🔞") ? "📷 Photo"
+          : texte.startsWith("🎨") || texte.startsWith("🎞") || texte.startsWith("🎬")
+            ? texte
+            : "📷 Photo")
       : type === "audio" ? "🎤 Vocal"
+      : type === "snap" ? "📸 Photo éphémère"
+      : type === "location" ? "📍 Position"
       : "Nouveau message";
 
     const fcmRes = await fetch(

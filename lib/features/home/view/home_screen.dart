@@ -308,6 +308,7 @@ const _filterItems = [
   _FilterItem(mode: 'online', label: 'En ligne', icon: '🟢'),
   _FilterItem(mode: 'nearby', label: 'Proches', icon: '📍'),
   _FilterItem(mode: 'new', label: 'Nouveaux', icon: '✨'),
+  _FilterItem(mode: 'favoris', label: 'Favoris', icon: '⭐'),
 ];
 
 class _FilterChips extends StatefulWidget {
@@ -432,8 +433,13 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      controller.villeVoyage.value; // suivi Obx
+      final ville = controller.villeVoyageActive;
+      controller.filterAge.value; // suivi Obx
       final hasActiveFilters = controller.filterGender.value != 'tous' ||
-          controller.filterDistance.value < 50;
+          controller.filterDistance.value < 50 ||
+          controller.filtreAgeActif ||
+          ville != null;
       return GestureDetector(
         onTap: () => _openAdvancedFilters(context),
         child: Container(
@@ -457,7 +463,7 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
                       ? AppColors.accent
                       : AppColors.textMuted),
               const SizedBox(width: 6),
-              Text('Filtres',
+              Text(ville != null ? '✈️ $ville' : 'Filtres',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -486,6 +492,8 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
 
   late String _gender;
   late double _distance;
+  String? _ville; // ✈️ null = ma position
+  late RangeValues _age;
 
   static const _genders = [
     {'value': 'tous', 'label': 'Tous', 'icon': '👥'},
@@ -498,18 +506,42 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
     super.initState();
     _gender = controller.filterGender.value;
     _distance = controller.filterDistance.value;
+    _ville = controller.villeVoyageActive;
+    _age = controller.filterAge.value;
+  }
+
+  void _choisirVille(String? nom) {
+    if (nom != null && !ControleurProfil.estPremiumMaintenant()) {
+      Get.back();
+      if (Get.isRegistered<RevenueCatService>()) {
+        Get.toNamed(AppRoutes.paywall);
+      } else {
+        Get.snackbar('✈️ Mode voyage', 'Réservé aux membres Premium',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.surface,
+            colorText: Colors.white);
+      }
+      return;
+    }
+    setState(() => _ville = nom);
   }
 
   void _reset() {
     setState(() {
       _gender = 'tous';
       _distance = 50.0;
+      _ville = null;
+      _age = const RangeValues(HomeController.ageMin, HomeController.ageMax);
     });
   }
 
   void _apply() {
     controller.filterGender.value = _gender;
     controller.filterDistance.value = _distance;
+    controller.filterAge.value = _age;
+    if (_ville != controller.villeVoyageActive) {
+      controller.choisirVilleVoyage(_ville);
+    }
     Get.back();
   }
 
@@ -526,99 +558,178 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.surface2,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Filtres avancés',
-                style: TextStyle(
-                  fontFamily: 'Syne',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              TextButton(
-                onPressed: _reset,
-                child: Text(
-                  'Réinitialiser',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'JE VEUX VOIR',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMuted,
-              letterSpacing: 0.8,
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: _genders.map((g) {
-              final isActive = _gender == g['value'];
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _gender = g['value']!),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? AppColors.accent.withOpacity(0.15)
-                          : AppColors.surface2,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isActive ? AppColors.accent : AppColors.border,
-                        width: isActive ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(g['icon']!, style: const TextStyle(fontSize: 20)),
-                        const SizedBox(height: 4),
-                        Text(
-                          g['label']!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isActive
-                                ? AppColors.textPrimary
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Filtres avancés',
+                  style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+                TextButton(
+                  onPressed: _reset,
+                  child: Text(
+                    'Réinitialiser',
+                    style:
+                        TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'JE VEUX VOIR',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: _genders.map((g) {
+                final isActive = _gender == g['value'];
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _gender = g['value']!),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppColors.accent.withOpacity(0.15)
+                            : AppColors.surface2,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isActive ? AppColors.accent : AppColors.border,
+                          width: isActive ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(g['icon']!,
+                              style: const TextStyle(fontSize: 20)),
+                          const SizedBox(height: 4),
+                          Text(
+                            g['label']!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isActive
+                                  ? AppColors.textPrimary
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'DISTANCE MAXIMALE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                Text(
+                  _distance >= 50 ? '50+ km' : '${_distance.round()} km',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: AppColors.accent,
+                inactiveTrackColor: AppColors.border,
+                thumbColor: AppColors.accent,
+                overlayColor: AppColors.accent.withOpacity(0.2),
+                trackHeight: 4,
+              ),
+              child: Slider(
+                value: _distance,
+                min: 1,
+                max: 50,
+                divisions: 49,
+                onChanged: (v) => setState(() => _distance = v),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'ÂGE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                Text(
+                  '${_age.start.round()} – ${_age.end >= HomeController.ageMax ? '70+' : _age.end.round()} ans',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: AppColors.accent,
+                inactiveTrackColor: AppColors.border,
+                thumbColor: AppColors.accent,
+                overlayColor: AppColors.accent.withOpacity(0.2),
+                trackHeight: 4,
+              ),
+              child: RangeSlider(
+                values: _age,
+                min: HomeController.ageMin,
+                max: HomeController.ageMax,
+                divisions: 52,
+                onChanged: (v) => setState(() => _age = v),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
               Text(
-                'DISTANCE MAXIMALE',
+                '✈️ MODE VOYAGE',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -626,62 +737,104 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   letterSpacing: 0.8,
                 ),
               ),
-              Text(
-                _distance >= 50 ? '50+ km' : '${_distance.round()} km',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Premium',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+              ),
+            ]),
+            const SizedBox(height: 4),
+            Text('Découvre les profils d\'une autre ville avant d\'y aller',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _ChipVille(
+                  label: '📍 Ma position',
+                  actif: _ville == null,
+                  onTap: () => _choisirVille(null),
+                ),
+                for (final v in HomeController.villesVoyage)
+                  _ChipVille(
+                    label: v.nom,
+                    actif: _ville == v.nom,
+                    onTap: () => _choisirVille(v.nom),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _apply,
+              child: Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accent.withOpacity(0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    'Appliquer les filtres',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.accent,
-              inactiveTrackColor: AppColors.border,
-              thumbColor: AppColors.accent,
-              overlayColor: AppColors.accent.withOpacity(0.2),
-              trackHeight: 4,
             ),
-            child: Slider(
-              value: _distance,
-              min: 1,
-              max: 50,
-              divisions: 49,
-              onChanged: (v) => setState(() => _distance = v),
-            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChipVille extends StatelessWidget {
+  final String label;
+  final bool actif;
+  final VoidCallback onTap;
+  const _ChipVille(
+      {required this.label, required this.actif, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              actif ? AppColors.accent.withOpacity(0.15) : AppColors.surface2,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: actif ? AppColors.accent : AppColors.border,
+            width: actif ? 1.5 : 1,
           ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: _apply,
-            child: Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                gradient: AppColors.gradientPink,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.accent.withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  'Appliquer les filtres',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: actif ? FontWeight.w700 : FontWeight.w500,
+                color: AppColors.textPrimary)),
       ),
     );
   }

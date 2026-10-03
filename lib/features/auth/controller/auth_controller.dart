@@ -436,14 +436,29 @@ class AuthController extends GetxController {
       if (res.user != null) {
         final existing = await supabase
             .from('profiles')
-            .select('id')
+            .select('id, name, photo_url')
             .eq('id', res.user!.id)
             .maybeSingle();
+        final prenom = (googleUser.displayName ?? '').trim().split(' ').first;
         if (existing == null) {
-          final prenom = (googleUser.displayName ?? '').trim().split(' ').first;
           await _createProfile(res.user!,
               name: prenom.isNotEmpty ? prenom : null,
               photoUrl: googleUser.photoUrl);
+        } else if (prenom.isNotEmpty &&
+            _nomProvisoire(existing['name'] as String?, res.user!.email)) {
+          // ✅ Le trigger handle_new_user crée le profil AVANT l'appli, avec
+          // le début du mail comme nom (« jean.k ») : on le remplace par le
+          // prénom Google (sinon il restait affiché, et dévoilait le mail).
+          try {
+            final photo = existing['photo_url'] as String?;
+            await supabase.from('profiles').update({
+              'name': prenom,
+              if ((photo ?? '').isEmpty && googleUser.photoUrl != null)
+                'photo_url': googleUser.photoUrl,
+            }).eq('id', res.user!.id);
+          } catch (e) {
+            debugPrint('Google : prénom non enregistré : $e');
+          }
         }
       }
       errorMessage.value = '';
@@ -636,6 +651,15 @@ class AuthController extends GetxController {
       debugPrint('_parseBirthdate error: $e');
       return {'iso': null, 'age': 18};
     }
+  }
+
+  /// Nom posé automatiquement (pas choisi par la personne) : vide,
+  /// « Utilisateur » ou le début de son adresse mail.
+  bool _nomProvisoire(String? nom, String? email) {
+    final n = (nom ?? '').trim();
+    if (n.isEmpty || n == 'Utilisateur') return true;
+    final debutMail = (email ?? '').split('@').first;
+    return debutMail.isNotEmpty && n.toLowerCase() == debutMail.toLowerCase();
   }
 
   Future<void> _createProfile(

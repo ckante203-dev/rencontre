@@ -69,6 +69,8 @@ class ControleurProfil extends GetxController {
   final RxBool notifNearby = true.obs;
   final RxBool notifStories = true.obs;
   final RxBool notifSon = true.obs;
+  // ⭐ Alertes : favori en ligne / proche / dans ma ville
+  final RxBool notifFavoris = true.obs;
   final RxBool profilPublic = true.obs;
   final RxBool showDistance = true.obs;
   final RxString selectedTheme = 'dark'.obs;
@@ -274,6 +276,7 @@ class ControleurProfil extends GetxController {
       notifNearby.value = data['notif_nearby'] ?? true;
       notifStories.value = data['notif_stories'] ?? true;
       notifSon.value = data['notif_son'] ?? true;
+      notifFavoris.value = data['notif_favoris'] ?? true;
       NotificationService.sonActive = notifSon.value;
       profilPublic.value = data['is_public'] ?? true;
       showDistance.value = data['show_distance'] ?? true;

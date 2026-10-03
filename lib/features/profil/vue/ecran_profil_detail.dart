@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -767,13 +768,30 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    _ActionBtn(
-                        emoji: '📸',
-                        onTap: () => Get.snackbar('📸 Snap', 'Bientôt !',
-                            snackPosition: SnackPosition.TOP,
-                            backgroundColor: AppColors.surface,
-                            colorText: Colors.white)),
-                    const SizedBox(width: 10),
+                    if (Get.isRegistered<HomeController>()) ...[
+                      Obx(() {
+                        final home = Get.find<HomeController>();
+                        final fav = home.estFavori(user.id);
+                        return _ActionBtn(
+                            emoji: fav ? '⭐' : '☆',
+                            onTap: () async {
+                              final r = await home.basculerFavori(user.id);
+                              if (r == null) return;
+                              Get.snackbar(
+                                  r
+                                      ? '⭐ Ajouté à tes favoris'
+                                      : 'Retiré de tes favoris',
+                                  r
+                                      ? '${user.name} ne le saura pas'
+                                      : '',
+                                  snackPosition: SnackPosition.TOP,
+                                  backgroundColor: AppColors.surface,
+                                  colorText: Colors.white,
+                                  duration: const Duration(seconds: 2));
+                            });
+                      }),
+                      const SizedBox(width: 10),
+                    ],
                     SizedBox(
                       width: 50,
                       height: 50,
@@ -898,6 +916,7 @@ class _CorpsProfil extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
+          BoutonAlbumPrive(ownerId: user.id, nom: user.name),
           if (user.taille != null ||
               user.poids != null ||
               user.morphologie != null ||

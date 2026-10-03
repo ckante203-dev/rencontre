@@ -163,6 +163,13 @@ class _FilterBar extends GetView<ChatListController> {
                 active: controller.activeFilter.value == ChatFilter.online,
                 onTap: () => controller.setFilter(ChatFilter.online),
               ),
+              _FilterChip(
+                label: 'Favoris',
+                icon: Icons.star_rounded,
+                iconColor: const Color(0xFFFFD54F),
+                active: controller.activeFilter.value == ChatFilter.favoris,
+                onTap: () => controller.setFilter(ChatFilter.favoris),
+              ),
             ],
           )),
     );
@@ -333,6 +340,7 @@ class _ConversationList extends GetView<ChatListController> {
     final msgs = {
       ChatFilter.unread: 'Aucun message non lu',
       ChatFilter.online: 'Personne en ligne pour le moment',
+      ChatFilter.favoris: 'Aucune conversation avec tes favoris ⭐',
     };
     return Center(
       child: Column(
@@ -533,10 +541,31 @@ class _ConversationTile extends GetView<ChatListController> {
     }
 
     if (msg.type == MessageType.image) {
+      final t = msg.text ?? '';
+      // « 🎬 Vidéo » ou « 🔞 Vidéo » (vidéo marquée sensible)
+      final video = t.startsWith('🎬') || t.endsWith('Vidéo');
+      final sticker = t == ConversationController.texteSticker;
+      final gif = t == ConversationController.texteGif;
       return Row(children: [
-        Icon(Icons.photo_outlined, size: 14, color: AppColors.textMuted),
+        Icon(
+            video
+                ? Icons.videocam_outlined
+                : sticker
+                    ? Icons.emoji_emotions_outlined
+                    : gif
+                        ? Icons.gif_box_outlined
+                        : Icons.photo_outlined,
+            size: 14,
+            color: AppColors.textMuted),
         SizedBox(width: 4),
-        Text('Photo',
+        Text(
+            video
+                ? 'Vidéo'
+                : sticker
+                    ? 'Sticker'
+                    : gif
+                        ? 'GIF'
+                        : 'Photo',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ]);
     }
@@ -667,7 +696,8 @@ class _ConversationOptions extends GetView<ChatListController> {
                 fontWeight: FontWeight.w800,
                 fontSize: 16)),
         content: Text(
-            'La conversation avec ${conv.userName} sera supprimée définitivement.',
+            'La conversation avec ${conv.userName} sera supprimée de ton '
+            'téléphone. ${conv.userName} la garde de son côté.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
         actions: [
           TextButton(

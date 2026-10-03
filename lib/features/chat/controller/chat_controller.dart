@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/album/album_service.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +20,7 @@ import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
-enum ChatFilter { all, unread, online }
+enum ChatFilter { all, unread, online, favoris }
 
 class ChatListController extends GetxController {
   final _service = SupabaseService();
@@ -64,6 +66,13 @@ class ChatListController extends GetxController {
         break;
       case ChatFilter.online:
         list = conversations.where((c) => c.isOnline).toList();
+        break;
+      case ChatFilter.favoris:
+        // ⭐ Favoris privés (gérés par HomeController)
+        final favoris = Get.isRegistered<HomeController>()
+            ? Get.find<HomeController>().favoris
+            : <String>{};
+        list = conversations.where((c) => favoris.contains(c.userId)).toList();
         break;
       case ChatFilter.all:
         list = conversations.toList();
@@ -133,6 +142,14 @@ class ChatListController extends GetxController {
                 )
               : null,
         );
+      })
+          // ✅ Conversation supprimée de mon côté : cachée tant qu'aucun
+          // nouveau message n'est arrivé depuis la suppression.
+          .where((c) {
+        final avant = ConversationController.historiqueEffaceAvant(c.id);
+        if (avant == null) return true;
+        final dernier = c.lastMessage?.createdAt;
+        return dernier != null && dernier.isAfter(avant);
       }).toList();
       _sortConversations();
       // ✅ FIX Realtime — on marque l'heure de la dernière synchro réussie
@@ -387,19 +404,18 @@ class ChatListController extends GetxController {
     update();
   }
 
+  /// ✅ Supprime la conversation de MON côté seulement (comme WhatsApp) :
+  /// avant, la ligne était effacée en base et l'autre personne perdait
+  /// aussi tout l'historique. Les anciens messages restent masqués sur cet
+  /// appareil ; la conversation revient si un nouveau message arrive.
   Future<void> deleteConversation(String convId) async {
     conversations.removeWhere((c) => c.id == convId);
     _retirerNonLueForcee(convId);
     if (pinnedIds.remove(convId)) _box.write(_cleEpingles, pinnedIds.toList());
+    _box.write('chat_efface_$convId', DateTime.now().toIso8601String());
     update();
-    try {
-      await Supabase.instance.client
-          .from('conversations')
-          .delete()
-          .eq('id', convId);
-    } catch (e) {
-      debugPrint('deleteConversation error: $e');
-    }
+    unawaited(_service.markMessagesAsRead(convId));
+    NotificationService.clearConversationNotifications(convId);
   }
 
   Map<String, dynamic> _extractProfile(
@@ -478,6 +494,8 @@ class ConversationController extends GetxController
   late TextEditingController textController;
   final RxString inputText = ''.obs;
   final Rx<MessageModel?> replyToMessage = Rx<MessageModel?>(null);
+  // Message en cours de modification (le champ de saisie le contient)
+  final Rx<MessageModel?> enModification = Rx<MessageModel?>(null);
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
   final Rx<DateTime?> lastReadAt = Rx<DateTime?>(null);
@@ -499,6 +517,9 @@ class ConversationController extends GetxController
   final _box = GetStorage();
   String get _cleFond => 'chat_fond_${conversation.id}';
   String get _cleEfface => 'chat_efface_${conversation.id}';
+  String get _cleMasques => 'chat_masques_${conversation.id}';
+  // Messages supprimés « pour moi » : masqués sur cet appareil seulement.
+  final RxSet<String> masques = <String>{}.obs;
 
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _recorderOpen = false;
@@ -507,6 +528,22 @@ class ConversationController extends GetxController
   final RxDouble recordingDb = 0.0.obs;
   String? _recordingPath;
   final RxString currentlyPlayingId = ''.obs;
+  // Vitesse des vocaux : 1× → 1,5× → 2× (comme WhatsApp)
+  final RxDouble vitesseAudio = 1.0.obs;
+
+  void changerVitesseAudio() {
+    vitesseAudio.value = vitesseAudio.value == 1.0
+        ? 1.5
+        : vitesseAudio.value == 1.5
+            ? 2.0
+            : 1.0;
+    if (currentlyPlayingId.value.isNotEmpty) {
+      _audioPlayer.setPlaybackRate(vitesseAudio.value).catchError((_) {});
+    }
+  }
+
+  String get vitesseAudioLabel =>
+      vitesseAudio.value == 1.0 ? '1×' : vitesseAudio.value == 1.5 ? '1,5×' : '2×';
   Timer? _recordingSecondsTimer;
   Codec? _detectedCodec;
   String? _detectedExt;
@@ -546,6 +583,7 @@ class ConversationController extends GetxController
     fond.value = _box.read<String>(_cleFond) ?? 'defaut';
     final efface = _box.read<String>(_cleEfface);
     effaceAvant.value = efface == null ? null : DateTime.tryParse(efface);
+    masques.addAll(List<String>.from(_box.read<List>(_cleMasques) ?? []));
     _audioPlayer.onPlayerComplete.listen((_) => currentlyPlayingId.value = '');
     // Recalcule la limite dès que la liste des messages change
     ever(messages, (_) => _majLimite());
@@ -571,7 +609,7 @@ class ConversationController extends GetxController
 
   /// Messages affichés : hors messages expirés et historique effacé.
   bool estVisible(MessageModel m) {
-    if (m.isDisappeared) return false;
+    if (m.isDisappeared || masques.contains(m.id)) return false;
     final avant = effaceAvant.value;
     return avant == null || m.createdAt.isAfter(avant);
   }
@@ -1098,6 +1136,11 @@ class ConversationController extends GetxController
                   (k, v) => MapEntry(k, List<String>.from(v as List? ?? [])));
               final newStatus = _parseStatus(updated['status']);
               messages[idx] = messages[idx].copyWith(
+                text: updated['content'] as String?,
+                modifieLe: updated['modifie_le'] != null
+                    ? DateTime.tryParse(updated['modifie_le'].toString())
+                        ?.toLocal()
+                    : null,
                 status: newStatus,
                 reactions: reactions,
                 isOpened: updated['is_opened'] ?? messages[idx].isOpened,
@@ -1169,11 +1212,14 @@ class ConversationController extends GetxController
             final cur = messages[idx];
             final wasRead = cur.status == MessageStatus.read;
             if (cur.status != msg.status ||
+                cur.text != msg.text ||
                 cur.isOpened != msg.isOpened ||
                 cur.expiresAt != msg.expiresAt ||
                 cur.readAt != msg.readAt ||
                 !_sameReactions(cur.reactions, msg.reactions)) {
               messages[idx] = cur.copyWith(
+                text: msg.text,
+                modifieLe: msg.modifieLe,
                 status: msg.status,
                 reactions: msg.reactions,
                 isOpened: msg.isOpened,
@@ -1225,9 +1271,60 @@ class ConversationController extends GetxController
     return true;
   }
 
+  void commencerModification(MessageModel msg) {
+    replyToMessage.value = null;
+    enModification.value = msg;
+    textController.text = msg.text ?? '';
+    inputText.value = textController.text;
+    textController.selection =
+        TextSelection.collapsed(offset: textController.text.length);
+  }
+
+  void annulerModification() {
+    enModification.value = null;
+    textController.clear();
+    inputText.value = '';
+  }
+
+  /// Remplace le texte d'un de mes messages (le serveur vérifie que c'est
+  /// bien le mien et pose modifie_le — script 20261002000019).
+  Future<void> _enregistrerModification(MessageModel msg, String texte) async {
+    enModification.value = null;
+    textController.clear();
+    inputText.value = '';
+    if (texte == msg.text) return;
+    final idx = messages.indexWhere((m) => m.id == msg.id);
+    if (idx != -1) {
+      messages[idx] =
+          messages[idx].copyWith(text: texte, modifieLe: DateTime.now());
+    }
+    final db = Supabase.instance.client.from('messages');
+    try {
+      try {
+        await db.update({
+          'content': texte,
+          'modifie_le': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', msg.id);
+      } on PostgrestException catch (e) {
+        // Colonne modifie_le absente (script pas encore exécuté)
+        if (e.code != 'PGRST204' && e.code != '42703') rethrow;
+        await db.update({'content': texte}).eq('id', msg.id);
+      }
+    } catch (_) {
+      final i = messages.indexWhere((m) => m.id == msg.id);
+      if (i != -1) messages[i] = msg;
+      _snackInfo('Impossible de modifier le message');
+    }
+  }
+
   Future<void> sendText() async {
     final text = textController.text.trim();
     if (text.isEmpty) return;
+    final aModifier = enModification.value;
+    if (aModifier != null) {
+      await _enregistrerModification(aModifier, text);
+      return;
+    }
     if (!peutEnvoyer()) return;
     final reply = replyToMessage.value;
     textController.clear();
@@ -1359,15 +1456,67 @@ class ConversationController extends GetxController
     await _service.maybePromoteMessageRequest(conversationId);
   }
 
+  /// Supprimer « pour moi » : masqué sur cet appareil, l'autre le garde.
+  void supprimerPourMoi(MessageModel msg) {
+    if (msg.id.startsWith('temp_')) {
+      messages.removeWhere((m) => m.id == msg.id);
+      return;
+    }
+    masques.add(msg.id);
+    _box.write(_cleMasques, masques.toList());
+  }
+
+  /// Choix « pour moi » / « pour tout le monde » (WhatsApp).
+  void confirmerSuppression(MessageModel msg) {
+    final mien = msg.senderId == myId;
+    Get.dialog(AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Supprimer le message ?',
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+      actionsAlignment: MainAxisAlignment.end,
+      actionsOverflowDirection: VerticalDirection.down,
+      actionsOverflowButtonSpacing: 4,
+      actions: [
+        if (mien)
+          TextButton(
+              onPressed: () {
+                Get.back();
+                deleteMessage(msg);
+              },
+              child: const Text('Supprimer pour tout le monde',
+                  style: TextStyle(
+                      color: Color(0xFFFF3B30), fontWeight: FontWeight.w700))),
+        TextButton(
+            onPressed: () {
+              Get.back();
+              supprimerPourMoi(msg);
+            },
+            child: const Text('Supprimer pour moi',
+                style: TextStyle(
+                    color: Color(0xFFFF3B30), fontWeight: FontWeight.w600))),
+        TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Annuler',
+                style: TextStyle(color: AppColors.textMuted))),
+      ],
+    ));
+  }
+
+  /// Supprimer « pour tout le monde » (mes messages uniquement).
   Future<void> deleteMessage(MessageModel msg) async {
+    final position = messages.indexWhere((m) => m.id == msg.id);
     messages.removeWhere((m) => m.id == msg.id);
-    if (!msg.id.startsWith('temp_')) {
-      try {
-        await Supabase.instance.client
-            .from('messages')
-            .delete()
-            .eq('id', msg.id);
-      } catch (_) {}
+    if (msg.id.startsWith('temp_')) return;
+    try {
+      await Supabase.instance.client.from('messages').delete().eq('id', msg.id);
+    } catch (_) {
+      // ✅ Avant : échec silencieux, le message revenait au rechargement.
+      if (position >= 0 && !messages.any((m) => m.id == msg.id)) {
+        messages.insert(position.clamp(0, messages.length), msg);
+      }
+      _snackInfo('Impossible de supprimer le message');
     }
   }
 
@@ -1455,6 +1604,14 @@ class ConversationController extends GetxController
                 Get.back();
                 setReplyTo(msg);
               }),
+          if (isMine && msg.modifiable)
+            _MsgOption(
+                icon: Icons.edit_rounded,
+                label: 'Modifier',
+                onTap: () {
+                  Get.back();
+                  commencerModification(msg);
+                }),
           if (msg.type == MessageType.text)
             _MsgOption(
                 icon: Icons.copy_rounded,
@@ -1463,15 +1620,14 @@ class ConversationController extends GetxController
                   Get.back();
                   copyMessage(msg);
                 }),
-          if (isMine)
-            _MsgOption(
-                icon: Icons.delete_outline_rounded,
-                label: 'Supprimer',
-                color: const Color(0xFFFF3B30),
-                onTap: () {
-                  Get.back();
-                  deleteMessage(msg);
-                }),
+          _MsgOption(
+              icon: Icons.delete_outline_rounded,
+              label: 'Supprimer',
+              color: const Color(0xFFFF3B30),
+              onTap: () {
+                Get.back();
+                confirmerSuppression(msg);
+              }),
           if (!isMine)
             _MsgOption(
                 icon: Icons.flag_outlined,
@@ -1596,6 +1752,75 @@ class ConversationController extends GetxController
 
   void toggleAttachMenu() => showAttachMenu.toggle();
 
+  /// Contenu texte des messages sticker / GIF (sert aussi à les reconnaître).
+  static const texteSticker = '🎨 Sticker';
+  static const texteGif = '🎞️ GIF';
+  // 🔞 Photo / vidéo marquée sensible par l'expéditeur : floutée chez le
+  // destinataire (réglage « Flouter les photos sensibles », activé par défaut).
+  static const prefixeSensible = '🔞';
+  static const cleFlouterSensibles = 'flouter_sensibles';
+  static bool get flouterSensibles =>
+      GetStorage().read<bool>(cleFlouterSensibles) ?? true;
+
+  // Message « album privé partagé » : affiché comme une carte cliquable.
+  static const texteAlbum = '🔓 Je t\'ai ouvert mon album privé';
+
+  /// Partage mon album privé avec la personne + message dans la discussion
+  /// (comme Grindr). true = partagé, false = album vide, null = échec.
+  Future<bool?> partagerAlbum() async {
+    if (!peutEnvoyer()) return null;
+    showAttachMenu.value = false;
+    try {
+      final photos = await AlbumService.mesPhotos();
+      if (photos.isEmpty) return false;
+      await AlbumService.partager(conversation.userId);
+    } catch (e) {
+      // ✅ Avant : exception non gérée (bouton ➕ Album)
+      debugPrint('partagerAlbum error: $e');
+      _snackInfo("Impossible de partager l'album");
+      return null;
+    }
+    try {
+      await _service.sendMessage(
+        conversationId: conversation.id,
+        content: texteAlbum,
+        type: 'text',
+      );
+    } catch (e) {
+      if (!gererRefusServeur(e)) _snackInfo("Impossible d'envoyer le message");
+    }
+    return true;
+  }
+
+  /// Sticker ou GIF GIPHY : envoyé comme image (lien GIPHY).
+  Future<void> envoyerSticker(String url, {required bool gif}) async {
+    if (!peutEnvoyer()) return;
+    showAttachMenu.value = false;
+    final texte = gif ? texteGif : texteSticker;
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    messages.add(MessageModel(
+      id: tempId,
+      senderId: myId,
+      text: texte,
+      mediaUrl: url,
+      type: MessageType.image,
+      status: MessageStatus.sending,
+      createdAt: DateTime.now(),
+    ));
+    try {
+      await _service.sendMessage(
+        conversationId: conversation.id,
+        content: texte,
+        type: 'image',
+        mediaUrl: url,
+      );
+    } catch (e) {
+      messages.removeWhere((m) => m.id == tempId);
+      if (gererRefusServeur(e)) return;
+      _snackInfo("Impossible d'envoyer le sticker");
+    }
+  }
+
   Future<void> startRecording() async {
     if (!peutEnvoyer()) return;
     final micStatus = await Permission.microphone.request();
@@ -1693,6 +1918,19 @@ class ConversationController extends GetxController
 
   Future<void> _sendAudio(File file, int duration) async {
     final uid = _service.currentUserId!;
+    // ✅ Bulle affichée tout de suite (avant : rien pendant l'envoi, qui peut
+    // prendre plusieurs secondes en 3G). Remplacée par le vrai message via
+    // Realtime / polling (même expéditeur + même texte).
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    messages.add(MessageModel(
+      id: tempId,
+      senderId: uid,
+      text: '🎤 Message vocal',
+      type: MessageType.audio,
+      status: MessageStatus.sending,
+      createdAt: DateTime.now(),
+      audioDurationSec: duration,
+    ));
     final ext = _detectedExt ?? '.mp4';
     final contentType = ext == '.ogg'
         ? 'audio/ogg'
@@ -1713,6 +1951,7 @@ class ConversationController extends GetxController
         audioDuration: duration,
       );
     } catch (e) {
+      messages.removeWhere((m) => m.id == tempId);
       if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur', "Impossible d'envoyer le vocal",
           snackPosition: SnackPosition.TOP,
@@ -1731,6 +1970,9 @@ class ConversationController extends GetxController
       if (currentlyPlayingId.value.isNotEmpty) await _audioPlayer.stop();
       currentlyPlayingId.value = messageId;
       await _audioPlayer.play(UrlSource(url));
+      if (vitesseAudio.value != 1.0) {
+        await _audioPlayer.setPlaybackRate(vitesseAudio.value);
+      }
     } catch (e) {
       currentlyPlayingId.value = '';
     }
@@ -1856,6 +2098,9 @@ class ConversationController extends GetxController
       reactions: reactions,
       storyReply: storyReply,
       replyTo: replyTo,
+      modifieLe: row['modifie_le'] != null
+          ? DateTime.tryParse(row['modifie_le'].toString())?.toLocal()
+          : null,
     );
   }
 

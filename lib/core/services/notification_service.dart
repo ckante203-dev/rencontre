@@ -497,6 +497,24 @@ class NotificationService {
     }
 
     final type = s('type');
+    // ⭐ Favori en ligne / proche / dans ma ville (dynamic-processor)
+    if (type != null && type.startsWith('favori')) {
+      final fromUserId = s('fromUserId') ?? s('from_user_id') ?? '';
+      if (fromUserId.isEmpty) return;
+      if (!await AwesomeNotifications().isNotificationAllowed()) return;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: ('$type$fromUserId').hashCode.abs() % 2147483647,
+          channelKey: _canal('likes'),
+          title: title ?? '⭐ Ton favori',
+          body: body ?? '',
+          largeIcon: s('from_user_photo'),
+          notificationLayout: NotificationLayout.Default,
+          payload: {'type': type, 'fromUserId': fromUserId},
+        ),
+      );
+      return;
+    }
     if (type == 'like' || type == 'match') {
       final fromUserId = s('fromUserId') ?? s('from_user_id') ?? '';
       final userName = s('userName') ?? s('from_user_name') ?? 'Quelqu\'un';
@@ -556,8 +574,12 @@ class NotificationService {
       Get.toNamed('/chat/conversation', arguments: conv);
     }
 
-    // ── Like / Match → profil ──
-    else if (type == 'like' || type == 'match') {
+    // ── Like / Match / Favori → profil ──
+    else if (type == 'like' ||
+        type == 'match' ||
+        (type != null &&
+            type.startsWith('favori') &&
+            type != 'favori_story')) {
       final fromUserId = payload['fromUserId'];
       if (fromUserId == null || fromUserId.isEmpty) return;
 
@@ -583,8 +605,10 @@ class NotificationService {
       } catch (_) {}
     }
 
-    // ✅ Nouvelle story → onglet Story
-    else if (type == 'new_story' || type == 'like_story') {
+    // ✅ Nouvelle story (ou story d'un favori ⭐) → onglet Story
+    else if (type == 'new_story' ||
+        type == 'like_story' ||
+        type == 'favori_story') {
       await Future.delayed(const Duration(milliseconds: 500));
       NavigationController.pendingIndex = NavigationController.storyIndex;
       Get.offAllNamed(AppRoutes.main);

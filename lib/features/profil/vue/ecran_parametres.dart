@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/chat/controller/chat_controller.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -206,6 +208,20 @@ class EcranParametres extends StatelessWidget {
                 value: ctrl.showDistance.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.showDistance, 'show_distance', v))),
+            const SizedBox(height: 10),
+            StatefulBuilder(
+                builder: (_, setLocal) => _Toggle(
+                      icon: '🔞',
+                      title: 'Flouter les photos sensibles',
+                      subtitle:
+                          'Les photos marquées 🔞 restent floues jusqu\'à ce que tu touches',
+                      value: ConversationController.flouterSensibles,
+                      onChanged: (v) {
+                        GetStorage().write(
+                            ConversationController.cleFlouterSensibles, v);
+                        setLocal(() {});
+                      },
+                    )),
             const SizedBox(height: 28),
 
             // ════ NOTIFICATIONS & SONS ═══════════════════════════
@@ -226,6 +242,14 @@ class EcranParametres extends StatelessWidget {
                 value: ctrl.notifSon.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.notifSon, 'notif_son', v))),
+            const SizedBox(height: 10),
+            Obx(() => _Toggle(
+                icon: '⭐',
+                title: 'Alertes de mes favoris',
+                subtitle: 'En ligne, près de toi ou arrivé dans ta ville',
+                value: ctrl.notifFavoris.value,
+                onChanged: (v) =>
+                    ctrl.majReglage(ctrl.notifFavoris, 'notif_favoris', v))),
             const SizedBox(height: 28),
 
             // ════ THÈME ══════════════════════════════════════════
