@@ -127,7 +127,7 @@ class ChatListController extends GetxController {
           isPinned: pinnedIds.contains(row['id']),
           flammeCompte: (row['flamme_compte'] as int?) ?? 0,
           flammeDernierJour:
-              DateTime.tryParse(row['flamme_dernier_jour']?.toString() ?? ''),
+              ConversationModel.jourDepuisBase(row['flamme_dernier_jour']),
           lastMessage: lastMsg != null
               ? MessageModel(
                   id: lastMsg['id'] ?? '',

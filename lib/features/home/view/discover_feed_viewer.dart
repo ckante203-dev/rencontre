@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rencontre/core/utils/video_init.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
@@ -394,10 +395,15 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     WidgetsBinding.instance.addObserver(this);
     _loadLikeState();
     if (widget.story.isVideo) {
-      final ctrl =
+      // ✅ Réutilise la vidéo préchargée par l'accueil (avant : téléchargée
+      // une 2ᵉ fois — data gaspillée).
+      final ctrl = (Get.isRegistered<HomeController>()
+              ? Get.find<HomeController>()
+                  .takeCachedVideoController(widget.story.id)
+              : null) ??
           VideoPlayerController.networkUrl(Uri.parse(widget.story.mediaUrl));
       _videoCtrl = ctrl;
-      ctrl.initialize().then((_) {
+      initialiserUneFois(ctrl).then((_) {
         if (!mounted) return;
         setState(() => _videoReady = true);
         ctrl.setLooping(true);
@@ -405,6 +411,9 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
           ctrl.play();
           ctrl.setVolume(_muted ? 0 : 1);
         }
+      }).catchError((e) {
+        // ✅ Avant : erreur non gérée si la vidéo ne charge pas (réseau…)
+        debugPrint('Story vidéo non chargée : $e');
       });
     }
   }

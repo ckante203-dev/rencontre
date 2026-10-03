@@ -1780,6 +1780,9 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
         setState(() => _videoReady = true);
         ctrl.setLooping(true);
         ctrl.play();
+      }).catchError((e) {
+        // ✅ Story expirée / réseau : plus d'erreur non gérée
+        debugPrint('Vidéo de la story non chargée : $e');
       });
     }
   }
@@ -2404,6 +2407,9 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
           setState(() => _videoReady = true);
           _videoCtrl!.play();
         }
+      }).catchError((e) {
+        // ✅ Vidéo supprimée (message éphémère) / réseau
+        debugPrint('Vidéo du message non chargée : $e');
       });
     }
   }
@@ -3288,6 +3294,8 @@ class _PreviewSheetState extends State<_PreviewSheet> {
           _videoCtrl!.setLooping(true);
           _videoCtrl!.play();
         }
+      }).catchError((e) {
+        debugPrint('Aperçu vidéo non chargé : $e');
       });
     }
   }

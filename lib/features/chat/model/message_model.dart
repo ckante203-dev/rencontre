@@ -247,6 +247,14 @@ class ConversationModel {
     this.flammeDernierJour,
   });
 
+  /// « 2026-10-02 » (colonne date, jour d'Abidjan = UTC) → minuit UTC.
+  /// DateTime.tryParse la lirait en heure LOCALE : hors UTC (France…), la
+  /// série était décalée d'un jour.
+  static DateTime? jourDepuisBase(dynamic valeur) {
+    final d = DateTime.tryParse(valeur?.toString() ?? '');
+    return d == null ? null : DateTime.utc(d.year, d.month, d.day);
+  }
+
   static DateTime _jour(DateTime d) {
     final u = d.toUtc(); // jour d'Abidjan = jour UTC
     return DateTime.utc(u.year, u.month, u.day);
