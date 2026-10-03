@@ -2,6 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/legende_story.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
+import 'package:flutter/foundation.dart' show compute;
+import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -101,7 +107,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     });
 
     if (_groups.isNotEmpty) {
-      _loadCurrentStory();
+      // ✅ Après la 1ʳᵉ image : le préchargement (precacheImage) a besoin
+      // du contexte, interdit pendant initState (« dependOnInheritedWidget
+      // … called before initState() completed » sur une story photo).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadCurrentStory();
+      });
     }
   }
 
@@ -212,9 +223,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
       if (_videoReady) {
         ctrl.setLooping(false);
-        ctrl.seekTo(Duration.zero);
+        // Vidéo raccourcie dans l'éditeur : seul le passage choisi est joué
+        // (la barre de progression dure le temps du passage).
+        final debut = s.videoDebut ?? Duration.zero;
+        final fin = s.videoFin ?? ctrl.value.duration;
+        ctrl.seekTo(debut);
         ctrl.play();
-        _progressCtrl.duration = ctrl.value.duration;
+        final passage = fin - debut;
+        _progressCtrl.duration =
+            passage > Duration.zero ? passage : ctrl.value.duration;
       } else {
         // fallback si la vidéo n'a pas pu s'initialiser
         _progressCtrl.duration = _imageDuration;
@@ -917,6 +934,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             ]),
           ),
           if (!_longPressing)
+            // Légende placée par l'auteur (éditeur façon Snap)
+            if (s.legendePlacee &&
+                (s.caption ?? '').isNotEmpty &&
+                !_replyFocused)
+              LegendePlacee(
+                texte: s.caption!,
+                x: s.legendeX!,
+                y: s.legendeY!,
+                echelle: s.legendeEchelle ?? 1,
+              ),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
@@ -931,6 +958,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                       children: [
                         if (s.caption != null &&
                             s.caption!.isNotEmpty &&
+                            !s.legendePlacee &&
                             !_replyFocused)
                           Padding(
                               padding: const EdgeInsets.only(bottom: 10),
@@ -1769,7 +1797,21 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   String? _previewPath;
   bool _isVideo = false;
   final _captionCtrl = TextEditingController();
-  bool _showCaption = false;
+
+  // ── Éditeur façon Snap ──
+  // Photo : zoom / cadrage (pincer, glisser), capturé à la publication.
+  final _photoKey = GlobalKey();
+  final _cadrage = TransformationController();
+  // Légende : position (centre, fraction de l'écran) et taille.
+  bool _editionLegende = false;
+  Offset _legendePos = const Offset(0.5, 0.72);
+  double _legendeEchelle = 1.0;
+  double _echelleAuDepart = 1.0;
+  // Vidéo : passage gardé (secondes), 30 s maximum.
+  static const _dureeMaxStory = 30.0;
+  Duration _dureeVideo = Duration.zero;
+  RangeValues? _decoupe;
+  bool _preparation = false; // découpe en cours avant l'envoi
 
   double _durationHours = 24;
   String _visibility = 'public';
@@ -1808,6 +1850,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       setState(() {
         _previewPath = file!.path;
         _isVideo = video;
+        _cadrage.value = Matrix4.identity();
+        _dureeVideo = Duration.zero;
+        _decoupe = null;
       });
     } catch (_) {
       _snack('Erreur lors de la sélection');
@@ -1842,6 +1887,41 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         ? caption.substring(0, caption.length.clamp(0, 200))
         : null;
 
+    // Photo zoomée / recadrée : on publie exactement ce qui est à l'écran.
+    var fichier = file;
+    if (!_isVideo && !_cadrage.value.isIdentity()) {
+      fichier = await _capturerCadrage() ?? file;
+    }
+
+    final edition = <String, dynamic>{
+      if (safeCaption != null) ...{
+        'legende_x': _legendePos.dx,
+        'legende_y': _legendePos.dy,
+        'legende_echelle': _legendeEchelle,
+      },
+    };
+    final decoupe = _decoupe;
+    if (_isVideo && decoupe != null && _dureeVideo > Duration.zero) {
+      final debut = (decoupe.start * 1000).round();
+      final fin = (decoupe.end * 1000).round();
+      // Seulement si la vidéo a vraiment été raccourcie
+      if (debut > 0 || fin < _dureeVideo.inMilliseconds - 300) {
+        setState(() => _preparation = true);
+        final coupe = await _decouperVideo(file.path, debut, fin);
+        if (mounted) setState(() => _preparation = false);
+        if (coupe != null) {
+          // ✅ Comme WhatsApp : seul le passage choisi est envoyé
+          fichier = coupe;
+        } else {
+          // Découpe impossible sur ce téléphone : vidéo entière, mais le
+          // lecteur ne joue que le passage choisi.
+          edition['video_debut_ms'] = debut;
+          edition['video_fin_ms'] = fin;
+        }
+      }
+    }
+
+    if (!mounted) return;
     if (!Get.isRegistered<HomeController>()) {
       Get.put(HomeController(), permanent: true);
     }
@@ -1853,12 +1933,58 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     // ✅ Upload en tâche de fond, piloté par HomeController (persistant).
     // Le cercle "Toi" sur l'accueil / la page Story affiche la progression.
     homeCtrl.publishStory(
-      file: file,
+      file: fichier,
       isVideo: _isVideo,
       caption: safeCaption,
       durationHours: _durationHours,
       visibility: _visibility,
+      edition: edition,
     );
+  }
+
+  static const _canalVideo = MethodChannel('zamu/video');
+
+  /// Copie du passage [debutMs, finMs] (MainActivity.kt, sans réencodage).
+  Future<File?> _decouperVideo(String chemin, int debutMs, int finMs) async {
+    try {
+      final sortie = await _canalVideo.invokeMethod<String>('decouper', {
+        'chemin': chemin,
+        'debutMs': debutMs,
+        'finMs': finMs,
+      });
+      if (sortie == null) return null;
+      final f = File(sortie);
+      return await f.exists() && await f.length() > 0 ? f : null;
+    } catch (e) {
+      debugPrint('Découpe vidéo impossible : $e');
+      return null;
+    }
+  }
+
+  /// Image de la photo telle que cadrée à l'écran (JPEG ~1080 px de large).
+  Future<File?> _capturerCadrage() async {
+    try {
+      final boundary = _photoKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final ratio = 1080 / boundary.size.width;
+      final image = await boundary.toImage(pixelRatio: ratio);
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (data == null) return null;
+      final jpg = await compute(_encoderJpeg, {
+        'w': image.width,
+        'h': image.height,
+        'rgba': data.buffer.asUint8List(),
+      });
+      final dir = await getTemporaryDirectory();
+      final f = File(
+          '${dir.path}/story_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await f.writeAsBytes(jpg);
+      return f;
+    } catch (e) {
+      debugPrint('Cadrage de la photo impossible : $e');
+      return null;
+    }
   }
 
   Future<void> _publishText() async {
@@ -2083,6 +2209,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   @override
   void dispose() {
     _captionCtrl.dispose();
+    _cadrage.dispose();
     _textCtrl.dispose();
     super.dispose();
   }
@@ -2112,7 +2239,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         actions: [
           if (_previewPath != null || canPublishText)
             GestureDetector(
-                onTap: _textMode ? _publishText : _publish,
+                onTap: _preparation
+                    ? null
+                    : (_textMode ? _publishText : _publish),
                 child: Container(
                     margin: const EdgeInsets.only(right: 16),
                     padding:
@@ -2120,11 +2249,17 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     decoration: BoxDecoration(
                         gradient: AppColors.gradientPink,
                         borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Publier',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14))))
+                    child: _preparation
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Text('Publier',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14))))
         ],
       ),
       body: _textMode
@@ -2289,155 +2424,308 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         ),
       ]));
 
-  Widget _buildPreview() => Stack(fit: StackFit.expand, children: [
-        _isVideo
-            ? _VideoPreview(path: _previewPath!)
-            : Image.file(File(_previewPath!), fit: BoxFit.contain),
-        if (_showCaption)
-          Positioned(
-              bottom: 160,
-              left: 16,
-              right: 16,
+  Widget _buildPreview() => LayoutBuilder(builder: (context, box) {
+        final legende = _captionCtrl.text.trim();
+        return Stack(fit: StackFit.expand, children: [
+          // ── Média : photo zoomable / vidéo raccourcie ──
+          if (_isVideo)
+            _VideoPreview(
+              path: _previewPath!,
+              debut: _decoupe == null
+                  ? null
+                  : Duration(milliseconds: (_decoupe!.start * 1000).round()),
+              fin: _decoupe == null
+                  ? null
+                  : Duration(milliseconds: (_decoupe!.end * 1000).round()),
+              onDuree: (d) => setState(() {
+                _dureeVideo = d;
+                final sec = d.inMilliseconds / 1000;
+                _decoupe ??= RangeValues(0, sec.clamp(0, _dureeMaxStory));
+              }),
+            )
+          else
+            RepaintBoundary(
+              key: _photoKey,
               child: Container(
-                  decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white24)),
-                  child: TextField(
-                      controller: _captionCtrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                      maxLines: 3,
-                      maxLength: 200,
-                      autofocus: true,
-                      buildCounter: (_,
-                              {required currentLength,
-                              required isFocused,
-                              maxLength}) =>
-                          Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: Text('$currentLength/200',
-                                  style: const TextStyle(
-                                      color: Colors.white38, fontSize: 10))),
-                      decoration: const InputDecoration(
-                          hintText: 'Ajouter une légende...',
-                          hintStyle: TextStyle(color: Colors.white38),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(14))))),
-        Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-                top: false,
-                child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        GestureDetector(
-                          onTap: _showSettingsSheet,
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white24)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.timer_outlined,
-                                    color: Colors.white, size: 16),
-                                const SizedBox(width: 6),
-                                Text(_formatDuration(_durationHours),
-                                    style: const TextStyle(
+                color: Colors.black,
+                child: InteractiveViewer(
+                  transformationController: _cadrage,
+                  minScale: 1,
+                  maxScale: 5,
+                  child: SizedBox.expand(
+                      child:
+                          Image.file(File(_previewPath!), fit: BoxFit.contain)),
+                ),
+              ),
+            ),
+
+          // ── Légende : glisser pour déplacer, pincer pour agrandir ──
+          if (legende.isNotEmpty && !_editionLegende)
+            Positioned(
+              left: _legendePos.dx * box.maxWidth,
+              top: _legendePos.dy * box.maxHeight,
+              child: FractionalTranslation(
+                translation: const Offset(-0.5, -0.5),
+                child: GestureDetector(
+                  onTap: () => setState(() => _editionLegende = true),
+                  onScaleStart: (_) => _echelleAuDepart = _legendeEchelle,
+                  onScaleUpdate: (d) => setState(() {
+                    _legendePos = Offset(
+                      (_legendePos.dx + d.focalPointDelta.dx / box.maxWidth)
+                          .clamp(0.08, 0.92),
+                      (_legendePos.dy + d.focalPointDelta.dy / box.maxHeight)
+                          .clamp(0.08, 0.92),
+                    );
+                    _legendeEchelle =
+                        (_echelleAuDepart * d.scale).clamp(0.6, 3.0);
+                  }),
+                  child: BulleLegende(texte: legende, echelle: _legendeEchelle),
+                ),
+              ),
+            ),
+
+          // ── Saisie de la légende ──
+          if (_editionLegende)
+            GestureDetector(
+              onTap: () => setState(() => _editionLegende = false),
+              child: Container(
+                color: Colors.black54,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: TextField(
+                  controller: _captionCtrl,
+                  autofocus: true,
+                  maxLength: 200,
+                  maxLines: 4,
+                  minLines: 1,
+                  textAlign: TextAlign.center,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => setState(() => _editionLegende = false),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700),
+                  decoration: const InputDecoration(
+                    hintText: 'Écris ta légende…',
+                    hintStyle: TextStyle(color: Colors.white54),
+                    border: InputBorder.none,
+                    counterStyle: TextStyle(color: Colors.white38),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Aide ──
+          if (!_editionLegende)
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Text(
+                    _isVideo
+                        ? 'Choisis le passage à garder en bas'
+                        : 'Pince pour zoomer · glisse pour cadrer',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        shadows: [Shadow(blurRadius: 4)])),
+              ),
+            ),
+
+          // ── Barre du bas ──
+          if (!_editionLegende)
+            Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                    top: false,
+                    child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_isVideo && _decoupe != null) _barreDecoupe(),
+                            GestureDetector(
+                              onTap: _showSettingsSheet,
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white24)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.timer_outlined,
+                                        color: Colors.white, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(_formatDuration(_durationHours),
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 10),
+                                    Icon(
+                                        _visibility == 'public'
+                                            ? Icons.public_rounded
+                                            : Icons.group_rounded,
                                         color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 10),
-                                Icon(
-                                    _visibility == 'public'
-                                        ? Icons.public_rounded
-                                        : Icons.group_rounded,
-                                    color: Colors.white,
-                                    size: 16),
-                                const SizedBox(width: 6),
-                                Text(
-                                    _visibility == 'public'
-                                        ? 'Publique'
-                                        : 'Amis',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.expand_more_rounded,
-                                    color: Colors.white54, size: 16),
-                              ],
+                                        size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                        _visibility == 'public'
+                                            ? 'Publique'
+                                            : 'Amis',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.expand_more_rounded,
+                                        color: Colors.white54, size: 16),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        Row(children: [
-                          GestureDetector(
-                              onTap: () =>
-                                  setState(() => _showCaption = !_showCaption),
-                              child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                      color: _showCaption
-                                          ? AppColors.accent.withOpacity(0.2)
-                                          : Colors.black54,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: _showCaption
-                                              ? AppColors.accent
-                                              : Colors.white24)),
-                                  child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.text_fields_rounded,
-                                            color: _showCaption
-                                                ? AppColors.accent
-                                                : Colors.white,
-                                            size: 16),
-                                        const SizedBox(width: 6),
-                                        Text('Légende',
-                                            style: TextStyle(
-                                                color: _showCaption
-                                                    ? AppColors.textPrimary
-                                                    : Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600)),
-                                      ]))),
-                          const Spacer(),
-                          GestureDetector(
-                              onTap: () => setState(() => _previewPath = null),
-                              child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border:
-                                          Border.all(color: Colors.white24)),
-                                  child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.refresh_rounded,
-                                            color: Colors.white, size: 16),
-                                        SizedBox(width: 6),
-                                        Text('Changer',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600)),
-                                      ]))),
-                        ]),
-                      ],
-                    )))),
-      ]);
+                            Row(children: [
+                              _BoutonEditeur(
+                                icon: Icons.text_fields_rounded,
+                                label: legende.isEmpty
+                                    ? 'Légende'
+                                    : 'Modifier la légende',
+                                actif: legende.isNotEmpty,
+                                onTap: () =>
+                                    setState(() => _editionLegende = true),
+                              ),
+                              if (!_isVideo &&
+                                  !_cadrage.value.isIdentity()) ...[
+                                const SizedBox(width: 8),
+                                _BoutonEditeur(
+                                  icon: Icons.crop_free_rounded,
+                                  label: 'Recadrer',
+                                  onTap: () => setState(() =>
+                                      _cadrage.value = Matrix4.identity()),
+                                ),
+                              ],
+                              const Spacer(),
+                              _BoutonEditeur(
+                                icon: Icons.refresh_rounded,
+                                label: 'Changer',
+                                onTap: () =>
+                                    setState(() => _previewPath = null),
+                              ),
+                            ]),
+                          ],
+                        )))),
+        ]);
+      });
+
+  /// Curseur à deux poignées : début et fin du passage gardé (30 s max).
+  Widget _barreDecoupe() {
+    final d = _decoupe!;
+    final total = _dureeVideo.inMilliseconds / 1000;
+    String mmss(double sec) {
+      final t = sec.round();
+      return '${t ~/ 60}:${(t % 60).toString().padLeft(2, '0')}';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+      decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white24)),
+      child: Column(children: [
+        Row(children: [
+          const Icon(Icons.content_cut_rounded, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Text('${mmss(d.start)} – ${mmss(d.end)}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+          const Spacer(),
+          Text('${(d.end - d.start).round()} s',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ]),
+        RangeSlider(
+          values: d,
+          min: 0,
+          max: total <= 0 ? 1 : total,
+          activeColor: AppColors.accent,
+          inactiveColor: Colors.white24,
+          onChanged: (v) => setState(() {
+            var debut = v.start, fin = v.end;
+            // 30 s maximum : on décale l'autre poignée
+            if (fin - debut > _dureeMaxStory) {
+              if (debut != d.start) {
+                fin = debut + _dureeMaxStory;
+              } else {
+                debut = fin - _dureeMaxStory;
+              }
+            }
+            if (fin - debut < 1) return; // 1 s minimum
+            _decoupe = RangeValues(debut, fin);
+          }),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─── BOUTON DE L'ÉDITEUR ──────────────────────────────────────────
+
+class _BoutonEditeur extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool actif;
+  final VoidCallback onTap;
+  const _BoutonEditeur(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.actif = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+            color: actif ? AppColors.accent.withOpacity(0.2) : Colors.black54,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: actif ? AppColors.accent : Colors.white24)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Encodage JPEG hors du fil principal (pas de saccade à la publication).
+List<int> _encoderJpeg(Map<String, Object> m) {
+  final image = img.Image.fromBytes(
+    width: m['w'] as int,
+    height: m['h'] as int,
+    bytes: (m['rgba'] as Uint8List).buffer,
+    numChannels: 4,
+  );
+  return img.encodeJpg(image, quality: 85);
 }
 
 // ─── PUCE DE VISIBILITÉ ───────────────────────────────────────────
@@ -2488,7 +2776,10 @@ class _VisibilityChip extends StatelessWidget {
 
 class _VideoPreview extends StatefulWidget {
   final String path;
-  const _VideoPreview({required this.path});
+  final Duration? debut, fin; // passage joué en boucle
+  final ValueChanged<Duration>? onDuree;
+  const _VideoPreview(
+      {required this.path, this.debut, this.fin, this.onDuree});
   @override
   State<_VideoPreview> createState() => _VideoPreviewState();
 }
@@ -2506,11 +2797,39 @@ class _VideoPreviewState extends State<_VideoPreview> {
   Future<void> _init() async {
     final ctrl = VideoPlayerController.file(File(widget.path));
     _ctrl = ctrl;
-    await ctrl.initialize();
+    try {
+      await ctrl.initialize();
+    } catch (e) {
+      debugPrint('Aperçu vidéo impossible : $e');
+      return;
+    }
     if (!mounted) return;
     ctrl.setLooping(true);
+    ctrl.addListener(_boucler);
     ctrl.play();
     setState(() => _ready = true);
+    widget.onDuree?.call(ctrl.value.duration);
+  }
+
+  // Reboucle sur le passage choisi
+  void _boucler() {
+    final c = _ctrl;
+    if (c == null || !c.value.isInitialized) return;
+    final debut = widget.debut ?? Duration.zero;
+    final fin = widget.fin;
+    final pos = c.value.position;
+    if ((fin != null && pos >= fin) || pos < debut - const Duration(milliseconds: 300)) {
+      c.seekTo(debut);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _VideoPreview old) {
+    super.didUpdateWidget(old);
+    // Poignée « début » déplacée : on montre tout de suite ce passage
+    if (old.debut != widget.debut && widget.debut != null) {
+      _ctrl?.seekTo(widget.debut!);
+    }
   }
 
   @override

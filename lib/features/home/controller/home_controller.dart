@@ -969,6 +969,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       userPhotoUrl: profile?['photo_url'],
       mediaUrl: row['media_url'] ?? '',
       caption: row['caption'],
+      legendeX: (row['legende_x'] as num?)?.toDouble(),
+      legendeY: (row['legende_y'] as num?)?.toDouble(),
+      legendeEchelle: (row['legende_echelle'] as num?)?.toDouble(),
+      videoDebutMs: (row['video_debut_ms'] as num?)?.toInt(),
+      videoFinMs: (row['video_fin_ms'] as num?)?.toInt(),
       isVideo: row['is_video'] ?? false,
       isSeen: viewedBy.contains(uid) || _viewedStoryIds.contains(row['id']),
       // ✅ Parse tolérant au fuseau (voir StoryModel.parseDbTimestamp)
@@ -1067,6 +1072,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     String? caption,
     required double durationHours,
     required String visibility,
+    // Éditeur façon Snap (colonnes du script 20261003000023)
+    Map<String, dynamic> edition = const {},
   }) async {
     final uid = _myUid;
     if (uid == null) return;
@@ -1096,7 +1103,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       final expiresAt =
           DateTime.now().add(Duration(minutes: (durationHours * 60).round()));
 
-      final inserted = await Supabase.instance.client.from('stories').insert({
+      final ligne = {
         'user_id': uid,
         'media_url': mediaUrl,
         'is_video': isVideo,
@@ -1106,7 +1113,26 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         'expires_at': expiresAt.toUtc().toIso8601String(),
         'viewed_by': [],
         'visibility': visibility,
-      }).select('id').single();
+      };
+      Map<String, dynamic> inserted;
+      try {
+        inserted = await Supabase.instance.client
+            .from('stories')
+            .insert({...ligne, ...edition})
+            .select('id')
+            .single();
+      } on PostgrestException catch (e) {
+        // Colonnes de l'éditeur absentes (script pas encore exécuté) :
+        // on publie quand même, sans position de légende ni découpe.
+        if (edition.isEmpty || (e.code != 'PGRST204' && e.code != '42703')) {
+          rethrow;
+        }
+        inserted = await Supabase.instance.client
+            .from('stories')
+            .insert(ligne)
+            .select('id')
+            .single();
+      }
       storyUploadProgress.value = 0.8;
 
       // ✅ Modération : une story explicite est supprimée par le

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -407,6 +408,9 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
         if (!mounted) return;
         setState(() => _videoReady = true);
         ctrl.setLooping(true);
+        // Vidéo raccourcie : boucle sur le passage choisi par l'auteur
+        jouerPassage(ctrl,
+            debut: widget.story.videoDebut, fin: widget.story.videoFin);
         if (_isVisible) {
           ctrl.play();
           ctrl.setVolume(_muted ? 0 : 1);
@@ -815,7 +819,19 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
               ),
           ]),
         ),
-        if (!_replyFocused && s.caption != null && s.caption!.isNotEmpty)
+        if (!_replyFocused &&
+            s.legendePlacee &&
+            (s.caption ?? '').isNotEmpty)
+          LegendePlacee(
+            texte: s.caption!,
+            x: s.legendeX!,
+            y: s.legendeY!,
+            echelle: s.legendeEchelle ?? 1,
+          ),
+        if (!_replyFocused &&
+            !s.legendePlacee &&
+            s.caption != null &&
+            s.caption!.isNotEmpty)
           Positioned(
             bottom: keyboardH > 0 ? keyboardH + 76 : bottomPad + 76,
             left: 16,

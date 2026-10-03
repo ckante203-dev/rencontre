@@ -23,6 +23,15 @@ class StoryModel {
   final String? textContent;
   final String? bgColor; // ex: "#FF3CAC", stocké en hex
 
+  // Éditeur façon Snap : légende placée par l'auteur (centre, en fraction
+  // de l'écran 0–1) et agrandie (échelle). null = légende classique en bas.
+  final double? legendeX;
+  final double? legendeY;
+  final double? legendeEchelle;
+  // Vidéo raccourcie : seul le passage [début, fin] est joué (ms).
+  final int? videoDebutMs;
+  final int? videoFinMs;
+
   const StoryModel({
     required this.id,
     required this.userId,
@@ -44,7 +53,20 @@ class StoryModel {
     this.showDistance = true,
     this.textContent, // ✅ NOUVEAU
     this.bgColor, // ✅ NOUVEAU
+    this.legendeX,
+    this.legendeY,
+    this.legendeEchelle,
+    this.videoDebutMs,
+    this.videoFinMs,
   });
+
+  bool get legendePlacee => legendeX != null && legendeY != null;
+
+  /// Passage de la vidéo à jouer (null = toute la vidéo).
+  Duration? get videoDebut =>
+      videoDebutMs == null ? null : Duration(milliseconds: videoDebutMs!);
+  Duration? get videoFin =>
+      videoFinMs == null ? null : Duration(milliseconds: videoFinMs!);
 
   // ✅ Parse un horodatage renvoyé par Supabase. Si la chaîne n'a pas
   // d'indicateur de fuseau (colonne `timestamp` sans tz), Dart la lirait
@@ -105,6 +127,11 @@ class StoryModel {
       showDistance: showDistance,
       textContent: textContent,
       bgColor: bgColor,
+      legendeX: legendeX,
+      legendeY: legendeY,
+      legendeEchelle: legendeEchelle,
+      videoDebutMs: videoDebutMs,
+      videoFinMs: videoFinMs,
     );
   }
 }
