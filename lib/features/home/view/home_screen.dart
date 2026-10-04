@@ -492,7 +492,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
 
   late String _gender;
   late double _distance;
-  String? _ville; // ✈️ null = ma position
+  VilleVoyage? _ville; // ✈️ null = ma position
   late RangeValues _age;
 
   static const _genders = [
@@ -506,11 +506,26 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
     super.initState();
     _gender = controller.filterGender.value;
     _distance = controller.filterDistance.value;
-    _ville = controller.villeVoyageActive;
+    _ville = controller.villeVoyageChoisie;
     _age = controller.filterAge.value;
   }
 
-  void _choisirVille(String? nom) {
+  /// Liste des villes (recherche, groupées par pays), puis choix.
+  Future<void> _ouvrirVilles() async {
+    if (!ControleurProfil.estPremiumMaintenant()) {
+      _choisirVille(const VilleVoyage('', 0, 0)); // → paywall
+      return;
+    }
+    controller.chargerVillesVoyage();
+    final choix = await Get.bottomSheet<_ChoixVille>(
+      _ChoixVilleSheet(actuelle: _ville),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+    if (choix != null) _choisirVille(choix.ville);
+  }
+
+  void _choisirVille(VilleVoyage? nom) {
     if (nom != null && !ControleurProfil.estPremiumMaintenant()) {
       Get.back();
       if (Get.isRegistered<RevenueCatService>()) {
@@ -539,7 +554,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
     controller.filterGender.value = _gender;
     controller.filterDistance.value = _distance;
     controller.filterAge.value = _age;
-    if (_ville != controller.villeVoyageActive) {
+    if (_ville?.libelle != controller.villeVoyageChoisie?.libelle) {
       controller.choisirVilleVoyage(_ville);
     }
     Get.back();
@@ -764,12 +779,13 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   actif: _ville == null,
                   onTap: () => _choisirVille(null),
                 ),
-                for (final v in HomeController.villesVoyage)
-                  _ChipVille(
-                    label: v.nom,
-                    actif: _ville == v.nom,
-                    onTap: () => _choisirVille(v.nom),
-                  ),
+                _ChipVille(
+                  label: _ville == null
+                      ? '✈️ Choisir une ville…'
+                      : '✈️ ${_ville!.drapeau} ${_ville!.nom}',
+                  actif: _ville != null,
+                  onTap: _ouvrirVilles,
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -803,6 +819,182 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Résultat du choix (ville = null → « Ma position »).
+class _ChoixVille {
+  final VilleVoyage? ville;
+  const _ChoixVille(this.ville);
+}
+
+/// Liste des villes du mode voyage : recherche + regroupement par pays,
+/// avec le nombre de profils autour de chaque ville.
+class _ChoixVilleSheet extends StatefulWidget {
+  final VilleVoyage? actuelle;
+  const _ChoixVilleSheet({this.actuelle});
+
+  @override
+  State<_ChoixVilleSheet> createState() => _ChoixVilleSheetState();
+}
+
+class _ChoixVilleSheetState extends State<_ChoixVilleSheet> {
+  final _recherche = TextEditingController();
+  String _q = '';
+
+  @override
+  void dispose() {
+    _recherche.dispose();
+    super.dispose();
+  }
+
+  String _sansAccent(String t) => t
+      .toLowerCase()
+      .replaceAll(RegExp('[éèêë]'), 'e')
+      .replaceAll(RegExp('[àâä]'), 'a')
+      .replaceAll(RegExp('[îï]'), 'i')
+      .replaceAll(RegExp('[ôö]'), 'o')
+      .replaceAll(RegExp('[ùûü]'), 'u')
+      .replaceAll('ç', 'c');
+
+  @override
+  Widget build(BuildContext context) {
+    final home = Get.find<HomeController>();
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(children: [
+        const SizedBox(height: 10),
+        Container(
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+              color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+        ),
+        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            controller: _recherche,
+            onChanged: (v) => setState(() => _q = _sansAccent(v.trim())),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Rechercher une ville ou un pays',
+              hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted),
+              filled: true,
+              fillColor: AppColors.surface2,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Obx(() {
+            final villes = home.villesDisponibles.where((v) =>
+                _q.isEmpty ||
+                _sansAccent(v.nom).contains(_q) ||
+                _sansAccent(v.pays).contains(_q));
+            // Regroupement par pays (ordre de la table conservé)
+            final parPays = <String, List<VilleVoyage>>{};
+            for (final v in villes) {
+              parPays.putIfAbsent('${v.drapeau} ${v.pays}', () => []).add(v);
+            }
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              children: [
+                if (_q.isEmpty)
+                  _LigneVille(
+                    titre: '📍 Ma position',
+                    sousTitre: 'Les profils autour de moi',
+                    actif: widget.actuelle == null,
+                    onTap: () => Get.back(result: const _ChoixVille(null)),
+                  ),
+                if (parPays.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Aucune ville trouvée',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.textMuted)),
+                  ),
+                for (final pays in parPays.entries) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14, bottom: 6),
+                    child: Text(pays.key.toUpperCase(),
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: AppColors.textMuted)),
+                  ),
+                  for (final v in pays.value)
+                    _LigneVille(
+                      titre: v.nom,
+                      sousTitre: v.nbProfils == null
+                          ? null
+                          : v.nbProfils == 0
+                              ? 'Pas encore de profils'
+                              : '${v.nbProfils} profil${v.nbProfils! > 1 ? 's' : ''}',
+                      actif: widget.actuelle?.libelle == v.libelle,
+                      onTap: () => Get.back(result: _ChoixVille(v)),
+                    ),
+                ],
+              ],
+            );
+          }),
+        ),
+      ]),
+    );
+  }
+}
+
+class _LigneVille extends StatelessWidget {
+  final String titre;
+  final String? sousTitre;
+  final bool actif;
+  final VoidCallback onTap;
+  const _LigneVille(
+      {required this.titre,
+      this.sousTitre,
+      required this.actif,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        child: Row(children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titre,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: actif ? FontWeight.w700 : FontWeight.w500,
+                        color: AppColors.textPrimary)),
+                if (sousTitre != null)
+                  Text(sousTitre!,
+                      style:
+                          TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          if (actif)
+            Icon(Icons.check_circle_rounded, color: AppColors.accent, size: 20),
+        ]),
       ),
     );
   }

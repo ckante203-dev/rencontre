@@ -17,12 +17,32 @@ import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 
-/// Ville proposée par le mode voyage.
+/// Ville proposée par le mode voyage (table villes_voyage).
 class VilleVoyage {
   final String nom;
   final double lat;
   final double lng;
-  const VilleVoyage(this.nom, this.lat, this.lng);
+  final String pays;
+  final String drapeau;
+  final int? nbProfils; // profils à moins de 30 km (null = inconnu)
+  const VilleVoyage(this.nom, this.lat, this.lng,
+      {this.pays = "Côte d'Ivoire", this.drapeau = '🇨🇮', this.nbProfils});
+
+  String get libelle => '$nom, $pays';
+
+  Map<String, dynamic> toJson() =>
+      {'nom': nom, 'lat': lat, 'lng': lng, 'pays': pays, 'drapeau': drapeau};
+
+  static VilleVoyage? fromJson(dynamic m) {
+    if (m is! Map) return null;
+    final lat = (m['lat'] as num?)?.toDouble();
+    final lng = (m['lng'] as num?)?.toDouble();
+    if (m['nom'] == null || lat == null || lng == null) return null;
+    return VilleVoyage(m['nom'] as String, lat, lng,
+        pays: (m['pays'] as String?) ?? "Côte d'Ivoire",
+        drapeau: (m['drapeau'] as String?) ?? '',
+        nbProfils: (m['nb_profils'] as num?)?.toInt());
+  }
 }
 
 class HomeController extends GetxController with WidgetsBindingObserver {
@@ -67,7 +87,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   // ✈️ MODE VOYAGE (Premium) : les profils et distances sont calculés depuis
   // une ville choisie au lieu de ma position. Ma vraie position reste celle
   // publiée (les autres ne me voient pas « déplacé »).
-  static const villesVoyage = <VilleVoyage>[
+  // Liste de secours (Côte d'Ivoire) tant que la table villes_voyage n'a pas
+  // répondu (script 20261003000024). Les pays s'ouvrent depuis Supabase.
+  static const villesParDefaut = <VilleVoyage>[
     VilleVoyage('Abidjan', 5.3600, -4.0083),
     VilleVoyage('Bouaké', 7.6906, -5.0303),
     VilleVoyage('Yamoussoukro', 6.8276, -5.2893),
@@ -80,13 +102,30 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     VilleVoyage('Assinie', 5.1300, -3.2900),
   ];
   static const _kVilleVoyage = 'ville_voyage';
-  final Rxn<String> villeVoyage = Rxn<String>();
+  final Rxn<VilleVoyage> villeVoyage = Rxn<VilleVoyage>();
+  final RxList<VilleVoyage> villesDisponibles =
+      <VilleVoyage>[...villesParDefaut].obs;
+
+  /// Villes actives (tous pays ouverts) + nombre de profils autour.
+  Future<void> chargerVillesVoyage() async {
+    try {
+      final rows = await Supabase.instance.client
+          .rpc('villes_voyage_disponibles') as List;
+      final villes = rows.map(VilleVoyage.fromJson).whereType<VilleVoyage>();
+      if (villes.isNotEmpty) villesDisponibles.assignAll(villes);
+    } catch (e) {
+      debugPrint('chargerVillesVoyage : $e'); // liste de secours gardée
+    }
+  }
 
   VilleVoyage? get _villeActive {
-    final nom = villeVoyage.value;
-    if (nom == null || !ControleurProfil.estPremiumMaintenant()) return null;
-    return villesVoyage.firstWhereOrNull((v) => v.nom == nom);
+    final v = villeVoyage.value;
+    if (v == null || !ControleurProfil.estPremiumMaintenant()) return null;
+    return v;
   }
+
+  /// Ville explorée complète (null = ma position).
+  VilleVoyage? get villeVoyageChoisie => _villeActive;
 
   /// Ville explorée (null = ma position). Ignorée si le Premium a expiré.
   String? get villeVoyageActive => _villeActive?.nom;
@@ -95,12 +134,12 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   double? get _lngRecherche => _villeActive?.lng ?? _myLng;
 
   /// null = revenir à ma position.
-  Future<void> choisirVilleVoyage(String? nom) async {
-    villeVoyage.value = nom;
-    if (nom == null) {
+  Future<void> choisirVilleVoyage(VilleVoyage? ville) async {
+    villeVoyage.value = ville;
+    if (ville == null) {
       _storageBox.remove(_kVilleVoyage);
     } else {
-      _storageBox.write(_kVilleVoyage, nom);
+      _storageBox.write(_kVilleVoyage, ville.toJson());
     }
     await loadProfiles();
     await loadStories();
@@ -367,7 +406,13 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
-    villeVoyage.value = _storageBox.read<String>(_kVilleVoyage);
+    // Ville gardée en mémoire (avec ses coordonnées : utilisable tout de
+    // suite). Ancien format = juste le nom d'une ville ivoirienne.
+    final gardee = _storageBox.read(_kVilleVoyage);
+    villeVoyage.value = gardee is String
+        ? villesParDefaut.firstWhereOrNull((v) => v.nom == gardee)
+        : VilleVoyage.fromJson(gardee);
+    chargerVillesVoyage();
     _init();
     chargerFavoris();
   }

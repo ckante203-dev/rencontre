@@ -48,7 +48,8 @@ async function getAuthUser(req: Request): Promise<{ id: string; email?: string }
 //   profile-photos : "<uid>/<ts>.ext"
 //   snaps          : "snaps/<uid>/...", "photos/<uid>/...", "audio/<uid>/..."
 //   stories        : "stories/<uid>/..."
-const BUCKETS = ["avatars", "profile-photos", "snaps", "stories"];
+// albums : album privé, chemins "<uid>/<ts>.jpg"
+const BUCKETS = ["avatars", "profile-photos", "snaps", "stories", "albums"];
 const SUBFOLDERS = ["avatars", "snaps", "photos", "audio", "videos", "stories"];
 
 async function listAllFiles(bucket: string, prefix: string, depth = 0): Promise<string[]> {
@@ -170,20 +171,58 @@ async function deleteUserRows(uid: string): Promise<string[]> {
     await safeDelete("matches", "user1_id", uid),
     await safeDelete("matches", "user2_id", uid),
     await safeDelete("reports", "reporter_id", uid),
+    // album_photos / album_acces / favoris : supprimés en cascade avec le
+    // profil ; favoris_alertes n'a pas de clé étrangère.
+    await safeDelete("favoris_alertes", "user_id", uid),
+    await safeDelete("favoris_alertes", "favori_id", uid),
   );
   return errs.filter((e): e is string => e !== null);
 }
 
+// Vrai si l'utilisateur connecté est un administrateur (table admins).
+async function isAdmin(user: { email?: string }): Promise<boolean> {
+  if (!user.email) return false;
+  const { data } = await admin
+    .from("admins")
+    .select("email")
+    .eq("email", user.email)
+    .maybeSingle();
+  return data != null;
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────
-// Appelée par l'app (controleur_profil.dart) avec le JWT de l'utilisateur,
-// sans body. Supprime les fichiers, les données puis le compte.
+// • App (controleur_profil.dart) : JWT de l'utilisateur, sans body →
+//   supprime SON compte.
+// • Panneau admin : JWT d'un admin + body { "user_id": "<uuid>" } →
+//   supprime ce compte-là (refusé si l'appelant n'est pas dans admins).
+// Supprime les fichiers, les données puis le compte.
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
     const user = await getAuthUser(req);
     if (!user) return json({ error: "unauthorized" }, 401);
-    const uid = user.id;
+
+    let cible: string | undefined;
+    try {
+      const body = await req.json();
+      if (body && typeof body.user_id === "string") cible = body.user_id;
+    } catch (_) {
+      // pas de body : suppression de son propre compte
+    }
+
+    let uid = user.id;
+    if (cible && cible !== user.id) {
+      if (!UUID_RE.test(cible)) return json({ error: "user_id invalide" }, 400);
+      if (!(await isAdmin(user))) return json({ error: "forbidden" }, 403);
+      // Un admin ne peut pas supprimer un autre admin par ce biais
+      const { data: cibleUser } = await admin.auth.admin.getUserById(cible);
+      if (cibleUser?.user && (await isAdmin(cibleUser.user))) {
+        return json({ error: "impossible de supprimer un admin" }, 403);
+      }
+      uid = cible;
+      console.log(`Suppression admin du compte ${cible} par ${user.email}`);
+    }
 
     // 1. Fichiers Storage (non bloquant : on journalise les erreurs)
     const storageErrors = await deleteUserFiles(uid);

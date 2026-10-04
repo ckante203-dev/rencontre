@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/reponse_photo_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -1134,6 +1135,10 @@ class _ReplyBarState extends State<_ReplyBar> {
   @override
   Widget build(BuildContext context) {
     return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      // 📷 Répondre en photo (snap éphémère), façon Snap
+      BoutonReponsePhoto(
+          story: widget.story, onActif: widget.onFocusChanged),
+      const SizedBox(width: 8),
       Expanded(
           child: Container(
         constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
