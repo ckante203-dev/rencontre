@@ -52,7 +52,16 @@ class ListeGroupes extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.textMuted, height: 1.5)),
               ),
-            for (final g in liste) _TuileGroupe(groupe: g),
+            for (final g in liste) ...[
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 80,
+                endIndent: 16,
+                color: Color.lerp(AppColors.border, AppColors.textMuted, 0.3),
+              ),
+              _TuileGroupe(groupe: g),
+            ],
           ],
         ),
       );

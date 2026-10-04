@@ -630,72 +630,18 @@ class _PreviewSheetState extends State<_PreviewSheet> {
     );
   }
 
-  Future<void> _envoyer() async {
+  /// La feuille se ferme tout de suite : l'envoi (compression vidéo,
+  /// téléversement) continue en arrière-plan dans la discussion.
+  void _envoyer() {
     if (!widget.ctrl.peutEnvoyer()) return;
-    setState(() => _uploading = true);
-    try {
-      final file = File(widget.filePath);
-      final uid = widget.ctrl.myId;
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      String storagePath, contentType, msgType, msgContent;
-      if (widget.isVideo) {
-        storagePath = 'snaps/$uid/video_$ts.mp4';
-        contentType = 'video/mp4';
-        msgType = 'image';
-        msgContent = '🎬 Vidéo';
-      } else if (_modeEphemere) {
-        storagePath = 'snaps/$uid/snap_$ts.jpg';
-        contentType = 'image/jpeg';
-        msgType = 'snap';
-        msgContent = '📸 Photo éphémère';
-      } else {
-        storagePath = 'snaps/$uid/photo_$ts.jpg';
-        contentType = 'image/jpeg';
-        msgType = 'image';
-        msgContent = '📷 Photo';
-      }
-      if (_sensible) {
-        // Le texte sert de marqueur : « 🔞 Photo », « 🔞 Vidéo »…
-        msgContent = '${ConversationController.prefixeSensible} '
-            '${msgContent.substring(msgContent.indexOf(' ') + 1)}';
-      }
-      await Supabase.instance.client.storage.from('snaps').upload(
-          storagePath, file,
-          fileOptions: FileOptions(upsert: true, contentType: contentType));
-      final url = Supabase.instance.client.storage
-          .from('snaps')
-          .getPublicUrl(storagePath);
-      // ✅ FIX — horodatages envoyés en UTC (timestamptz)
-      final now = DateTime.now().toUtc().toIso8601String();
-      await Supabase.instance.client.from('messages').insert({
-        'conversation_id': widget.ctrl.conversation.id,
-        'sender_id': widget.ctrl.myId,
-        'type': msgType,
-        'content': msgContent,
-        'media_url': url,
-        'status': 'sent',
-        'created_at': now,
-        if (_modeEphemere && _duree.seconds != null)
-          'snap_duration': _duree.seconds,
-      });
-      await Supabase.instance.client
-          .from('conversations')
-          .update({'updated_at': now}).eq('id', widget.ctrl.conversation.id);
-      if (mounted) Get.back();
-    } catch (e) {
-      if (widget.ctrl.gererRefusServeur(e)) {
-        if (mounted) setState(() => _uploading = false);
-        return;
-      }
-      Get.snackbar('Erreur',
-          e.toString().substring(0, e.toString().length.clamp(0, 100)),
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.error,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 6));
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
+    widget.ctrl.envoyerMediaEnFond(
+      chemin: widget.filePath,
+      video: widget.isVideo,
+      ephemere: _modeEphemere && !widget.isVideo,
+      snapSecondes: _modeEphemere ? _duree.seconds : null,
+      sensible: _sensible,
+    );
+    Get.back();
   }
 }
 

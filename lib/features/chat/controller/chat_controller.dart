@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:get/get.dart';
+import 'package:video_compress/video_compress.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:get_storage/get_storage.dart';
@@ -1762,17 +1763,9 @@ class ConversationController extends GetxController
             .toIso8601String(),
       }).eq('id', msg.id);
     } catch (_) {}
-    if (duration > 0) {
-      Timer(Duration(seconds: duration), () {
-        final i = messages.indexWhere((m) => m.id == msg.id);
-        if (i != -1) messages.removeAt(i);
-      });
-    } else {
-      Timer(const Duration(milliseconds: 500), () {
-        final i = messages.indexWhere((m) => m.id == msg.id);
-        if (i != -1) messages.removeAt(i);
-      });
-    }
+    // Comme Snapchat : le snap n'est plus visible mais une trace
+    // « Snap ouvert » reste dans la discussion (la bulle passe d'elle-même
+    // en trace à la fin du compte à rebours ; le serveur supprime la photo).
   }
 
   Future<void> envoyerPhotoEphemere() async {
@@ -1849,6 +1842,157 @@ class ConversationController extends GetxController
   }
 
   void toggleAttachMenu() => showAttachMenu.toggle();
+
+  /// Étape d'envoi des médias en cours (« Compression… », « Envoi… »),
+  /// par id temporaire de message : affichée sur la bulle.
+  static final RxMap<String, String> etatsEnvoi = <String, String>{}.obs;
+
+  /// Photo / vidéo / snap envoyé EN ARRIÈRE-PLAN, comme WhatsApp : la
+  /// bulle apparaît tout de suite (aperçu local), la vidéo est compressée
+  /// (720p) puis envoyée avec sa vignette ; on peut continuer à écrire.
+  Future<void> envoyerMediaEnFond({
+    required String chemin,
+    required bool video,
+    bool ephemere = false,
+    int? snapSecondes,
+    bool sensible = false,
+  }) async {
+    if (!peutEnvoyer()) return;
+    final uid = _service.currentUserId!;
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final tempId = 'temp_media_$ts';
+    var contenu = video
+        ? '🎬 Vidéo'
+        : ephemere
+            ? '📸 Photo éphémère'
+            : '📷 Photo';
+    if (sensible) {
+      // Le texte sert de marqueur : « 🔞 Photo », « 🔞 Vidéo »…
+      contenu = '$prefixeSensible ${contenu.substring(contenu.indexOf(' ') + 1)}';
+    }
+    final type = !video && ephemere ? MessageType.snap : MessageType.image;
+    messages.add(MessageModel(
+      id: tempId,
+      senderId: uid,
+      text: contenu,
+      mediaUrl: chemin, // aperçu local pendant l'envoi
+      type: type,
+      status: MessageStatus.sending,
+      createdAt: DateTime.now(),
+    ));
+    void maj(MessageModel Function(MessageModel) f) {
+      final i = messages.indexWhere((m) => m.id == tempId);
+      if (i != -1) messages[i] = f(messages[i]);
+    }
+
+    var fichier = File(chemin);
+    File? vignette;
+    int? dureeSec;
+    try {
+      if (video) {
+        etatsEnvoi[tempId] = 'Préparation…';
+        try {
+          vignette = await VideoCompress.getFileThumbnail(chemin,
+              quality: 60, position: -1);
+          final info = await VideoCompress.getMediaInfo(chemin);
+          if (info.duration != null) dureeSec = (info.duration! / 1000).round();
+          maj((m) => m.copyWith(
+              vignetteUrl: vignette?.path, audioDurationSec: dureeSec));
+          // Compression 720p si la vidéo dépasse ~6 Mo
+          if ((info.filesize ?? 0) > 6 * 1024 * 1024) {
+            etatsEnvoi[tempId] = 'Compression…';
+            final c = await VideoCompress.compressVideo(chemin,
+                quality: VideoQuality.Res1280x720Quality,
+                deleteOrigin: false,
+                includeAudio: true);
+            if (c?.file != null) fichier = c!.file!;
+          }
+        } catch (e) {
+          debugPrint('compression vidéo : $e'); // on envoie l'original
+        }
+      }
+      etatsEnvoi[tempId] = 'Envoi…';
+      final dossier = ephemere && !video ? 'snaps' : 'photos';
+      final base = '$dossier/$uid/${video ? 'video' : 'photo'}_$ts';
+      final cheminMedia = '$base.${video ? 'mp4' : 'jpg'}';
+      final store = Supabase.instance.client.storage.from('snaps');
+      await store.upload(cheminMedia, fichier,
+          fileOptions: FileOptions(
+              upsert: true, contentType: video ? 'video/mp4' : 'image/jpeg'));
+      final url = store.getPublicUrl(cheminMedia);
+      String? urlVignette;
+      if (vignette != null) {
+        try {
+          await store.upload('$base.jpg', vignette,
+              fileOptions:
+                  const FileOptions(upsert: true, contentType: 'image/jpeg'));
+          urlVignette = store.getPublicUrl('$base.jpg');
+        } catch (_) {}
+      }
+      final now = DateTime.now().toUtc().toIso8601String();
+      final ligne = {
+        'conversation_id': conversation.id,
+        'sender_id': uid,
+        'type': type == MessageType.snap ? 'snap' : 'image',
+        'content': contenu,
+        'media_url': url,
+        'status': 'sent',
+        'created_at': now,
+        if (ephemere && snapSecondes != null) 'snap_duration': snapSecondes,
+        if (dureeSec != null) 'audio_duration': dureeSec,
+      };
+      Map<String, dynamic> enregistre;
+      try {
+        enregistre = await Supabase.instance.client
+            .from('messages')
+            .insert({...ligne, if (urlVignette != null) 'vignette_url': urlVignette})
+            .select()
+            .single();
+      } on PostgrestException catch (e) {
+        // Colonne vignette_url absente (script SQL 039 pas encore passé)
+        if (e.code != 'PGRST204' && e.code != '42703') rethrow;
+        enregistre = await Supabase.instance.client
+            .from('messages')
+            .insert(ligne)
+            .select()
+            .single();
+      }
+      await Supabase.instance.client
+          .from('conversations')
+          .update({'updated_at': now}).eq('id', conversation.id);
+      // La bulle temporaire devient le vrai message
+      final vrai = _rowToMessage(enregistre);
+      messages.removeWhere((m) => m.id == tempId);
+      if (!messages.any((m) => m.id == vrai.id)) messages.add(vrai);
+    } catch (e) {
+      messages.removeWhere((m) => m.id == tempId);
+      if (gererRefusServeur(e)) return;
+      Get.snackbar(
+          video ? 'Vidéo non envoyée' : 'Photo non envoyée',
+          'Vérifie ta connexion et réessaie',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+          mainButton: TextButton(
+            onPressed: () => envoyerMediaEnFond(
+                chemin: chemin,
+                video: video,
+                ephemere: ephemere,
+                snapSecondes: snapSecondes,
+                sensible: sensible),
+            child: Text('Réessayer',
+                style: TextStyle(color: AppColors.accent)),
+          ));
+    } finally {
+      etatsEnvoi.remove(tempId);
+      if (video) {
+        try {
+          await VideoCompress.deleteAllCache();
+        } catch (_) {}
+      }
+    }
+  }
 
   /// Contenu texte des messages sticker / GIF (sert aussi à les reconnaître).
   static const texteSticker = '🎨 Sticker';
@@ -2199,6 +2343,7 @@ class ConversationController extends GetxController
       modifieLe: row['modifie_le'] != null
           ? DateTime.tryParse(row['modifie_le'].toString())?.toLocal()
           : null,
+      vignetteUrl: row['vignette_url'] as String?,
     );
   }
 

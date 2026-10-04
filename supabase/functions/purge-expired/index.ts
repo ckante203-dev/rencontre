@@ -3,9 +3,11 @@
 // Purge automatique (appelée par pg_cron toutes les 15 min) :
 //   1. stories expirées (expires_at dépassé) → fichier du bucket `stories`
 //      + commentaires + ligne supprimés ;
-//   2. messages lus depuis plus de 24h (read_at), snaps ouverts dont le
-//      délai est écoulé (expires_at) et anciens messages « mode éphémère »
-//      (disappears_at) → fichier du bucket `snaps` + ligne supprimés ;
+//   2. snaps ouverts dont le délai est écoulé (expires_at) → seule la
+//      photo est supprimée, le message reste comme trace « Snap ouvert » ;
+//      messages lus depuis plus de 24h (read_at), traces de snaps de plus
+//      de 24h et anciens messages « mode éphémère » (disappears_at) →
+//      fichier du bucket `snaps` + ligne supprimés ;
 //   3. fichiers en attente dans `storage_a_supprimer` (lignes supprimées
 //      en SQL, dont le fichier restait dans le Storage).
 //
@@ -104,16 +106,42 @@ async function purgeStories(deadline: number) {
 async function purgeMessages(deadline: number) {
   let rows = 0;
   let files = 0;
+  const maintenant = () => new Date().toISOString();
+
+  // 1. Snaps ouverts dont le délai est écoulé : on supprime la PHOTO mais
+  //    on garde le message (trace « Snap ouvert » dans la discussion,
+  //    comme Snapchat). Il part ensuite avec la règle des 24 h ci-dessous.
+  while (Date.now() < deadline) {
+    const { data, error } = await admin
+      .from("messages")
+      .select("id, media_url")
+      .lt("expires_at", maintenant())
+      .not("media_url", "is", null)
+      .limit(BATCH);
+    if (error) throw new Error(`snaps select: ${error.message}`);
+    if (!data || data.length === 0) break;
+    const ids = data.map((m: any) => m.id);
+    const paths = data
+      .map((m: any) => pathFromUrl(m.media_url, "snaps"))
+      .filter((p: string | null): p is string => !!p);
+    files += await removeFiles("snaps", paths);
+    const { error: uErr } = await admin.from("messages")
+      .update({ media_url: null }).in("id", ids);
+    if (uErr) throw new Error(`snaps update: ${uErr.message}`);
+    if (data.length < BATCH) break;
+  }
+
+  // 2. Messages supprimés pour de bon : lus depuis plus de 24 h, anciens
+  //    messages « mode éphémère » (disappears_at), traces de snaps expirés
+  //    depuis plus de 24 h.
   while (Date.now() < deadline) {
     const limitDate = new Date(Date.now() - MESSAGE_TTL_MS).toISOString();
     const { data, error } = await admin
       .from("messages")
       .select("id, media_url")
-      // Lu depuis plus de 24h, OU snap ouvert dont le délai est écoulé
-      // (expires_at), OU ancien message « mode éphémère » (disappears_at).
       .or(
-        `read_at.lt.${limitDate},expires_at.lt.${new Date().toISOString()},` +
-          `disappears_at.lt.${new Date().toISOString()}`,
+        `read_at.lt.${limitDate},expires_at.lt.${limitDate},` +
+          `disappears_at.lt.${maintenant()}`,
       )
       .limit(BATCH);
     if (error) throw new Error(`messages select: ${error.message}`);

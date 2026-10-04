@@ -111,6 +111,8 @@ class MessageModel {
   final StoryReplyData? storyReply;
   // Date de modification du texte (null = jamais modifié)
   final DateTime? modifieLe;
+  // Vidéo : image d'aperçu (URL, ou chemin local pendant l'envoi)
+  final String? vignetteUrl;
 
   // Réponse à une annonce (style WhatsApp statut)
   final AnnonceReplyData? annonceReply;
@@ -134,7 +136,11 @@ class MessageModel {
     this.storyReply,
     this.annonceReply,
     this.modifieLe,
+    this.vignetteUrl,
   });
+
+  /// Message encore en cours d'envoi (pas encore enregistré en base).
+  bool get enEnvoi => id.startsWith('temp_');
 
   /// On peut modifier son message texte pendant 15 minutes (WhatsApp).
   static const delaiModification = Duration(minutes: 15);
@@ -189,6 +195,7 @@ class MessageModel {
     StoryReplyData? storyReply,
     AnnonceReplyData? annonceReply,
     DateTime? modifieLe,
+    String? vignetteUrl,
     bool clearPhoto = false,
   }) {
     return MessageModel(
@@ -210,6 +217,7 @@ class MessageModel {
       storyReply: storyReply ?? this.storyReply,
       annonceReply: annonceReply ?? this.annonceReply,
       modifieLe: modifieLe ?? this.modifieLe,
+      vignetteUrl: vignetteUrl ?? this.vignetteUrl,
     );
   }
 }

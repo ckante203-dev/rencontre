@@ -190,6 +190,8 @@ class _SnapBubbleState extends State<_SnapBubble> {
       );
     }
 
+    // Trace laissée après l'ouverture (comme Snapchat) : la photo n'existe
+    // plus, mais on sait qu'un snap a été reçu et vu.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
@@ -197,10 +199,20 @@ class _SnapBubbleState extends State<_SnapBubble> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.timer_off_rounded, size: 14, color: AppColors.textMuted),
-        SizedBox(width: 6),
-        Text('Snap expiré',
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+        Icon(Icons.photo_camera_outlined, size: 15, color: AppColors.accent),
+        const SizedBox(width: 8),
+        Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(msg.isOpened ? 'Snap ouvert' : 'Snap expiré',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
+              Text(msg.isOpened ? 'Photo éphémère vue ✓' : 'Non ouvert à temps',
+                  style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+            ]),
       ]),
     );
   }
@@ -330,66 +342,140 @@ class _MediaBubble extends StatelessWidget {
         isVideo;
   }
 
+  // Pendant l'envoi, la photo / vidéo est encore un fichier du téléphone
+  static bool _local(String? u) => u != null && u.isNotEmpty && !u.startsWith('http');
+
+  static String _duree(int s) =>
+      '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+
+  Widget _image(String src, {double w = 220, double h = 260}) => _local(src)
+      ? Image.file(File(src),
+          width: w,
+          height: h,
+          fit: BoxFit.cover,
+          cacheWidth: 440,
+          errorBuilder: (_, __, ___) => _fallback())
+      : CachedNetworkImage(
+          imageUrl: src,
+          width: w,
+          height: h,
+          fit: BoxFit.cover,
+          fadeInDuration: const Duration(milliseconds: 100),
+          memCacheWidth: 440,
+          placeholder: (_, __) => Container(
+              width: w,
+              height: h,
+              color: AppColors.surface2,
+              child: Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.accent, strokeWidth: 2))),
+          errorWidget: (_, __, ___) => _fallback());
+
   @override
   Widget build(BuildContext context) {
     if (msg.mediaUrl == null || msg.mediaUrl!.isEmpty) return _fallback();
-    // ✅ Une vidéo n'est pas une image : CachedNetworkImage échouait et
-    // affichait une image cassée, sans le bouton lecture.
-    final vignetteVideo = _isVideoUrl
-        ? Container(
-            width: 220,
-            height: 220,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.surface2, AppColors.bg],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    final video = _isVideoUrl;
+    final vignette = msg.vignetteUrl ?? '';
+
+    Widget contenu;
+    if (video) {
+      // Vidéo : son image + bouton lecture + durée (comme WhatsApp)
+      contenu = SizedBox(
+        width: 220,
+        height: 260,
+        child: Stack(fit: StackFit.expand, children: [
+          if (vignette.isNotEmpty)
+            _image(vignette)
+          else
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.surface2, AppColors.bg],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.play_circle_filled_rounded,
-                    color: Colors.white, size: 56),
-                SizedBox(height: 6),
-                Text('Vidéo',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-              ],
+          if (!msg.enEnvoi)
+            const Center(
+              child: CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.black45,
+                child: Icon(Icons.play_arrow_rounded,
+                    color: Colors.white, size: 34),
+              ),
             ),
-          )
-        : null;
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(10)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.videocam_rounded,
+                    color: Colors.white, size: 13),
+                if (msg.audioDurationSec != null) ...[
+                  const SizedBox(width: 4),
+                  Text(_duree(msg.audioDurationSec!),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ]),
+            ),
+          ),
+        ]),
+      );
+    } else {
+      contenu = _image(msg.mediaUrl!);
+    }
+
+    // Envoi en cours : voile + étape (Compression… / Envoi…)
+    if (msg.enEnvoi) {
+      contenu = Stack(children: [
+        contenu,
+        Positioned.fill(
+          child: Container(
+            color: Colors.black45,
+            child: Center(
+              child: Obx(() {
+                final etat =
+                    ConversationController.etatsEnvoi[msg.id] ?? 'Envoi…';
+                return Column(mainAxisSize: MainAxisSize.min, children: [
+                  const SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 3, color: Colors.white)),
+                  const SizedBox(height: 8),
+                  Text(etat,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ]);
+              }),
+            ),
+          ),
+        ),
+      ]);
+    }
+
     return GestureDetector(
-      onTap: () {
-        final ctx = Get.context ?? context;
-        Navigator.push(
-            ctx,
-            MaterialPageRoute(
-                builder: (_) => _PleinEcranMedia(
-                    url: msg.mediaUrl!, isVideo: _isVideoUrl)));
-      },
-      child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: vignetteVideo ??
-              Stack(children: [
-            CachedNetworkImage(
-                imageUrl: msg.mediaUrl!,
-                width: 220,
-                height: 220,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 100),
-                memCacheWidth: 440,
-                placeholder: (_, __) => Container(
-                    width: 220,
-                    height: 220,
-                    color: AppColors.surface2,
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.accent, strokeWidth: 2))),
-                errorWidget: (_, __, ___) => _fallback()),
-          ])),
+      onTap: msg.enEnvoi
+          ? null
+          : () {
+              final ctx = Get.context ?? context;
+              Navigator.push(
+                  ctx,
+                  MaterialPageRoute(
+                      builder: (_) => _PleinEcranMedia(
+                          url: msg.mediaUrl!, isVideo: video)));
+            },
+      child: ClipRRect(borderRadius: BorderRadius.circular(14), child: contenu),
     );
   }
 

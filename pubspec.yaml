@@ -80,6 +80,7 @@ dependencies:
   mobile_scanner: ^7.4.2
   image_picker_android: ^0.8.13+17
   image_picker_platform_interface: ^2.11.1
+  video_compress: ^3.1.4
 
 dev_dependencies:
   flutter_test:

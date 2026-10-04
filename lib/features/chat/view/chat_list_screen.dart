@@ -315,12 +315,13 @@ class _ConversationList extends GetView<ChatListController> {
         return ListView.separated(
           physics: const BouncingScrollPhysics(),
           itemCount: list.length,
+          // Séparation bien visible entre deux discussions
           separatorBuilder: (_, __) => Divider(
             height: 1,
-            thickness: 0.5,
+            thickness: 1,
             indent: 80,
             endIndent: 16,
-            color: AppColors.border.withValues(alpha: 0.6),
+            color: Color.lerp(AppColors.border, AppColors.textMuted, 0.3),
           ),
           itemBuilder: (_, i) => _ConversationTile(conv: list[i]),
         );
