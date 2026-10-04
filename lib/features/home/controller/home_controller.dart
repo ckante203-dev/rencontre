@@ -763,6 +763,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     final age = filterAge.value;
     final list = profiles.where((u) {
       if (filterMode.value == 'online' && !u.isOnline) return false;
+      if (filterMode.value == 'dispo' && !u.estDispo) return false;
       if (filterMode.value == 'favoris' && !favoris.contains(u.id)) {
         return false;
       }

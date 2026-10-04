@@ -202,6 +202,14 @@ class EcranParametres extends StatelessWidget {
                     ctrl.majReglage(ctrl.showBirthdate, 'show_birthdate', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
+                icon: '🔍',
+                title: 'Me trouver par mon nom d\'utilisateur',
+                subtitle: 'Les autres peuvent te chercher par @pseudo dans Messages',
+                value: ctrl.trouvableParPseudo.value,
+                onChanged: (v) => ctrl.majReglage(
+                    ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v))),
+            const SizedBox(height: 10),
+            Obx(() => _Toggle(
                 icon: '📍',
                 title: 'Afficher ma distance',
                 subtitle: 'Les autres voient à quelle distance tu es',

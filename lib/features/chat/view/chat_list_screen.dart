@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/shared/models/user_model.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
@@ -110,7 +111,7 @@ class _SearchBar extends GetView<ChatListController> {
                     style:
                         TextStyle(fontSize: 14, color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'Rechercher une conversation...',
+                      hintText: 'Conversation ou @pseudo…',
                       hintStyle:
                           TextStyle(color: AppColors.textMuted, fontSize: 14),
                       prefixIcon: Icon(Icons.search_rounded,
@@ -256,6 +257,11 @@ class _ConversationList extends GetView<ChatListController> {
         if (ctrl.isLoading.value) return _buildShimmer();
 
         final list = ctrl.filteredConversations;
+
+        // Recherche : conversations + profils trouvés par pseudo
+        if (ctrl.searchQuery.value.trim().isNotEmpty) {
+          return _ResultatsRecherche(conversations: list);
+        }
 
         if (list.isEmpty) {
           if (ctrl.searchQuery.value.isNotEmpty) {
@@ -908,6 +914,128 @@ class _AvatarWithStoryRing extends StatelessWidget {
       transition: Transition.fadeIn,
     );
     homeCtrl.markStoryAsSeen(userStories.first.id);
+  }
+}
+
+// ─── RECHERCHE : conversations + profils Zamu par pseudo ──────────
+
+class _ResultatsRecherche extends GetView<ChatListController> {
+  final List<ConversationModel> conversations;
+  const _ResultatsRecherche({required this.conversations});
+
+  Widget _titre(String texte) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+        child: Text(texte.toUpperCase(),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppColors.textMuted)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final profils = controller.profilsTrouves;
+      final chercheProfils = controller.pseudoCherche.isNotEmpty;
+      final enCours = controller.rechercheProfils.value;
+      final rien = conversations.isEmpty &&
+          (!chercheProfils || (profils.isEmpty && !enCours));
+      if (rien) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.search_off_rounded,
+                  size: 48, color: AppColors.textMuted),
+              const SizedBox(height: 12),
+              Text(
+                chercheProfils
+                    ? 'Aucun résultat pour "${controller.searchQuery.value}"'
+                    : 'Tape au moins 3 lettres d\'un @pseudo\npour chercher un profil',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ]),
+          ),
+        );
+      }
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        children: [
+          if (conversations.isNotEmpty) ...[
+            _titre('Mes conversations'),
+            for (final c in conversations) _ConversationTile(conv: c),
+          ],
+          if (chercheProfils) ...[
+            _titre('Profils Zamu'),
+            if (enCours && profils.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.accent))),
+              ),
+            for (final p in profils)
+              ListTile(
+                onTap: () => Get.toNamed('/profile/view',
+                    arguments: UserModel(
+                      id: p.id,
+                      name: p.name,
+                      age: 18,
+                      photoUrl: p.photoUrl,
+                      isOnline: p.enLigne,
+                    )),
+                leading: Stack(children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.surface2,
+                    backgroundImage: (p.photoUrl ?? '').isNotEmpty
+                        ? CachedNetworkImageProvider(p.photoUrl!)
+                        : null,
+                    child: (p.photoUrl ?? '').isEmpty
+                        ? Text(p.name.isEmpty ? '?' : p.name[0].toUpperCase(),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700))
+                        : null,
+                  ),
+                  if (p.enLigne)
+                    Positioned(
+                      bottom: 1,
+                      right: 1,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                            color: AppColors.online,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.bg, width: 2)),
+                      ),
+                    ),
+                ]),
+                title: Text(p.name,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary)),
+                subtitle: Text('@${p.username}',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                trailing: Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textMuted),
+              ),
+            if (!enCours && profils.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: Text('Aucun profil avec ce pseudo',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              ),
+          ],
+        ],
+      );
+    });
   }
 }
 

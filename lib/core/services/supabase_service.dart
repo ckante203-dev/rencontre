@@ -666,6 +666,10 @@ class SupabaseService {
       boostJusqua: row['boost_jusqua'] != null
           ? DateTime.tryParse(row['boost_jusqua'].toString())?.toLocal()
           : null,
+      dispoTexte: row['dispo_texte'] as String?,
+      dispoJusqua: row['dispo_jusqua'] != null
+          ? DateTime.tryParse(row['dispo_jusqua'].toString())?.toLocal()
+          : null,
     );
   }
 }

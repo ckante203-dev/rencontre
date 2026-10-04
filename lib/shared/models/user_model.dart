@@ -27,6 +27,8 @@ class UserModel {
   final bool showBirthdate; // ✅ NOUVEAU — masque l'âge si false
   final bool showDistance; // ✅ réglage « Afficher ma distance »
   final DateTime? boostJusqua; // Boost acheté : fin de la mise en avant
+  final String? dispoTexte; // Statut « Dispo maintenant » (☕ café…)
+  final DateTime? dispoJusqua; // fin du statut
 
   const UserModel({
     required this.id,
@@ -55,6 +57,8 @@ class UserModel {
     this.showBirthdate = true, // ✅ NOUVEAU
     this.showDistance = true,
     this.boostJusqua,
+    this.dispoTexte,
+    this.dispoJusqua,
   });
 
   // ✅ Nouveau membre = inscrit depuis moins de 7 jours
@@ -62,6 +66,12 @@ class UserModel {
     if (createdAt == null) return false;
     return DateTime.now().difference(createdAt!).inDays < 7;
   }
+
+  /// Statut « Dispo maintenant » encore valable.
+  bool get estDispo =>
+      (dispoTexte ?? '').isNotEmpty &&
+      dispoJusqua != null &&
+      dispoJusqua!.isAfter(DateTime.now());
 
   /// Profil mis en avant (Boost en cours).
   bool get estBooste =>
@@ -95,6 +105,8 @@ class UserModel {
     bool? showBirthdate,
     bool? showDistance,
     DateTime? boostJusqua,
+    String? dispoTexte,
+    DateTime? dispoJusqua,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -123,6 +135,8 @@ class UserModel {
         showBirthdate: showBirthdate ?? this.showBirthdate,
         showDistance: showDistance ?? this.showDistance,
         boostJusqua: boostJusqua ?? this.boostJusqua,
+        dispoTexte: dispoTexte ?? this.dispoTexte,
+        dispoJusqua: dispoJusqua ?? this.dispoJusqua,
       );
 
   /// "175cm · 70kg"

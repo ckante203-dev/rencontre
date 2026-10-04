@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/carte_dispo.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -916,6 +917,36 @@ class _CorpsProfil extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
+          if (user.estDispo) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.online.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.online.withOpacity(0.5)),
+              ),
+              child: Row(children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                      color: AppColors.online, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(user.dispoTexte!,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                ),
+                Text(dureeRestanteDispo(user.dispoJusqua!),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ]),
+            ),
+            const SizedBox(height: 12),
+          ],
           BoutonAlbumPrive(ownerId: user.id, nom: user.name),
           if (user.taille != null ||
               user.poids != null ||

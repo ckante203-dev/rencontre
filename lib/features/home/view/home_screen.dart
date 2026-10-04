@@ -306,6 +306,7 @@ class _FilterItem {
 const _filterItems = [
   _FilterItem(mode: 'all', label: 'Tous', icon: '⚡'),
   _FilterItem(mode: 'online', label: 'En ligne', icon: '🟢'),
+  _FilterItem(mode: 'dispo', label: 'Dispo', icon: '🙋'),
   _FilterItem(mode: 'nearby', label: 'Proches', icon: '📍'),
   _FilterItem(mode: 'new', label: 'Nouveaux', icon: '✨'),
   _FilterItem(mode: 'favoris', label: 'Favoris', icon: '⭐'),
@@ -1561,6 +1562,23 @@ class _UserCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (user.estDispo)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.online.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(user.dispoTexte!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700)),
+                        ),
                       Text(
                           user.showBirthdate
                               ? '${user.name}, ${user.age}'

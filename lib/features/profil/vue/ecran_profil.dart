@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/carte_dispo.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -39,6 +42,10 @@ class EcranProfil extends StatelessWidget {
                 const SizedBox(height: 16),
                 _NomStatut(ctrl: ctrl),
                 const SizedBox(height: 18),
+                _CartePseudo(ctrl: ctrl),
+                const SizedBox(height: 14),
+                CarteDispo(ctrl: ctrl),
+                const SizedBox(height: 14),
                 _Completion(ctrl: ctrl),
                 _Stats(),
                 const SizedBox(height: 14),
@@ -487,6 +494,341 @@ class _CartePremium extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+// ─── MON @PSEUDO (façon Snapchat) ───────────────────────────────
+// Le pseudo que la personne donne à ses amis pour qu'ils la retrouvent
+// dans Messages (🔍). Elle peut le changer, le partager, et choisir d'être
+// introuvable.
+
+class _CartePseudo extends StatelessWidget {
+  final ControleurProfil ctrl;
+  const _CartePseudo({required this.ctrl});
+
+  void _partager(String pseudo) {
+    SharePlus.instance.share(ShareParams(
+      text: 'Retrouve-moi sur Zamu 💬 : @$pseudo\n'
+          'Cherche mon pseudo dans Messages 🔍\n'
+          'https://play.google.com/store/apps/details?id=com.vybestyle.zamu',
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Obx(() {
+        final pseudo = ctrl.monUsername.value;
+        final aucun = pseudo.isEmpty;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradientPink,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Text('@',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(aucun ? 'Choisis ton pseudo' : '@$pseudo',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text(
+                          aucun
+                              ? 'Tes amis pourront te retrouver avec'
+                              : 'Donne-le à tes amis pour qu\'ils te retrouvent',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                  child: _BoutonCarte(
+                    icon: Icons.edit_rounded,
+                    label: aucun ? 'Choisir' : 'Modifier',
+                    onTap: () => Get.bottomSheet(
+                      _FeuillePseudo(ctrl: ctrl),
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                    ),
+                  ),
+                ),
+                if (!aucun) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _BoutonCarte(
+                      icon: Icons.copy_rounded,
+                      label: 'Copier',
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: '@$pseudo'));
+                        Get.snackbar('Copié', '@$pseudo',
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor: AppColors.surface,
+                            colorText: Colors.white,
+                            duration: const Duration(seconds: 2));
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _BoutonCarte(
+                      icon: Icons.share_rounded,
+                      label: 'Partager',
+                      degrade: true,
+                      onTap: () => _partager(pseudo),
+                    ),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(
+                  child: Text('Les autres peuvent me trouver avec ce pseudo',
+                      style: TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary)),
+                ),
+                Switch.adaptive(
+                  value: ctrl.trouvableParPseudo.value,
+                  activeColor: AppColors.accent,
+                  onChanged: (v) => ctrl.majReglage(
+                      ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v),
+                ),
+              ]),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _BoutonCarte extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool degrade;
+  final VoidCallback onTap;
+  const _BoutonCarte(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.degrade = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          gradient: degrade ? AppColors.gradientPink : null,
+          color: degrade ? null : AppColors.surface2,
+          borderRadius: BorderRadius.circular(12),
+          border: degrade ? null : Border.all(color: AppColors.border),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Choisir / modifier son @pseudo (disponibilité vérifiée en direct).
+class _FeuillePseudo extends StatefulWidget {
+  final ControleurProfil ctrl;
+  const _FeuillePseudo({required this.ctrl});
+
+  @override
+  State<_FeuillePseudo> createState() => _FeuillePseudoState();
+}
+
+class _FeuillePseudoState extends State<_FeuillePseudo> {
+  late final TextEditingController _champ =
+      TextEditingController(text: widget.ctrl.monUsername.value);
+  bool _envoi = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Repartir propre (pas d'état « déjà pris » d'une saisie précédente)
+    widget.ctrl.usernameText.value = widget.ctrl.monUsername.value;
+    widget.ctrl.usernameDispo.value = null;
+  }
+
+  @override
+  void dispose() {
+    _champ.dispose();
+    super.dispose();
+  }
+
+  Future<void> _valider() async {
+    setState(() => _envoi = true);
+    final ok = await widget.ctrl.enregistrerPseudo(_champ.text);
+    if (!mounted) return;
+    setState(() => _envoi = false);
+    if (ok) Get.back();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = widget.ctrl;
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Ton @pseudo',
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text('3 à 20 caractères : lettres, chiffres, . ou _',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            const SizedBox(height: 14),
+            Obx(() {
+              final saisi = ctrl.usernameText.value;
+              final inchange = saisi == ctrl.monUsername.value;
+              final dispo = ctrl.usernameDispo.value;
+              Widget? suffix;
+              if (ctrl.verifUsername.value) {
+                suffix = Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.accent)),
+                );
+              } else if (!inchange && dispo == true) {
+                suffix = Icon(Icons.check_circle_rounded,
+                    color: AppColors.online, size: 20);
+              } else if (!inchange && dispo == false) {
+                suffix =
+                    Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+              }
+              return TextField(
+                controller: _champ,
+                autofocus: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                maxLength: 20,
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+                  TextInputFormatter.withFunction((ancien, nouveau) =>
+                      nouveau.copyWith(text: nouveau.text.toLowerCase())),
+                ],
+                onChanged: (v) {
+                  ctrl.usernameText.value = v;
+                  ctrl.verifierUsername(v);
+                },
+                onSubmitted: (_) => _valider(),
+                decoration: InputDecoration(
+                  prefixText: '@ ',
+                  prefixStyle:
+                      TextStyle(color: AppColors.textMuted, fontSize: 16),
+                  hintText: 'ton_pseudo',
+                  hintStyle: TextStyle(color: AppColors.textMuted),
+                  suffixIcon: suffix,
+                  helperText: !inchange && dispo == true
+                      ? 'Disponible'
+                      : !inchange && dispo == false
+                          ? 'Déjà pris ou invalide'
+                          : null,
+                  helperStyle: TextStyle(
+                      color: dispo == true ? AppColors.online : AppColors.error),
+                  filled: true,
+                  fillColor: AppColors.surface2,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: _envoi ? null : _valider,
+              child: Container(
+                width: double.infinity,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: _envoi
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Text('Enregistrer',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -71,6 +71,15 @@ class ControleurProfil extends GetxController {
   final RxBool notifSon = true.obs;
   // ⭐ Alertes : favori en ligne / proche / dans ma ville
   final RxBool notifFavoris = true.obs;
+  // Recherche par pseudo dans Messages : désactivé = introuvable
+  final RxBool trouvableParPseudo = true.obs;
+  // Statut « Dispo maintenant »
+  final RxnString dispoTexte = RxnString();
+  final Rxn<DateTime> dispoJusqua = Rxn<DateTime>();
+  bool get dispoActive =>
+      (dispoTexte.value ?? '').isNotEmpty &&
+      dispoJusqua.value != null &&
+      dispoJusqua.value!.isAfter(DateTime.now());
   final RxBool profilPublic = true.obs;
   final RxBool showDistance = true.obs;
   final RxString selectedTheme = 'dark'.obs;
@@ -277,6 +286,11 @@ class ControleurProfil extends GetxController {
       notifStories.value = data['notif_stories'] ?? true;
       notifSon.value = data['notif_son'] ?? true;
       notifFavoris.value = data['notif_favoris'] ?? true;
+      trouvableParPseudo.value = data['trouvable_par_pseudo'] ?? true;
+      dispoTexte.value = data['dispo_texte'] as String?;
+      dispoJusqua.value = data['dispo_jusqua'] != null
+          ? DateTime.tryParse(data['dispo_jusqua'].toString())?.toLocal()
+          : null;
       NotificationService.sonActive = notifSon.value;
       profilPublic.value = data['is_public'] ?? true;
       showDistance.value = data['show_distance'] ?? true;
@@ -685,6 +699,44 @@ class ControleurProfil extends GetxController {
     }
   }
 
+  /// Enregistre le @pseudo seul (carte « Mon @pseudo » du profil).
+  /// Renvoie true si c'est enregistré.
+  Future<bool> enregistrerPseudo(String saisi) async {
+    final uid = supabase.auth.currentUser?.id;
+    final u = saisi.trim().toLowerCase();
+    if (uid == null) return false;
+    if (u == monUsername.value) return true;
+    if (!_usernameRegex.hasMatch(u)) {
+      _snackError(
+          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)');
+      return false;
+    }
+    if (usernameDispo.value == false) {
+      _snackError('Ce nom d\'utilisateur est déjà pris');
+      return false;
+    }
+    try {
+      await supabase.from('profiles').update({
+        'username': u,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', uid);
+      monUsername.value = u;
+      usernameController.text = u;
+      usernameText.value = u;
+      _snackSuccess('Ton pseudo est maintenant @$u');
+      return true;
+    } on PostgrestException catch (e) {
+      // 23505 : quelqu'un l'a pris entre-temps (contrainte unique)
+      _snackError(e.code == '23505'
+          ? 'Ce nom d\'utilisateur est déjà pris'
+          : 'Impossible d\'enregistrer le pseudo');
+      return false;
+    } catch (_) {
+      _snackError('Impossible d\'enregistrer le pseudo');
+      return false;
+    }
+  }
+
   Future<void> sauvegarderInfos() async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) {
@@ -807,6 +859,28 @@ class ControleurProfil extends GetxController {
       reglage.value = !valeur;
       if (colonne == 'notif_son') NotificationService.sonActive = !valeur;
     });
+  }
+
+  /// Publie (ou arrête si [texte] est null) le statut « Dispo maintenant ».
+  Future<bool> definirDispo(String? texte, Duration duree) async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return false;
+    final t = texte?.trim();
+    final fin = (t == null || t.isEmpty) ? null : DateTime.now().add(duree);
+    try {
+      await supabase.from('profiles').update({
+        'dispo_texte': fin == null ? null : t,
+        'dispo_jusqua': fin?.toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', uid);
+      dispoTexte.value = fin == null ? null : t;
+      dispoJusqua.value = fin;
+      return true;
+    } catch (e) {
+      debugPrint('definirDispo : $e'); // script SQL 028 absent ?
+      _snackError('Statut non enregistré, vérifie ta connexion');
+      return false;
+    }
   }
 
   Future<void> _enregistrerReglage(String colonne, Object? valeur,

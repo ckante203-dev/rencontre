@@ -22,6 +22,21 @@ import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
 enum ChatFilter { all, unread, online, favoris }
 
+/// Profil trouvé par son nom d'utilisateur (recherche dans Messages).
+class ProfilTrouve {
+  final String id;
+  final String name;
+  final String username;
+  final String? photoUrl;
+  final bool enLigne;
+  const ProfilTrouve(
+      {required this.id,
+      required this.name,
+      required this.username,
+      this.photoUrl,
+      this.enLigne = false});
+}
+
 class ChatListController extends GetxController {
   final _service = SupabaseService();
   final RxList<ConversationModel> conversations = <ConversationModel>[].obs;
@@ -29,6 +44,44 @@ class ChatListController extends GetxController {
   final Rx<ChatFilter> activeFilter = ChatFilter.all.obs;
   final RxBool isSearching = false.obs;
   final RxString searchQuery = ''.obs;
+  // Profils Zamu trouvés par pseudo (même sans conversation)
+  final RxList<ProfilTrouve> profilsTrouves = <ProfilTrouve>[].obs;
+  final RxBool rechercheProfils = false.obs;
+  int _rechercheNumero = 0;
+
+  /// Pseudo tapé (sans « @ »), ou '' s'il est trop court pour chercher.
+  String get pseudoCherche {
+    final q = searchQuery.value.trim().replaceFirst(RegExp(r'^@+'), '');
+    return q.length >= 3 ? q : '';
+  }
+
+  Future<void> _chercherProfils(String _) async {
+    final q = pseudoCherche;
+    final numero = ++_rechercheNumero;
+    if (q.isEmpty) {
+      profilsTrouves.clear();
+      rechercheProfils.value = false;
+      return;
+    }
+    rechercheProfils.value = true;
+    try {
+      final rows = await Supabase.instance.client
+          .rpc('chercher_par_pseudo', params: {'p_q': q}) as List;
+      if (numero != _rechercheNumero) return; // une recherche plus récente
+      profilsTrouves.assignAll(rows.map((r) => ProfilTrouve(
+            id: r['id'] as String,
+            name: (r['name'] as String?) ?? 'Utilisateur',
+            username: (r['username'] as String?) ?? '',
+            photoUrl: r['photo_url'] as String?,
+            enLigne: r['en_ligne'] == true,
+          )));
+    } catch (e) {
+      debugPrint('chercher_par_pseudo : $e'); // script SQL 027 absent
+      if (numero == _rechercheNumero) profilsTrouves.clear();
+    } finally {
+      if (numero == _rechercheNumero) rechercheProfils.value = false;
+    }
+  }
   RealtimeChannel? _channel;
   // Épinglées et « marquées non lues » : mémorisées sur cet appareil.
   final RxSet<String> pinnedIds = <String>{}.obs;
@@ -94,6 +147,9 @@ class ChatListController extends GetxController {
         .addAll(List<String>.from(_box.read<List>(_cleNonLues) ?? []));
     loadConversations();
     _subscribeToMessages();
+    // Recherche par pseudo : 400 ms après la dernière lettre tapée
+    debounce(searchQuery, _chercherProfils,
+        time: const Duration(milliseconds: 400));
   }
 
   Future<void> loadConversations({bool silent = false}) async {
