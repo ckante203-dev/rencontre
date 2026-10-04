@@ -133,23 +133,28 @@ async function purgeMessages(deadline: number) {
 
   // 2. Messages supprimés pour de bon : lus depuis plus de 24 h, anciens
   //    messages « mode éphémère » (disappears_at), traces de snaps expirés
-  //    depuis plus de 24 h.
+  //    depuis plus de 24 h. La vignette d'une vidéo part avec elle.
+  let colonnes = "id, media_url, vignette_url";
   while (Date.now() < deadline) {
     const limitDate = new Date(Date.now() - MESSAGE_TTL_MS).toISOString();
-    const { data, error } = await admin
-      .from("messages")
-      .select("id, media_url")
-      .or(
-        `read_at.lt.${limitDate},expires_at.lt.${limitDate},` +
-          `disappears_at.lt.${maintenant()}`,
-      )
-      .limit(BATCH);
+    const filtre =
+      `read_at.lt.${limitDate},expires_at.lt.${limitDate},` +
+      `disappears_at.lt.${maintenant()}`;
+    let { data, error } = await admin
+      .from("messages").select(colonnes).or(filtre).limit(BATCH);
+    // Colonne vignette_url absente (script SQL 039 pas passé) : sans elle
+    if (error && colonnes.includes("vignette_url")) {
+      colonnes = "id, media_url";
+      ({ data, error } = await admin
+        .from("messages").select(colonnes).or(filtre).limit(BATCH));
+    }
     if (error) throw new Error(`messages select: ${error.message}`);
     if (!data || data.length === 0) break;
 
     const ids = data.map((m: any) => m.id);
     const paths = data
-      .map((m: any) => pathFromUrl(m.media_url, "snaps"))
+      .flatMap((m: any) => [m.media_url, m.vignette_url])
+      .map((u: string | null) => pathFromUrl(u, "snaps"))
       .filter((p: string | null): p is string => !!p);
     files += await removeFiles("snaps", paths);
 
