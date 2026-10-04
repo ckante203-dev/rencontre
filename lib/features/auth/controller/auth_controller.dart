@@ -2,6 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/amis_controller.dart';
+import 'package:rencontre/features/groupes/groupes_controller.dart';
+import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
@@ -620,6 +623,11 @@ class AuthController extends GetxController {
     del<NotificationController>();
     del<UnreadMessagesController>();
     del<NavigationController>();
+    // Modules récents : sinon le compte suivant voyait un moment les
+    // amis / groupes / événements du compte précédent
+    del<EvenementsController>();
+    del<GroupesController>();
+    del<AmisController>();
   }
 
   // ─── HELPERS ───────────────────────────────────────────────

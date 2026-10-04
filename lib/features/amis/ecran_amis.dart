@@ -359,7 +359,13 @@ class _BoutonAmiState extends State<BoutonAmi> {
           borderRadius: BorderRadius.circular(22),
           border: plein ? null : Border.all(color: AppColors.border),
         ),
-        child: Center(child: contenu),
+        // Largeur = celle du texte (dans une ListTile, un Center prendrait
+        // toute la ligne)
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [contenu],
+        ),
       ),
     );
     // Demande reçue : « Accepter » + refuser (✕)
