@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/view/home_screen.dart';
@@ -61,6 +62,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
     if (!Get.isRegistered<ControleurProfil>()) {
       Get.put(ControleurProfil(), permanent: true);
+    }
+    if (!Get.isRegistered<EvenementsController>()) {
+      Get.put(EvenementsController(), permanent: true);
     }
 
     // Tap sur la barre du bas → la page suit (glissée si onglet voisin).
@@ -398,6 +402,7 @@ class _NavItemProfil extends StatelessWidget {
               }
               if (photo == null || photo.isEmpty) {
                 return AnimatedContainer(
+                  key: const ValueKey('profil-sans-photo'),
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -409,13 +414,16 @@ class _NavItemProfil extends StatelessWidget {
                   child: _bonhomme(),
                 );
               }
+              // Clé distincte : sinon Flutter anime le carré arrondi (sans
+              // photo) vers ce cercle, ce qui est impossible (erreur rouge).
               return AnimatedContainer(
+                key: const ValueKey('profil-photo'),
                 duration: const Duration(milliseconds: 200),
                 width: 34,
                 height: 34,
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(17),
                   border: Border.all(
                       color: isActive ? AppColors.accent : Colors.transparent,
                       width: 2),

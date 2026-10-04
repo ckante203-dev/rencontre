@@ -11,6 +11,9 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/chat/view/sticker_sheet.dart';
+import 'package:rencontre/features/home/widget/stickers_story.dart';
+import 'package:rencontre/features/home/widget/camera_story.dart';
 import 'package:rencontre/features/home/view/ecran_amis_proches.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -883,11 +886,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(s.userName,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700)),
+                                Flexible(
+                                  child: Text(s.userName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700)),
+                                ),
                                 if (s.visibility == 'friends') ...[
                                   const SizedBox(width: 6),
                                   Container(
@@ -954,6 +961,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           color: Colors.white, size: 18))),
             ]),
           ),
+          if (!_longPressing && !_replyFocused)
+            CoucheStickers(s.stickers),
           if (!_longPressing)
             // Légende placée par l'auteur (éditeur façon Snap)
             if (s.legendePlacee &&
@@ -1841,6 +1850,16 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   double _durationHours = 24;
   String _visibility = 'public';
   Future<int>? _nbAmisProches; // compteur de la liste, chargé une fois
+  Future<int>? _nbMasques;
+  // Stickers / emoji / GIF posés sur la story
+  final List<StickerStory> _stickers = [];
+  // Identifiant fixe de chaque sticker (sinon Flutter recrée le widget à
+  // chaque mouvement et le geste en cours est perdu)
+  final List<int> _stickerIds = [];
+  int _prochainStickerId = 0;
+  bool _deplacementSticker = false;
+  int? _texteEdite; // index du texte modifié, -1 = nouveau, null = aucun
+  bool _surCorbeille = false;
 
   bool _textMode = false;
   final _textCtrl = TextEditingController();
@@ -1862,24 +1881,56 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     _textCtrl.addListener(() => setState(() {}));
   }
 
-  Future<void> _pickMedia(ImageSource source, {bool video = false}) async {
-    try {
-      XFile? file;
-      if (video) {
-        file = await _picker.pickVideo(
-            source: source, maxDuration: const Duration(seconds: 30));
-      } else {
-        file = await _picker.pickImage(
-            source: source, maxWidth: 1080, maxHeight: 1920, imageQuality: 85);
-      }
-      if (file == null) return;
+  // Selfie : photo montrée (et publiée) comme dans le miroir de la caméra
+  bool _miroir = false;
+
+  void _setMedia(String chemin, bool video, [bool miroir = false]) =>
       setState(() {
-        _previewPath = file!.path;
+        _miroir = miroir && !video;
+        _stickers.clear();
+        _stickerIds.clear();
+        _previewPath = chemin;
         _isVideo = video;
         _cadrage.value = Matrix4.identity();
         _dureeVideo = Duration.zero;
         _decoupe = null;
       });
+
+  static final _extVideo = RegExp(r'\.(mp4|mov|3gp|mkv|webm|avi|m4v)$',
+      caseSensitive: false);
+
+  /// Vidéo ? Par l'extension, le type MIME, sinon l'en-tête du fichier
+  /// (certaines galeries renvoient un fichier sans extension).
+  static Future<bool> _estVideo(XFile f) async {
+    if (_extVideo.hasMatch(f.path)) return true;
+    final mime = f.mimeType ?? '';
+    if (mime.startsWith('video/')) return true;
+    if (mime.startsWith('image/')) return false;
+    try {
+      final raf = await File(f.path).open();
+      final h = await raf.read(12);
+      await raf.close();
+      if (h.length < 12) return false;
+      // MP4 / MOV / 3GP : « ftyp » à l'octet 4 (sauf HEIC / AVIF = images)
+      if (String.fromCharCodes(h.sublist(4, 8)) == 'ftyp') {
+        final marque = String.fromCharCodes(h.sublist(8, 12));
+        return !const {'heic', 'heix', 'mif1', 'msf1', 'avif', 'hevc'}
+            .contains(marque);
+      }
+      // MKV / WEBM
+      return h[0] == 0x1A && h[1] == 0x45 && h[2] == 0xDF && h[3] == 0xA3;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Galerie : photo OU vidéo dans le même sélecteur.
+  Future<void> _pickGalerie() async {
+    try {
+      final file = await _picker.pickMedia(
+          maxWidth: 1080, maxHeight: 1920, imageQuality: 85);
+      if (file == null) return;
+      _setMedia(file.path, await _estVideo(file));
     } catch (_) {
       _snack('Erreur lors de la sélection');
     }
@@ -1915,11 +1966,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
     // Photo zoomée / recadrée : on publie exactement ce qui est à l'écran.
     var fichier = file;
-    if (!_isVideo && !_cadrage.value.isIdentity()) {
+    // Recadrée ou selfie en miroir : on publie exactement ce qui est affiché
+    if (!_isVideo && (!_cadrage.value.isIdentity() || _miroir)) {
       fichier = await _capturerCadrage() ?? file;
     }
 
     final edition = <String, dynamic>{
+      if (_stickers.isNotEmpty)
+        'stickers': _stickers.map((s) => s.toJson()).toList(),
       if (safeCaption != null) ...{
         'legende_x': _legendePos.dx,
         'legende_y': _legendePos.dy,
@@ -2045,57 +2099,6 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: Colors.white);
-
-  void _showSourcePicker({required bool video}) {
-    showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (ctx) => SafeArea(
-            child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                      decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16)),
-                      child: Column(children: [
-                        _SourceOption(
-                            icon: Icons.camera_alt_rounded,
-                            label: video
-                                ? 'Filmer une vidéo'
-                                : 'Prendre une photo',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              _pickMedia(ImageSource.camera, video: video);
-                            },
-                            showDivider: true),
-                        _SourceOption(
-                            icon: Icons.photo_library_rounded,
-                            label: 'Choisir dans la galerie',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              _pickMedia(ImageSource.gallery, video: video);
-                            },
-                            showDivider: false),
-                      ])),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16)),
-                          child: Text('Annuler',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700)))),
-                ]))));
-  }
 
   void _showSettingsSheet() {
     showModalBottomSheet(
@@ -2248,6 +2251,49 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         );
                       },
                     ),
+                    const SizedBox(height: 8),
+                    // Masquer à : ne voient aucune de mes stories
+                    GestureDetector(
+                      onTap: () async {
+                        await Get.to(() => const EcranAmisProches(
+                            liste: ListeStory.masques));
+                        _nbMasques = nombreDansListe(ListeStory.masques);
+                        setSheetState(() {});
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(children: [
+                          Icon(Icons.block_rounded,
+                              color: AppColors.error, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FutureBuilder<int>(
+                              future: _nbMasques ??=
+                                  nombreDansListe(ListeStory.masques),
+                              builder: (_, snap) => Text(
+                                  snap.data == null || snap.data == 0
+                                      ? 'Masquer ma story à…'
+                                      : 'Masquée à ${snap.data} personne${snap.data! > 1 ? 's' : ''}',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                            ),
+                          ),
+                          Text('Gérer',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accent)),
+                        ]),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     GestureDetector(
                       onTap: () => Navigator.pop(ctx),
@@ -2296,6 +2342,16 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   Widget build(BuildContext context) {
     final canPublishText = _textMode && _textCtrl.text.trim().isNotEmpty;
 
+    // Caméra Zamu plein écran tant qu'aucun média n'est choisi
+    if (!_textMode && _previewPath == null) {
+      return CameraStory(
+        onMedia: _setMedia,
+        onGalerie: _pickGalerie,
+        onTexte: () => setState(() => _textMode = true),
+        onFermer: () => Get.back(result: false),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -2315,7 +2371,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               }
             }),
         actions: [
-          if (_previewPath != null || canPublishText)
+          if (canPublishText)
             GestureDetector(
                 onTap: _preparation
                     ? null
@@ -2342,7 +2398,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       ),
       body: _textMode
           ? _buildTextComposer()
-          : (_previewPath == null ? _buildPicker() : _buildPreview()),
+          : _buildPreview(),
     );
   }
 
@@ -2461,47 +2517,6 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     );
   }
 
-  Widget _buildPicker() => Center(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-                gradient: AppColors.gradientPink, shape: BoxShape.circle),
-            child: const Icon(Icons.add_a_photo_rounded,
-                color: Colors.white, size: 40)),
-        const SizedBox(height: 24),
-        const Text('Ajouter une story',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontFamily: 'Syne',
-                fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        const Text('Photo ou vidéo • Durée personnalisable',
-            style: TextStyle(color: Colors.white54, fontSize: 14)),
-        const SizedBox(height: 48),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            _BigBtn(
-                icon: Icons.photo_library_rounded,
-                label: 'Photo',
-                onTap: () => _showSourcePicker(video: false)),
-            _BigBtn(
-                icon: Icons.videocam_rounded,
-                label: 'Vidéo',
-                onTap: () => _showSourcePicker(video: true)),
-            _BigBtn(
-                icon: Icons.text_fields_rounded,
-                label: 'Texte',
-                onTap: () => setState(() => _textMode = true)),
-          ],
-        ),
-      ]));
-
   Widget _buildPreview() => LayoutBuilder(builder: (context, box) {
         final legende = _captionCtrl.text.trim();
         return Stack(fit: StackFit.expand, children: [
@@ -2532,7 +2547,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                   maxScale: 5,
                   child: SizedBox.expand(
                       child:
-                          Image.file(File(_previewPath!), fit: BoxFit.contain)),
+                          Transform.flip(
+                              flipX: _miroir,
+                              child: Image.file(File(_previewPath!),
+                                  fit: BoxFit.contain))),
                 ),
               ),
             ),
@@ -2593,8 +2611,54 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               ),
             ),
 
-          // ── Aide ──
+          // ── Stickers : glisser, pincer pour agrandir / tourner ──
           if (!_editionLegende)
+            for (var i = 0; i < _stickers.length; i++)
+              if (_texteEdite != i)
+              StickerEditable(
+                key: ValueKey(_stickerIds[i]),
+                sticker: _stickers[i],
+                zone: Size(box.maxWidth, box.maxHeight),
+                onChange: (n) => setState(() => _stickers[i] = n),
+                onTap: _stickers[i].estTexte ? () => _ouvrirTexte(i) : null,
+                onBouge: (enCours, doigt) {
+                  if (!enCours) {
+                    setState(() {
+                      if (_surCorbeille && i < _stickers.length) {
+                        _stickers.removeAt(i);
+                        _stickerIds.removeAt(i);
+                      }
+                      _deplacementSticker = false;
+                      _surCorbeille = false;
+                    });
+                    return;
+                  }
+                  // Corbeille : en bas au centre de l'écran
+                  final ecran = MediaQuery.of(context).size;
+                  final sur = doigt != null &&
+                      (doigt - Offset(ecran.width / 2, ecran.height - 80))
+                              .distance <
+                          60;
+                  if (!_deplacementSticker || sur != _surCorbeille) {
+                    setState(() {
+                      _deplacementSticker = true;
+                      _surCorbeille = sur;
+                    });
+                  }
+                },
+              ),
+          if (_deplacementSticker)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 50,
+              child: Center(
+                  child: IgnorePointer(
+                      child: CorbeilleSticker(survolee: _surCorbeille))),
+            ),
+
+          // ── Aide ──
+          if (!_editionLegende && !_deplacementSticker)
             Positioned(
               top: 12,
               left: 0,
@@ -2612,8 +2676,19 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               ),
             ),
 
+          // ── Saisie d'un texte (gras, fond, couleur) ──
+          if (_texteEdite != null)
+            Positioned.fill(
+              child: EditeurTexteStory(
+                initial: (_texteEdite! >= 0 && _texteEdite! < _stickers.length)
+                    ? _stickers[_texteEdite!]
+                    : null,
+                onValider: _validerTexte,
+              ),
+            ),
+
           // ── Barre du bas ──
-          if (!_editionLegende)
+          if (!_editionLegende && !_deplacementSticker && _texteEdite == null)
             Positioned(
                 bottom: 0,
                 left: 0,
@@ -2626,59 +2701,21 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (_isVideo && _decoupe != null) _barreDecoupe(),
-                            GestureDetector(
-                              onTap: _showSettingsSheet,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white24)),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.timer_outlined,
-                                        color: Colors.white, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text(_formatDuration(_durationHours),
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(width: 10),
-                                    Icon(
-                                        _visibility == 'public'
-                                            ? Icons.public_rounded
-                                            : Icons.star_rounded,
-                                        color: Colors.white,
-                                        size: 16),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                        _visibility == 'public'
-                                            ? 'Publique'
-                                            : 'Amis proches',
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(width: 4),
-                                    const Icon(Icons.expand_more_rounded,
-                                        color: Colors.white54, size: 16),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Row(children: [
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(children: [
                               _BoutonEditeur(
                                 icon: Icons.text_fields_rounded,
-                                label: legende.isEmpty
-                                    ? 'Légende'
-                                    : 'Modifier la légende',
-                                actif: legende.isNotEmpty,
-                                onTap: () =>
-                                    setState(() => _editionLegende = true),
+                                label: 'Texte',
+                                actif: _stickers.any((s) => s.estTexte),
+                                onTap: _ouvrirTexte,
+                              ),
+                              const SizedBox(width: 8),
+                              _BoutonEditeur(
+                                icon: Icons.emoji_emotions_rounded,
+                                label: 'Stickers',
+                                actif: _stickers.isNotEmpty,
+                                onTap: _ajouterSticker,
                               ),
                               if (!_isVideo &&
                                   !_cadrage.value.isIdentity()) ...[
@@ -2690,18 +2727,197 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                       _cadrage.value = Matrix4.identity()),
                                 ),
                               ],
-                              const Spacer(),
+                              const SizedBox(width: 8),
                               _BoutonEditeur(
                                 icon: Icons.refresh_rounded,
-                                label: 'Changer',
+                                label: 'Reprendre',
                                 onTap: () =>
                                     setState(() => _previewPath = null),
                               ),
-                            ]),
+                            ])),
+                            const SizedBox(height: 12),
+                            _barrePublication(),
                           ],
                         )))),
         ]);
       });
+
+  void _ouvrirTexte([int index = -1]) =>
+      setState(() => _texteEdite = index);
+
+  void _validerTexte(String texte, bool gras, int couleur, int fond) {
+    final i = _texteEdite;
+    setState(() {
+      _texteEdite = null;
+      if (i == null) return;
+      if (texte.isEmpty) {
+        // Texte vidé : on le retire
+        if (i >= 0 && i < _stickers.length) {
+          _stickers.removeAt(i);
+          _stickerIds.removeAt(i);
+        }
+        return;
+      }
+      if (i >= 0 && i < _stickers.length) {
+        _stickers[i] = _stickers[i]
+            .copyWith(valeur: texte, gras: gras, couleur: couleur, fond: fond);
+      } else if (_stickers.length < 20) {
+        final decalage = (_stickers.length % 5) * 0.05;
+        _stickers.add(StickerStory(
+            type: 'texte',
+            valeur: texte,
+            x: 0.5,
+            y: 0.3 + decalage,
+            gras: gras,
+            couleur: couleur,
+            fond: fond));
+        _stickerIds.add(_prochainStickerId++);
+      }
+    });
+  }
+
+  Future<void> _ajouterSticker() async {
+    if (_stickers.length >= 20) {
+      _snack('20 stickers maximum par story');
+      return;
+    }
+    final c = await choisirSticker(context, emojis: emojiStory);
+    if (c == null || !mounted) return;
+    final StickerStory s;
+    if (c.emoji != null) {
+      s = StickerStory(type: 'emoji', valeur: c.emoji!);
+    } else if (estUrlGiphy(c.url)) {
+      s = StickerStory(type: 'giphy', valeur: c.url);
+    } else {
+      return;
+    }
+    // Décalé un peu à chaque ajout pour ne pas empiler au même endroit
+    final decalage = (_stickers.length % 5) * 0.04;
+    setState(() {
+      _stickers.add(s.copyWith(x: 0.5 + decalage, y: 0.38 + decalage));
+      _stickerIds.add(_prochainStickerId++);
+    });
+  }
+
+  /// Bas de l'éditeur façon Snap : à qui (Publique / ⭐ Amis proches),
+  /// combien de temps, et Publier — sans ouvrir de menu.
+  Widget _barrePublication() {
+    Widget audience(String valeur, IconData icon, String label) {
+      final actif = _visibility == valeur;
+      return GestureDetector(
+        onTap: () async {
+          setState(() => _visibility = valeur);
+          if (valeur != 'friends') return;
+          final n = await (_nbAmisProches ??= nombreAmisProches());
+          if (n == 0 && mounted) {
+            Get.snackbar('Ta liste Amis proches est vide',
+                'Ajoute des personnes, sinon personne ne verra cette story',
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: AppColors.surface,
+                colorText: Colors.white,
+                mainButton: TextButton(
+                  onPressed: () async {
+                    await Get.to(() => const EcranAmisProches());
+                    _nbAmisProches = nombreAmisProches();
+                  },
+                  child: Text('Gérer',
+                      style: TextStyle(color: AppColors.accent)),
+                ));
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: actif
+                ? (valeur == 'friends' ? AppColors.online : Colors.white)
+                : Colors.black54,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: actif ? Colors.transparent : Colors.white24),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon,
+                size: 15,
+                color: actif && valeur != 'friends'
+                    ? Colors.black
+                    : Colors.white),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: actif && valeur != 'friends'
+                        ? Colors.black
+                        : Colors.white)),
+          ]),
+        ),
+      );
+    }
+
+    return Row(children: [
+      // Rétrécit sur les petits écrans plutôt que de déborder
+      Expanded(
+          child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(children: [
+      audience('public', Icons.public_rounded, 'Publique'),
+      const SizedBox(width: 6),
+      audience('friends', Icons.star_rounded, 'Proches'),
+      const SizedBox(width: 6),
+      // Durée (et liste Amis proches) : menu détaillé
+      GestureDetector(
+        onTap: _showSettingsSheet,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.timer_outlined, size: 15, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(_formatDuration(_durationHours),
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
+          ]),
+        ),
+      ),
+              ]))),
+      const SizedBox(width: 8),
+      GestureDetector(
+        onTap: _preparation ? null : _publish,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: AppColors.gradientPink,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Center(
+            child: _preparation
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('Publier',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800)),
+                    SizedBox(width: 6),
+                    Icon(Icons.send_rounded, color: Colors.white, size: 16),
+                  ]),
+          ),
+        ),
+      ),
+    ]);
+  }
 
   /// Curseur à deux poignées : début et fin du passage gardé (30 s max).
   Widget _barreDecoupe() {
@@ -2947,61 +3163,3 @@ class _VideoPreviewState extends State<_VideoPreview> {
 }
 
 // ─── WIDGETS UTILITAIRES ─────────────────────────────────────────
-
-class _BigBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _BigBtn({required this.icon, required this.label, required this.onTap});
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-          width: 130,
-          height: 56,
-          decoration: BoxDecoration(
-              gradient: AppColors.gradientPink,
-              borderRadius: BorderRadius.circular(16)),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15)),
-          ])));
-}
-
-class _SourceOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool showDivider;
-  const _SourceOption(
-      {required this.icon,
-      required this.label,
-      required this.onTap,
-      required this.showDivider});
-  @override
-  Widget build(BuildContext context) => Column(children: [
-        GestureDetector(
-            onTap: onTap,
-            child: Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                child: Row(children: [
-                  Icon(icon, color: Colors.white, size: 22),
-                  const SizedBox(width: 14),
-                  Text(label,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500))
-                ]))),
-        if (showDivider)
-          Divider(
-              height: 1, color: AppColors.surface2, indent: 20, endIndent: 20),
-      ]);
-}

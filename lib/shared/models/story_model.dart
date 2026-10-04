@@ -1,3 +1,5 @@
+import 'package:rencontre/features/home/widget/stickers_story.dart';
+
 class StoryModel {
   final String id;
   final String userId;
@@ -31,6 +33,8 @@ class StoryModel {
   // Vidéo raccourcie : seul le passage [début, fin] est joué (ms).
   final int? videoDebutMs;
   final int? videoFinMs;
+  // Stickers / emoji / GIF posés par l'auteur
+  final List<StickerStory> stickers;
 
   const StoryModel({
     required this.id,
@@ -58,6 +62,7 @@ class StoryModel {
     this.legendeEchelle,
     this.videoDebutMs,
     this.videoFinMs,
+    this.stickers = const [],
   });
 
   bool get legendePlacee => legendeX != null && legendeY != null;
@@ -132,6 +137,7 @@ class StoryModel {
       legendeEchelle: legendeEchelle,
       videoDebutMs: videoDebutMs,
       videoFinMs: videoFinMs,
+      stickers: stickers,
     );
   }
 }

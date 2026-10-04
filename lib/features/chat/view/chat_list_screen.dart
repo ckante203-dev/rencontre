@@ -447,7 +447,17 @@ class _ConversationTile extends GetView<ChatListController> {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Expanded(child: _buildLastMessage()),
+                      Expanded(
+                          child: Obx(() =>
+                              controller.convsQuiEcrivent.contains(conv.id)
+                                  ? Text("en train d'écrire…",
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontStyle: FontStyle.italic,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.accent))
+                                  : _buildLastMessage())),
                       if (conv.unreadCount > 0) ...[
                         const SizedBox(width: 8),
                         Container(

@@ -5,21 +5,35 @@ import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 
-// ─── STORIES « AMIS PROCHES » ─────────────────────────────────────
-// Ma liste : seules ces personnes voient mes stories « ⭐ Amis proches »
-// (filtré par la base, politique stories_amis_proches). Elles ne savent
-// pas qu'elles sont dans la liste.
+// ─── QUI VOIT MES STORIES ─────────────────────────────────────────
+// Deux listes, filtrées par la base (personne d'autre ne peut les lire,
+// les personnes ne savent pas qu'elles y sont) :
+// • ⭐ Amis proches : seuls eux voient mes stories « Amis proches »
+//   (politique stories_amis_proches) ;
+// • 🚫 Masquer à : ils ne voient AUCUNE de mes stories, même publiques
+//   (politique stories_masquees).
 
-/// Nombre de personnes dans ma liste (0 si erreur / script SQL absent).
-Future<int> nombreAmisProches() async {
+enum ListeStory {
+  proches('amis_proches', 'ami_id'),
+  masques('story_masquee', 'cible_id');
+
+  final String table;
+  final String colonne;
+  const ListeStory(this.table, this.colonne);
+}
+
+/// Nombre de personnes dans une liste (0 si erreur / script SQL absent).
+Future<int> nombreDansListe(ListeStory liste) async {
   final uid = supabase.auth.currentUser?.id;
   if (uid == null) return 0;
   try {
-    return await supabase.from('amis_proches').count().eq('owner_id', uid);
+    return await supabase.from(liste.table).count().eq('owner_id', uid);
   } catch (_) {
     return 0;
   }
 }
+
+Future<int> nombreAmisProches() => nombreDansListe(ListeStory.proches);
 
 class _Personne {
   final String id;
@@ -30,7 +44,8 @@ class _Personne {
 }
 
 class EcranAmisProches extends StatefulWidget {
-  const EcranAmisProches({super.key});
+  final ListeStory liste;
+  const EcranAmisProches({super.key, this.liste = ListeStory.proches});
 
   @override
   State<EcranAmisProches> createState() => _EcranAmisProchesState();
@@ -46,6 +61,9 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
   bool _chargement = true;
 
   String? get _uid => supabase.auth.currentUser?.id;
+  ListeStory get _l => widget.liste;
+  bool get _masques => _l == ListeStory.masques;
+  Color get _couleur => _masques ? AppColors.error : AppColors.online;
 
   @override
   void initState() {
@@ -67,12 +85,12 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
     // 2. Ma liste actuelle (dont des personnes sans conversation)
     try {
       final rows = await supabase
-          .from('amis_proches')
-          .select(
-              'ami_id, profiles!amis_proches_ami_id_fkey(name, photo_url, username)')
+          .from(_l.table)
+          .select('${_l.colonne}, '
+              'profiles!${_l.table}_${_l.colonne}_fkey(name, photo_url, username)')
           .eq('owner_id', uid);
       for (final r in rows as List) {
-        final id = r['ami_id'] as String;
+        final id = r[_l.colonne] as String;
         _liste.add(id);
         final p = r['profiles'] as Map<String, dynamic>?;
         if (!_personnes.containsKey(id)) {
@@ -82,7 +100,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         }
       }
     } catch (e) {
-      debugPrint('amis_proches : $e'); // script SQL 030 absent ?
+      debugPrint('${_l.table} : $e'); // script SQL 030 / 031 absent ?
     }
     if (mounted) setState(() => _chargement = false);
   }
@@ -100,18 +118,18 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
     });
     try {
       if (ajouter) {
-        await supabase
-            .from('amis_proches')
-            .upsert({'owner_id': uid, 'ami_id': p.id}, ignoreDuplicates: true);
+        await supabase.from(_l.table).upsert(
+            {'owner_id': uid, _l.colonne: p.id},
+            ignoreDuplicates: true);
       } else {
         await supabase
-            .from('amis_proches')
+            .from(_l.table)
             .delete()
             .eq('owner_id', uid)
-            .eq('ami_id', p.id);
+            .eq(_l.colonne, p.id);
       }
     } catch (e) {
-      debugPrint('amis_proches basculer : $e');
+      debugPrint('${_l.table} basculer : $e');
       if (!mounted) return;
       setState(() => ajouter ? _liste.remove(p.id) : _liste.add(p.id));
       Get.snackbar('Oups', 'Modification non enregistrée, vérifie ta connexion',
@@ -162,7 +180,10 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         backgroundColor: AppColors.bg,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: Text('⭐ Amis proches (${_liste.length})',
+        title: Text(
+            _masques
+                ? '🚫 Masquer ma story à (${_liste.length})'
+                : '⭐ Amis proches (${_liste.length})',
             style: const TextStyle(
                 fontFamily: 'Syne', fontWeight: FontWeight.w800)),
       ),
@@ -170,8 +191,11 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
-              'Seules ces personnes verront tes stories « Amis proches ». '
-              'Elles ne savent pas qu\'elles sont dans ta liste.',
+              _masques
+                  ? 'Ces personnes ne verront AUCUNE de tes stories, même '
+                      'publiques. Elles ne sont pas prévenues.'
+                  : 'Seules ces personnes verront tes stories « Amis proches ». '
+                      'Elles ne savent pas qu\'elles sont dans ta liste.',
               style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
         ),
         Padding(
@@ -239,6 +263,8 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         backgroundImage: (p.photo ?? '').isNotEmpty
             ? CachedNetworkImageProvider(p.photo!)
             : null,
+        onBackgroundImageError:
+            (p.photo ?? '').isNotEmpty ? (_, __) {} : null,
         child: (p.photo ?? '').isEmpty
             ? Text(p.nom.isEmpty ? '?' : p.nom[0].toUpperCase(),
                 style: const TextStyle(
@@ -258,12 +284,12 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         height: 28,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: dans ? AppColors.online : Colors.transparent,
-          border: Border.all(
-              color: dans ? AppColors.online : AppColors.border, width: 2),
+          color: dans ? _couleur : Colors.transparent,
+          border: Border.all(color: dans ? _couleur : AppColors.border, width: 2),
         ),
         child: dans
-            ? const Icon(Icons.star_rounded, size: 16, color: Colors.white)
+            ? Icon(_masques ? Icons.block_rounded : Icons.star_rounded,
+                size: 16, color: Colors.white)
             : null,
       ),
     );

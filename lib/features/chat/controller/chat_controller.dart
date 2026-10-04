@@ -306,6 +306,29 @@ class ChatListController extends GetxController {
     update();
   }
 
+  // « En train d'écrire… » dans la liste : conversations où l'autre
+  // écrit en ce moment (effacé après 5 s sans nouvelle frappe).
+  final RxSet<String> convsQuiEcrivent = <String>{}.obs;
+  final Map<String, Timer> _minuteursEcrit = {};
+
+  void _surFrappe(Map<String, dynamic> record) {
+    final convId = record['conversation_id'] as String?;
+    final auteur = record['user_id'] as String?;
+    if (convId == null || auteur == null || auteur == _service.currentUserId) {
+      return;
+    }
+    _minuteursEcrit.remove(convId)?.cancel();
+    if (record['is_typing'] == true) {
+      convsQuiEcrivent.add(convId);
+      _minuteursEcrit[convId] = Timer(const Duration(seconds: 5), () {
+        _minuteursEcrit.remove(convId);
+        convsQuiEcrivent.remove(convId);
+      });
+    } else {
+      convsQuiEcrivent.remove(convId);
+    }
+  }
+
   // ✅ FIX Realtime — abonnement avec callback de statut, logs de debug,
   // fallback de polling automatique, et watchdog périodique.
   void _subscribeToMessages() {
@@ -326,6 +349,10 @@ class ChatListController extends GetxController {
             debugPrint(
                 '📨 [Realtime ChatList] Nouveau message — conv=$convId sender=$senderId');
             if (convId == null) return;
+            if (senderId != uid) {
+              _minuteursEcrit.remove(convId)?.cancel();
+              convsQuiEcrivent.remove(convId);
+            }
             final isMine = senderId == uid;
             final isConvOpen =
                 Get.isRegistered<ConversationController>(tag: convId);
@@ -362,6 +389,16 @@ class ChatListController extends GetxController {
               await loadConversations(silent: true);
             }
             _lastSyncAt = DateTime.now();
+          },
+        )
+        // « En train d'écrire… » (RLS : seulement mes conversations)
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'typing_status',
+          callback: (payload) {
+            if (_closed) return;
+            _surFrappe(payload.newRecord);
           },
         )
         .subscribe((status, [error]) {
@@ -519,6 +556,10 @@ class ChatListController extends GetxController {
     // ✅ FIX — drapeau posé AVANT de fermer le canal : le statut
     // "closed" qui en résulte ne relance plus le polling.
     _closed = true;
+    for (final t in _minuteursEcrit.values) {
+      t.cancel();
+    }
+    _minuteursEcrit.clear();
     _pollingTimer?.cancel(); // ✅ FIX Realtime
     _pollingTimer = null;
     _watchdogTimer?.cancel(); // ✅ FIX Realtime

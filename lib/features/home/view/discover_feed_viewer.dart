@@ -3,6 +3,7 @@ import 'package:rencontre/features/home/widget/reponse_photo_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/utils/video_init.dart';
@@ -820,6 +821,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
               ),
           ]),
         ),
+        if (!_replyFocused) CoucheStickers(s.stickers),
         if (!_replyFocused &&
             s.legendePlacee &&
             (s.caption ?? '').isNotEmpty)

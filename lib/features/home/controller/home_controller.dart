@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/evenements/evenements_controller.dart';
+import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -764,6 +766,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     final list = profiles.where((u) {
       if (filterMode.value == 'online' && !u.isOnline) return false;
       if (filterMode.value == 'dispo' && !u.estDispo) return false;
+      if (filterMode.value == 'evenement' &&
+          !(Get.isRegistered<EvenementsController>() &&
+              EvenementsController.to.memeEvenement.containsKey(u.id))) {
+        return false;
+      }
       if (filterMode.value == 'favoris' && !favoris.contains(u.id)) {
         return false;
       }
@@ -1020,6 +1027,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       legendeEchelle: (row['legende_echelle'] as num?)?.toDouble(),
       videoDebutMs: (row['video_debut_ms'] as num?)?.toInt(),
       videoFinMs: (row['video_fin_ms'] as num?)?.toInt(),
+      stickers: StickerStory.listeDepuis(row['stickers']),
       isVideo: row['is_video'] ?? false,
       isSeen: viewedBy.contains(uid) || _viewedStoryIds.contains(row['id']),
       // ✅ Parse tolérant au fuseau (voir StoryModel.parseDbTimestamp)

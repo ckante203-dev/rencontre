@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/view/ecran_amis_proches.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
@@ -230,6 +231,22 @@ class EcranParametres extends StatelessWidget {
                         setLocal(() {});
                       },
                     )),
+            const SizedBox(height: 10),
+            // Qui voit mes stories
+            _Tuile(
+              icon: '⭐',
+              title: 'Amis proches',
+              subtitle: 'Ceux qui voient tes stories « Amis proches »',
+              onTap: () => Get.to(() => const EcranAmisProches()),
+            ),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '🚫',
+              title: 'Masquer ma story à…',
+              subtitle: 'Ils ne verront aucune de tes stories',
+              onTap: () => Get.to(
+                  () => const EcranAmisProches(liste: ListeStory.masques)),
+            ),
             const SizedBox(height: 28),
 
             // ════ NOTIFICATIONS & SONS ═══════════════════════════

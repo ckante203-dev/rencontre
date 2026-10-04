@@ -18,7 +18,12 @@ const String cleGiphy = 'rIOkfXwfIZ5ilh0g9tNLu4agvo0eBn6a';
 class ChoixGiphy {
   final String url;
   final bool estGif;
-  const ChoixGiphy(this.url, this.estGif);
+  final String? emoji; // onglet Emoji (stories) : l'emoji choisi
+  const ChoixGiphy(this.url, this.estGif) : emoji = null;
+  const ChoixGiphy.emoji(String e)
+      : url = '',
+        estGif = false,
+        emoji = e;
 }
 
 class _ResultatGiphy {
@@ -28,17 +33,20 @@ class _ResultatGiphy {
 }
 
 /// Ouvre le panneau et renvoie le sticker / GIF choisi (ou null).
-Future<ChoixGiphy?> choisirSticker(BuildContext context) {
+/// [emojis] : liste d'emoji proposée dans un premier onglet « Emoji ».
+Future<ChoixGiphy?> choisirSticker(BuildContext context,
+    {List<String>? emojis}) {
   return showModalBottomSheet<ChoixGiphy>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const _StickerSheet(),
+    builder: (_) => _StickerSheet(emojis: emojis),
   );
 }
 
 class _StickerSheet extends StatefulWidget {
-  const _StickerSheet();
+  final List<String>? emojis;
+  const _StickerSheet({this.emojis});
 
   @override
   State<_StickerSheet> createState() => _StickerSheetState();
@@ -48,6 +56,7 @@ class _StickerSheetState extends State<_StickerSheet> {
   final _recherche = TextEditingController();
   Timer? _attente;
   bool _gif = false; // false = stickers, true = GIF
+  late bool _emoji = widget.emojis != null; // onglet Emoji actif
   bool _chargement = false;
   bool _erreur = false;
   List<_ResultatGiphy> _resultats = [];
@@ -114,8 +123,9 @@ class _StickerSheetState extends State<_StickerSheet> {
   }
 
   void _changerOnglet(bool gif) {
-    if (gif == _gif) return;
+    if (gif == _gif && !_emoji) return;
     setState(() {
+      _emoji = false;
       _gif = gif;
       _resultats = [];
     });
@@ -147,16 +157,26 @@ class _StickerSheetState extends State<_StickerSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
+              if (widget.emojis != null) ...[
+                _Onglet(
+                    label: 'Emoji',
+                    actif: _emoji,
+                    onTap: () => setState(() => _emoji = true)),
+                const SizedBox(width: 8),
+              ],
               _Onglet(
                   label: 'Stickers',
-                  actif: !_gif,
+                  actif: !_gif && !_emoji,
                   onTap: () => _changerOnglet(false)),
               const SizedBox(width: 8),
               _Onglet(
-                  label: 'GIF', actif: _gif, onTap: () => _changerOnglet(true)),
+                  label: 'GIF',
+                  actif: _gif && !_emoji,
+                  onTap: () => _changerOnglet(true)),
             ]),
           ),
           const SizedBox(height: 10),
+          if (!_emoji)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -193,6 +213,20 @@ class _StickerSheetState extends State<_StickerSheet> {
   }
 
   Widget _contenu() {
+    if (_emoji) {
+      final liste = widget.emojis!;
+      return GridView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7, mainAxisSpacing: 4, crossAxisSpacing: 4),
+        itemCount: liste.length,
+        itemBuilder: (_, i) => GestureDetector(
+          onTap: () => Navigator.of(context).pop(ChoixGiphy.emoji(liste[i])),
+          child: Center(
+              child: Text(liste[i], style: const TextStyle(fontSize: 30))),
+        ),
+      );
+    }
     if (cleGiphy.isEmpty) {
       return _Message('Les stickers arrivent très bientôt 🎨');
     }

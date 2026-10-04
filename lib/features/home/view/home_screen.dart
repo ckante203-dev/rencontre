@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/evenements/evenements_controller.dart';
+import 'package:rencontre/features/evenements/bande_evenements.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -307,6 +309,7 @@ const _filterItems = [
   _FilterItem(mode: 'all', label: 'Tous', icon: '⚡'),
   _FilterItem(mode: 'online', label: 'En ligne', icon: '🟢'),
   _FilterItem(mode: 'dispo', label: 'Dispo', icon: '🙋'),
+  _FilterItem(mode: 'evenement', label: 'Même événement', icon: '📅'),
   _FilterItem(mode: 'nearby', label: 'Proches', icon: '📍'),
   _FilterItem(mode: 'new', label: 'Nouveaux', icon: '✨'),
   _FilterItem(mode: 'favoris', label: 'Favoris', icon: '⭐'),
@@ -1065,11 +1068,18 @@ class _UsersGridScrollable extends GetView<HomeController> {
           hasLockedSection ? users.sublist(unlockedCount) : <UserModel>[];
 
       return RefreshIndicator(
-        onRefresh: controller.loadProfiles,
+        onRefresh: () async {
+          if (Get.isRegistered<EvenementsController>()) {
+            EvenementsController.to.charger();
+          }
+          await controller.loadProfiles();
+        },
         color: AppColors.accent,
         child: CustomScrollView(
           controller: scrollCtrl,
           slivers: [
+            // 📅 Événements à venir (masqué s'il n'y en a pas)
+            const SliverToBoxAdapter(child: BandeEvenements()),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(8, 0, 8, hasLockedSection ? 0 : 100),
               sliver: _buildGridSliver(
@@ -1115,8 +1125,12 @@ class _UsersGridScrollable extends GetView<HomeController> {
             final hasStory = controller.userHasActiveStory(user.id);
             final storyIsSeen = controller.userStoryIsSeen(user.id);
 
+            final evenement = Get.isRegistered<EvenementsController>()
+                ? EvenementsController.to.memeEvenement[user.id]
+                : null;
             return _UserCard(
               user: user,
+              memeEvenement: evenement,
               unreadCount: unreadCount,
               hasActiveStory: hasStory,
               storyIsSeen: storyIsSeen,
@@ -1482,10 +1496,12 @@ class _UserCard extends StatelessWidget {
   final bool hasActiveStory;
   final bool storyIsSeen;
   final bool locked;
+  final String? memeEvenement; // titre de l'événement commun, sinon null
 
   const _UserCard({
     required this.user,
     required this.onTap,
+    this.memeEvenement,
     this.unreadCount = 0,
     this.hasActiveStory = false,
     this.storyIsSeen = false,
@@ -1562,6 +1578,23 @@ class _UserCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (memeEvenement != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('📅 $memeEvenement',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700)),
+                        ),
                       if (user.estDispo)
                         Container(
                           margin: const EdgeInsets.only(bottom: 3),
