@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/shared/models/story_model.dart';
+import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 
 void main() {
   group('UserModel', () {
@@ -58,6 +59,20 @@ void main() {
       );
       expect(story.isActive, true);
       expect(story.isExpired, false);
+    });
+  });
+
+  group('QR code Zamu', () {
+    const uid = '3f2b8c1e-9a4d-4e7f-8b21-0c5d6e7f8a9b';
+    test("le lien du QR redonne l'id du profil", () {
+      expect(idProfilDepuisQr(lienQrZamu(uid)), uid);
+    });
+    test('accepte le referrer décodé', () {
+      expect(idProfilDepuisQr('x&referrer=zamu_u=$uid'), uid);
+    });
+    test("refuse un QR qui n'est pas Zamu", () {
+      expect(idProfilDepuisQr('https://example.com'), isNull);
+      expect(idProfilDepuisQr('zamu_u=pas-un-id'), isNull);
     });
   });
 }

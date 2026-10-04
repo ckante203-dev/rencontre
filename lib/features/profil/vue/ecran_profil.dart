@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
@@ -467,7 +468,8 @@ class _CartePremium extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(premium ? 'Zamu Premium actif' : 'Passe à Zamu Premium',
+                    Text(
+                        premium ? 'Zamu Premium actif' : 'Passe à Zamu Premium',
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -567,6 +569,16 @@ class _CartePseudo extends StatelessWidget {
                     ],
                   ),
                 ),
+                IconButton(
+                  tooltip: 'Mon QR code',
+                  onPressed: () => Get.bottomSheet(
+                    FeuilleQrZamu(ctrl: ctrl),
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                  ),
+                  icon: Icon(Icons.qr_code_2_rounded,
+                      color: AppColors.textPrimary, size: 28),
+                ),
               ]),
               const SizedBox(height: 12),
               Row(children: [
@@ -575,7 +587,7 @@ class _CartePseudo extends StatelessWidget {
                     icon: Icons.edit_rounded,
                     label: aucun ? 'Choisir' : 'Modifier',
                     onTap: () => Get.bottomSheet(
-                      _FeuillePseudo(ctrl: ctrl),
+                      FeuillePseudo(ctrl: ctrl),
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                     ),
@@ -668,15 +680,19 @@ class _BoutonCarte extends StatelessWidget {
 }
 
 /// Choisir / modifier son @pseudo (disponibilité vérifiée en direct).
-class _FeuillePseudo extends StatefulWidget {
+class FeuillePseudo extends StatefulWidget {
   final ControleurProfil ctrl;
-  const _FeuillePseudo({required this.ctrl});
+
+  /// Proposée au démarrage aux comptes sans pseudo (Google…).
+  final bool premiereFois;
+  const FeuillePseudo(
+      {super.key, required this.ctrl, this.premiereFois = false});
 
   @override
-  State<_FeuillePseudo> createState() => _FeuillePseudoState();
+  State<FeuillePseudo> createState() => _FeuillePseudoState();
 }
 
-class _FeuillePseudoState extends State<_FeuillePseudo> {
+class _FeuillePseudoState extends State<FeuillePseudo> {
   late final TextEditingController _champ =
       TextEditingController(text: widget.ctrl.monUsername.value);
   bool _envoi = false;
@@ -715,7 +731,8 @@ class _FeuillePseudoState extends State<_FeuillePseudo> {
           color: AppColors.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
+        child: SingleChildScrollView(
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -729,14 +746,18 @@ class _FeuillePseudoState extends State<_FeuillePseudo> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Ton @pseudo',
+            Text(widget.premiereFois ? 'Choisis ton @pseudo 👋' : 'Ton @pseudo',
                 style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 4),
-            Text('3 à 20 caractères : lettres, chiffres, . ou _',
+            Text(
+                widget.premiereFois
+                    ? 'Tes amis pourront te retrouver sur Zamu avec ce pseudo.\n'
+                        '3 à 20 caractères : lettres, chiffres, . ou _'
+                    : '3 à 20 caractères : lettres, chiffres, . ou _',
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             const SizedBox(height: 14),
             Obx(() {
@@ -757,8 +778,8 @@ class _FeuillePseudoState extends State<_FeuillePseudo> {
                 suffix = Icon(Icons.check_circle_rounded,
                     color: AppColors.online, size: 20);
               } else if (!inchange && dispo == false) {
-                suffix =
-                    Icon(Icons.cancel_rounded, color: AppColors.error, size: 20);
+                suffix = Icon(Icons.cancel_rounded,
+                    color: AppColors.error, size: 20);
               }
               return TextField(
                 controller: _champ,
@@ -790,7 +811,8 @@ class _FeuillePseudoState extends State<_FeuillePseudo> {
                           ? 'Déjà pris ou invalide'
                           : null,
                   helperStyle: TextStyle(
-                      color: dispo == true ? AppColors.online : AppColors.error),
+                      color:
+                          dispo == true ? AppColors.online : AppColors.error),
                   filled: true,
                   fillColor: AppColors.surface2,
                   border: OutlineInputBorder(
@@ -826,7 +848,7 @@ class _FeuillePseudoState extends State<_FeuillePseudo> {
               ),
             ),
           ],
-        ),
+        )),
       ),
     );
   }
@@ -858,8 +880,8 @@ class _CarteAlbum extends StatelessWidget {
                 gradient: AppColors.gradientPink,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.lock_rounded,
-                  color: Colors.white, size: 20),
+              child:
+                  const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
-import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
@@ -981,14 +981,7 @@ class _ResultatsRecherche extends GetView<ChatListController> {
               ),
             for (final p in profils)
               ListTile(
-                onTap: () => Get.toNamed('/profile/view',
-                    arguments: UserModel(
-                      id: p.id,
-                      name: p.name,
-                      age: 18,
-                      photoUrl: p.photoUrl,
-                      isOnline: p.enLigne,
-                    )),
+                onTap: () => ouvrirProfilParId(p.id),
                 leading: Stack(children: [
                   CircleAvatar(
                     radius: 24,

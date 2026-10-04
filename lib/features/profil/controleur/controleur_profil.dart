@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/ecran_profil.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -263,6 +265,7 @@ class ControleurProfil extends GetxController {
       monUsername.value = data['username']?.toString() ?? '';
       usernameController.text = monUsername.value;
       usernameText.value = monUsername.value;
+      if (monUsername.value.isEmpty) _proposerPseudo();
       usernameDispo.value = null;
       bioController.text = data['bio']?.toString() ?? '';
       tailleController.text = data['taille']?.toString() ?? '';
@@ -697,6 +700,25 @@ class ControleurProfil extends GetxController {
     } finally {
       if (seq == _usernameSeq) verifUsername.value = false;
     }
+  }
+
+  /// Compte sans pseudo (souvent créé avec Google) : on propose d'en
+  /// choisir un, au plus une fois tous les 3 jours.
+  void _proposerPseudo() {
+    final box = GetStorage();
+    final dernier = box.read<int>('pseudo_propose_le') ?? 0;
+    final maintenant = DateTime.now().millisecondsSinceEpoch;
+    if (maintenant - dernier < const Duration(days: 3).inMilliseconds) return;
+    Future.delayed(const Duration(seconds: 3), () {
+      if (isClosed || monUsername.value.isNotEmpty) return;
+      if (Get.isBottomSheetOpen == true || Get.isDialogOpen == true) return;
+      box.write('pseudo_propose_le', maintenant);
+      Get.bottomSheet(
+        FeuillePseudo(ctrl: this, premiereFois: true),
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+      );
+    });
   }
 
   /// Enregistre le @pseudo seul (carte « Mon @pseudo » du profil).
