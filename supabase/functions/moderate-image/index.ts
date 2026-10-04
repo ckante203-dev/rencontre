@@ -125,6 +125,8 @@ function asList(v: unknown): string[] {
 //   { kind: "profile", url }  photo principale (avatars)
 //   { kind: "gallery", url }  photo de la galerie (profile-photos)
 //   { kind: "story",   id }   story déjà insérée (on lit la ligne en base)
+//   { kind: "groupe",  id }   photo d'un message de groupe (bucket privé
+//                             « groupes ») : supprimée si explicite
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -202,6 +204,26 @@ serve(async (req) => {
         const { error } = await admin.from("stories")
           .update({ moderation_status: status }).eq("id", story.id);
         if (error) throw new Error(`DB error: ${error.message}`);
+      }
+    } else if (kind === "groupe") {
+      if (typeof id !== "string" || id === "") {
+        return json({ error: "Missing fields" }, 400);
+      }
+      const { data: msg, error: mErr } = await admin.from("groupe_messages")
+        .select("id, media_path, type").eq("id", id).eq("sender_id", uid)
+        .maybeSingle();
+      if (mErr) throw new Error(`DB error: ${mErr.message}`);
+      if (!msg || msg.type !== "image" || !msg.media_path) {
+        return json({ error: "forbidden" }, 403);
+      }
+      // Bucket privé : lien signé de courte durée pour l'analyse
+      const { data: signe } = await admin.storage.from("groupes")
+        .createSignedUrl(msg.media_path, 300);
+      status = signe?.signedUrl ? await scan(signe.signedUrl) : "unchecked";
+      if (status === "rejected") {
+        const { error } = await admin.from("groupe_messages").delete().eq("id", msg.id);
+        if (error) throw new Error(`DB error: ${error.message}`);
+        await removeFile({ bucket: "groupes", path: msg.media_path });
       }
     } else {
       return json({ error: "unknown kind" }, 400);

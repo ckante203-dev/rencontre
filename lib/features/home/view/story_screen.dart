@@ -1911,6 +1911,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   void _setMedia(String chemin, bool video, [bool miroir = false]) =>
       setState(() {
+        CameraStory.memoriserDernierMedia(chemin, video);
         _miroir = miroir && !video;
         _stickers.clear();
         _stickerIds.clear();

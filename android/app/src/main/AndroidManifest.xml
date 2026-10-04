@@ -23,8 +23,22 @@
     <!-- ========================================================= -->
 
     <!-- Android 13+ -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Google Play : l'accès à TOUTES les photos / vidéos est réservé aux
+         apps dont c'est la fonction principale. Zamu utilise le sélecteur
+         de photos d'Android (aucune permission nécessaire) : on retire ces
+         permissions, même si un plugin les ajoute. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+        tools:node="remove" />
+    <!-- Ajoutées par le plugin audio, inutiles (pas de Bluetooth, pas de
+         capture du son des autres apps) -->
+    <uses-permission android:name="Manifest.permission.CAPTURE_AUDIO_OUTPUT"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        tools:node="remove" />
 
     <!-- Android 12 et inférieur -->
     <uses-permission
@@ -131,6 +145,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Google Play : un service de premier plan typé (« location »,
+             « phoneCall ») impose une déclaration et une vidéo dans la Play
+             Console. Zamu n'en utilise aucun (position suivie seulement app
+             ouverte, pas d'appels) : on retire ceux ajoutés par les plugins. -->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            tools:node="remove" />
+        <service
+            android:name="me.carda.awesome_notifications.core.services.ForegroundService"
+            tools:node="remove" />
 
     </application>
 

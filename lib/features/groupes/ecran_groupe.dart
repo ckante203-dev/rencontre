@@ -5,6 +5,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
+import 'package:rencontre/features/home/widget/story_report_sheet.dart';
+import 'package:rencontre/core/services/moderation_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
@@ -31,6 +34,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
   final List<MessageGroupe> _messages = []; // du plus récent au plus ancien
   final Map<String, MembreGroupe> _membres = {};
   final Map<String, String> _urlsPhotos = {}; // chemin → URL signée
+  Set<String> _bloques = {}; // leurs messages ne s'affichent pas
   late GroupeResume _groupe = widget.groupe;
   RealtimeChannel? _canal;
   bool _chargement = true;
@@ -65,6 +69,14 @@ class _EcranGroupeState extends State<EcranGroupe> {
   }
 
   Future<void> _chargerMembres() async {
+    try {
+      final moi = await supabase
+          .from('profiles')
+          .select('blocked_users')
+          .eq('id', _moi)
+          .maybeSingle();
+      _bloques = Set<String>.from(moi?['blocked_users'] ?? const []);
+    } catch (_) {}
     try {
       final rows = await supabase
           .from('groupe_membres')
@@ -180,7 +192,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
     } catch (_) {}
   }
 
-  Future<void> _inserer(Map<String, dynamic> ligne) async {
+  Future<MessageGroupe> _inserer(Map<String, dynamic> ligne) async {
     final row = await supabase
         .from('groupe_messages')
         .insert({'groupe_id': _groupe.id, 'sender_id': _moi, ...ligne})
@@ -188,8 +200,10 @@ class _EcranGroupeState extends State<EcranGroupe> {
         .single();
     final m = MessageGroupe.fromJson(row);
     await _signerPhotos([m]);
-    if (!mounted || _messages.any((x) => x.id == m.id)) return;
-    setState(() => _messages.insert(0, m));
+    if (mounted && !_messages.any((x) => x.id == m.id)) {
+      setState(() => _messages.insert(0, m));
+    }
+    return m;
   }
 
   Future<void> _envoyerTexte() async {
@@ -222,7 +236,13 @@ class _EcranGroupeState extends State<EcranGroupe> {
       final chemin = '${_groupe.id}/$nom';
       await supabase.storage.from('groupes').upload(chemin, File(f.path),
           fileOptions: const FileOptions(contentType: 'image/jpeg'));
-      await _inserer({'type': 'image', 'media_path': chemin});
+      final m = await _inserer({'type': 'image', 'media_path': chemin});
+      // Modération : une photo explicite est supprimée par le serveur
+      final r = await ModerationService.photoGroupe(m.id);
+      if (r == ModerationResult.rejected && mounted) {
+        setState(() => _messages.removeWhere((x) => x.id == m.id));
+        _erreur(ModerationService.messageRefus);
+      }
     } catch (e) {
       debugPrint('photo groupe : $e');
       _erreur('Photo non envoyée, vérifie ta connexion');
@@ -278,6 +298,27 @@ class _EcranGroupeState extends State<EcranGroupe> {
                   ouvrirProfilParId(m.senderId!);
                 },
               ),
+            if (m.senderId != null && !moi) ...[
+              ListTile(
+                leading: Icon(Icons.flag_rounded, color: AppColors.textPrimary),
+                title: Text('Signaler ce message',
+                    style: TextStyle(color: AppColors.textPrimary)),
+                onTap: () {
+                  Get.back();
+                  _signaler(m);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block_rounded, color: Colors.red),
+                title: Text(
+                    'Bloquer ${_membres[m.senderId]?.nom ?? 'cette personne'}',
+                    style: const TextStyle(color: Colors.red)),
+                onTap: () {
+                  Get.back();
+                  _bloquer(m.senderId!);
+                },
+              ),
+            ],
             if (moi || admin)
               ListTile(
                 leading: const Icon(Icons.delete_rounded, color: Colors.red),
@@ -302,6 +343,57 @@ class _EcranGroupeState extends State<EcranGroupe> {
         ),
       ),
     );
+  }
+
+  Future<void> _signaler(MessageGroupe m) async {
+    final raison =
+        await choisirMotifSignalement('Pourquoi signaler ce message ?');
+    if (raison == null) return;
+    final contenu = m.type == 'image'
+        ? '[photo] ${m.mediaPath ?? ''}'
+        : (m.contenu ?? '');
+    try {
+      await supabase.from('reports').insert({
+        'reporter_id': _moi,
+        'reported_id': m.senderId,
+        'reason': 'Groupe « ${_groupe.nom} » : $raison — '
+            '${contenu.length > 300 ? contenu.substring(0, 300) : contenu}',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      Get.snackbar('Signalement envoyé',
+          "Merci, notre équipe va l'examiner.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: Colors.white);
+    } catch (_) {
+      _erreur("Impossible d'envoyer le signalement");
+    }
+  }
+
+  Future<void> _bloquer(String userId) async {
+    final nom = _membres[userId]?.nom ?? 'cette personne';
+    final ok = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Text('Bloquer $nom ?',
+          style: TextStyle(color: AppColors.textPrimary)),
+      content: Text(
+          "Tu ne verras plus ses messages ni son profil, et vous ne pourrez "
+          "plus vous écrire. Cette personne n'est pas prévenue.",
+          style: TextStyle(color: AppColors.textMuted)),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Annuler')),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Bloquer', style: TextStyle(color: Colors.red))),
+      ],
+    ));
+    if (ok != true) return;
+    if (mounted) setState(() => _bloques.add(userId));
+    if (Get.isRegistered<ControleurProfil>()) {
+      await Get.find<ControleurProfil>().bloquerProfil(userId);
+    }
   }
 
   Future<void> _ouvrirInfos() async {
@@ -370,6 +462,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                       ),
                     )
                   : ListView.builder(
+                      key: ValueKey(_bloques.length),
                       controller: _defilement,
                       reverse: true,
                       padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
@@ -384,6 +477,9 @@ class _EcranGroupeState extends State<EcranGroupe> {
 
   Widget _bulle(int i) {
     final m = _messages[i];
+    if (m.senderId != null && _bloques.contains(m.senderId)) {
+      return const SizedBox.shrink();
+    }
     final suivant = i > 0 ? _messages[i - 1] : null; // plus récent
     final precedent = i + 1 < _messages.length ? _messages[i + 1] : null;
     final nouveauJour = precedent == null ||

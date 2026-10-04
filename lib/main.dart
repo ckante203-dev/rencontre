@@ -264,8 +264,8 @@ Future<void> _demanderPermissions() async {
       if (!Platform.isIOS) Permission.location,
       Permission.locationWhenInUse,
       Permission.notification,
-      Permission.photos,
-      if (!Platform.isIOS) Permission.storage,
+      // Pas de « photos » ni « stockage » : la galerie passe par le
+      // sélecteur de photos d'Android, sans permission (Google Play).
     ].request();
   } catch (e) {
     debugPrint('Permissions error: $e');

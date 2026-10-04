@@ -59,6 +59,10 @@ class ModerationService {
   static Future<ModerationResult> photoGalerie(String publicUrl) =>
       _call({'kind': 'gallery', 'url': publicUrl});
 
+  /// Photo d'un message de groupe déjà inséré (supprimée si explicite).
+  static Future<ModerationResult> photoGroupe(String messageId) =>
+      _call({'kind': 'groupe', 'id': messageId});
+
   /// Story (photo ou vidéo) déjà insérée dans `stories`.
   static Future<ModerationResult> story(String storyId) =>
       _call({'kind': 'story', 'id': storyId});

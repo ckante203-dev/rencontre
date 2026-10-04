@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:photo_manager/photo_manager.dart';
+import 'package:get_storage/get_storage.dart';
 
 // ─── CAMÉRA ZAMU (ajout de story façon Snap / Instagram) ───────────
 // Plein écran dans l'app : toucher = photo, maintenir = vidéo (30 s max,
@@ -14,6 +14,12 @@ import 'package:photo_manager/photo_manager.dart';
 // flash. Vignette galerie à gauche, onglets TEXTE | STORY en bas.
 
 class CameraStory extends StatefulWidget {
+  /// Dernière photo / vidéo prise ou choisie dans Zamu (vignette galerie).
+  static const cleDernierMedia = 'dernier_media_story';
+
+  static void memoriserDernierMedia(String chemin, bool video) =>
+      GetStorage().write(cleDernierMedia, {'chemin': chemin, 'video': video});
+
   /// Photo ou vidéo prise : chemin du fichier. [miroir] = selfie, à
   /// afficher et publier comme dans le miroir de l'aperçu.
   final void Function(String chemin, bool video, bool miroir) onMedia;
@@ -48,7 +54,7 @@ class _CameraStoryState extends State<CameraStory>
   bool _occupe = false; // prise de photo en cours
   bool _enregistre = false;
   bool _aideVue = false;
-  Uint8List? _miniature; // dernière photo / vidéo du téléphone (galerie)
+  File? _miniature; // dernière photo / vidéo prise ou choisie dans Zamu
   bool _miniatureVideo = false;
   double _zoom = 1, _zoomMin = 1, _zoomMax = 1, _zoomDepart = 1;
   late final AnimationController _progression =
@@ -68,32 +74,20 @@ class _CameraStoryState extends State<CameraStory>
     _chargerMiniature();
   }
 
-  /// Miniature du dernier média de la galerie (comme Telegram), seulement
-  /// si l'accès aux photos a déjà été donné : on ne redemande rien ici.
+  /// Dernière photo / vidéo prise ou choisie DANS Zamu (pas besoin de la
+  /// permission « toutes les photos », refusée par Google Play aux apps
+  /// dont ce n'est pas la fonction principale).
   Future<void> _chargerMiniature() async {
     try {
-      final etat = await PhotoManager.getPermissionState(
-        requestOption: const PermissionRequestOption(
-          androidPermission:
-              AndroidPermission(type: RequestType.common, mediaLocation: false),
-        ),
-      );
-      if (!etat.hasAccess) return;
-      final albums = await PhotoManager.getAssetPathList(
-          onlyAll: true, type: RequestType.common);
-      if (albums.isEmpty) return;
-      final derniers = await albums.first.getAssetListPaged(page: 0, size: 1);
-      if (derniers.isEmpty) return;
-      final m = await derniers.first
-          .thumbnailDataWithSize(const ThumbnailSize.square(160));
-      if (!mounted || m == null) return;
+      final d = GetStorage().read<Map>(CameraStory.cleDernierMedia);
+      final chemin = d?['chemin'] as String?;
+      if (chemin == null || !await File(chemin).exists()) return;
+      if (!mounted) return;
       setState(() {
-        _miniature = m;
-        _miniatureVideo = derniers.first.type == AssetType.video;
+        _miniature = File(chemin);
+        _miniatureVideo = d?['video'] == true;
       });
-    } catch (e) {
-      debugPrint('Miniature galerie : $e');
-    }
+    } catch (_) {}
   }
 
   @override
@@ -457,9 +451,13 @@ class _CameraStoryState extends State<CameraStory>
                                     ? const Icon(Icons.photo_library_rounded,
                                         color: Colors.white, size: 22)
                                     : Stack(fit: StackFit.expand, children: [
-                                        Image.memory(_miniature!,
-                                            fit: BoxFit.cover,
-                                            gaplessPlayback: true),
+                                        if (!_miniatureVideo)
+                                          Image.file(_miniature!,
+                                              fit: BoxFit.cover,
+                                              cacheWidth: 150,
+                                              gaplessPlayback: true,
+                                              errorBuilder: (_, __, ___) =>
+                                                  const SizedBox()),
                                         if (_miniatureVideo)
                                           const Center(
                                               child: Icon(
