@@ -1,10 +1,11 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
 
@@ -486,6 +487,7 @@ class NotificationService {
       'userName': s('userName') ?? s('from_user_name'),
       'userPhoto': s('userPhoto') ?? s('from_user_photo'),
       'userId': s('userId'),
+      'filtre': s('filtre'),
     });
   }
 
@@ -604,25 +606,8 @@ class NotificationService {
       if (fromUserId == null || fromUserId.isEmpty) return;
 
       await Future.delayed(const Duration(milliseconds: 800));
-      try {
-        final data = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('id', fromUserId)
-            .maybeSingle();
-        if (data == null) return;
-        Get.toNamed('/profile/view',
-            arguments: UserModel(
-              id: data['id'] as String,
-              name: data['name'] as String? ?? 'Utilisateur',
-              age: data['age'] as int? ?? 18,
-              photoUrl: data['photo_url'] as String?,
-              bio: data['bio'] as String?,
-              isOnline: data['is_online'] as bool? ?? false,
-              latitude: (data['latitude'] as num?)?.toDouble(),
-              longitude: (data['longitude'] as num?)?.toDouble(),
-            ));
-      } catch (_) {}
+      // Profil complet (âge, photos, bio…), pas une fiche partielle
+      await ouvrirProfilParId(fromUserId);
     }
 
     // ✅ Nouvelle story (ou story d'un favori ⭐) → onglet Story
@@ -646,34 +631,29 @@ class NotificationService {
     // ✅ Utilisateur en ligne → ouvrir son profil
     else if (type == 'user_online') {
       final userId = payload['userId'];
-      final userName = payload['userName'] ?? '';
-      if (userId == null) return;
+      if (userId == null || userId.isEmpty) return;
 
       await Future.delayed(const Duration(milliseconds: 800));
-      try {
-        final data = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('id', userId)
-            .maybeSingle();
-        if (data == null) return;
-        Get.toNamed('/profile/view',
-            arguments: UserModel(
-              id: data['id'] as String,
-              name: data['name'] as String? ?? userName,
-              age: data['age'] as int? ?? 18,
-              photoUrl: data['photo_url'] as String?,
-              isOnline: true,
-              latitude: (data['latitude'] as num?)?.toDouble(),
-              longitude: (data['longitude'] as num?)?.toDouble(),
-            ));
-      } catch (_) {}
+      await ouvrirProfilParId(userId);
     }
 
-    // ✅ Réengagement → onglet Accueil
+    // ✅ Réengagement (relance de 19 h) → Accueil, Messages ou filtre Dispo
     else if (type == 'reengagement') {
       await Future.delayed(const Duration(milliseconds: 500));
+      final filtre = payload['filtre'];
+      if (filtre == 'messages') {
+        NavigationController.pendingIndex = NavigationController.messagesIndex;
+      } else if (filtre == 'dispo' && Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().setFilter('dispo');
+      }
       Get.offAllNamed(AppRoutes.main);
+      if (filtre == 'dispo') {
+        // HomeController est créé par l'écran principal s'il n'existait pas
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (Get.isRegistered<HomeController>()) {
+          Get.find<HomeController>().setFilter('dispo');
+        }
+      }
     }
   }
 

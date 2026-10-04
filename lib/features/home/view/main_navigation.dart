@@ -16,6 +16,7 @@ import 'package:rencontre/features/likes/profile_insights_controller.dart';
 class NavigationController extends GetxController {
   // ✅ Ordre : Accueil(0), Messages(1), Likes(2), Story(3), Profil(4)
   static const int accueilIndex = 0;
+  static const int messagesIndex = 1;
   static const int likesIndex = 2;
   static const int storyIndex = 3;
 
