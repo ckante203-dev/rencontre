@@ -7,6 +7,8 @@ buildscript {
     dependencies {
         // Le connecteur pour les services Google (Firebase)
         classpath("com.google.gms:google-services:4.4.2")
+        // Crashlytics : rapports de plantage (console Firebase)
+        classpath("com.google.firebase:firebase-crashlytics-gradle:3.0.2")
     }
 }
 

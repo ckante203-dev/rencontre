@@ -7,6 +7,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     // Ajout du plugin Google Services ici (syntaxe Kotlin DSL)
     id("com.google.gms.google-services")
+    // Crashlytics : rapports de plantage (console Firebase)
+    id("com.google.firebase.crashlytics")
 }
 
 val keystoreProperties = Properties()

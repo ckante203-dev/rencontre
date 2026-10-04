@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -77,6 +79,17 @@ void main() async {
 
   timeago.setLocaleMessages('fr', timeago.FrMessages());
 
+  // ✅ Crashlytics : toute erreur non gérée (Flutter ou asynchrone) est
+  // envoyée à la console Firebase, avec la pile d'appels. Rien n'est
+  // envoyé en mode debug (les erreurs restent dans la console du PC).
+  await FirebaseCrashlytics.instance
+      .setCrashlyticsCollectionEnabled(!kDebugMode);
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  PlatformDispatcher.instance.onError = (erreur, pile) {
+    FirebaseCrashlytics.instance.recordError(erreur, pile, fatal: true);
+    return true;
+  };
+
   // ✅ Thème : chargé AVANT runApp pour éviter le flash de thème par défaut.
   final themeCtrl = Get.put(ThemeController(), permanent: true);
   themeCtrl.loadInitial();
@@ -122,6 +135,12 @@ void main() async {
   }
 
   Get.put(AuthController(), permanent: true);
+
+  // Rapports de plantage rattachés au compte (identifiant seulement, pour
+  // retrouver un problème signalé par un utilisateur précis).
+  if (user != null) {
+    FirebaseCrashlytics.instance.setUserIdentifier(user.id);
+  }
 
   runApp(ZamuApp(initialRoute: startRoute));
 
