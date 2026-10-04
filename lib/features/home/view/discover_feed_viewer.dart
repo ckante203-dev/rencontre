@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:rencontre/features/home/widget/reponse_photo_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/widget/barre_reponse_story.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/utils/video_init.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
-import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
-import 'package:rencontre/features/chat/controller/chat_controller.dart';
-import 'package:rencontre/features/chat/model/message_model.dart';
 
 class DiscoverFeedItem {
   final StoryModel story;
@@ -616,6 +613,9 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     return '$ago · ${HomeController.formatDistance(s.distanceKm! * 1000)}';
   }
 
+  /// Hauteur de la barre du bas (hors marge système).
+  static const double _hauteurBarre = 60;
+
   @override
   Widget build(BuildContext context) {
     final s = widget.story;
@@ -635,6 +635,17 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
       onDoubleTapDown: (details) => _lastTapPosition = details.localPosition,
       onDoubleTap: _handleDoubleTap,
       child: Stack(fit: StackFit.expand, children: [
+        Container(color: Colors.black),
+        // ── La story : zone à part, coins arrondis en bas (Snapchat) ──
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: _hauteurBarre + bottomPad,
+          child: ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(18)),
+            child: Stack(fit: StackFit.expand, children: [
         Container(color: Colors.black),
         // ✅ Story texte : pas de média, on affiche le texte sur sa
         // couleur de fond (avant : image vide → icône d'image cassée).
@@ -885,97 +896,71 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
               ),
             ),
           ),
-        // ✅ Bouton like — milieu à droite, façon TikTok.
-        if (!isOwner)
-          Positioned(
-            right: 12,
-            top: 0,
-            bottom: keyboardH > 0 ? keyboardH : bottomPad,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: _toggleLike,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: _liked
-                            ? Colors.pink.withOpacity(0.3)
-                            : Colors.black54,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: _liked ? Colors.pink : Colors.white24),
-                      ),
-                      child: Center(
-                        child: Text(_liked ? '❤️' : '🤍',
-                            style: const TextStyle(fontSize: 20)),
-                      ),
+            ]),
+          ),
+        ),
+
+        // ── Barre du bas, séparée de la story ──
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          left: 0,
+          right: 0,
+          bottom: keyboardH,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {},
+            onDoubleTap: () {},
+            child: Container(
+              color: Colors.black,
+              padding: EdgeInsets.fromLTRB(
+                  12, 8, 12, keyboardH > 0 ? 8 : bottomPad + 8),
+              child: isOwner
+                  ? SizedBox(
+                      height: 44,
+                      child: Row(children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.remove_red_eye_outlined,
+                                color: Colors.white, size: 17),
+                            const SizedBox(width: 6),
+                            Text(
+                                '${s.viewedBy.where((id) => id != _myUid).length}',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 14),
+                            const Icon(Icons.favorite_rounded,
+                                color: Colors.pinkAccent, size: 16),
+                            const SizedBox(width: 6),
+                            Text('$_likeCount',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                        ),
+                      ]),
+                    )
+                  : BarreReponseStory(
+                      key: ValueKey('reponse_${s.id}'),
+                      story: s,
+                      aime: _liked,
+                      onLike: _toggleLike,
+                      onFocusChanged: (focused) {
+                        setState(() => _replyFocused = focused);
+                      },
                     ),
-                    const SizedBox(height: 4),
-                    Text('$_likeCount',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
             ),
           ),
-        // ✅ Ma propre story : nombre de vues et de likes.
-        if (isOwner)
-          Positioned(
-            left: 16,
-            bottom: bottomPad + 20,
-            child: IgnorePointer(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.visibility_rounded,
-                      color: Colors.white, size: 16),
-                  const SizedBox(width: 5),
-                  Text('${s.viewedBy.where((id) => id != _myUid).length}',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 14),
-                  const Icon(Icons.favorite_rounded,
-                      color: Colors.pinkAccent, size: 16),
-                  const SizedBox(width: 5),
-                  Text('$_likeCount',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700)),
-                ]),
-              ),
-            ),
-          ),
-        // La barre de réponse occupe toute la largeur disponible en bas.
-        if (!isOwner)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            bottom: keyboardH > 0 ? keyboardH + 8 : bottomPad + 16,
-            left: 16,
-            right: 16,
-            child: _ReplyBar(
-              story: s,
-              onFocusChanged: (focused) {
-                setState(() => _replyFocused = focused);
-              },
-            ),
-          ),
+        ),
         // ✅ cœur qui apparaît à l'endroit du double-tap et s'efface
         // après un court instant.
         if (_showLikeBurst)
@@ -1036,163 +1021,3 @@ class _TextStoryContent extends StatelessWidget {
   }
 }
 
-class _ReplyBar extends StatefulWidget {
-  final StoryModel story;
-  final ValueChanged<bool> onFocusChanged;
-  const _ReplyBar({required this.story, required this.onFocusChanged});
-
-  @override
-  State<_ReplyBar> createState() => _ReplyBarState();
-}
-
-class _ReplyBarState extends State<_ReplyBar> {
-  final _ctrl = TextEditingController();
-  final _focus = FocusNode();
-  bool _sending = false, _hasText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => widget.onFocusChanged(_focus.hasFocus));
-    _ctrl.addListener(() {
-      final h = _ctrl.text.trim().isNotEmpty;
-      if (h != _hasText) setState(() => _hasText = h);
-    });
-  }
-
-  Future<void> _send() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty || _sending) return;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == null) return;
-    if (uid == widget.story.userId) {
-      Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: Colors.white);
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      // Point d'entrée centralisé : applique la règle "sans match, la
-      // conversation démarre en demande de message".
-      final convId =
-          await SupabaseService().getOrCreateConversation(widget.story.userId);
-      final storyData = StoryReplyData(
-        storyId: widget.story.id,
-        storyPreviewUrl: widget.story.mediaUrl,
-        storyIsVideo: widget.story.isVideo,
-        storyOwnerName: widget.story.userName,
-        storyText: widget.story.isTextStory ? widget.story.textContent : null,
-        storyBgColor: widget.story.isTextStory ? widget.story.bgColor : null,
-      );
-      final safeContent = text.substring(0, text.length.clamp(0, 500));
-      if (Get.isRegistered<ConversationController>(tag: convId)) {
-        await Get.find<ConversationController>(tag: convId).sendStoryReply(
-          conversationId: convId,
-          text: safeContent,
-          storyData: storyData,
-        );
-      } else {
-        await ConversationController.insertStoryReplyRow(
-          conversationId: convId,
-          senderId: uid,
-          text: safeContent,
-          storyData: storyData,
-        );
-        await Supabase.instance.client.from('conversations').update(
-            {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId);
-        await SupabaseService().maybePromoteMessageRequest(convId);
-      }
-      _ctrl.clear();
-      _focus.unfocus();
-      widget.onFocusChanged(false);
-      if (mounted) {
-        Get.snackbar('Réponse envoyée ✓', '',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 2));
-      }
-    } catch (e) {
-      debugPrint('replyStory error: $e');
-      if (mounted) {
-        Get.snackbar('Erreur', "Impossible d'envoyer le message",
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: Colors.white);
-      }
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      // 📷 Répondre en photo (snap éphémère), façon Snap
-      BoutonReponsePhoto(
-          story: widget.story, onActif: widget.onFocusChanged),
-      const SizedBox(width: 8),
-      Expanded(
-          child: Container(
-        constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: _focus.hasFocus
-                ? AppColors.accent.withOpacity(0.6)
-                : Colors.white24,
-            width: _focus.hasFocus ? 1.5 : 1,
-          ),
-        ),
-        child: TextField(
-          controller: _ctrl,
-          focusNode: _focus,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          maxLines: 4,
-          minLines: 1,
-          maxLength: 500,
-          buildCounter: (_,
-                  {required currentLength, required isFocused, maxLength}) =>
-              null,
-          textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(
-            hintText: 'Répondre à la story...',
-            hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-      )),
-      const SizedBox(width: 8),
-      AnimatedOpacity(
-        opacity: _hasText ? 1.0 : 0.4,
-        duration: const Duration(milliseconds: 200),
-        child: GestureDetector(
-          onTap: _hasText && !_sending ? _send : null,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-                gradient: AppColors.gradientPink, shape: BoxShape.circle),
-            child: _sending
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-          ),
-        ),
-      ),
-    ]);
-  }
-}

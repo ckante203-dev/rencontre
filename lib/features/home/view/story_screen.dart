@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
-import 'package:rencontre/features/home/widget/reponse_photo_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
@@ -11,6 +10,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/widget/barre_reponse_story.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
 import 'package:rencontre/features/chat/view/sticker_sheet.dart';
@@ -23,13 +23,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/utils/video_init.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
-import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/shared/models/user_model.dart';
-import 'package:rencontre/features/chat/controller/chat_controller.dart';
-import 'package:rencontre/features/chat/model/message_model.dart';
 
 Color _colorFromHex(String hex) {
   var h = hex.replaceFirst('#', '');
@@ -746,6 +743,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           }
         },
         child: Stack(fit: StackFit.expand, children: [
+          // ── La story : zone à part, coins arrondis en bas (Snapchat) ──
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: _hauteurBarre + bottomPad,
+            child: ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(18)),
+              child: Stack(fit: StackFit.expand, children: [
           PageView.builder(
             controller: _pageCtrl,
             // ✅ Chaque PAGE = un PROFIL entier (pas une story isolée).
@@ -992,105 +999,104 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 y: s.legendeY!,
                 echelle: s.legendeEchelle ?? 1,
               ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              bottom: keyboardH > 0 ? keyboardH + 8 : bottomPad + 52,
-              left: 0,
-              right: 0,
-              child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (s.caption != null &&
-                            s.caption!.isNotEmpty &&
-                            !s.legendePlacee &&
-                            !_replyFocused)
-                          Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                  decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(12)),
-                                  child: Text(s.caption!,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4)))),
-                        if (isOwner && !_replyFocused) ...[
-                          GestureDetector(
-                              onTap: () => _showViewers(s),
-                              child: Row(children: [
-                                const Icon(Icons.remove_red_eye_outlined,
-                                    color: Colors.white70, size: 16),
-                                const SizedBox(width: 6),
-                                Text(
-                                    '${s.viewedBy.length} vue${s.viewedBy.length != 1 ? 's' : ''}',
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.chevron_right_rounded,
-                                    color: Colors.white38, size: 16),
-                              ])),
-                          const SizedBox(height: 10),
-                        ],
-                        if (!isOwner)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              GestureDetector(
-                                onTap: () => _likeStory(s),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: _likedStoryIds.contains(s.id)
-                                        ? Colors.pink.withOpacity(0.3)
-                                        : Colors.black54,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: _likedStoryIds.contains(s.id)
-                                          ? Colors.pink
-                                          : Colors.white24,
-                                      width: _likedStoryIds.contains(s.id)
-                                          ? 1.5
-                                          : 1,
-                                    ),
-                                  ),
-                                  child: Center(
-                                      child: Text(
-                                    _likedStoryIds.contains(s.id) ? '❤️' : '🤍',
-                                    style: const TextStyle(fontSize: 20),
-                                  )),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: _ReplyBar(
-                                      story: s,
-                                      onFocusChanged: (focused) {
-                                        setState(() => _replyFocused = focused);
-                                        if (focused) {
-                                          _pause();
-                                        } else {
-                                          _resume();
-                                        }
-                                      })),
-                            ],
-                          ),
-                      ])),
+          // Légende classique (non placée) en bas de la story
+          if (s.caption != null &&
+              s.caption!.isNotEmpty &&
+              !s.legendePlacee &&
+              !_replyFocused &&
+              !_longPressing)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 14,
+              child: IgnorePointer(
+                child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Text(s.caption!,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14, height: 1.4))),
+              ),
             ),
+              ]),
+            ),
+          ),
+
+          // ── Barre du bas, séparée de la story : répondre / vues ──
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            left: 0,
+            right: 0,
+            bottom: keyboardH,
+            child: GestureDetector(
+              // un toucher dans la barre ne fait pas avancer la story
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
+              onVerticalDragEnd: (_) {},
+              child: Container(
+                color: Colors.black,
+                padding: EdgeInsets.fromLTRB(
+                    12, 8, 12, keyboardH > 0 ? 8 : bottomPad + 8),
+                child: isOwner
+                    ? _barreProprietaire(s)
+                    : BarreReponseStory(
+                        key: ValueKey('reponse_${s.id}'),
+                        story: s,
+                        aime: _likedStoryIds.contains(s.id),
+                        onLike: () => _likeStory(s),
+                        onFocusChanged: (focused) {
+                          setState(() => _replyFocused = focused);
+                          if (focused) {
+                            _pause();
+                          } else {
+                            _resume();
+                          }
+                        }),
+              ),
+            ),
+          ),
         ]),
       ),
     );
   }
+
+  /// Hauteur de la barre du bas (hors marge système).
+  static const double _hauteurBarre = 60;
+
+  /// Ma story : nombre de vues (→ liste) à la place de la réponse.
+  Widget _barreProprietaire(StoryModel s) => SizedBox(
+        height: 44,
+        child: Row(children: [
+          GestureDetector(
+            onTap: () => _showViewers(s),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.remove_red_eye_outlined,
+                    color: Colors.white, size: 17),
+                const SizedBox(width: 7),
+                Text(
+                    '${s.viewedBy.length} vue${s.viewedBy.length != 1 ? 's' : ''}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(width: 2),
+                const Icon(Icons.chevron_right_rounded,
+                    color: Colors.white54, size: 18),
+              ]),
+            ),
+          ),
+        ]),
+      );
 
   /// Construit la page pour le profil `profileIndex`. Seule la page
   /// du profil ACTUELLEMENT AFFICHÉ montre la story interactive
@@ -1664,172 +1670,6 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
 }
 
 // ─── REPLY BAR ────────────────────────────────────────────────────
-
-class _ReplyBar extends StatefulWidget {
-  final StoryModel story;
-  final ValueChanged<bool> onFocusChanged;
-  const _ReplyBar({required this.story, required this.onFocusChanged});
-  @override
-  State<_ReplyBar> createState() => _ReplyBarState();
-}
-
-class _ReplyBarState extends State<_ReplyBar> {
-  final _ctrl = TextEditingController();
-  final _focus = FocusNode();
-  bool _sending = false, _hasText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => widget.onFocusChanged(_focus.hasFocus));
-    _ctrl.addListener(() {
-      final h = _ctrl.text.trim().isNotEmpty;
-      if (h != _hasText) setState(() => _hasText = h);
-    });
-  }
-
-  Future<void> _send() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty || _sending) return;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == null) return;
-    if (uid == widget.story.userId) {
-      Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: Colors.white);
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      // ✅ MODIFIÉ — passe par le point d'entrée centralisé au lieu
-      // de dupliquer la recherche/création de conversation. Ça
-      // applique automatiquement la règle "sans match, la
-      // conversation démarre en demande de message (pending)".
-      final convId = await SupabaseService().getOrCreateConversation(
-        widget.story.userId,
-      );
-      final storyData = StoryReplyData(
-        storyId: widget.story.id,
-        storyPreviewUrl: widget.story.mediaUrl,
-        storyIsVideo: widget.story.isVideo,
-        storyOwnerName: widget.story.userName,
-        storyText: widget.story.isTextStory ? widget.story.textContent : null,
-        storyBgColor: widget.story.isTextStory ? widget.story.bgColor : null,
-      );
-      final safeContent = text.substring(0, text.length.clamp(0, 500));
-      if (Get.isRegistered<ConversationController>(tag: convId)) {
-        await Get.find<ConversationController>(tag: convId).sendStoryReply(
-          conversationId: convId,
-          text: safeContent,
-          storyData: storyData,
-        );
-      } else {
-        await ConversationController.insertStoryReplyRow(
-          conversationId: convId,
-          senderId: uid,
-          text: safeContent,
-          storyData: storyData,
-        );
-        await Supabase.instance.client.from('conversations').update(
-            {'updated_at': DateTime.now().toUtc().toIso8601String()}).eq('id', convId); // ✅ UTC
-        // ✅ Si je réponds à la story de quelqu'un qui m'avait
-        // lui-même écrit sans match, ma réponse fait passer la
-        // conversation de "demande" à "acceptée".
-        await SupabaseService().maybePromoteMessageRequest(convId);
-      }
-      _ctrl.clear();
-      _focus.unfocus();
-      widget.onFocusChanged(false);
-      if (mounted) {
-        Get.snackbar('Réponse envoyée ✓', '',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 2));
-      }
-    } catch (e) {
-      debugPrint('replyStory error: $e');
-      if (mounted) {
-        Get.snackbar('Erreur', "Impossible d'envoyer le message",
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: Colors.white);
-      }
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      // 📷 Répondre en photo (snap éphémère), façon Snap
-      BoutonReponsePhoto(
-          story: widget.story, onActif: widget.onFocusChanged),
-      const SizedBox(width: 8),
-      Expanded(
-          child: Container(
-        constraints: const BoxConstraints(minHeight: 44, maxHeight: 110),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: _focus.hasFocus
-                ? AppColors.accent.withOpacity(0.6)
-                : Colors.white24,
-            width: _focus.hasFocus ? 1.5 : 1,
-          ),
-        ),
-        child: TextField(
-          controller: _ctrl,
-          focusNode: _focus,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          maxLines: 4,
-          minLines: 1,
-          maxLength: 500,
-          buildCounter: (_,
-                  {required currentLength, required isFocused, maxLength}) =>
-              null,
-          textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(
-            hintText: 'Répondre à la story...',
-            hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-      )),
-      const SizedBox(width: 8),
-      AnimatedOpacity(
-        opacity: _hasText ? 1.0 : 0.4,
-        duration: const Duration(milliseconds: 200),
-        child: GestureDetector(
-          onTap: _hasText && !_sending ? _send : null,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-                gradient: AppColors.gradientPink, shape: BoxShape.circle),
-            child: _sending
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-          ),
-        ),
-      ),
-    ]);
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────
 //  ADD STORY SCREEN
