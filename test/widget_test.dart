@@ -135,10 +135,32 @@ void main() {
     });
     test('participation : compteur mis à jour', () {
       final e = EvenementModel.fromJson(ligne(DateTime(2030, 6, 1, 20)));
-      final sans = e.copyWith(jeParticipe: false, nbParticipants: 86);
+      final sans = e.copyWith(maParticipation: '', nbParticipants: 86);
       expect(sans.jeParticipe, false);
       expect(sans.nbParticipants, 86);
       expect(sans.titre, e.titre);
+    });
+  });
+
+  group('Événements v2', () {
+    test("« Intéressé » et « J'y vais »", () {
+      final e = EvenementModel.fromJson({
+        'id': 'e2', 'titre': 'Concert', 'lieu': 'Palais de la Culture',
+        'debut': DateTime(2030, 1, 1, 20).toUtc().toIso8601String(),
+        'ma_participation': 'interesse', 'nb_interesses': 3,
+      });
+      expect(e.jeParticipe, true);
+      expect(e.jYVais, false);
+      final y = e.copyWith(maParticipation: 'y_va');
+      expect(y.jYVais, true);
+      expect(y.nbInteresses, 3);
+    });
+    test('« Sur place » possible 1 h avant le début, pas 2 h avant', () {
+      final n = DateTime.now();
+      EvenementModel ev(DateTime d) =>
+          EvenementModel(id: 'x', titre: 't', lieu: 'l', debut: d);
+      expect(ev(n.add(const Duration(minutes: 50))).surPlacePossible, true);
+      expect(ev(n.add(const Duration(hours: 2))).surPlacePossible, false);
     });
   });
 }

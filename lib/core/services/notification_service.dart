@@ -1,6 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -488,6 +489,7 @@ class NotificationService {
       'userPhoto': s('userPhoto') ?? s('from_user_photo'),
       'userId': s('userId'),
       'filtre': s('filtre'),
+      'evenementId': s('evenement_id'),
     });
   }
 
@@ -529,6 +531,23 @@ class NotificationService {
           largeIcon: s('from_user_photo'),
           notificationLayout: NotificationLayout.Default,
           payload: {'type': type, 'fromUserId': fromUserId},
+        ),
+      );
+      return;
+    }
+    // 📅 Rappel / alerte d'événement reçu app ouverte
+    if (type == 'evenement') {
+      final ev = s('evenement_id') ?? '';
+      if (ev.isEmpty) return;
+      if (!await AwesomeNotifications().isNotificationAllowed()) return;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: ('ev$ev${s('rappel')}').hashCode.abs() % 2147483647,
+          channelKey: 'smart',
+          title: title ?? '📅 Événement',
+          body: body ?? '',
+          notificationLayout: NotificationLayout.Default,
+          payload: {'type': 'evenement', 'evenementId': ev},
         ),
       );
       return;
@@ -635,6 +654,20 @@ class NotificationService {
 
       await Future.delayed(const Duration(milliseconds: 800));
       await ouvrirProfilParId(userId);
+    }
+
+    // 📅 Événement → son écran (rappel, likes qui y vont, nouvel événement)
+    else if (type == 'evenement') {
+      final id = payload['evenementId'];
+      if (id == null || id.isEmpty) return;
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!Get.isRegistered<EvenementsController>()) {
+        Get.offAllNamed(AppRoutes.main);
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
+      if (Get.isRegistered<EvenementsController>()) {
+        await EvenementsController.to.ouvrirParId(id);
+      }
     }
 
     // ✅ Réengagement (relance de 19 h) → Accueil, Messages ou filtre Dispo

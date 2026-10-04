@@ -15,8 +15,15 @@ class EvenementModel {
   final DateTime? fin;
   final String? imageUrl;
   final bool annule;
-  final int nbParticipants;
-  final bool jeParticipe;
+  final int nbParticipants; // « J'y vais »
+  final int nbInteresses; // « Intéressé »
+  final int nbSurPlace; // « Je suis sur place » (6 dernières heures)
+  /// Ma participation : 'y_va', 'interesse' ou null.
+  final String? maParticipation;
+  final bool jeSuisSurPlace;
+  final int nbMatchs; // mes matchs qui participent
+  final int nbStories; // stories de l'événement
+  final double? distanceKm; // depuis ma position (calculée dans l'app)
 
   const EvenementModel({
     required this.id,
@@ -32,8 +39,25 @@ class EvenementModel {
     this.imageUrl,
     this.annule = false,
     this.nbParticipants = 0,
-    this.jeParticipe = false,
+    this.nbInteresses = 0,
+    this.nbSurPlace = 0,
+    this.maParticipation,
+    this.jeSuisSurPlace = false,
+    this.nbMatchs = 0,
+    this.nbStories = 0,
+    this.distanceKm,
   });
+
+  bool get jeParticipe => maParticipation != null;
+  bool get jYVais => maParticipation == 'y_va';
+
+  /// « 📍 Je suis sur place » possible : 1 h avant le début → fin.
+  bool get surPlacePossible {
+    final n = DateTime.now();
+    return !annule &&
+        n.isAfter(debut.subtract(const Duration(hours: 1))) &&
+        n.isBefore(finEffective);
+  }
 
   factory EvenementModel.fromJson(Map<String, dynamic> j) => EvenementModel(
         id: j['id'] as String,
@@ -51,10 +75,25 @@ class EvenementModel {
         imageUrl: j['image_url'] as String?,
         annule: j['statut'] == 'annule',
         nbParticipants: (j['nb_participants'] as num?)?.toInt() ?? 0,
-        jeParticipe: j['je_participe'] == true,
+        nbInteresses: (j['nb_interesses'] as num?)?.toInt() ?? 0,
+        nbSurPlace: (j['nb_sur_place'] as num?)?.toInt() ?? 0,
+        // ma_participation (v2) ; sinon je_participe (v1) = « J'y vais »
+        maParticipation: j['ma_participation'] as String? ??
+            (j['je_participe'] == true ? 'y_va' : null),
+        jeSuisSurPlace: j['je_suis_sur_place'] == true,
+        nbMatchs: (j['nb_matchs'] as num?)?.toInt() ?? 0,
+        nbStories: (j['nb_stories'] as num?)?.toInt() ?? 0,
       );
 
-  EvenementModel copyWith({int? nbParticipants, bool? jeParticipe}) =>
+  /// [maParticipation] : '' pour « ne participe plus ».
+  EvenementModel copyWith({
+    int? nbParticipants,
+    int? nbInteresses,
+    int? nbSurPlace,
+    String? maParticipation,
+    bool? jeSuisSurPlace,
+    double? distanceKm,
+  }) =>
       EvenementModel(
         id: id,
         titre: titre,
@@ -69,7 +108,15 @@ class EvenementModel {
         imageUrl: imageUrl,
         annule: annule,
         nbParticipants: nbParticipants ?? this.nbParticipants,
-        jeParticipe: jeParticipe ?? this.jeParticipe,
+        nbInteresses: nbInteresses ?? this.nbInteresses,
+        nbSurPlace: nbSurPlace ?? this.nbSurPlace,
+        maParticipation: maParticipation == null
+            ? this.maParticipation
+            : (maParticipation.isEmpty ? null : maParticipation),
+        jeSuisSurPlace: jeSuisSurPlace ?? this.jeSuisSurPlace,
+        nbMatchs: nbMatchs,
+        nbStories: nbStories,
+        distanceKm: distanceKm ?? this.distanceKm,
       );
 
   /// Fin effective : la fin indiquée, sinon 12 h après le début.

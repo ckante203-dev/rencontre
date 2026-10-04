@@ -985,6 +985,30 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     return ctrl;
   }
 
+  /// Stories rattachées à un événement (« 📸 Stories de l'événement »),
+  /// dans l'ordre de publication. La base applique les règles de
+  /// visibilité habituelles (amis proches, masquées, modération).
+  Future<List<StoryModel>> storiesEvenement(String evenementId) async {
+    try {
+      final data = await Supabase.instance.client
+          .from('stories')
+          .select('*, profiles(name, photo_url, latitude, longitude, '
+              'is_premium, is_online, last_seen, show_distance)')
+          .eq('evenement_id', evenementId)
+          .gt('expires_at', DateTime.now().toUtc().toIso8601String())
+          .order('created_at', ascending: true);
+      return [
+        for (final row in data as List)
+          if (!_hiddenStoryIds.contains(row['id']?.toString()))
+            _rowToStory(row, row['profiles'] as Map<String, dynamic>?,
+                hasChatted: true),
+      ];
+    } catch (e) {
+      debugPrint('storiesEvenement : $e');
+      return const [];
+    }
+  }
+
   double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
     const r = 6371.0; // rayon de la Terre en km
     final dLat = _deg2rad(lat2 - lat1);

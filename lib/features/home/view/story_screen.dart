@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/evenements/evenements_controller.dart';
+import 'package:rencontre/features/evenements/evenement_model.dart';
 import 'package:rencontre/features/chat/view/sticker_sheet.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:rencontre/features/home/widget/camera_story.dart';
@@ -1883,6 +1885,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   // Selfie : photo montrée (et publiée) comme dans le miroir de la caméra
   bool _miroir = false;
+  // Story rattachée à l'événement en cours (« 📸 Stories de l'événement »)
+  bool _avecEvenement = false;
+
+  EvenementModel? get _evenementEnCours =>
+      Get.isRegistered<EvenementsController>()
+          ? EvenementsController.to.evenementEnCoursPourMoi
+          : null;
 
   void _setMedia(String chemin, bool video, [bool miroir = false]) =>
       setState(() {
@@ -1971,7 +1980,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       fichier = await _capturerCadrage() ?? file;
     }
 
+    final evenement = _avecEvenement ? _evenementEnCours : null;
     final edition = <String, dynamic>{
+      if (evenement != null) 'evenement_id': evenement.id,
       if (_stickers.isNotEmpty)
         'stickers': _stickers.map((s) => s.toJson()).toList(),
       if (safeCaption != null) ...{
@@ -2735,6 +2746,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                     setState(() => _previewPath = null),
                               ),
                             ])),
+                            if (_evenementEnCours != null) ...[
+                              const SizedBox(height: 10),
+                              _puceEvenement(_evenementEnCours!),
+                            ],
                             const SizedBox(height: 12),
                             _barrePublication(),
                           ],
@@ -2798,6 +2813,39 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       _stickerIds.add(_prochainStickerId++);
     });
   }
+
+  /// « 📍 Ajouter à <événement> » : la story apparaît aussi sur la page
+  /// de l'événement (Stories de l'événement).
+  Widget _puceEvenement(EvenementModel ev) => GestureDetector(
+        onTap: () => setState(() => _avecEvenement = !_avecEvenement),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: _avecEvenement ? AppColors.online : Colors.black54,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: _avecEvenement ? Colors.transparent : Colors.white24),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(
+                _avecEvenement
+                    ? Icons.check_circle_rounded
+                    : Icons.add_circle_outline_rounded,
+                size: 16,
+                color: Colors.white),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text('${ev.emoji} Ajouter à « ${ev.titre} »',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ]),
+        ),
+      );
 
   /// Bas de l'éditeur façon Snap : à qui (Publique / ⭐ Amis proches),
   /// combien de temps, et Publier — sans ouvrir de menu.

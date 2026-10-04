@@ -5,6 +5,7 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/evenements/ecran_evenement.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
+import 'package:rencontre/features/evenements/proposer_evenement.dart';
 
 /// Accueil : bande défilante « 📅 Événements » (masquée s'il n'y en a pas).
 class BandeEvenements extends StatelessWidget {
@@ -18,7 +19,26 @@ class BandeEvenements extends StatelessWidget {
     final ctrl = EvenementsController.to;
     return Obx(() {
       final liste = ctrl.evenements;
-      if (liste.isEmpty) return const SizedBox.shrink();
+      // Aucun événement : simple lien pour en proposer un
+      if (liste.isEmpty) {
+        return GestureDetector(
+          onTap: () => Get.to(() => const ProposerEvenement()),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+            child: Row(children: [
+              const Text('📅', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Text('Un événement à venir ? ',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              Text('Propose-le',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accent)),
+            ]),
+          ),
+        );
+      }
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Column(
@@ -38,9 +58,11 @@ class BandeEvenements extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: liste.length,
+                itemCount: liste.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _CarteEvenement(ev: liste[i]),
+                itemBuilder: (_, i) => i < liste.length
+                    ? _CarteEvenement(ev: liste[i])
+                    : const _CarteProposer(),
               ),
             ),
           ],
@@ -138,9 +160,11 @@ class _CarteEvenement extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                      ev.jeParticipe
-                          ? '✓ ${ev.nbParticipants}'
-                          : '✋ ${ev.nbParticipants}',
+                      ev.enCours && ev.nbSurPlace > 0
+                          ? '📍 ${ev.nbSurPlace}'
+                          : ev.jeParticipe
+                              ? '✓ ${ev.nbParticipants}'
+                              : '✋ ${ev.nbParticipants}',
                       style: TextStyle(
                           color: ev.jeParticipe
                               ? AppColors.online
@@ -151,6 +175,37 @@ class _CarteEvenement extends StatelessWidget {
               ],
             ),
           ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Dernière carte de la bande : proposer un événement à Zamu.
+class _CarteProposer extends StatelessWidget {
+  const _CarteProposer();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.to(() => const ProposerEvenement()),
+      child: Container(
+        width: 120,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.add_circle_outline_rounded,
+              color: AppColors.accent, size: 34),
+          const SizedBox(height: 8),
+          Text('Proposer un\névénement',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
         ]),
       ),
     );
