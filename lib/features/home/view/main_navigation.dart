@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/chat/view/bulles_messages.dart';
+import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -66,6 +68,9 @@ class _MainNavigationState extends State<MainNavigation> {
     if (!Get.isRegistered<EvenementsController>()) {
       Get.put(EvenementsController(), permanent: true);
     }
+    if (!Get.isRegistered<GroupesController>()) {
+      Get.put(GroupesController(), permanent: true);
+    }
 
     // Tap sur la barre du bas → la page suit (glissée si onglet voisin).
     _suiviOnglet = ever(_navCtrl.currentIndex, (int i) {
@@ -118,15 +123,19 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: PageView(
-        controller: _pageCtrl,
-        onPageChanged: (i) {
-          if (_navCtrl.currentIndex.value != i) _navCtrl.goTo(i);
-        },
-        // Chaque onglet garde son état (défilement, vidéo…) comme avant
-        // avec IndexedStack.
-        children: [for (final s in _screens) _GarderEnVie(child: s)],
-      ),
+      body: Stack(children: [
+        PageView(
+          controller: _pageCtrl,
+          onPageChanged: (i) {
+            if (_navCtrl.currentIndex.value != i) _navCtrl.goTo(i);
+          },
+          // Chaque onglet garde son état (défilement, vidéo…) comme avant
+          // avec IndexedStack.
+          children: [for (final s in _screens) _GarderEnVie(child: s)],
+        ),
+        // 💬 Nouveaux messages : les photos montent depuis l'icône Messages
+        const Positioned.fill(child: BullesMessages()),
+      ]),
       bottomNavigationBar: Obx(() => _BarreNavigation(
             currentIndex: _navCtrl.currentIndex.value,
             onTap: (i) => _navCtrl.goTo(i),
@@ -331,9 +340,11 @@ class _NavItemMessages extends StatelessWidget {
                     color: isActive ? AppColors.accent : AppColors.textMuted),
               ),
               GetBuilder<ChatListController>(
-                builder: (ctrl) {
+                builder: (ctrl) => Obx(() {
+                  // Messages privés + groupes (hors sourdine)
                   final total = ctrl.conversations
-                      .fold<int>(0, (sum, c) => sum + c.unreadCount);
+                          .fold<int>(0, (sum, c) => sum + c.unreadCount) +
+                      GroupesController.to.totalNonLus;
                   if (total == 0) return const SizedBox.shrink();
                   return Positioned(
                     top: -2,
@@ -359,7 +370,7 @@ class _NavItemMessages extends StatelessWidget {
                       ),
                     ),
                   );
-                },
+                }),
               ),
             ]),
           ],

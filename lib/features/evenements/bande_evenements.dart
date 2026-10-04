@@ -6,10 +6,13 @@ import 'package:rencontre/features/evenements/ecran_evenement.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/evenements/proposer_evenement.dart';
+import 'package:rencontre/features/evenements/ecran_tous_evenements.dart';
 
 /// Accueil : bande défilante « 📅 Événements » (masquée s'il n'y en a pas).
 class BandeEvenements extends StatelessWidget {
   const BandeEvenements({super.key});
+
+  static const _maxBande = 5;
 
   @override
   Widget build(BuildContext context) {
@@ -39,29 +42,45 @@ class BandeEvenements extends StatelessWidget {
           ),
         );
       }
+      // Accueil : les 5 plus pertinents (en cours, proches, bientôt)
+      final bande = liste.take(_maxBande).toList();
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-              child: Text('📅 Événements',
-                  style: TextStyle(
-                      fontFamily: 'Syne',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+              padding: const EdgeInsets.fromLTRB(12, 2, 4, 4),
+              child: Row(children: [
+                Text('📅 Événements',
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary)),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Get.to(() => const EcranTousEvenements()),
+                  child: Text(
+                      liste.length > _maxBande
+                          ? 'Voir tout (${liste.length}) ›'
+                          : 'Voir tout ›',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accent)),
+                ),
+              ]),
             ),
             SizedBox(
               height: 150,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: liste.length + 1,
+                itemCount: bande.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => i < liste.length
-                    ? _CarteEvenement(ev: liste[i])
+                itemBuilder: (_, i) => i < bande.length
+                    ? _CarteEvenement(ev: bande[i])
                     : const _CarteProposer(),
               ),
             ),

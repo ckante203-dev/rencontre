@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
@@ -195,6 +196,36 @@ class _EcranEvenementState extends State<EcranEvenement> {
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.accent)),
+                ),
+              ],
+
+              // ── Discussion de groupe des participants ──
+              if (ev.jeParticipe) ...[
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: () => Get.isRegistered<GroupesController>()
+                      ? GroupesController.to.ouvrirGroupeEvenement(ev.id)
+                      : null,
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.accent),
+                    ),
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.forum_rounded,
+                              color: AppColors.accent, size: 20),
+                          const SizedBox(width: 8),
+                          Text('Discussion du groupe',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accent)),
+                        ]),
+                  ),
                 ),
               ],
 

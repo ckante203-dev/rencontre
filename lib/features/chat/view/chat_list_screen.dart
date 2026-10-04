@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/groupes/liste_groupes.dart';
+import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -23,7 +25,18 @@ class ChatListScreen extends StatelessWidget {
             _buildTopBar(),
             const _SearchBar(),
             const _FilterBar(),
-            const Expanded(child: _ConversationList()),
+            Expanded(
+              child: Obx(() =>
+                  Get.find<ChatListController>().activeFilter.value ==
+                              ChatFilter.groupes &&
+                          Get.find<ChatListController>()
+                              .searchQuery
+                              .value
+                              .trim()
+                              .isEmpty
+                      ? const ListeGroupes()
+                      : const _ConversationList()),
+            ),
           ],
         ),
       ),
@@ -42,6 +55,11 @@ class ChatListScreen extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: Colors.white)),
           const Spacer(),
+          IconButton(
+            tooltip: 'Nouveau groupe',
+            onPressed: ouvrirNouveauGroupe,
+            icon: Icon(Icons.group_add_rounded, color: AppColors.textPrimary),
+          ),
           const _BoutonRecherche(),
         ],
       ),
@@ -163,6 +181,16 @@ class _FilterBar extends GetView<ChatListController> {
                 iconColor: AppColors.online,
                 active: controller.activeFilter.value == ChatFilter.online,
                 onTap: () => controller.setFilter(ChatFilter.online),
+              ),
+              _FilterChip(
+                label: 'Groupes',
+                icon: Icons.groups_rounded,
+                active: controller.activeFilter.value == ChatFilter.groupes,
+                onTap: () => controller.setFilter(ChatFilter.groupes),
+                badge: Get.isRegistered<GroupesController>() &&
+                        GroupesController.to.totalNonLus > 0
+                    ? GroupesController.to.totalNonLus
+                    : null,
               ),
               _FilterChip(
                 label: 'Favoris',

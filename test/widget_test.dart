@@ -7,6 +7,7 @@ import 'package:rencontre/shared/models/story_model.dart';
 import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
+import 'package:rencontre/features/groupes/groupe_model.dart';
 
 void main() {
   group('UserModel', () {
@@ -161,6 +162,32 @@ void main() {
           EvenementModel(id: 'x', titre: 't', lieu: 'l', debut: d);
       expect(ev(n.add(const Duration(minutes: 50))).surPlacePossible, true);
       expect(ev(n.add(const Duration(hours: 2))).surPlacePossible, false);
+    });
+  });
+
+  group('Groupes', () {
+    GroupeResume g(Map<String, dynamic> extra) => GroupeResume.fromJson({
+          'id': 'g1',
+          'nom': 'Les amis',
+          'derniere_activite': '2030-01-01T20:00:00Z',
+          ...extra,
+        });
+    test('aperçu du dernier message', () {
+      expect(g({}).apercu, 'Aucun message');
+      expect(
+          g({'dernier_type': 'texte', 'dernier_contenu': 'Salut', 'dernier_auteur': 'Awa'})
+              .apercu,
+          'Awa : Salut');
+      expect(g({'dernier_type': 'image', 'dernier_auteur': 'Awa'}).apercu,
+          'Awa : 📷 Photo');
+      expect(g({'dernier_type': 'systeme', 'dernier_contenu': 'Awa a créé le groupe'})
+          .apercu, 'Awa a créé le groupe');
+    });
+    test("groupe d'événement et rôle", () {
+      final e = g({'evenement_id': 'e1', 'mon_role': 'admin', 'non_lus': 3});
+      expect(e.estEvenement, true);
+      expect(e.suisAdmin, true);
+      expect(e.nonLus, 3);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
@@ -490,6 +491,7 @@ class NotificationService {
       'userId': s('userId'),
       'filtre': s('filtre'),
       'evenementId': s('evenement_id'),
+      'groupeId': s('groupe_id'),
     });
   }
 
@@ -531,6 +533,26 @@ class NotificationService {
           largeIcon: s('from_user_photo'),
           notificationLayout: NotificationLayout.Default,
           payload: {'type': type, 'fromUserId': fromUserId},
+        ),
+      );
+      return;
+    }
+    // 👥 Message de groupe reçu app ouverte (sauf si le groupe est ouvert)
+    if (type == 'groupe') {
+      final g = s('groupe_id') ?? '';
+      if (g.isEmpty || GroupesController.groupeOuvert == g) return;
+      if (Get.isRegistered<GroupesController>()) {
+        GroupesController.to.charger();
+      }
+      if (!await AwesomeNotifications().isNotificationAllowed()) return;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: ('groupe$g').hashCode.abs() % 2147483647,
+          channelKey: _canal('messages'),
+          title: title ?? '👥 Groupe',
+          body: body ?? '',
+          notificationLayout: NotificationLayout.Default,
+          payload: {'type': 'groupe', 'groupeId': g},
         ),
       );
       return;
@@ -654,6 +676,20 @@ class NotificationService {
 
       await Future.delayed(const Duration(milliseconds: 800));
       await ouvrirProfilParId(userId);
+    }
+
+    // 👥 Message de groupe → la discussion du groupe
+    else if (type == 'groupe') {
+      final id = payload['groupeId'];
+      if (id == null || id.isEmpty) return;
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!Get.isRegistered<GroupesController>()) {
+        Get.offAllNamed(AppRoutes.main);
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
+      if (Get.isRegistered<GroupesController>()) {
+        await GroupesController.to.ouvrirParId(id);
+      }
     }
 
     // 📅 Événement → son écran (rappel, likes qui y vont, nouvel événement)

@@ -20,7 +20,7 @@ import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
-enum ChatFilter { all, unread, online, favoris }
+enum ChatFilter { all, unread, online, favoris, groupes }
 
 /// Profil trouvé par son nom d'utilisateur (recherche dans Messages).
 class ProfilTrouve {
@@ -128,6 +128,7 @@ class ChatListController extends GetxController {
         list = conversations.where((c) => favoris.contains(c.userId)).toList();
         break;
       case ChatFilter.all:
+      case ChatFilter.groupes: // les groupes ont leur propre liste
         list = conversations.toList();
     }
     final q = searchQuery.value.trim().toLowerCase();
