@@ -9,20 +9,24 @@ class ThemeController extends GetxController {
   static const _storageKey = 'app_theme_id';
   final _box = GetStorage();
 
-  final Rx<AppPalette> palette = AppPalettes.dark.obs;
+  final Rx<AppPalette> palette = AppPalettes.defaut.obs;
 
   void loadInitial() {
     final savedId = _box.read<String>(_storageKey);
-    if (savedId != null && AppPalettes.all.containsKey(savedId)) {
-      palette.value = AppPalettes.all[savedId]!;
+    final p = AppPalettes.resoudre(savedId);
+    if (p != null) {
+      palette.value = p;
+      // Ancien thème néon : on enregistre le thème pro qui le remplace
+      if (p.id != savedId) _box.write(_storageKey, p.id);
     }
   }
 
   Future<void> setTheme(String id) async {
-    final selected = AppPalettes.all[id];
+    final selected = AppPalettes.resoudre(id);
     if (selected == null || selected.id == palette.value.id) return;
 
     palette.value = selected;
+    id = selected.id;
     await _box.write(_storageKey, id);
 
     final uid = Supabase.instance.client.auth.currentUser?.id;
@@ -38,9 +42,9 @@ class ThemeController extends GetxController {
   }
 
   void applyRemote(String id) {
-    final selected = AppPalettes.all[id];
+    final selected = AppPalettes.resoudre(id);
     if (selected == null || selected.id == palette.value.id) return;
     palette.value = selected;
-    _box.write(_storageKey, id);
+    _box.write(_storageKey, selected.id);
   }
 }

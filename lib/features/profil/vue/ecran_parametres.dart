@@ -621,77 +621,70 @@ class _SelecteurTheme extends StatelessWidget {
   final void Function(String) onSelected;
   const _SelecteurTheme({required this.selected, required this.onSelected});
 
-  // Couleurs lues dans AppPalettes : la pastille montre le vrai thème.
-  static const _themes = [
-    {'id': 'dark', 'label': 'Néon rose', 'emoji': '💗'},
-    {'id': 'aurore', 'label': 'Aurore', 'emoji': '🌌'},
-    {'id': 'lagon', 'label': 'Lagon', 'emoji': '🏝️'},
-    {'id': 'sunset', 'label': 'Sunset', 'emoji': '🌅'},
-    {'id': 'or_noir', 'label': 'Or noir', 'emoji': '👑'},
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // Pastille : le fond du thème avec sa couleur d'accent au centre
+    final themes = AppPalettes.all.values.toList();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: _themes.map((t) {
-            final isSelected = selected == t['id'] as String;
-            final palette = AppPalettes.all[t['id']]!;
-            final c1 = palette.accent;
-            final c2 = palette.accent2;
-            return GestureDetector(
-              onTap: () => onSelected(t['id'] as String),
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        children: [
+          for (final p in themes)
+            GestureDetector(
+              onTap: () => onSelected(p.id),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   width: 52,
                   height: 52,
+                  padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: [c1, c2],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight),
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: isSelected ? Colors.white : Colors.transparent,
-                        width: 3),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                                color: c1.withOpacity(0.5), blurRadius: 10)
-                          ]
-                        : [],
+                        color: selected == p.id
+                            ? p.accent
+                            : AppColors.border,
+                        width: selected == p.id ? 2.5 : 1),
                   ),
-                  child: Center(
-                    child: isSelected
-                        ? const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 22)
-                        : Text(t['emoji'] as String,
-                            style: const TextStyle(fontSize: 22)),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: p.surface2,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                            shape: BoxShape.circle, color: p.accent),
+                        child: selected == p.id
+                            ? const Icon(Icons.check_rounded,
+                                color: Colors.white, size: 15)
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(t['label'] as String,
+                const SizedBox(height: 6),
+                Text(p.label,
                     style: TextStyle(
-                        fontSize: 10,
-                        color: isSelected
+                        fontSize: 11,
+                        color: selected == p.id
                             ? AppColors.textPrimary
                             : AppColors.textMuted,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.normal)),
+                        fontWeight: selected == p.id
+                            ? FontWeight.w700
+                            : FontWeight.w500)),
               ]),
-            );
-          }).toList(),
-        ),
-      ]),
+            ),
+        ],
+      ),
     );
   }
 }

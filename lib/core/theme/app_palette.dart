@@ -46,97 +46,149 @@ class AppPalette {
       );
 }
 
+// Thème « Zamu » (couleurs du logo, par défaut) + thèmes « pro » : fonds
+// neutres, un seul accent profond (le dégradé des boutons reste dans la
+// même teinte : rendu quasi uni, sobre), texte secondaire gris. Les anciens
+// thèmes néon sont redirigés (voir resoudre).
 class AppPalettes {
-  static const dark = AppPalette(
-    id: 'dark',
-    label: 'Néon rose',
-    bg: Color(0xFF0A0A0F),
-    surface: Color(0xFF13131A),
-    surface2: Color(0xFF1C1C28),
-    border: Color(0xFF3F3F5B),
-    accent: Color(0xFFFF3CAC),
-    accent2: Color(0xFF7B2FFF),
-    accent3: Color(0xFFFF6BCB),
-    yellow: Color(0xFFFFDD57),
-    textPrimary: Color(0xFFFFFFFF),
-    textMuted: Color(0xB3FFFFFF),
-    online: Color(0xFF00E676),
-    error: Color(0xFFFF5252),
+  // Couleurs du logo : fond #0D0D1A, « Z » magenta #D637C5 → violet #A433E5
+  static const zamu = AppPalette(
+    id: 'zamu',
+    label: 'Zamu',
+    bg: Color(0xFF0D0D1A),
+    surface: Color(0xFF151526),
+    surface2: Color(0xFF1D1D33),
+    border: Color(0xFF2E2E4A),
+    accent: Color(0xFFD637C5),
+    accent2: Color(0xFFA433E5),
+    accent3: Color(0xFFE47BDA),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F4F8),
+    textMuted: Color(0xFF9E9CB3),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
   );
 
-  static const aurore = AppPalette(
-    id: 'aurore',
-    label: 'Aurore boréale',
-    bg: Color(0xFF050A12),
-    surface: Color(0xFF0C1522),
-    surface2: Color(0xFF13202F),
-    border: Color(0xFF2A3B52),
-    accent: Color(0xFF0E9F8A),
-    accent2: Color(0xFF6A3DF0),
-    accent3: Color(0xFF5CF2C8),
-    yellow: Color(0xFFFFDD57),
-    textPrimary: Color(0xFFFFFFFF),
-    textMuted: Color(0xB3FFFFFF),
-    online: Color(0xFF00E676),
-    error: Color(0xFFFF5252),
+  static const minuit = AppPalette(
+    id: 'minuit',
+    label: 'Minuit',
+    bg: Color(0xFF0E0F14),
+    surface: Color(0xFF16181F),
+    surface2: Color(0xFF1E212A),
+    border: Color(0xFF2C303B),
+    accent: Color(0xFFC2185B),
+    accent2: Color(0xFFA3154D),
+    accent3: Color(0xFFE35D8A),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF9BA1AD),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
   );
 
-  static const lagon = AppPalette(
-    id: 'lagon',
-    label: 'Lagon',
-    bg: Color(0xFF040A16),
-    surface: Color(0xFF0A1528),
-    surface2: Color(0xFF112038),
-    border: Color(0xFF263D63),
-    accent: Color(0xFF0091D5),
-    accent2: Color(0xFF3A47D5),
-    accent3: Color(0xFF4FE3FF),
-    yellow: Color(0xFFFFDD57),
-    textPrimary: Color(0xFFFFFFFF),
-    textMuted: Color(0xB3FFFFFF),
-    online: Color(0xFF00E676),
-    error: Color(0xFFFF5252),
+  static const graphite = AppPalette(
+    id: 'graphite',
+    label: 'Graphite',
+    bg: Color(0xFF111214),
+    surface: Color(0xFF18191C),
+    surface2: Color(0xFF202226),
+    border: Color(0xFF2E3036),
+    accent: Color(0xFF5B5BD6),
+    accent2: Color(0xFF4A4AC0),
+    accent3: Color(0xFF8B8BF0),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF9BA1AD),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
   );
 
-  static const sunset = AppPalette(
-    id: 'sunset',
-    label: 'Sunset tropical',
-    bg: Color(0xFF120710),
-    surface: Color(0xFF1F0E1B),
-    surface2: Color(0xFF2B1426),
-    border: Color(0xFF5A2747),
-    accent: Color(0xFFE8641C),
-    accent2: Color(0xFFD61F8C),
-    accent3: Color(0xFFFFB25B),
-    yellow: Color(0xFFFFDD57),
-    textPrimary: Color(0xFFFFFFFF),
-    textMuted: Color(0xB3FFFFFF),
-    online: Color(0xFF00E676),
-    error: Color(0xFFFF5252),
+  static const saphir = AppPalette(
+    id: 'saphir',
+    label: 'Saphir',
+    bg: Color(0xFF0A1020),
+    surface: Color(0xFF111A2E),
+    surface2: Color(0xFF18233A),
+    border: Color(0xFF263552),
+    accent: Color(0xFF2F6FEB),
+    accent2: Color(0xFF2459C9),
+    accent3: Color(0xFF6EA0FF),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF9BA1AD),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
   );
 
-  static const orNoir = AppPalette(
-    id: 'or_noir',
-    label: 'Or noir',
-    bg: Color(0xFF0B0A08),
-    surface: Color(0xFF16130E),
-    surface2: Color(0xFF211C14),
-    border: Color(0xFF4A3D26),
-    accent: Color(0xFFB07A1E),
-    accent2: Color(0xFF8A4B12),
-    accent3: Color(0xFFF5D68A),
-    yellow: Color(0xFFFFDD57),
-    textPrimary: Color(0xFFFFFFFF),
-    textMuted: Color(0xB3FFFFFF),
-    online: Color(0xFF00E676),
-    error: Color(0xFFFF5252),
+  static const emeraude = AppPalette(
+    id: 'emeraude',
+    label: 'Émeraude',
+    bg: Color(0xFF0B110F),
+    surface: Color(0xFF121A17),
+    surface2: Color(0xFF19231F),
+    border: Color(0xFF27352F),
+    accent: Color(0xFF12A37A),
+    accent2: Color(0xFF0E8664),
+    accent3: Color(0xFF4FD1A5),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF9BA1AD),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
   );
+
+  static const champagne = AppPalette(
+    id: 'champagne',
+    label: 'Champagne',
+    bg: Color(0xFF0F0E0C),
+    surface: Color(0xFF181613),
+    surface2: Color(0xFF211E1A),
+    border: Color(0xFF37322A),
+    accent: Color(0xFFC9A24B),
+    accent2: Color(0xFFA8853A),
+    accent3: Color(0xFFE6C77D),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF9BA1AD),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
+  );
+
+  /// Thème par défaut (nouveaux comptes) : les couleurs du logo.
+  static const defaut = zamu;
 
   static const Map<String, AppPalette> all = {
-    'dark': dark,
-    'aurore': aurore,
-    'lagon': lagon,
-    'sunset': sunset,
-    'or_noir': orNoir,
+    'zamu': zamu,
+    'minuit': minuit,
+    'graphite': graphite,
+    'saphir': saphir,
+    'emeraude': emeraude,
+    'champagne': champagne,
   };
+
+  /// Anciens thèmes (néon, retirés) → thème pro le plus proche.
+  static const Map<String, String> _anciens = {
+    'dark': 'zamu',
+    'sunset': 'minuit',
+    'aurore': 'emeraude',
+    'lagon': 'saphir',
+    'or_noir': 'champagne',
+  };
+
+  /// Palette pour un id enregistré (ancien ou nouveau), sinon null.
+  static AppPalette? resoudre(String? id) =>
+      all[id] ?? all[_anciens[id]];
 }
+
+/// Dégradés sobres des avatars sans photo (initiale) : teintes sourdes,
+/// lisibles avec du texte blanc, sans néon.
+const List<List<Color>> degradesAvatar = [
+  [Color(0xFF4B5263), Color(0xFF2E333F)], // ardoise
+  [Color(0xFF7A3B55), Color(0xFF4A2335)], // bordeaux
+  [Color(0xFF34507A), Color(0xFF213350)], // bleu nuit
+  [Color(0xFF2F6B58), Color(0xFF1D4337)], // vert sapin
+  [Color(0xFF7D6236), Color(0xFF4E3D22)], // bronze
+  [Color(0xFF55457E), Color(0xFF352B52)], // prune
+  [Color(0xFF6E4A3E), Color(0xFF452E26)], // terre
+  [Color(0xFF3E6370), Color(0xFF263E46)], // pétrole
+];

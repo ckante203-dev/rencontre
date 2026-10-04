@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -962,16 +963,7 @@ class _AvatarProfil extends StatelessWidget {
   const _AvatarProfil({required this.user, this.size = 50});
 
   // ✅ Palettes de dégradés — chaque lettre a son dégradé unique
-  static const _gradients = [
-    [Color(0xFFFF3CAC), Color(0xFF7B2FFF)], // rose → violet
-    [Color(0xFF7B2FFF), Color(0xFF00F5D4)], // violet → cyan
-    [Color(0xFFFF6B6B), Color(0xFFFF3CAC)], // rouge → rose
-    [Color(0xFFFFD700), Color(0xFFFFA500)], // or → orange
-    [Color(0xFF00B894), Color(0xFF00F5D4)], // vert → cyan
-    [Color(0xFF00B4DB), Color(0xFF7B2FFF)], // bleu → violet
-    [Color(0xFFFF9F43), Color(0xFFEE5A24)], // orange → rouge
-    [Color(0xFFA29BFE), Color(0xFF6C5CE7)], // lavande → violet
-  ];
+  static const _gradients = degradesAvatar;
 
   @override
   Widget build(BuildContext context) {
@@ -1552,16 +1544,7 @@ class _MarqueurProfil extends StatelessWidget {
   const _MarqueurProfil({required this.user});
 
   // ✅ Dégradés pour les avatars initiales sur la carte
-  static const _gradients = [
-    [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
-    [Color(0xFF7B2FFF), Color(0xFF00F5D4)],
-    [Color(0xFFFF6B6B), Color(0xFFFF3CAC)],
-    [Color(0xFFFFD700), Color(0xFFFFA500)],
-    [Color(0xFF00B894), Color(0xFF00F5D4)],
-    [Color(0xFF00B4DB), Color(0xFF7B2FFF)],
-    [Color(0xFFFF9F43), Color(0xFFEE5A24)],
-    [Color(0xFFA29BFE), Color(0xFF6C5CE7)],
-  ];
+  static const _gradients = degradesAvatar;
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
@@ -1801,16 +1802,7 @@ class _GradientAvatar extends StatelessWidget {
   final String name;
   const _GradientAvatar({required this.name});
 
-  static const _palettes = [
-    [Color(0xFFFF6B6B), Color(0xFFFECA57)],
-    [Color(0xFF48DBFB), Color(0xFFFF9FF3)],
-    [Color(0xFFFF9F43), Color(0xFFEE5A24)],
-    [Color(0xFFA29BFE), Color(0xFF6C5CE7)],
-    [Color(0xFFFD79A8), Color(0xFFE84393)],
-    [Color(0xFF55EFC4), Color(0xFF00B894)],
-    [Color(0xFFFF3CAC), Color(0xFF7B2FFF)],
-    [Color(0xFF7B2FFF), Color(0xFF00F5D4)],
-  ];
+  static const _palettes = degradesAvatar;
 
   @override
   Widget build(BuildContext context) {

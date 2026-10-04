@@ -86,7 +86,7 @@ class ControleurProfil extends GetxController {
       dispoJusqua.value!.isAfter(DateTime.now());
   final RxBool profilPublic = true.obs;
   final RxBool showDistance = true.obs;
-  final RxString selectedTheme = 'dark'.obs;
+  final RxString selectedTheme = 'zamu'.obs;
 
   final RxList<Map<String, dynamic>> blockedProfiles =
       <Map<String, dynamic>>[].obs;
@@ -305,9 +305,8 @@ class ControleurProfil extends GetxController {
       // Thème et photos
       // Thème retiré (ex. gold, forest) → on affiche celui réellement actif.
       final theme = data['theme']?.toString();
-      selectedTheme.value = AppPalettes.all.containsKey(theme)
-          ? theme!
-          : ThemeController.to.palette.value.id;
+      selectedTheme.value = AppPalettes.resoudre(theme)?.id ??
+          ThemeController.to.palette.value.id;
       photoUrls.value = data['photo_urls'] is List
           ? List<String>.from(data['photo_urls'])
           : <String>[];

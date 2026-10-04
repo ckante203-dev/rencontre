@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/amis/ecran_amis.dart';
@@ -1094,11 +1095,7 @@ class _GradientBg extends StatelessWidget {
   const _GradientBg({required this.name});
   @override
   Widget build(BuildContext context) {
-    final colors = [
-      [const Color(0xFFFF3CAC), const Color(0xFF7B2FFF)],
-      [const Color(0xFF7B2FFF), const Color(0xFF00F5D4)],
-      [const Color(0xFFFF6B6B), const Color(0xFFFF3CAC)],
-    ];
+    final colors = degradesAvatar;
     final idx = name.isNotEmpty ? name.codeUnitAt(0) % colors.length : 0;
     return Container(
       decoration: BoxDecoration(
