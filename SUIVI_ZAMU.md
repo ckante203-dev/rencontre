@@ -1,6 +1,6 @@
 # Suivi Zamu — à faire au retour
 
-Mis à jour le 30/09/2026.
+Mis à jour le 04/10/2026.
 
 **Fait le 30/09 :** scripts `000010`, `000011` et `000012` appliqués ; fonction `moderate-image` déployée (clés Sightengine vérifiées).
 
@@ -18,6 +18,48 @@ Mis à jour le 30/09/2026.
 - Photos « unchecked » : publiées sans analyse (quota dépassé, vidéos) — à contrôler de temps en temps. Les signalements de stories arrivent dans la table `reports` avec `story_id` rempli : les traiter vite, la story et son fichier sont purgés à l'expiration.
 
 **État :** tous les scripts SQL (000000 à 000009) sont appliqués ; toutes les fonctions serveur sont déployées (notifications testées OK le 29/09) ; commit `7723aed`. Restent les points 4 et 5.
+
+## 0. Prochaine version — Google Play (préparé le 04/10)
+
+**Nouveautés de la version (test interne d'abord, la production reste en 1.0.11) :** recherche @pseudo + QR code, « Dispo maintenant », relances de 19 h, stories Amis proches / Amis / Masquer à, caméra Zamu (photo, vidéo, selfie miroir), stickers / emoji / GIF / textes sur les stories, événements (J'y vais / Intéressé / sur place / stories / propositions / rappels), discussions de groupe, système d'amis + compte privé, cloche 🔔 sur l'Accueil, bulles de messages, thèmes pro (Zamu par défaut).
+
+**Scripts SQL appliqués le 04/10 :** `027` à `038` (vérifiés depuis l'app). **Fonctions déployées :** `relance-quotidienne`, `rappel-evenements`, `groupe-message`, `dynamic-processor` (types ami_demande / ami_accepte), `moderate-image` (kind « groupe »).
+
+**Conformité Google Play — déjà fait dans l'app (commit `1adda79`) :**
+- plus de permission « toutes les photos / vidéos » (`READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` retirées : sélecteur de photos Android) ;
+- plus de services de premier plan typés (geolocator « location », awesome_notifications « phoneCall » retirés) ;
+- groupes : signaler un message, bloquer, photos analysées par la modération ;
+- permissions restantes : caméra, micro, position, notifications, facturation ; cible Android 36.
+
+### À faire — pages légales (maintenant)
+- [x] Politique de confidentialité à jour en ligne (4 octobre 2026).
+- [ ] Conditions d'utilisation : renvoyer `legal/conditions-utilisation.html` sur le dépôt GitHub `zamu-legal` (en ligne : encore la version du 30 septembre).
+
+### À faire — Play Console, LE JOUR où on envoie la nouvelle version (même en test interne)
+1. **Contenu de l'appli → Sécurité des données** : ajouter
+   - photos et vidéos : photos des discussions de groupe et de l'album privé ;
+   - messages : messages de groupe ;
+   - position : approximative et précise, pour les fonctionnalités de l'app (profils / événements proches, « Je suis sur place ») ;
+   - contacts / relations : liste d'amis, groupes.
+2. **Classification du contenu** : refaire le questionnaire → les utilisateurs peuvent échanger du contenu, partager leur position.
+3. **Suppression des comptes** : vérifier le lien `https://supportsnapmeet-jpg.github.io/zamu-legal/suppression-compte.html`.
+4. Version : passer le numéro dans `pubspec.yaml` (actuellement `1.0.14+2024`), `flutter build appbundle`, envoyer en **test interne**.
+
+### À faire — APRÈS la mise en production de la nouvelle version (quand la 1.0.11 n'existe plus nulle part)
+- **Contenu de l'appli → Autorisations photos et vidéos** : déclarer que l'app n'utilise plus `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (ne pas le faire avant : la 1.0.11 les utilise encore).
+
+### À vérifier (tests à deux téléphones)
+- [ ] Notification de demande d'ami (non reçue au 1er test) → si rien : requête `net._http_response` (voir §2).
+- [ ] Groupes : messages, photos, notifications « 👥 », signaler / bloquer.
+- [ ] Événements : J'y vais / Intéressé, « Je suis sur place », discussion du groupe, rappels (veille / 2 h avant).
+- [ ] Relances de 19 h : `SELECT * FROM cron.job_run_details WHERE jobid = 2 ORDER BY start_time DESC LIMIT 3;`
+- [ ] Stories « Amis » / « Proches » / « Masquer à » vues depuis un autre compte.
+- [ ] 2 photos de profil cassées (comptes `9195fd31…`, `f67ed1c9…`) et le « 1 non lu » mystère.
+
+### Plus tard
+- Mode clair (fond blanc) : chantier dédié après la sortie.
+- Écran « Nouveautés » affiché une fois après la mise à jour.
+- Parrainage (jours de Premium offerts).
 
 ## 1. Vérifier quels scripts SQL sont déjà passés
 
