@@ -11,7 +11,7 @@ import 'package:rencontre/shared/models/story_model.dart';
 
 // ─── BARRE DE RÉPONSE À UNE STORY (façon Snapchat) ────────────────
 // Sous la story, séparée d'elle : 📷 | « Répondre à Awa… » | ❤️ | 👍.
-// ❤️ = like, 👍 = réponse rapide envoyée tout de suite ; dès qu'on écrit,
+// ❤️ et 👍 = réponses rapides envoyées tout de suite ; dès qu'on écrit,
 // les deux laissent place au bouton Envoyer. Utilisée par le lecteur de
 // stories et par le fil de l'onglet Story.
 
@@ -64,10 +64,12 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
     });
   }
 
+  /// ❤️ = réponse rapide (message « ❤️ » envoyé avec l'aperçu de la
+  /// story), comme 👍 — ce n'est plus un like.
   void _aimer() {
-    HapticFeedback.lightImpact();
+    if (_sending) return;
     _coeur.forward(from: 0);
-    widget.onLike();
+    _send('❤️');
   }
 
   Future<void> _send([String? rapide]) async {
@@ -220,8 +222,8 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
                                   weight: 50),
                             ]).animate(CurvedAnimation(
                                 parent: _coeur, curve: Curves.easeOut)),
-                            child: Text(widget.aime ? '❤️' : '🤍',
-                                style: const TextStyle(fontSize: 20)),
+                            child: const Text('❤️',
+                                style: TextStyle(fontSize: 20)),
                           ),
                         ),
                         _icone(
