@@ -300,7 +300,9 @@ class EvenementsController extends GetxController {
       final m = e.toString();
       _snack(
           'Proposition non envoyée',
-          m.contains('trop_de_propositions')
+          m.contains('premium_requis')
+              ? 'Proposer un événement est réservé aux membres Premium 👑'
+              : m.contains('trop_de_propositions')
               ? 'Tu as déjà 3 propositions en attente de validation'
               : m.contains('date_passee')
                   ? 'La date doit être dans le futur'

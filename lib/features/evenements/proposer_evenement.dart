@@ -3,6 +3,67 @@ import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
+import 'package:rencontre/core/utils/app_routes.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
+
+/// Proposer un événement est réservé aux membres Premium 👑 : sinon on
+/// explique pourquoi et on propose de passer Premium.
+void ouvrirProposition() {
+  if (ControleurProfil.estPremiumMaintenant()) {
+    Get.to(() => const ProposerEvenement());
+    return;
+  }
+  Get.bottomSheet(
+    SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('👑', style: TextStyle(fontSize: 40)),
+          const SizedBox(height: 10),
+          Text('Réservé aux membres Premium',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: 'Syne',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          Text(
+              'Passe Premium pour proposer tes événements (match, concert, '
+              'soirée…) à toute la communauté Zamu.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () {
+              Get.back();
+              Get.toNamed(AppRoutes.paywall);
+            },
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                gradient: AppColors.gradientPink,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Text('Découvrir Premium',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    ),
+    backgroundColor: Colors.transparent,
+  );
+}
 
 /// Proposer un événement : envoyé « en attente », publié par Zamu après
 /// vérification (3 propositions en attente maximum par personne).

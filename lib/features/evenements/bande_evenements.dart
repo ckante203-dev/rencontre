@@ -25,7 +25,7 @@ class BandeEvenements extends StatelessWidget {
       // Aucun événement : simple lien pour en proposer un
       if (liste.isEmpty) {
         return GestureDetector(
-          onTap: () => Get.to(() => const ProposerEvenement()),
+          onTap: () => ouvrirProposition(),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
             child: Row(children: [
@@ -207,7 +207,7 @@ class _CarteProposer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Get.to(() => const ProposerEvenement()),
+      onTap: () => ouvrirProposition(),
       child: Container(
         width: 120,
         decoration: BoxDecoration(
@@ -219,7 +219,7 @@ class _CarteProposer extends StatelessWidget {
           Icon(Icons.add_circle_outline_rounded,
               color: AppColors.accent, size: 34),
           const SizedBox(height: 8),
-          Text('Proposer un\névénement',
+          Text('Proposer un\névénement 👑',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 12,

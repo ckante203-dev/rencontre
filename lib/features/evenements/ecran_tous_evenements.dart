@@ -42,7 +42,7 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
         actions: [
           IconButton(
             tooltip: 'Proposer un événement',
-            onPressed: () => Get.to(() => const ProposerEvenement()),
+            onPressed: () => ouvrirProposition(),
             icon: const Icon(Icons.add_circle_outline_rounded),
           ),
         ],
