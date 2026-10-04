@@ -156,7 +156,8 @@ class NotificationService {
         notificationLayout: NotificationLayout.Messaging,
         category: NotificationCategory.Message,
         wakeUpScreen: true,
-        autoDismissible: false,
+        // ✅ Disparaît une fois touchée (avant : restait dans la barre)
+        autoDismissible: true,
         payload: {
           'type': 'message',
           'conversationId': conversationId,
@@ -497,6 +498,21 @@ class NotificationService {
     }
 
     final type = s('type');
+    // 💸 Like reçu par un compte gratuit : anonyme, ouvre l'onglet ❤️
+    if (type == 'like_anonyme') {
+      if (!await AwesomeNotifications().isNotificationAllowed()) return;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          channelKey: _canal('likes'),
+          title: title ?? '❤️ Quelqu\'un t\'a liké !',
+          body: body ?? 'Découvre qui t\'a liké 👀',
+          notificationLayout: NotificationLayout.Default,
+          payload: {'type': 'like_anonyme'},
+        ),
+      );
+      return;
+    }
     // ⭐ Favori en ligne / proche / dans ma ville (dynamic-processor)
     if (type != null && type.startsWith('favori')) {
       final fromUserId = s('fromUserId') ?? s('from_user_id') ?? '';
@@ -531,6 +547,10 @@ class NotificationService {
 
     final convId = s('conversationId') ?? '';
     if (convId.isEmpty) return;
+    // ✅ Conversation déjà ouverte à l'écran : le message s'affiche dans la
+    // discussion, pas besoin de notification (avant : bannière + son à
+    // chaque message de la personne avec qui on discute).
+    if (Get.isRegistered<ConversationController>(tag: convId)) return;
     await showMessageNotification(
       senderName: s('senderName') ?? title ?? 'Quelqu\'un',
       message: s('message') ?? body ?? '',
@@ -614,8 +634,10 @@ class NotificationService {
       Get.offAllNamed(AppRoutes.main);
     }
 
-    // ✅ Résumé likes / vues profil → onglet Profil
-    else if (type == 'likes_summary' || type == 'profile_views') {
+    // ✅ Résumé likes / vues profil, like anonyme → onglet ❤️
+    else if (type == 'likes_summary' ||
+        type == 'profile_views' ||
+        type == 'like_anonyme') {
       await Future.delayed(const Duration(milliseconds: 500));
       NavigationController.pendingIndex = NavigationController.likesIndex;
       Get.offAllNamed(AppRoutes.main);

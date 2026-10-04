@@ -23,9 +23,16 @@ class NotificationModel {
     required this.createdAt,
   });
 
-  // ✅ Uniquement story/annonce désormais
   String get message {
     switch (type) {
+      case 'like':
+        return 't\'a liké ❤️';
+      case 'match':
+        return 'et toi, c\'est un match 💘';
+      case 'favori_story':
+        return 'a publié une story ⭐';
+      case 'album':
+        return 't\'a ouvert son album privé 🔓';
       case 'new_story':
         return 'a publié une nouvelle story';
       case 'like_story':

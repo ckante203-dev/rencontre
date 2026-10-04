@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/shared/models/user_model.dart';
+import 'package:rencontre/features/home/view/main_navigation.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -82,24 +85,63 @@ class _NotifTile extends StatelessWidget {
   IconData get _icon {
     switch (notif.type) {
       case 'new_story':
+      case 'favori_story':
         return Icons.auto_awesome_mosaic_rounded;
       case 'like_story':
+      case 'like':
         return Icons.favorite_rounded;
+      case 'match':
+        return Icons.favorite_border_rounded;
+      case 'album':
+        return Icons.lock_open_rounded;
       default:
         return Icons.notifications_rounded;
     }
   }
+
+  /// 💸 Like d'un compte GRATUIT : on ne dévoile pas qui (avantage Premium).
+  bool get _anonyme =>
+      notif.type == 'like' && !ControleurProfil.estPremiumMaintenant();
 
   Future<void> _onTap() async {
     await ctrl.markAsRead(notif.id);
     switch (notif.type) {
       case 'new_story':
       case 'like_story':
+      case 'favori_story':
         _openStory();
+        break;
+      case 'like':
+        if (_anonyme) {
+          // Onglet ❤️ : photos floutées + bouton Premium
+          Get.back();
+          if (Get.isRegistered<NavigationController>()) {
+            Get.find<NavigationController>()
+                .goTo(NavigationController.likesIndex);
+          }
+        } else {
+          _ouvrirProfil();
+        }
+        break;
+      case 'match':
+      case 'album':
+        _ouvrirProfil();
         break;
       default:
         break;
     }
+  }
+
+  void _ouvrirProfil() {
+    final id = notif.actorId;
+    if (id == null) return;
+    Get.toNamed('/profile/view',
+        arguments: UserModel(
+          id: id,
+          name: notif.actorName,
+          age: 18,
+          photoUrl: notif.actorPhotoUrl,
+        ));
   }
 
   void _openStory() {
@@ -131,7 +173,13 @@ class _NotifTile extends StatelessWidget {
                   height: 46,
                   decoration: const BoxDecoration(shape: BoxShape.circle),
                   child: ClipOval(
-                    child: notif.actorPhotoUrl != null &&
+                    child: _anonyme
+                        ? Container(
+                            color: AppColors.surface2,
+                            child: const Icon(Icons.lock_rounded,
+                                color: Colors.white54, size: 20),
+                          )
+                        : notif.actorPhotoUrl != null &&
                             notif.actorPhotoUrl!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: notif.actorPhotoUrl!, fit: BoxFit.cover)
@@ -173,9 +221,13 @@ class _NotifTile extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
                   children: [
                     TextSpan(
-                        text: '${notif.actorName} ',
+                        text: _anonyme ? 'Quelqu\'un ' : '${notif.actorName} ',
                         style: const TextStyle(fontWeight: FontWeight.w700)),
                     TextSpan(text: notif.message),
+                    if (_anonyme)
+                      TextSpan(
+                          text: ' · Découvre qui avec Premium',
+                          style: TextStyle(color: AppColors.textMuted)),
                   ],
                 ),
               ),

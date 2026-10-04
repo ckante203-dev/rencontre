@@ -270,18 +270,27 @@ serve(async (req) => {
       return new Response("favoris coupés", { status: 200 });
     }
 
-    const { title, body, channelId } = buildNotificationContent(
+    let { title, body, channelId } = buildNotificationContent(
       eventType,
       fromProfile.name,
       typeof payload.distance_km === "number" ? payload.distance_km : undefined
     );
 
-    const data: Record<string, string> = {
+    let data: Record<string, string> = {
       type: eventType,
       from_user_id,
       from_user_name: fromProfile.name,
       from_user_photo: fromProfile.photo_url ?? "",
     };
+
+    // 💸 Like reçu par un compte GRATUIT : on ne dévoile pas qui (c'est
+    // l'avantage Premium « Vois qui t'a liké »). Le tap ouvre l'onglet ❤️
+    // (photos floutées). Un match reste nominatif (like réciproque).
+    if (eventType === "like" && toProfile.is_premium !== true) {
+      title = "❤️ Quelqu'un t'a liké !";
+      body = "Découvre qui t'a liké 👀";
+      data = { type: "like_anonyme" };
+    }
 
     // ── Envoi FCM ─────────────────────────────────────────────────
     // Réglage « Son des notifications » désactivé → canal silencieux
