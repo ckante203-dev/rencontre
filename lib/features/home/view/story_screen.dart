@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/view/ecran_amis_proches.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -889,8 +890,27 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                         fontWeight: FontWeight.w700)),
                                 if (s.visibility == 'friends') ...[
                                   const SizedBox(width: 6),
-                                  const Icon(Icons.group_rounded,
-                                      size: 12, color: Colors.white70),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.online,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.star_rounded,
+                                              size: 11, color: Colors.white),
+                                          SizedBox(width: 2),
+                                          Text('Amis proches',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight:
+                                                      FontWeight.w700)),
+                                        ]),
+                                  ),
                                 ],
                               ],
                             ),
@@ -1820,6 +1840,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   double _durationHours = 24;
   String _visibility = 'public';
+  Future<int>? _nbAmisProches; // compteur de la liste, chargé une fois
 
   bool _textMode = false;
   final _textCtrl = TextEditingController();
@@ -2164,8 +2185,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: _VisibilityChip(
-                            icon: Icons.group_rounded,
-                            label: 'Amis seulement',
+                            icon: Icons.star_rounded,
+                            label: 'Amis proches',
                             selected: _visibility == 'friends',
                             onTap: () {
                               setSheetState(() => _visibility = 'friends');
@@ -2174,6 +2195,58 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Liste « Amis proches » : nombre + gestion
+                    FutureBuilder<int>(
+                      future: _nbAmisProches ??= nombreAmisProches(),
+                      builder: (_, snap) {
+                        final n = snap.data;
+                        final vide = n == 0 && _visibility == 'friends';
+                        return GestureDetector(
+                          onTap: () async {
+                            await Get.to(() => const EcranAmisProches());
+                            _nbAmisProches = nombreAmisProches();
+                            setSheetState(() {}); // recompte
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                  color: vide
+                                      ? AppColors.error
+                                      : AppColors.border),
+                            ),
+                            child: Row(children: [
+                              Icon(Icons.star_rounded,
+                                  color: AppColors.online, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                    vide
+                                        ? 'Ta liste est vide : personne ne verra cette story'
+                                        : n == null
+                                            ? 'Ma liste Amis proches'
+                                            : 'Ma liste Amis proches ($n)',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: vide
+                                            ? AppColors.error
+                                            : AppColors.textPrimary)),
+                              ),
+                              Text('Gérer',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.accent)),
+                            ]),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     GestureDetector(
@@ -2367,11 +2440,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         Icon(
                             _visibility == 'public'
                                 ? Icons.public_rounded
-                                : Icons.group_rounded,
+                                : Icons.star_rounded,
                             color: Colors.white,
                             size: 16),
                         const SizedBox(width: 6),
-                        Text(_visibility == 'public' ? 'Publique' : 'Amis',
+                        Text(_visibility == 'public' ? 'Publique' : 'Amis proches',
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
@@ -2578,14 +2651,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                     Icon(
                                         _visibility == 'public'
                                             ? Icons.public_rounded
-                                            : Icons.group_rounded,
+                                            : Icons.star_rounded,
                                         color: Colors.white,
                                         size: 16),
                                     const SizedBox(width: 6),
                                     Text(
                                         _visibility == 'public'
                                             ? 'Publique'
-                                            : 'Amis',
+                                            : 'Amis proches',
                                         style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 12,
