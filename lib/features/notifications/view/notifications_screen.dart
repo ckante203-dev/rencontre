@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -94,6 +95,9 @@ class _NotifTile extends StatelessWidget {
         return Icons.favorite_border_rounded;
       case 'album':
         return Icons.lock_open_rounded;
+      case 'ami_demande':
+      case 'ami_accepte':
+        return Icons.group_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -125,7 +129,11 @@ class _NotifTile extends StatelessWidget {
         break;
       case 'match':
       case 'album':
+      case 'ami_accepte':
         _ouvrirProfil();
+        break;
+      case 'ami_demande':
+        Get.to(() => const EcranAmis(ouvrirDemandes: true));
         break;
       default:
         break;

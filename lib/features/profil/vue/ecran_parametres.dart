@@ -211,6 +211,16 @@ class EcranParametres extends StatelessWidget {
                     ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
+                icon: '👥',
+                title: "Recevoir des demandes d'ami",
+                subtitle: ctrl.accepteDemandesAmi.value
+                    ? "Tout le monde peut t'ajouter en ami"
+                    : "🔒 Compte privé : personne ne peut t'ajouter",
+                value: ctrl.accepteDemandesAmi.value,
+                onChanged: (v) => ctrl.majReglage(
+                    ctrl.accepteDemandesAmi, 'accepte_demandes_ami', v))),
+            const SizedBox(height: 10),
+            Obx(() => _Toggle(
                 icon: '📍',
                 title: 'Afficher ma distance',
                 subtitle: 'Les autres voient à quelle distance tu es',

@@ -75,6 +75,8 @@ class ControleurProfil extends GetxController {
   final RxBool notifFavoris = true.obs;
   // Recherche par pseudo dans Messages : désactivé = introuvable
   final RxBool trouvableParPseudo = true.obs;
+  // Compte privé : désactivé = personne ne peut m'envoyer de demande d'ami
+  final RxBool accepteDemandesAmi = true.obs;
   // Statut « Dispo maintenant »
   final RxnString dispoTexte = RxnString();
   final Rxn<DateTime> dispoJusqua = Rxn<DateTime>();
@@ -290,6 +292,7 @@ class ControleurProfil extends GetxController {
       notifSon.value = data['notif_son'] ?? true;
       notifFavoris.value = data['notif_favoris'] ?? true;
       trouvableParPseudo.value = data['trouvable_par_pseudo'] ?? true;
+      accepteDemandesAmi.value = data['accepte_demandes_ami'] ?? true;
       dispoTexte.value = data['dispo_texte'] as String?;
       dispoJusqua.value = data['dispo_jusqua'] != null
           ? DateTime.tryParse(data['dispo_jusqua'].toString())?.toLocal()

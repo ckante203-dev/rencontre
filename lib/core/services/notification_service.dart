@@ -1,6 +1,8 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/ecran_amis.dart';
+import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
@@ -520,6 +522,24 @@ class NotificationService {
       return;
     }
     // ⭐ Favori en ligne / proche / dans ma ville (dynamic-processor)
+    // 👥 Demande d'ami / demande acceptée
+    if (type == 'ami_demande' || type == 'ami_accepte') {
+      final de = s('from_user_id') ?? '';
+      if (Get.isRegistered<AmisController>()) AmisController.to.charger();
+      if (!await AwesomeNotifications().isNotificationAllowed()) return;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: ('$type$de').hashCode.abs() % 2147483647,
+          channelKey: _canal('likes'),
+          title: title ?? '👥 Amis',
+          body: body ?? '',
+          largeIcon: s('from_user_photo'),
+          notificationLayout: NotificationLayout.Default,
+          payload: {'type': type!, 'fromUserId': de},
+        ),
+      );
+      return;
+    }
     if (type != null && type.startsWith('favori')) {
       final fromUserId = s('fromUserId') ?? s('from_user_id') ?? '';
       if (fromUserId.isEmpty) return;
@@ -667,6 +687,18 @@ class NotificationService {
       await Future.delayed(const Duration(milliseconds: 500));
       NavigationController.pendingIndex = NavigationController.likesIndex;
       Get.offAllNamed(AppRoutes.main);
+    }
+
+    // 👥 Demande d'ami → écran Amis (onglet Demandes) ; acceptée → profil
+    else if (type == 'ami_demande' || type == 'ami_accepte') {
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (Get.isRegistered<AmisController>()) AmisController.to.charger();
+      final de = payload['fromUserId'];
+      if (type == 'ami_demande') {
+        Get.to(() => const EcranAmis(ouvrirDemandes: true));
+      } else if (de != null && de.isNotEmpty) {
+        await ouvrirProfilParId(de);
+      }
     }
 
     // ✅ Utilisateur en ligne → ouvrir son profil

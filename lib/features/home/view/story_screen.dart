@@ -897,6 +897,22 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700)),
                                 ),
+                                if (s.visibility == 'amis') ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0A84FF),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text('👥 Amis',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700)),
+                                  ),
+                                ],
                                 if (s.visibility == 'friends') ...[
                                   const SizedBox(width: 6),
                                   Container(
@@ -2910,6 +2926,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               alignment: Alignment.centerLeft,
               child: Row(children: [
       audience('public', Icons.public_rounded, 'Publique'),
+      const SizedBox(width: 6),
+      audience('amis', Icons.group_rounded, 'Amis'),
       const SizedBox(width: 6),
       audience('friends', Icons.star_rounded, 'Proches'),
       const SizedBox(width: 6),

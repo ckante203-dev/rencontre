@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
@@ -74,6 +75,14 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
   Future<void> _charger() async {
     final uid = _uid;
     if (uid == null) return;
+    // 0. Mes amis d'abord
+    if (Get.isRegistered<AmisController>()) {
+      for (final a in AmisController.to.amis) {
+        if (_personnes.containsKey(a.id)) continue;
+        _personnes[a.id] = _Personne(a.id, a.nom, a.photoUrl, a.pseudo);
+        _ordre.add(a.id);
+      }
+    }
     // 1. Mes contacts de conversation
     if (Get.isRegistered<ChatListController>()) {
       for (final c in Get.find<ChatListController>().conversations) {

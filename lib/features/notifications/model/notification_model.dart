@@ -33,6 +33,10 @@ class NotificationModel {
         return 'a publié une story ⭐';
       case 'album':
         return 't\'a ouvert son album privé 🔓';
+      case 'ami_demande':
+        return 'veut être ton ami 👥';
+      case 'ami_accepte':
+        return 'a accepté ta demande d\'ami 👥';
       case 'new_story':
         return 'a publié une nouvelle story';
       case 'like_story':

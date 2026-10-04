@@ -111,7 +111,9 @@ async function sendFCM(
 type EventType =
   | "follow" | "like" | "match"
   // ⭐ Favoris (trigger SQL sur profiles, 20261002000021_favoris.sql)
-  | "favori_en_ligne" | "favori_proche" | "favori_ville" | "favori_story";
+  | "favori_en_ligne" | "favori_proche" | "favori_ville" | "favori_story"
+  // 👥 Amis (fonctions SQL demander_ami / accepter_ami, migration 037)
+  | "ami_demande" | "ami_accepte";
 
 function buildNotificationContent(
   eventType: EventType,
@@ -144,6 +146,18 @@ function buildNotificationContent(
         title: `⭐ ${fromName} est dans ta ville`,
         body: `Ton favori ${fromName} vient d'arriver près de chez toi`,
         channelId: "likes",
+      };
+    case "ami_demande":
+      return {
+        title: `👥 ${fromName} veut être ton ami`,
+        body: `Accepte sa demande pour voir ses stories « Amis »`,
+        channelId: "follows",
+      };
+    case "ami_accepte":
+      return {
+        title: `👥 ${fromName} a accepté ta demande`,
+        body: `Vous êtes maintenant amis sur Zamu 🎉`,
+        channelId: "follows",
       };
     case "match":
       return {

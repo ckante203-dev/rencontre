@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -947,6 +948,8 @@ class _CorpsProfil extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
+          Center(child: BoutonAmi(userId: user.id)),
+          const SizedBox(height: 12),
           BoutonAlbumPrive(ownerId: user.id, nom: user.name),
           if (user.taille != null ||
               user.poids != null ||

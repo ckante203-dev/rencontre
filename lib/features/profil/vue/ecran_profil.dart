@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/ecran_amis.dart';
+import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
 import 'package:share_plus/share_plus.dart';
@@ -44,6 +46,8 @@ class EcranProfil extends StatelessWidget {
                 _NomStatut(ctrl: ctrl),
                 const SizedBox(height: 18),
                 _CartePseudo(ctrl: ctrl),
+                const SizedBox(height: 14),
+                const _CarteAmis(),
                 const SizedBox(height: 14),
                 CarteDispo(ctrl: ctrl),
                 const SizedBox(height: 14),
@@ -850,6 +854,86 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
           ],
         )),
       ),
+    );
+  }
+}
+
+// ─── MES AMIS ─────────────────────────────────────────────────────
+
+class _CarteAmis extends StatelessWidget {
+  const _CarteAmis();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<AmisController>()) return const SizedBox.shrink();
+    final ctrl = AmisController.to;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Obx(() {
+        final n = ctrl.amis.length;
+        final demandes = ctrl.nbDemandes;
+        return GestureDetector(
+          onTap: () => Get.to(() => EcranAmis(ouvrirDemandes: demandes > 0)),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: demandes > 0 ? AppColors.accent : AppColors.border),
+            ),
+            child: Row(children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                    child: Text('👥', style: TextStyle(fontSize: 20))),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(n == 0 ? 'Mes amis' : 'Mes amis ($n)',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text(
+                          demandes > 0
+                              ? '$demandes demande${demandes > 1 ? 's' : ''} d\'ami en attente'
+                              : 'Ajoute tes amis par @pseudo ou QR code',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: demandes > 0
+                                  ? AppColors.accent
+                                  : AppColors.textMuted)),
+                    ]),
+              ),
+              if (demandes > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.gradientPink,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('$demandes',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                ),
+              Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            ]),
+          ),
+        );
+      }),
     );
   }
 }

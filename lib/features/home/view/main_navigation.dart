@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/chat/view/bulles_messages.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
@@ -70,6 +71,9 @@ class _MainNavigationState extends State<MainNavigation> {
     }
     if (!Get.isRegistered<GroupesController>()) {
       Get.put(GroupesController(), permanent: true);
+    }
+    if (!Get.isRegistered<AmisController>()) {
+      Get.put(AmisController(), permanent: true);
     }
 
     // Tap sur la barre du bas → la page suit (glissée si onglet voisin).

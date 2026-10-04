@@ -13,7 +13,7 @@ import 'package:rencontre/features/home/view/main_navigation.dart';
 // ─── BULLES DE MESSAGES (Accueil) ─────────────────────────────────
 // Quand de NOUVEAUX messages non lus arrivent, la photo des personnes qui
 // ont écrit monte depuis l'icône Messages, comme les cœurs d'un live
-// (5 maximum, ~3 s). Toucher une bulle ouvre la conversation.
+// (5 maximum, ~6 s chacune). Toucher une bulle ouvre la conversation.
 // Jamais deux fois pour les mêmes messages ; seulement sur l'Accueil.
 
 class BullesMessages extends StatefulWidget {
@@ -26,8 +26,8 @@ class BullesMessages extends StatefulWidget {
 class _BullesMessagesState extends State<BullesMessages>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const _cle = 'bulles_messages_vues';
-  static const _dureeBulle = 3200; // ms
-  static const _decalage = 280; // ms entre deux bulles
+  static const _dureeBulle = 6000; // ms : montée lente, le temps de voir qui
+  static const _decalage = 650; // ms entre deux bulles
 
   late final AnimationController _anim = AnimationController(vsync: this);
   final _box = GetStorage();
@@ -153,14 +153,14 @@ class _BullesMessagesState extends State<BullesMessages>
     if (t <= 0 || t >= 1) return const SizedBox.shrink();
     final c = _bulles[i];
     // Montée qui ralentit, léger balancement, écartement progressif
-    final monteeT = Curves.easeOutCubic.transform(t);
+    final monteeT = Curves.easeOutSine.transform(t);
     final ecart = (i - (_bulles.length - 1) / 2) * 34 * monteeT;
-    final x = x0 + ecart + sin(t * pi * 2.4 + _balancement[i]) * 22 * t;
+    final x = x0 + ecart + sin(t * pi * 3 + _balancement[i]) * 24 * t;
     final y = y0 - monteeT * montee;
-    final opacite = t < 0.08
-        ? t / 0.08
-        : t > 0.72
-            ? (1 - t) / 0.28
+    final opacite = t < 0.06
+        ? t / 0.06
+        : t > 0.8
+            ? (1 - t) / 0.2
             : 1.0;
     final echelle = t < 0.15 ? 0.4 + 0.6 * Curves.easeOutBack.transform(t / 0.15) : 1.0;
     const taille = 56.0;
