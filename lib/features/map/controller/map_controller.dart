@@ -389,7 +389,7 @@ class MapController extends GetxController {
       var query = Supabase.instance.client
           .from('profiles')
           .select(
-              'id, name, bio, photo_url, photo_urls, latitude, longitude, is_online, gender, looking_for, birthdate, interests, taille, poids, morphologie, lieu_rencontre, followers_count, following_count, matches_count, is_suspended, map_visible, is_ghost, is_premium, map_invisible_until, ghost_until, position_precision, show_distance')
+              'id, name, bio, photo_url, photo_urls, latitude, longitude, is_online, gender, looking_for, birthdate, interests, taille, poids, morphologie, lieu_rencontre, followers_count, following_count, matches_count, is_suspended, map_visible, is_ghost, is_premium, map_invisible_until, ghost_until, position_precision, show_distance, show_birthdate')
           .eq('is_suspended', false)
           .not('latitude', 'is', null)
           .not('longitude', 'is', null);
@@ -558,6 +558,7 @@ class MapController extends GetxController {
       morphologie: row['morphologie'] as String?,
       lieuRencontre: row['lieu_rencontre'] as String?,
       showDistance: row['show_distance'] ?? true,
+      showBirthdate: row['show_birthdate'] ?? true,
     );
   }
 

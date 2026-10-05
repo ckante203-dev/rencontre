@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 
 /// Affiche la liste complète de "qui m'a vu" ou "qui m'a liké",
 /// réservée aux utilisateurs premium (la vérification premium est
@@ -169,16 +169,8 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
     }).toList();
   }
 
-  void _ouvrirProfil(Map<String, dynamic> p) {
-    final user = UserModel(
-      id: p['id'] as String,
-      name: p['name'] as String,
-      age: p['age'] as int? ?? 18,
-      photoUrl: p['photo_url'] as String?,
-      isOnline: p['is_online'] as bool? ?? false,
-    );
-    Get.toNamed('/profile/view', arguments: user);
-  }
+  void _ouvrirProfil(Map<String, dynamic> p) =>
+      ouvrirProfilParId(p['id'] as String); // fiche complète
 
   @override
   Widget build(BuildContext context) {

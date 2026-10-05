@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
@@ -829,7 +830,7 @@ class _CarteProfilListe extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Flexible(
-                  child: Text('${user.name}, ${user.age}',
+                  child: Text(user.showBirthdate ? '${user.name}, ${user.age}' : user.name,
                       style:  TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 15,
@@ -1696,7 +1697,7 @@ class _ProfilCard extends StatelessWidget {
                   children: [
                     Row(children: [
                       Flexible(
-                        child: Text('${user.name}, ${user.age}',
+                        child: Text(user.showBirthdate ? '${user.name}, ${user.age}' : user.name,
                             style:  TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 20,
@@ -1797,7 +1798,7 @@ class _ProfilCard extends StatelessWidget {
               child: GestureDetector(
                 onTap: () {
                   Get.back();
-                  Get.toNamed('/profile/view', arguments: user);
+                  ouvrirProfilParId(user.id); // fiche complète
                 },
                 child: Container(
                   height: 48,
