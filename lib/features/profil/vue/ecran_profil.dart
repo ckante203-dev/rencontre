@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/profil/vue/qr_zamu.dart';
@@ -1000,58 +1002,61 @@ class _BoutonsLigne extends StatelessWidget {
   final ControleurProfil ctrl;
   const _BoutonsLigne({required this.ctrl});
 
+  /// Mon profil tel que les autres le voient
+  static Future<void> _apercu() async {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', uid)
+          .single();
+      Get.toNamed('/profile/view', arguments: profilComplet(row));
+    } catch (e) {
+      debugPrint('aperçu : $e');
+    }
+  }
+
+  Widget _bouton(IconData icone, String libelle, VoidCallback onTap,
+          {bool fond = true}) =>
+      Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: fond ? AppColors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: AppColors.border, width: fond ? 1 : 1.5),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icone, color: AppColors.textPrimary, size: 22),
+              const SizedBox(height: 4),
+              Text(libelle,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+            ]),
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => Get.toNamed(AppRoutes.profilEdit),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border, width: 1.5),
-              ),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.edit_rounded,
-                    color: AppColors.textPrimary, size: 22),
-                const SizedBox(height: 4),
-                Text('Modifier',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-              ]),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => Get.toNamed(AppRoutes.profilSettings),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.settings_rounded,
-                    color: AppColors.textPrimary, size: 22),
-                const SizedBox(height: 4),
-                Text('Paramètres',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-              ]),
-            ),
-          ),
-        ),
+        _bouton(Icons.edit_rounded, 'Modifier',
+            () => Get.toNamed(AppRoutes.profilEdit),
+            fond: false),
+        const SizedBox(width: 10),
+        _bouton(Icons.visibility_rounded, 'Aperçu', _apercu),
+        const SizedBox(width: 10),
+        _bouton(Icons.settings_rounded, 'Paramètres',
+            () => Get.toNamed(AppRoutes.profilSettings)),
       ]),
     );
   }

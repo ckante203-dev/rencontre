@@ -482,6 +482,9 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
     );
   }
 
+  /// Aperçu de mon propre profil (depuis « Mon profil » → Aperçu)
+  bool get _cEstMoi => user.id == Supabase.instance.client.auth.currentUser?.id;
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -508,21 +511,22 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
               ),
             ),
             actions: [
-              GestureDetector(
-                onTap: _showOptions,
-                child: Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24)),
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.more_horiz_rounded,
-                        size: 20, color: Colors.white),
+              if (!_cEstMoi)
+                GestureDetector(
+                  onTap: _showOptions,
+                  child: Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24)),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.more_horiz_rounded,
+                          size: 20, color: Colors.white),
+                    ),
                   ),
                 ),
-              ),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
@@ -714,86 +718,115 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
               ),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                children: [
-                  Row(children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _ouvrirChat,
-                        child: Container(
-                          height: 50,
-                          decoration: BoxDecoration(
-                              gradient: AppColors.gradientPink,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: AppColors.accent.withOpacity(0.4),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 4))
-                              ]),
-                          child: Center(
-                            child: _isLoadingMsg
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white))
-                                : const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                        Icon(Icons.chat_bubble_rounded,
-                                            size: 17, color: Colors.white),
-                                        SizedBox(width: 8),
-                                        Text('Envoyer un message',
-                                            style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white)),
-                                      ]),
+          if (_cEstMoi)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.4)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.visibility_rounded,
+                      color: AppColors.accent, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                        'Aperçu : voici ton profil tel que les autres le voient',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
+                  ),
+                ]),
+              ),
+            )
+          else
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Column(
+                  children: [
+                    Row(children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _ouvrirChat,
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                                gradient: AppColors.gradientPink,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: AppColors.accent.withOpacity(0.4),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4))
+                                ]),
+                            child: Center(
+                              child: _isLoadingMsg
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white))
+                                  : const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                          Icon(Icons.chat_bubble_rounded,
+                                              size: 17, color: Colors.white),
+                                          SizedBox(width: 8),
+                                          Text('Envoyer un message',
+                                              style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white)),
+                                        ]),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    if (Get.isRegistered<HomeController>()) ...[
-                      Obx(() {
-                        final home = Get.find<HomeController>();
-                        final fav = home.estFavori(user.id);
-                        return _ActionBtn(
-                            icone: fav
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            couleur:
-                                fav ? const Color(0xFFFFC233) : Colors.white,
-                            onTap: () async {
-                              final r = await home.basculerFavori(user.id);
-                              if (r == null) return;
-                              Get.snackbar(
-                                  r
-                                      ? '⭐ Ajouté à tes favoris'
-                                      : 'Retiré de tes favoris',
-                                  r ? '${user.name} ne le saura pas' : '',
-                                  snackPosition: SnackPosition.TOP,
-                                  backgroundColor: AppColors.surface,
-                                  colorText: Colors.white,
-                                  duration: const Duration(seconds: 2));
-                            });
-                      }),
                       const SizedBox(width: 10),
-                    ],
-                    SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: LikeButton(user: user),
-                    ),
-                  ]),
-                ],
+                      if (Get.isRegistered<HomeController>()) ...[
+                        Obx(() {
+                          final home = Get.find<HomeController>();
+                          final fav = home.estFavori(user.id);
+                          return _ActionBtn(
+                              icone: fav
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              couleur:
+                                  fav ? const Color(0xFFFFC233) : Colors.white,
+                              onTap: () async {
+                                final r = await home.basculerFavori(user.id);
+                                if (r == null) return;
+                                Get.snackbar(
+                                    r
+                                        ? '⭐ Ajouté à tes favoris'
+                                        : 'Retiré de tes favoris',
+                                    r ? '${user.name} ne le saura pas' : '',
+                                    snackPosition: SnackPosition.TOP,
+                                    backgroundColor: AppColors.surface,
+                                    colorText: Colors.white,
+                                    duration: const Duration(seconds: 2));
+                              });
+                        }),
+                        const SizedBox(width: 10),
+                      ],
+                      SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: LikeButton(user: user),
+                      ),
+                    ]),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
         body: _CorpsProfil(user: user),
       ),
@@ -1004,7 +1037,8 @@ class _CorpsProfil extends StatelessWidget {
                 if (user.lieuRencontre != null)
                   _PhysiqueBadge(
                       icon: '📍',
-                      label: 'Rencontre : ${user.lieuRencontre!.replaceAll('Domicile', 'Chez moi')}'),
+                      label:
+                          'Rencontre : ${user.lieuRencontre!.replaceAll('Domicile', 'Chez moi')}'),
               ],
             ),
             const SizedBox(height: 20),
@@ -1038,10 +1072,12 @@ class _CorpsProfil extends StatelessWidget {
             const SizedBox(height: 20),
           ],
 
-          // ── Amis et album privé ──
-          Center(child: BoutonAmi(userId: user.id)),
-          const SizedBox(height: 12),
-          BoutonAlbumPrive(ownerId: user.id, nom: user.name),
+          // ── Amis et album privé (pas sur l'aperçu de mon profil) ──
+          if (user.id != Supabase.instance.client.auth.currentUser?.id) ...[
+            Center(child: BoutonAmi(userId: user.id)),
+            const SizedBox(height: 12),
+            BoutonAlbumPrive(ownerId: user.id, nom: user.name),
+          ],
         ],
       ),
     );
