@@ -759,15 +759,19 @@ class _TextBubble extends StatelessWidget {
       this.isFirst = true,
       this.isLast = true});
 
+  // Compilées une seule fois (et non à chaque bulle affichée). L'analyseur
+  // ne connaît pas \p{Extended_Pictographic}, pourtant valide à l'exécution.
+  static final _reEmojis = RegExp(
+      // ignore: valid_regexps
+      r'^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f|\s)+$',
+      unicode: true);
+  static final _reChiffres = RegExp(r'[0-9#*]');
+
   /// 1 à 3 emojis sans texte → affichés en grand, sans bulle.
   static bool emojisSeuls(String? texte) {
     final t = (texte ?? '').trim();
     if (t.isEmpty || t.characters.length > 3) return false;
-    return RegExp(
-                r'^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f|\s)+$',
-                unicode: true)
-            .hasMatch(t) &&
-        !RegExp(r'[0-9#*]').hasMatch(t);
+    return _reEmojis.hasMatch(t) && !_reChiffres.hasMatch(t);
   }
 
   @override
