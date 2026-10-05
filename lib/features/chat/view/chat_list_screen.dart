@@ -627,8 +627,8 @@ class _ConversationTile extends GetView<ChatListController> {
       ]);
     }
 
-    return Text(
-      mine ? 'Vous: ${msg.text ?? ''}' : (msg.text ?? ''),
+    final texte = Text(
+      mine ? 'Toi : ${msg.text ?? ''}' : (msg.text ?? ''),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
@@ -638,6 +638,19 @@ class _ConversationTile extends GetView<ChatListController> {
               : AppColors.textMuted,
           fontWeight: conv.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400),
     );
+    if (!mine) return texte;
+    // Mon dernier message : coches de lecture devant (façon WhatsApp)
+    final lu = msg.status == MessageStatus.read;
+    return Row(children: [
+      Icon(
+          msg.status == MessageStatus.sent
+              ? Icons.check_rounded
+              : Icons.done_all_rounded,
+          size: 15,
+          color: lu ? const Color(0xFF53BDEB) : AppColors.textMuted),
+      const SizedBox(width: 4),
+      Expanded(child: texte),
+    ]);
   }
 }
 
