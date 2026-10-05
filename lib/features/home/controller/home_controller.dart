@@ -337,7 +337,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   int get unlockedProfileCount {
     final isPremium = ControleurProfil.estPremiumMaintenant();
     if (isPremium || hasActiveTrial) return 600;
-    return 15;
+    return 30;
   }
 
   // ✅ Toutes les stories actives que je peux voir (RLS filtre déjà les "amis" non autorisées), hors les miennes
