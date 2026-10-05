@@ -305,7 +305,7 @@ class _Completion extends StatelessWidget {
         (nbPhotos >= 3, 'Ajoute au moins 3 photos'),
         ((p.bio ?? '').trim().isNotEmpty, 'Écris une courte bio'),
         (ctrl.birthdate.value != null, 'Indique ta date de naissance'),
-        (p.interests.length >= 3, 'Choisis au moins 3 intérêts'),
+        (p.interests.isNotEmpty, 'Choisis tes intérêts (3 maximum)'),
         ((p.lookingFor ?? '').isNotEmpty, 'Dis ce que tu recherches'),
         (p.taille != null, 'Indique ta taille'),
       ];

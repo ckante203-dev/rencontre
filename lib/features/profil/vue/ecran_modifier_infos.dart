@@ -291,11 +291,11 @@ class EcranModifierInfos extends StatelessWidget {
             Row(children: [
               const _SectionLabel(icon: '🎯', title: 'Mes intérêts'),
               const Spacer(),
-              Obx(() => Text('${ctrl.selectedInterests.length}/10',
+              Obx(() => Text('${ctrl.selectedInterests.length}/3',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted))),
             ]),
             const SizedBox(height: 4),
-            Text('Appuie pour sélectionner ou retirer',
+            Text('Choisis jusqu\'à 3 intérêts',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
             const SizedBox(height: 12),
             Obx(() => Wrap(

@@ -65,6 +65,24 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
     }
 
     _pageController = PageController(initialPage: _initialIndex);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _precharger(_initialIndex));
+  }
+
+  /// Photos des profils voisins chargées à l'avance : le balayage vers
+  /// le profil suivant / précédent est instantané.
+  void _precharger(int i) {
+    if (!mounted) return;
+    for (final j in [i + 1, i - 1, i + 2]) {
+      if (j < 0 || j >= _profiles.length) continue;
+      final p = _profiles[j];
+      for (final url in [p.photoUrl, ...p.photoUrls.take(1)]) {
+        if (url != null && url.isNotEmpty) {
+          precacheImage(CachedNetworkImageProvider(url), context)
+              .catchError((_) {});
+        }
+      }
+    }
   }
 
   @override
@@ -91,6 +109,7 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
       controller: _pageController,
       scrollDirection: Axis.horizontal,
       physics: const PageScrollPhysics(),
+      onPageChanged: _precharger,
       itemCount: _profiles.length,
       itemBuilder: (context, index) {
         return _ProfilDetailContent(
@@ -262,7 +281,8 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Center(
             child: Container(
@@ -288,8 +308,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                         fontSize: 17)),
                 content: Text(
                     '${user.name} ne pourra plus voir ton profil ni t\'envoyer des messages.',
-                    style: TextStyle(
-                        color: AppColors.textMuted, fontSize: 13)),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 actions: [
                   TextButton(
                       onPressed: () => Get.back(result: false),
@@ -402,7 +421,8 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Center(
             child: Container(
@@ -472,7 +492,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
-            expandedHeight: size.height * 0.55,
+            expandedHeight: size.height * 0.58,
             pinned: true,
             backgroundColor: AppColors.bg,
             leading: GestureDetector(
@@ -562,34 +582,6 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                         ),
                       ),
                     ),
-                  if (user.isNewMember)
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 54,
-                      left: 16,
-                      child: IgnorePointer(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.gradientPink,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star_rounded,
-                                  size: 11, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text('Nouveau membre',
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                   if (!_loadingStory && _activeStory != null)
                     Positioned(
                       top: MediaQuery.of(context).padding.top + 52,
@@ -660,69 +652,64 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                       ),
                     ),
                   Positioned(
-                    bottom: 20,
+                    bottom: 18,
                     left: 20,
-                    right: 80,
+                    right: 20,
                     child: IgnorePointer(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Text(user.name,
-                                      style: const TextStyle(
-                                          fontFamily: 'Syne',
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                          letterSpacing: -0.5)),
-                                ),
-                                if (user.isPremium) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    width: 18,
-                                    height: 18,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Color(0xFFFFD700),
-                                          Color(0xFFFFA500)
-                                        ],
-                                      ),
-                                    ),
-                                    child: const Icon(Icons.check_rounded,
-                                        size: 12, color: Colors.white),
-                                  ),
-                                ],
-                              ]),
+                          Row(children: [
+                            Flexible(
+                              child: Text(
+                                  user.showBirthdate && user.age > 0
+                                      ? '${user.name}, ${user.age}'
+                                      : user.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontFamily: 'Syne',
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: -0.5,
+                                      shadows: [
+                                        Shadow(
+                                            color: Colors.black54,
+                                            blurRadius: 8)
+                                      ])),
+                            ),
+                            if (user.isPremium) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.workspace_premium_rounded,
+                                  size: 22, color: Color(0xFFFFC233)),
+                            ],
+                          ]),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              if (user.isOnline)
+                                _InfoEntete(
+                                    point: AppColors.online, texte: 'En ligne')
+                              else if (user.lastSeen != null)
+                                _InfoEntete(
+                                    texte: 'Vu ${_ilYa(user.lastSeen!)}'),
+                              if (user.distanceMeters != null &&
+                                  user.showDistance)
+                                _InfoEntete(
+                                    texte:
+                                        '📍 ${HomeController.formatDistance(user.distanceMeters)}'),
+                              if (user.isNewMember)
+                                const _InfoEntete(texte: '✨ Nouveau'),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   ),
-                  if (photos.length > 1)
-                    Positioned(
-                      bottom: 22,
-                      right: 16,
-                      child: IgnorePointer(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(10)),
-                          child: Text(
-                              '${_currentPhotoIndex + 1}/${photos.length}',
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -776,7 +763,11 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                         final home = Get.find<HomeController>();
                         final fav = home.estFavori(user.id);
                         return _ActionBtn(
-                            emoji: fav ? '⭐' : '☆',
+                            icone: fav
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            couleur:
+                                fav ? const Color(0xFFFFC233) : Colors.white,
                             onTap: () async {
                               final r = await home.basculerFavori(user.id);
                               if (r == null) return;
@@ -784,9 +775,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                   r
                                       ? '⭐ Ajouté à tes favoris'
                                       : 'Retiré de tes favoris',
-                                  r
-                                      ? '${user.name} ne le saura pas'
-                                      : '',
+                                  r ? '${user.name} ne le saura pas' : '',
                                   snackPosition: SnackPosition.TOP,
                                   backgroundColor: AppColors.surface,
                                   colorText: Colors.white,
@@ -813,7 +802,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  SWIPE VERTICAL ENTRE LES PHOTOS D'UN PROFIL (Grindr)
+//  PHOTOS D'UN PROFIL : appui à gauche / à droite (façon Tinder)
 // ══════════════════════════════════════════════════════════════════
 
 class _VerticalPhotoPager extends StatefulWidget {
@@ -837,6 +826,7 @@ class _VerticalPhotoPager extends StatefulWidget {
 
 class _VerticalPhotoPagerState extends State<_VerticalPhotoPager> {
   late final PageController _vCtrl;
+  late int _index = widget.initialIndex;
 
   @override
   void initState() {
@@ -845,27 +835,61 @@ class _VerticalPhotoPagerState extends State<_VerticalPhotoPager> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Toutes les photos du profil prêtes avant qu'on les fasse défiler
+    for (final url in widget.photos.skip(1)) {
+      precacheImage(CachedNetworkImageProvider(url), context)
+          .catchError((_) {});
+    }
+  }
+
+  @override
   void dispose() {
     _vCtrl.dispose();
     super.dispose();
   }
 
+  void _aller(int pas) {
+    final n = (_index + pas).clamp(0, widget.photos.length - 1);
+    if (n == _index) {
+      HapticFeedback.selectionClick(); // déjà la première / dernière
+      return;
+    }
+    _index = n;
+    _vCtrl.jumpToPage(n);
+    widget.onIndexChanged(n);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTapPhoto,
-      child: PageView.builder(
-        controller: _vCtrl,
-        scrollDirection: Axis.vertical,
-        physics: const ClampingScrollPhysics(),
-        itemCount: widget.photos.length,
-        onPageChanged: widget.onIndexChanged,
-        itemBuilder: (_, i) => CachedNetworkImage(
-          key: ValueKey(widget.photos[i]),
-          imageUrl: widget.photos[i],
-          fit: BoxFit.cover,
-          placeholder: (_, __) => _GradientBg(name: widget.name),
-          errorWidget: (_, __, ___) => _GradientBg(name: widget.name),
+    return LayoutBuilder(
+      builder: (_, c) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // Appui à gauche : photo précédente ; à droite : suivante ;
+        // au centre : plein écran
+        onTapUp: (d) {
+          final x = d.localPosition.dx;
+          if (widget.photos.length > 1 && x < c.maxWidth * 0.3) {
+            _aller(-1);
+          } else if (widget.photos.length > 1 && x > c.maxWidth * 0.7) {
+            _aller(1);
+          } else {
+            widget.onTapPhoto();
+          }
+        },
+        child: PageView.builder(
+          controller: _vCtrl,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: widget.photos.length,
+          itemBuilder: (_, i) => CachedNetworkImage(
+            key: ValueKey(widget.photos[i]),
+            imageUrl: widget.photos[i],
+            fit: BoxFit.cover,
+            fadeInDuration: const Duration(milliseconds: 150),
+            placeholder: (_, __) => _GradientBg(name: widget.name),
+            errorWidget: (_, __, ___) => _GradientBg(name: widget.name),
+          ),
         ),
       ),
     );
@@ -949,80 +973,132 @@ class _CorpsProfil extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          Center(child: BoutonAmi(userId: user.id)),
-          const SizedBox(height: 12),
-          BoutonAlbumPrive(ownerId: user.id, nom: user.name),
-          if (user.taille != null ||
-              user.poids != null ||
-              user.morphologie != null ||
-              user.lieuRencontre != null) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border)),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (user.taille != null)
-                    _PhysiqueBadge(icon: '📏', label: '${user.taille} cm'),
-                  if (user.poids != null)
-                    _PhysiqueBadge(icon: '⚖️', label: '${user.poids} kg'),
-                  if (user.morphologie != null)
-                    _PhysiqueBadge(icon: '💪', label: user.morphologie!),
-                  if (user.lieuRencontre != null)
-                    _PhysiqueBadge(
-                        icon: '📍', label: 'Rencontre : ${user.lieuRencontre}'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
+          // ── À propos ──
           if (user.bio != null && user.bio!.isNotEmpty) ...[
-            const _SectionTitle('✍️ À propos'),
+            const _SectionTitle('À propos'),
             const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border)),
-              child: Text(user.bio!,
-                  style: TextStyle(
-                      fontSize: 14, color: AppColors.textPrimary, height: 1.6)),
-            ),
-            const SizedBox(height: 16),
+            Text(user.bio!,
+                style: TextStyle(
+                    fontSize: 15, color: AppColors.textPrimary, height: 1.55)),
+            const SizedBox(height: 20),
           ],
+
+          // ── Infos ──
+          if (_aDesInfos(user)) ...[
+            const _SectionTitle('Infos'),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (user.lookingFor != null && user.lookingFor!.isNotEmpty)
+                  _PhysiqueBadge(
+                      icon: '💞',
+                      label: 'Cherche : ${_recherche(user.lookingFor!)}'),
+                if (user.taille != null)
+                  _PhysiqueBadge(icon: '📏', label: '${user.taille} cm'),
+                if (user.poids != null)
+                  _PhysiqueBadge(icon: '⚖️', label: '${user.poids} kg'),
+                if (user.morphologie != null)
+                  _PhysiqueBadge(icon: '💪', label: user.morphologie!),
+                if (user.lieuRencontre != null)
+                  _PhysiqueBadge(
+                      icon: '📍', label: 'Rencontre : ${user.lieuRencontre}'),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+
           if (user.interests.isNotEmpty) ...[
-            const _SectionTitle('🎯 Intérêts'),
+            const _SectionTitle('Intérêts'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: user.interests
+                  .take(3)
                   .map((i) => Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                            horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
-                            gradient: AppColors.gradientPink,
-                            borderRadius: BorderRadius.circular(20)),
+                            color: AppColors.accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color:
+                                    AppColors.accent.withValues(alpha: 0.5))),
                         child: Text(i,
-                            style: const TextStyle(
-                                fontSize: 12,
+                            style: TextStyle(
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white)),
+                                color: AppColors.textPrimary)),
                       ))
                   .toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
           ],
+
+          // ── Amis et album privé ──
+          Center(child: BoutonAmi(userId: user.id)),
+          const SizedBox(height: 12),
+          BoutonAlbumPrive(ownerId: user.id, nom: user.name),
         ],
       ),
     );
   }
+
+  static bool _aDesInfos(UserModel u) =>
+      (u.lookingFor != null && u.lookingFor!.isNotEmpty) ||
+      u.taille != null ||
+      u.poids != null ||
+      u.morphologie != null ||
+      u.lieuRencontre != null;
+
+  static String _recherche(String v) => switch (v) {
+        'hommes' => 'des hommes',
+        'femmes' => 'des femmes',
+        'tout le monde' => 'tout le monde',
+        _ => v,
+      };
+}
+
+/// Petite étiquette de l'en-tête (« ● En ligne », « 📍 3 km »…)
+class _InfoEntete extends StatelessWidget {
+  final String texte;
+  final Color? point;
+  const _InfoEntete({required this.texte, this.point});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (point != null) ...[
+          Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: point, shape: BoxShape.circle)),
+          const SizedBox(width: 5),
+        ],
+        Text(texte,
+            style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.white)),
+      ]),
+    );
+  }
+}
+
+/// « il y a 5 min », « il y a 3 h », « il y a 2 j »
+String _ilYa(DateTime d) {
+  final e = DateTime.now().difference(d);
+  if (e.inMinutes < 1) return "à l'instant";
+  if (e.inMinutes < 60) return 'il y a ${e.inMinutes} min';
+  if (e.inHours < 24) return 'il y a ${e.inHours} h';
+  return 'il y a ${e.inDays} j';
 }
 
 // ── Badge physique ────────────────────────────────────────────────
@@ -1056,9 +1132,11 @@ class _PhysiqueBadge extends StatelessWidget {
 // ─── WIDGETS ─────────────────────────────────────────────────────
 
 class _ActionBtn extends StatelessWidget {
-  final String emoji;
+  final IconData icone;
+  final Color couleur;
   final VoidCallback onTap;
-  const _ActionBtn({required this.emoji, required this.onTap});
+  const _ActionBtn(
+      {required this.icone, required this.couleur, required this.onTap});
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1070,7 +1148,7 @@ class _ActionBtn extends StatelessWidget {
             color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Colors.white24)),
-        child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+        child: Center(child: Icon(icone, color: couleur, size: 24)),
       ),
     );
   }

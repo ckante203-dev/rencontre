@@ -1771,7 +1771,7 @@ class _ProfilCard extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: user.interests.take(6).length,
+              itemCount: user.interests.take(3).length,
               separatorBuilder: (_, __) => const SizedBox(width: 6),
               itemBuilder: (_, i) => Container(
                 padding:

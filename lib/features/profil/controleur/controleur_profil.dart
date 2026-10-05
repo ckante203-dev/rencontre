@@ -619,8 +619,8 @@ class ControleurProfil extends GetxController {
     if (selectedInterests.contains(label)) {
       selectedInterests.remove(label);
     } else {
-      if (selectedInterests.length >= 10) {
-        _snackError('Maximum 10 intérêts');
+      if (selectedInterests.length >= 3) {
+        _snackError('3 intérêts maximum : retires-en un pour en choisir un autre');
         return;
       }
       selectedInterests.add(label);

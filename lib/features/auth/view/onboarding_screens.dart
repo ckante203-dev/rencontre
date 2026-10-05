@@ -1204,7 +1204,7 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<AuthController>();
-    final enoughSelected = _selected.length >= 3;
+    final enoughSelected = _selected.isNotEmpty;
     return _OnboardBase(
       step: 3,
       heroColor1: const Color(0xFF0a1a2e),
@@ -1216,10 +1216,10 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
       title: 'Tes ',
       titleHighlight: 'passions',
       description:
-          'Choisis au moins 3 centres d\'intérêt pour trouver des personnes compatibles.',
+          'Choisis jusqu\'à 3 centres d\'intérêt pour trouver des personnes compatibles.',
       buttonLabel: enoughSelected
-          ? 'Continuer (${_selected.length}) →'
-          : 'Choisis 3 min.',
+          ? 'Continuer (${_selected.length}/3) →'
+          : 'Choisis au moins 1',
       nextEnabled: enoughSelected,
       onNext: () async {
         await ctrl.saveOnboardingData(interests: _selected.toList());
@@ -1233,9 +1233,13 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
             final isSelected = _selected.contains(interest);
             return GestureDetector(
               onTap: () => setState(() {
-                isSelected
-                    ? _selected.remove(interest)
-                    : _selected.add(interest);
+                if (isSelected) {
+                  _selected.remove(interest);
+                } else if (_selected.length < 3) {
+                  _selected.add(interest);
+                } else {
+                  HapticFeedback.selectionClick(); // 3 maximum
+                }
               }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
