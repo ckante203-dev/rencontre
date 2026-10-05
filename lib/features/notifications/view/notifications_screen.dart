@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/amis/ecran_amis.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -164,13 +164,7 @@ class _NotifTile extends StatelessWidget {
   void _ouvrirProfil() {
     final id = notif.actorId;
     if (id == null) return;
-    Get.toNamed('/profile/view',
-        arguments: UserModel(
-          id: id,
-          name: notif.actorName,
-          age: 18,
-          photoUrl: notif.actorPhotoUrl,
-        ));
+    ouvrirProfilParId(id); // fiche complète (avant : prénom + photo, 18 ans)
   }
 
   void _openStory() {

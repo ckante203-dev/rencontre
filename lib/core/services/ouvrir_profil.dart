@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
+
+/// Fiche complète d'un profil à partir de sa ligne `profiles` (âge calculé
+/// sur la date de naissance, toutes les infos) + distance depuis ma
+/// position. À utiliser partout au lieu de reconstruire un UserModel.
+UserModel profilComplet(Map<String, dynamic> row) {
+  final user = SupabaseService().profileToUser(row);
+  return Get.isRegistered<HomeController>()
+      ? Get.find<HomeController>().avecDistance(user)
+      : user;
+}
 
 /// Ouvre le profil complet d'une personne à partir de son id
 /// (recherche par @pseudo, QR code Zamu…). La fiche est rechargée depuis
@@ -26,12 +37,7 @@ Future<void> ouvrirProfilParId(String id) async {
           colorText: Colors.white);
       return;
     }
-    var user = SupabaseService().profileToUser(row);
-    // Distance depuis ma position (comme à l'Accueil)
-    if (Get.isRegistered<HomeController>()) {
-      user = Get.find<HomeController>().avecDistance(user);
-    }
-    Get.toNamed('/profile/view', arguments: user);
+    Get.toNamed('/profile/view', arguments: profilComplet(row));
   } catch (e) {
     debugPrint('ouvrirProfilParId : $e');
     _introuvable();

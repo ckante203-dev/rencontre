@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/home/widget/barre_reponse_story.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -13,7 +14,6 @@ import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/shared/models/story_model.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 
 class DiscoverFeedItem {
   final StoryModel story;
@@ -561,18 +561,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
           .eq('id', s.userId)
           .maybeSingle();
       if (data == null) return;
-      final user = UserModel(
-        id: data['id'] ?? s.userId,
-        name: data['name'] ?? s.userName,
-        age: data['age'] ?? 18,
-        bio: data['bio'],
-        photoUrl: data['photo_url'] ?? s.userPhotoUrl,
-        photoUrls: List<String>.from(data['photo_urls'] ?? []),
-        interests: List<String>.from(data['interests'] ?? []),
-        gender: data['gender'],
-        lookingFor: data['looking_for'],
-        isOnline: data['is_online'] ?? false,
-      );
+      final user = profilComplet(data);
       // ✅ On attend le retour de l'écran de profil pour savoir
       // quand relancer la lecture.
       await Get.toNamed('/profile/view', arguments: user);

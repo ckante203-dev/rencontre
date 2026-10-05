@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/home/widget/barre_reponse_story.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/evenements/evenement_model.dart';
@@ -26,7 +27,6 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/shared/models/story_model.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 
 Color _colorFromHex(String hex) {
   var h = hex.replaceFirst('#', '');
@@ -476,45 +476,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           .eq('id', story.userId)
           .maybeSingle();
       if (data == null) return;
-      int age = 0;
-      final birthdate = data['birthdate'] ?? data['birth_date'];
-      if (birthdate != null) {
-        try {
-          DateTime birth;
-          if (birthdate.toString().contains('/')) {
-            final parts = birthdate.toString().split('/');
-            birth = DateTime(
-                int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
-          } else {
-            birth = DateTime.parse(birthdate.toString());
-          }
-          final now = DateTime.now();
-          age = now.year - birth.year;
-          if (now.month < birth.month ||
-              (now.month == birth.month && now.day < birth.day)) age--;
-        } catch (_) {
-          age = data['age'] ?? 0;
-        }
-      } else {
-        age = data['age'] ?? 0;
-      }
-      final user = UserModel(
-        id: data['id'] ?? story.userId,
-        name: data['name'] ?? story.userName,
-        age: age,
-        bio: data['bio'],
-        photoUrl: data['photo_url'] ?? story.userPhotoUrl,
-        photoUrls: List<String>.from(data['photo_urls'] ?? []),
-        interests: List<String>.from(data['interests'] ?? []),
-        latitude: data['latitude']?.toDouble(),
-        longitude: data['longitude']?.toDouble(),
-        gender: data['gender'],
-        lookingFor: data['looking_for'],
-        isOnline: data['is_online'] ?? false,
-        followersCount: data['followers_count'] ?? 0,
-        followingCount: data['following_count'] ?? 0,
-        matchesCount: data['matches_count'] ?? 0,
-      );
+      final user = profilComplet(data);
       // ✅ On attend le retour de l'écran de profil pour savoir
       // quand relancer la lecture.
       await Get.toNamed('/profile/view', arguments: user);
@@ -1419,44 +1381,7 @@ class _ViewerTileState extends State<_ViewerTile> {
   void _openProfile() {
     if (_fullData == null) return;
     Get.back();
-    int age = 0;
-    final birthdate = _fullData!['birthdate'] ?? _fullData!['birth_date'];
-    if (birthdate != null) {
-      try {
-        DateTime birth;
-        if (birthdate.toString().contains('/')) {
-          final p = birthdate.toString().split('/');
-          birth = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-        } else {
-          birth = DateTime.parse(birthdate.toString());
-        }
-        final now = DateTime.now();
-        age = now.year - birth.year;
-        if (now.month < birth.month ||
-            (now.month == birth.month && now.day < birth.day)) age--;
-      } catch (_) {
-        age = _fullData!['age'] ?? 0;
-      }
-    } else {
-      age = _fullData!['age'] ?? 0;
-    }
-    final user = UserModel(
-      id: _fullData!['id'] ?? widget.uid,
-      name: _fullData!['name'] ?? 'Utilisateur',
-      age: age,
-      bio: _fullData!['bio'],
-      photoUrl: _fullData!['photo_url'],
-      photoUrls: List<String>.from(_fullData!['photo_urls'] ?? []),
-      interests: List<String>.from(_fullData!['interests'] ?? []),
-      latitude: _fullData!['latitude']?.toDouble(),
-      longitude: _fullData!['longitude']?.toDouble(),
-      gender: _fullData!['gender'],
-      lookingFor: _fullData!['looking_for'],
-      isOnline: _fullData!['is_online'] ?? false,
-      followersCount: _fullData!['followers_count'] ?? 0,
-      followingCount: _fullData!['following_count'] ?? 0,
-      matchesCount: _fullData!['matches_count'] ?? 0,
-    );
+    final user = profilComplet(_fullData!);
     Get.toNamed('/profile/view', arguments: user);
   }
 
@@ -1572,44 +1497,7 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
   void _openProfile() {
     if (_fullData == null) return;
     Get.back();
-    int age = 0;
-    final birthdate = _fullData!['birthdate'] ?? _fullData!['birth_date'];
-    if (birthdate != null) {
-      try {
-        DateTime birth;
-        if (birthdate.toString().contains('/')) {
-          final p = birthdate.toString().split('/');
-          birth = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-        } else {
-          birth = DateTime.parse(birthdate.toString());
-        }
-        final now = DateTime.now();
-        age = now.year - birth.year;
-        if (now.month < birth.month ||
-            (now.month == birth.month && now.day < birth.day)) age--;
-      } catch (_) {
-        age = _fullData!['age'] ?? 0;
-      }
-    } else {
-      age = _fullData!['age'] ?? 0;
-    }
-    final user = UserModel(
-      id: _fullData!['id'] ?? widget.uid,
-      name: _fullData!['name'] ?? 'Utilisateur',
-      age: age,
-      bio: _fullData!['bio'],
-      photoUrl: _fullData!['photo_url'],
-      photoUrls: List<String>.from(_fullData!['photo_urls'] ?? []),
-      interests: List<String>.from(_fullData!['interests'] ?? []),
-      latitude: _fullData!['latitude']?.toDouble(),
-      longitude: _fullData!['longitude']?.toDouble(),
-      gender: _fullData!['gender'],
-      lookingFor: _fullData!['looking_for'],
-      isOnline: _fullData!['is_online'] ?? false,
-      followersCount: _fullData!['followers_count'] ?? 0,
-      followingCount: _fullData!['following_count'] ?? 0,
-      matchesCount: _fullData!['matches_count'] ?? 0,
-    );
+    final user = profilComplet(_fullData!);
     Get.toNamed('/profile/view', arguments: user);
   }
 
