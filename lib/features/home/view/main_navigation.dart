@@ -16,6 +16,7 @@ import 'package:rencontre/features/likes/likes_screen.dart';
 import 'package:rencontre/features/likes/like_controller.dart';
 import 'package:rencontre/features/likes/likes_insights_screen.dart';
 import 'package:rencontre/features/likes/profile_insights_controller.dart';
+import 'package:rencontre/features/nouveautes/ecran_nouveautes.dart';
 
 class NavigationController extends GetxController {
   // ✅ Ordre : Accueil(0), Messages(1), Likes(2), Story(3), Profil(4)
@@ -95,6 +96,8 @@ class _MainNavigationState extends State<MainNavigation> {
           NavigationController.pendingIndex ?? NavigationController.accueilIndex;
       NavigationController.pendingIndex = null;
       _refreshForCurrentUser();
+      // « Quoi de neuf » une fois après la mise à jour (anciens membres)
+      afficherNouveautesSiBesoin();
     });
   }
 
