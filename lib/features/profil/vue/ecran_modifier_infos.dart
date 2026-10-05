@@ -240,13 +240,16 @@ class EcranModifierInfos extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Lieu de rencontre ──────────────────────────────
-            const _SectionLabel(icon: '📍', title: 'Lieu de rencontre préféré'),
-            const SizedBox(height: 8),
+            const _SectionLabel(icon: '📍', title: 'Où se rencontrer'),
+            const SizedBox(height: 4),
+            Text('Choisis jusqu\'à 3 lieux',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+            const SizedBox(height: 10),
             Obx(() => Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: ControleurProfil.lieuxRencontre.map((lieu) {
-                    final isSelected = ctrl.selectedLieuRencontre.value == lieu;
+                    final isSelected = ctrl.lieuxChoisis.contains(lieu);
                     return GestureDetector(
                       onTap: () => ctrl.setLieuRencontre(lieu),
                       child: AnimatedContainer(

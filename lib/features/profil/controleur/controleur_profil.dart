@@ -115,18 +115,26 @@ class ControleurProfil extends GetxController {
     'Ronde',
     'Musclée'
   ];
+  // Où se rencontrer (jusqu'à 3, enregistrés « Chez moi, Maquis » dans
+  // profiles.lieu_rencontre — même colonne qu'avant)
   static const List<String> lieuxRencontre = [
-    'Café',
+    'Chez moi',
+    'Chez toi',
+    'Maquis',
     'Restaurant',
-    'Parc',
-    'Cinéma',
-    'Sport',
-    'Voyage',
+    'Café',
     'Soirée',
-    'Domicile',
-    'Travail',
-    'En ligne'
+    'Lieu public',
   ];
+
+  /// Lieux choisis (anciennes valeurs reprises : « Domicile » → « Chez moi »)
+  List<String> get lieuxChoisis => selectedLieuRencontre.value
+      .split(',')
+      .map((e) => e.trim())
+      .map((e) => e == 'Domicile' ? 'Chez moi' : e)
+      .where(lieuxRencontre.contains)
+      .toSet()
+      .toList();
   static const List<Map<String, String>> allInterests = [
     {'emoji': '🌿', 'label': 'Nature'},
     {'emoji': '🍕', 'label': 'Food'},
@@ -628,7 +636,23 @@ class ControleurProfil extends GetxController {
   }
 
   void setMorphologie(String v) => selectedMorphologie.value = v;
-  void setLieuRencontre(String v) => selectedLieuRencontre.value = v;
+  /// Coche / décoche un lieu (3 maximum)
+  void setLieuRencontre(String v) {
+    final lieux = lieuxChoisis;
+    if (lieux.contains(v)) {
+      lieux.remove(v);
+    } else {
+      if (lieux.length >= 3) {
+        _snackError('3 lieux maximum : retires-en un pour en choisir un autre');
+        return;
+      }
+      lieux.add(v);
+    }
+    // Ordre de la liste (Chez moi avant Maquis…)
+    lieux.sort((a, b) =>
+        lieuxRencontre.indexOf(a).compareTo(lieuxRencontre.indexOf(b)));
+    selectedLieuRencontre.value = lieux.join(', ');
+  }
 
   Future<void> choisirDateNaissance(BuildContext context) async {
     final now = DateTime.now();

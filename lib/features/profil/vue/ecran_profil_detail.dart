@@ -1003,7 +1003,8 @@ class _CorpsProfil extends StatelessWidget {
                   _PhysiqueBadge(icon: '💪', label: user.morphologie!),
                 if (user.lieuRencontre != null)
                   _PhysiqueBadge(
-                      icon: '📍', label: 'Rencontre : ${user.lieuRencontre}'),
+                      icon: '📍',
+                      label: 'Rencontre : ${user.lieuRencontre!.replaceAll('Domicile', 'Chez moi')}'),
               ],
             ),
             const SizedBox(height: 20),
