@@ -1170,30 +1170,76 @@ class _UsersGridScrollable extends GetView<HomeController> {
 
   Widget _buildEmpty() {
     final filter = controller.filterMode.value;
-    final msg = filter == 'new'
-        ? 'Aucun nouveau membre'
-        : filter == 'online'
-            ? 'Personne en ligne'
-            : filter == 'nearby'
-                ? 'Personne à proximité'
-                : 'Aucun profil disponible';
+    // Un message et une piste utile par filtre (au lieu de « Réessayer »)
+    final (String emoji, String titre, String conseil) = switch (filter) {
+      'online' => ('🟢', 'Personne en ligne pour le moment',
+          'Reviens un peu plus tard, le soir surtout.'),
+      'dispo' => ('🙋', "Personne n'est dispo en ce moment",
+          'Sois le premier : indique que tu es dispo depuis ton profil.'),
+      'evenement' => ('📅', 'Personne de ton événement ici',
+          'Inscris-toi à un événement pour voir qui y va.'),
+      'nearby' => ('📍', 'Personne tout près',
+          'Élargis ta recherche avec le filtre « Tous ».'),
+      'new' => ('✨', 'Pas de nouveau membre', 'Reviens demain !'),
+      'favoris' => ('⭐', "Aucun favori pour l'instant",
+          "Ajoute des profils en favori avec l'étoile ⭐."),
+      _ => ('🔍', 'Aucun profil pour le moment',
+          'Tire vers le bas pour actualiser.'),
+    };
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.person_search_rounded,
-              size: 64, color: AppColors.textMuted.withOpacity(0.5)),
-          const SizedBox(height: 16),
-          Text(msg,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: AppColors.textPrimary)),
-          TextButton(
-              onPressed: controller.loadProfiles,
-              child: const Text('Réessayer')),
-        ],
+    // Défilable : on peut tirer vers le bas pour actualiser
+    return RefreshIndicator(
+      onRefresh: controller.loadProfiles,
+      color: AppColors.accent,
+      child: LayoutBuilder(
+        builder: (_, c) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: c.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 52)),
+                  const SizedBox(height: 14),
+                  Text(titre,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 6),
+                  Text(conseil,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: AppColors.textMuted)),
+                  if (filter != 'all') ...[
+                    const SizedBox(height: 18),
+                    GestureDetector(
+                      onTap: () => controller.setFilter('all'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 11),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.gradientPink,
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Text('Voir tout le monde',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
