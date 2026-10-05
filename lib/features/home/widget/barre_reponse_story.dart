@@ -36,8 +36,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
   final _focus = FocusNode();
   bool _sending = false, _hasText = false;
   String? _confirmation; // « Envoyé à Awa ✓ » (petit badge, pas de snackbar)
-  late final AnimationController _coeur = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 320));
+  late final AnimationController _coeur;
 
   String get _prenom {
     final n = widget.story.userName.trim();
@@ -47,6 +46,8 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
   @override
   void initState() {
     super.initState();
+    _coeur = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 320));
     _focus.addListener(() {
       widget.onFocusChanged(_focus.hasFocus);
       if (mounted) setState(() {});

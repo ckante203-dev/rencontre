@@ -1323,12 +1323,18 @@ class _GlisserPourRepondreState extends State<_GlisserPourRepondre>
   static const _max = 80.0;
   double _dx = 0;
   bool _vibre = false;
-  late final AnimationController _retour = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 180))
-    ..addListener(() {
-      setState(() => _dx = _depart * (1 - _retour.value));
-    });
+  late final AnimationController _retour;
   double _depart = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _retour = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 180))
+      ..addListener(() {
+        setState(() => _dx = _depart * (1 - _retour.value));
+      });
+  }
 
   @override
   void dispose() {

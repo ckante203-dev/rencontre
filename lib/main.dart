@@ -67,6 +67,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Toujours à la verticale (les écrans ne sont pas prévus à l'horizontale :
+  // l'Accueil débordait quand le téléphone était tourné)
+  await SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
 
   // Galerie : sélecteur de photos moderne d'Android (grille de toutes les
   // photos et vidéos, sans permission) au lieu de l'explorateur de fichiers.

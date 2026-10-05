@@ -102,6 +102,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   Timer? _offlineTimer;
   StreamSubscription<Position>? _positionStreamSub;
+  Timer? _suiviPositionTimer;
 
   RealtimeChannel? _onlineChannel;
   RealtimeChannel? _storiesChannel; // ✅ auto-refresh des stories
@@ -727,19 +728,39 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  // Suivi de la position : relue toutes les 2 minutes, app ouverte.
+  // (Le flux continu Geolocator.getPositionStream a besoin du service
+  // GeolocatorLocationService, retiré du manifeste pour Google Play :
+  // il ne démarrait jamais.)
   void _startListeningToPositionChanges() {
     _positionStreamSub?.cancel();
-    _positionStreamSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        distanceFilter: 50, // recalcule seulement après 50m de déplacement
-      ),
-    ).listen((pos) {
+    _suiviPositionTimer?.cancel();
+    _suiviPositionTimer =
+        Timer.periodic(const Duration(minutes: 2), (_) => _relirePosition());
+  }
+
+  Future<void> _relirePosition() async {
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return; // en arrière-plan : pas de GPS (batterie)
+    }
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 20),
+      );
+      // Recalcul seulement après 50 m de déplacement
+      if (_myLat != null &&
+          _myLng != null &&
+          _distanceKm(_myLat!, _myLng!, pos.latitude, pos.longitude) < 0.05) {
+        return;
+      }
       _myLat = pos.latitude;
       _myLng = pos.longitude;
       _updateDistancesLocally();
       unawaited(_updateLocationIfAllowed(pos.latitude, pos.longitude));
-    });
+    } catch (e) {
+      debugPrint('_relirePosition : $e');
+    }
   }
 
   // ✅ Ne publie plus la position en base quand l'utilisateur est en
@@ -1423,6 +1444,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
     storyVideoCache.clear();
     _positionStreamSub?.cancel();
+    _suiviPositionTimer?.cancel();
     super.onClose();
   }
 }
