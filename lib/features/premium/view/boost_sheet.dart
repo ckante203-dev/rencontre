@@ -379,7 +379,14 @@ class _BoostSheetState extends State<_BoostSheet> {
           ),
         ...pkgs.asMap().entries.map((e) {
           final pkg = e.value;
-          final meilleur = e.key == 0 && pkgs.length > 1;
+          // Offre recommandée : le Boost 2 h (meilleur rapport pour une
+          // soirée), sinon la première de la liste
+          final a2h = pkgs.any(
+              (p) => p.storeProduct.identifier.startsWith('boost_2h'));
+          final meilleur = pkgs.length > 1 &&
+              (a2h
+                  ? pkg.storeProduct.identifier.startsWith('boost_2h')
+                  : e.key == 0);
           return GestureDetector(
             onTap: enCours ? null : () => _acheter(pkg),
             child: Opacity(
@@ -411,7 +418,7 @@ class _BoostSheetState extends State<_BoostSheet> {
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary)),
                           if (meilleur)
-                            const Text('Le plus efficace',
+                            const Text('⭐ Recommandé',
                                 style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
