@@ -6,6 +6,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/premium/view/boost_sheet.dart';
 import 'package:rencontre/features/likes/like_controller.dart';
 import 'package:rencontre/features/likes/profile_insights_controller.dart';
 import 'package:rencontre/shared/models/user_model.dart';
@@ -63,16 +66,53 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
     return Get.find<ProfileInsightsController>();
   }
 
-  void _ouvrirProfil(PersonneInsight p) {
-    if (p.id.isEmpty) return;
-    Get.toNamed('/profile/view',
-        arguments: UserModel(
-          id: p.id,
-          name: p.name,
-          age: p.age ?? 18,
-          photoUrl: p.photoUrl,
-          isOnline: p.enLigne,
-        ));
+  bool _ouverture = false;
+
+  /// Ouvre le profil COMPLET (bio, photos, infos, distance) et permet de
+  /// balayer vers les autres personnes de la liste, comme à l'Accueil.
+  /// (Avant : fiche presque vide, construite avec le prénom et la photo.)
+  Future<void> _ouvrirProfil(
+      PersonneInsight p, List<PersonneInsight> liste) async {
+    if (p.id.isEmpty || _ouverture) return;
+    _ouverture = true;
+    try {
+      final ids = liste.map((e) => e.id).where((id) => id.isNotEmpty).toList();
+      final rows = await supabase
+          .from('profiles')
+          .select()
+          .inFilter('id', ids)
+          .timeout(const Duration(seconds: 10)) as List;
+      final service = SupabaseService();
+      final home = Get.isRegistered<HomeController>()
+          ? Get.find<HomeController>()
+          : null;
+      final parId = <String, UserModel>{
+        for (final r in rows)
+          if (r['is_suspended'] != true)
+            '${r['id']}': (home?.avecDistance(service.profileToUser(r)) ??
+                service.profileToUser(r)),
+      };
+      // Même ordre que la grille
+      final profils = [
+        for (final e in liste)
+          if (parId[e.id] != null) parId[e.id]!
+      ];
+      final index = profils.indexWhere((u) => u.id == p.id);
+      if (index < 0) {
+        Get.snackbar('Profil indisponible',
+            'Ce profil n\'existe plus ou n\'est pas disponible',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: AppColors.surface,
+            colorText: Colors.white);
+        return;
+      }
+      Get.toNamed('/profile/view',
+          arguments: {'profiles': profils, 'initialIndex': index});
+    } catch (e) {
+      debugPrint('_ouvrirProfil : $e');
+    } finally {
+      _ouverture = false;
+    }
   }
 
   Future<void> _likerEnRetour(PersonneInsight p) async {
@@ -179,13 +219,13 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 32),
                     sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 6,
+                        crossAxisSpacing: 6,
                         childAspectRatio: 0.72,
                       ),
                       delegate: SliverChildBuilderDelegate(
@@ -199,7 +239,7 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                                 Get.isRegistered<LikeController>() &&
                                 Get.find<LikeController>().hasLiked(p.id),
                             onTap: premium
-                                ? () => _ouvrirProfil(p)
+                                ? () => _ouvrirProfil(p, liste)
                                 : _ouvrirPaywall,
                             onLike: premium ? () => _likerEnRetour(p) : null,
                             onPasser: premium && !_ongletVues
@@ -401,6 +441,8 @@ class _CartePersonne extends StatelessWidget {
         ? CachedNetworkImage(
             imageUrl: photo,
             fit: BoxFit.cover,
+            memCacheWidth: 500,
+            fadeInDuration: const Duration(milliseconds: 200),
             placeholder: (_, __) => Container(color: AppColors.surface2),
             errorWidget: (_, __, ___) => _fond(),
           )
@@ -415,7 +457,7 @@ class _CartePersonne extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(10),
         child: Stack(fit: StackFit.expand, children: [
           image,
           // Dégradé sombre en bas pour lire le texte sur la photo
@@ -581,6 +623,29 @@ class _Vide extends StatelessWidget {
             'Ajoute de belles photos et publie une story pour te faire remarquer.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 20),
+          // ⚡ Se faire remarquer tout de suite
+          GestureDetector(
+            onTap: showBoostSheet,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 6),
+                Text('Booster mon profil',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+              ]),
+            ),
           ),
         ],
       ),

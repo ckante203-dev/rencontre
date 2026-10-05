@@ -916,6 +916,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     return list;
   }
 
+  /// Le même profil avec sa distance depuis ma position (profils
+  /// chargés hors de l'Accueil : onglet ❤️, notifications…).
+  UserModel avecDistance(UserModel u) {
+    if (_myLat == null || _myLng == null) return u;
+    if (u.latitude == null || u.longitude == null) return u;
+    return u.copyWith(
+        distanceMeters:
+            _distanceKm(_myLat!, _myLng!, u.latitude!, u.longitude!) * 1000);
+  }
+
   static String formatDistance(double? meters) {
     if (meters == null) return '';
     // Sécurité : jamais de distance précise de près (on ne doit pas
