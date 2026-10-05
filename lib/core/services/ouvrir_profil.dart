@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
 
 /// Ouvre le profil complet d'une personne à partir de son id
 /// (recherche par @pseudo, QR code Zamu…). La fiche est rechargée depuis
@@ -25,8 +26,12 @@ Future<void> ouvrirProfilParId(String id) async {
           colorText: Colors.white);
       return;
     }
-    Get.toNamed('/profile/view',
-        arguments: SupabaseService().profileToUser(row));
+    var user = SupabaseService().profileToUser(row);
+    // Distance depuis ma position (comme à l'Accueil)
+    if (Get.isRegistered<HomeController>()) {
+      user = Get.find<HomeController>().avecDistance(user);
+    }
+    Get.toNamed('/profile/view', arguments: user);
   } catch (e) {
     debugPrint('ouvrirProfilParId : $e');
     _introuvable();

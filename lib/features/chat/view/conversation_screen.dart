@@ -10,6 +10,7 @@ import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/chat/view/sticker_sheet.dart';
@@ -19,7 +20,6 @@ import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
-import 'package:rencontre/shared/models/user_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -293,56 +293,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return 'vu le ${d.day} ${mois[d.month - 1]}';
   }
 
-  Future<void> _ouvrirProfil(ConversationModel conv) async {
-    try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', conv.userId)
-          .maybeSingle();
-      if (data == null) return;
-      int age = 0;
-      final birthdate = data['birthdate'] ?? data['birth_date'];
-      if (birthdate != null) {
-        try {
-          DateTime birth;
-          final s = birthdate.toString();
-          if (s.contains('/')) {
-            final p = s.split('/');
-            birth = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-          } else {
-            birth = DateTime.parse(s);
-          }
-          final now = DateTime.now();
-          age = now.year - birth.year;
-          if (now.month < birth.month ||
-              (now.month == birth.month && now.day < birth.day)) age--;
-        } catch (_) {
-          age = data['age'] ?? 0;
-        }
-      }
-      final user = UserModel(
-        id: data['id'] ?? conv.userId,
-        name: data['name'] ?? conv.userName,
-        age: age,
-        bio: data['bio'],
-        photoUrl: data['photo_url'] ?? conv.userPhotoUrl,
-        photoUrls: List<String>.from(data['photo_urls'] ?? []),
-        interests: List<String>.from(data['interests'] ?? []),
-        latitude: data['latitude']?.toDouble(),
-        longitude: data['longitude']?.toDouble(),
-        gender: data['gender'],
-        lookingFor: data['looking_for'],
-        isOnline: data['is_online'] ?? false,
-        followersCount: data['followers_count'] ?? 0,
-        followingCount: data['following_count'] ?? 0,
-        matchesCount: data['matches_count'] ?? 0,
-      );
-      Get.toNamed('/profile/view', arguments: user);
-    } catch (e) {
-      debugPrint('_ouvrirProfil error: $e');
-    }
-  }
+  // Profil complet (taille, « Cherche », lieux, distance…) — avant, la
+  // fiche était reconstruite ici avec une partie des infos seulement.
+  Future<void> _ouvrirProfil(ConversationModel conv) =>
+      ouvrirProfilParId(conv.userId);
 
   void _showConvMenu(BuildContext context, ConversationModel conv) {
     showModalBottomSheet(
