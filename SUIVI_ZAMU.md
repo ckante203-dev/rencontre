@@ -43,7 +43,7 @@ Mis à jour le 04/10/2026.
    - contacts / relations : liste d'amis, groupes.
 2. **Classification du contenu** : refaire le questionnaire → les utilisateurs peuvent échanger du contenu, partager leur position.
 3. **Suppression des comptes** : vérifier le lien `https://supportsnapmeet-jpg.github.io/zamu-legal/suppression-compte.html`.
-4. Version : passer le numéro dans `pubspec.yaml` (actuellement `1.0.14+2024`), `flutter build appbundle`, envoyer en **test interne**.
+4. Version : passer le numéro dans `pubspec.yaml` (déjà fait : `1.1.0+10100`), `flutter build appbundle`, envoyer en **test interne**.
 
 ### À faire — Prix des Boosts (Play Console, quand tu veux : pas besoin de nouvelle version)
 Monétiser avec Play → Produits → Produits ponctuels (ou « Produits intégrés ») → chaque produit → Prix → Côte d'Ivoire (XOF), convertir pour les autres pays, Enregistrer, produit Actif :
@@ -56,6 +56,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - [ ] Puis `20261005000043_boost_droits_premium.sql` (Boost en cours = droits Premium : qui m'a liké / vu, proposer un événement).
 - [ ] Puis `20261005000044_croises_evenement.sql` (« Tu as croisé… » le lendemain d'un événement ; rappel-evenements déjà déployé).
 - [ ] Puis `20261005000045_notifications_lues.sql` (cloche : tout est « vu » à l'ouverture, historique 30 jours).
+- [ ] Puis `20261005000046_notifications_24h.sql` (notification supprimée 24 h après avoir été vue, tâche pg_cron horaire).
 
 ### À faire — APRÈS la mise en production de la nouvelle version (quand la 1.0.11 n'existe plus nulle part)
 - **Contenu de l'appli → Autorisations photos et vidéos** : déclarer que l'app n'utilise plus `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (ne pas le faire avant : la 1.0.11 les utilise encore).
