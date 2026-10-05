@@ -22,7 +22,7 @@ class StoriesRow extends GetView<HomeController> {
       final hasMyStory = myStory != null;
 
       return SizedBox(
-        height: 96,
+        height: 86,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -68,25 +68,25 @@ class _MyStoryItem extends StatelessWidget {
       // contenu garde sa hauteur naturelle (~85px) même quand la
       // barre est en cours d'animation, sans erreur d'overflow.
       child: SizedBox(
-        width: 62,
+        width: 54,
         child: OverflowBox(
           minHeight: 0,
-          maxHeight: 90,
+          maxHeight: 80,
           alignment: Alignment.topCenter,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 62,
-                height: 62,
+                width: 54,
+                height: 54,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     GestureDetector(
                       onTap: _onMainTap,
                       child: Container(
-                        width: 62,
-                        height: 62,
+                        width: 54,
+                        height: 54,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -110,7 +110,7 @@ class _MyStoryItem extends StatelessWidget {
                                   ),
                                   child: const Center(
                                     child: Icon(Icons.person_rounded,
-                                        color: Colors.white, size: 28),
+                                        color: Colors.white, size: 24),
                                   ),
                                 ),
                         ),
@@ -213,18 +213,18 @@ class _StoryItem extends StatelessWidget {
         // ✅ CORRIGÉ — même correction que _MyStoryItem :
         // largeur bornée + minHeight: 0.
         child: SizedBox(
-          width: 62,
+          width: 54,
           child: OverflowBox(
             minHeight: 0,
-            maxHeight: 90,
+            maxHeight: 80,
             alignment: Alignment.topCenter,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Stack(clipBehavior: Clip.none, children: [
                   Container(
-                    width: 62,
-                    height: 62,
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: allSeen
@@ -264,7 +264,7 @@ class _StoryItem extends StatelessWidget {
                                     style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
-                                        fontSize: 20),
+                                        fontSize: 18),
                                   ),
                                 ),
                               ),
@@ -289,7 +289,7 @@ class _StoryItem extends StatelessWidget {
                 ]),
                 const SizedBox(height: 5),
                 SizedBox(
-                  width: 62,
+                  width: 54,
                   child: Text(
                     story.userName,
                     style: TextStyle(

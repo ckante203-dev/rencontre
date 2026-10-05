@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/groupes/liste_groupes.dart';
+import 'package:rencontre/features/notifications/view/bouton_cloche.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:shimmer/shimmer.dart';
@@ -55,6 +56,8 @@ class ChatListScreen extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: Colors.white)),
           const Spacer(),
+          // 🔔 Activité : likes, matchs, demandes d'amis…
+          const BoutonCloche(taille: 38),
           IconButton(
             tooltip: 'Nouveau groupe',
             onPressed: ouvrirNouveauGroupe,

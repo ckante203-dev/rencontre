@@ -149,7 +149,8 @@ class UserModel {
 
   String get distanceLabel {
     if (distanceMeters == null) return '';
-    if (distanceMeters! < 1000) return '${distanceMeters!.toInt()}m';
-    return '${(distanceMeters! / 1000).toStringAsFixed(1)}km';
+    // Sécurité : pas de distance précise de près (voir formatDistance)
+    if (distanceMeters! < 2000) return '< 2 km';
+    return '${(distanceMeters! / 1000).round()} km';
   }
 }

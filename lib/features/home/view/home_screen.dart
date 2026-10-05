@@ -174,7 +174,7 @@ class _HomeBodyState extends State<_HomeBody> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
-              height: _storiesVisible ? 110 : 0,
+              height: _storiesVisible ? 96 : 0,
               child: ClipRect(
                 child: _storiesVisible
                     ? const StoriesRow()
@@ -186,10 +186,12 @@ class _HomeBodyState extends State<_HomeBody> {
             Expanded(child: _UsersGridScrollable(scrollCtrl: _scrollCtrl)),
           ],
         ),
+        // ⚡ Boost : toujours sous le pouce
+        const Positioned(bottom: 16, right: 16, child: _BoutonBoost()),
         if (_showScrollTop)
           Positioned(
-            bottom: 20,
-            right: 16,
+            bottom: 84,
+            right: 20,
             child: FloatingActionButton.small(
               onPressed: () => _scrollCtrl.animateTo(0,
                   duration: const Duration(milliseconds: 500),
@@ -203,158 +205,97 @@ class _HomeBodyState extends State<_HomeBody> {
   }
 }
 
-// ─── TOP BAR ─────────────────────────────────────────────────────
+// ─── ALERTE LOCALISATION ─────────────────────────────────────────
+// Le haut de l'Accueil ne garde que l'alerte « localisation coupée »
+// (la cloche est dans l'écran Chat, le Boost en bouton flottant).
 
 class _TopBar extends GetView<HomeController> {
   const _TopBar();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
-      child: Row(
-        children: [
-          const Spacer(),
-          Obx(() => controller.locationError.value
-              ? _IconBtn(
-                  icon: Icons.location_off_rounded,
-                  onTap: controller.openLocationSettings,
-                  color: AppColors.accent.withOpacity(0.1),
-                  iconColor: AppColors.accent,
+    return Obx(() => controller.locationError.value
+        ? Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: GestureDetector(
+              onTap: controller.openLocationSettings,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(children: [
+                  Icon(Icons.location_off_rounded,
+                      color: AppColors.accent, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                        'Localisation désactivée : active-la pour voir les distances',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textPrimary)),
+                  ),
+                  Icon(Icons.chevron_right_rounded,
+                      color: AppColors.textMuted, size: 18),
+                ]),
+              ),
+            ),
+          )
+        : const SizedBox(height: 6));
+  }
+}
+
+// ─── BOUTON BOOST FLOTTANT (en bas à droite, au-dessus de « Profil ») ──
+
+class _BoutonBoost extends GetView<HomeController> {
+  const _BoutonBoost();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: showBoostSheet,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+                color: Color(0x99FFA500), blurRadius: 14, spreadRadius: 1),
+            BoxShadow(
+                color: Colors.black45, blurRadius: 8, offset: Offset(0, 3)),
+          ],
+        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          const Center(
+              child: Icon(Icons.bolt_rounded, color: Colors.white, size: 30)),
+          // Point vert : Boost en cours
+          Obx(() => (controller.myProfile?.estBooste ?? false)
+              ? Positioned(
+                  top: 1,
+                  right: 1,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: AppColors.online,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.bg, width: 2),
+                    ),
+                  ),
                 )
               : const SizedBox.shrink()),
-          const SizedBox(width: 8),
-          const _BoutonCloche(),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: showBoostSheet,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.orangeAccent,
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  )
-                ],
-              ),
-              child: Stack(clipBehavior: Clip.none, children: [
-                const Center(
-                    child: Icon(Icons.bolt_rounded,
-                        color: Colors.white, size: 24)),
-                // Point vert : Boost en cours
-                Obx(() => (controller.myProfile?.estBooste ?? false)
-                    ? Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.online,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.bg, width: 2),
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink()),
-              ]),
-            ),
-          ),
-        ],
+        ]),
       ),
     );
   }
 }
-
-/// 🔔 Activité : likes, matchs, demandes d'amis, stories des favoris…
-class _BoutonCloche extends StatelessWidget {
-  const _BoutonCloche();
-
-  @override
-  Widget build(BuildContext context) {
-    if (!Get.isRegistered<NotificationController>()) {
-      return const SizedBox.shrink();
-    }
-    final ctrl = Get.find<NotificationController>();
-    return GestureDetector(
-      onTap: () => Get.toNamed(AppRoutes.notifications),
-      child: Stack(clipBehavior: Clip.none, children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Icon(Icons.notifications_rounded,
-              color: AppColors.textPrimary, size: 22),
-        ),
-        Obx(() {
-          final n = ctrl.unreadCount.value;
-          if (n == 0) return const SizedBox.shrink();
-          return Positioned(
-            top: -2,
-            right: -2,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 18),
-              height: 18,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                gradient: AppColors.gradientPink,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: AppColors.bg, width: 2),
-              ),
-              child: Center(
-                child: Text(n > 99 ? '99+' : '$n',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900)),
-              ),
-            ),
-          );
-        }),
-      ]),
-    );
-  }
-}
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final Color? color, iconColor;
-  const _IconBtn(
-      {required this.icon, required this.onTap, this.color, this.iconColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color ?? AppColors.surface2,
-          border: Border.all(color: AppColors.border.withOpacity(0.5)),
-        ),
-        child: Icon(icon, size: 20, color: iconColor ?? AppColors.textPrimary),
-      ),
-    );
-  }
-}
-
-// ─── FILTRES (avec curseur animé qui glisse vers l'onglet actif) ──
 
 class _FilterItem {
   final String mode, label, icon;
@@ -947,7 +888,8 @@ class _ChoixVilleSheetState extends State<_ChoixVilleSheet> {
             decoration: InputDecoration(
               hintText: 'Rechercher une ville ou un pays',
               hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
-              prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted),
+              prefixIcon:
+                  Icon(Icons.search_rounded, color: AppColors.textMuted),
               filled: true,
               fillColor: AppColors.surface2,
               contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -1138,7 +1080,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
             // 📅 Événements à venir (masqué s'il n'y en a pas)
             const SliverToBoxAdapter(child: BandeEvenements()),
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(8, 0, 8, hasLockedSection ? 0 : 100),
+              padding: EdgeInsets.fromLTRB(4, 0, 4, hasLockedSection ? 0 : 100),
               sliver: _buildGridSliver(
                   users: unlockedUsers, context: context, locked: false),
             ),
@@ -1150,7 +1092,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 100),
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 100),
                 sliver: _buildGridSliver(
                     users: lockedUsers, context: context, locked: true),
               ),
@@ -1169,8 +1111,8 @@ class _UsersGridScrollable extends GetView<HomeController> {
     return SliverGrid(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
         childAspectRatio: 0.75,
       ),
       delegate: SliverChildBuilderDelegate(
@@ -1209,11 +1151,11 @@ class _UsersGridScrollable extends GetView<HomeController> {
 
   Widget _buildShimmer() {
     return GridView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
           childAspectRatio: 0.75),
       itemCount: 12,
       itemBuilder: (_, __) => Shimmer.fromColors(
@@ -1221,7 +1163,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
         highlightColor: AppColors.border,
         child: Container(
             decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                color: Colors.white, borderRadius: BorderRadius.circular(6))),
       ),
     );
   }
@@ -1565,217 +1507,246 @@ class _UserCard extends StatelessWidget {
     this.locked = false,
   });
 
+  static const _rayon = 6.0;
+
+  /// Petite pastille en bas de carte (Dispo / même événement)
+  static Widget _pastille(String texte, Color couleur) => Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: couleur.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(texte,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                height: 1.2)),
+      );
+
+  static const _ombre = [
+    Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final bool hasUnread = unreadCount > 0 && !locked;
-    // ⚡ Profil boosté : contour orange (le doré = messages non lus)
-    final bool booste = user.estBooste && !locked && !hasUnread;
-    final Color? contour = hasUnread
+    final bool booste = user.estBooste && !locked;
+    final bool storyNonVue = hasActiveStory && !storyIsSeen && !locked;
+    final bool storyVue = hasActiveStory && storyIsSeen && !locked;
+
+    // Contour, par priorité : messages non lus (or) > story à voir
+    // (dégradé rose, façon Instagram) > Boost (orange) > story déjà vue
+    // (gris discret)
+    final Gradient? contourDegrade =
+        hasUnread ? null : (storyNonVue ? AppColors.gradientPink : null);
+    final Color? contourCouleur = hasUnread
         ? const Color(0xFFFFD700)
-        : (booste ? const Color(0xFFFFA500) : null);
+        : storyNonVue
+            ? null
+            : booste
+                ? const Color(0xFFFFA500)
+                : storyVue
+                    ? AppColors.textMuted.withValues(alpha: 0.6)
+                    : null;
+    final bool aContour = contourDegrade != null || contourCouleur != null;
+    final double epaisseur = storyVue && !hasUnread && !booste ? 1.5 : 2;
+    final Color? halo = hasUnread
+        ? const Color(0xFFFFD700)
+        : (booste && !storyNonVue ? const Color(0xFFFFA500) : null);
+
+    // Une seule pastille en bas : l'événement commun, sinon « Dispo »
+    final Widget? pastille = memeEvenement != null
+        ? _pastille('📅 $memeEvenement', AppColors.accent)
+        : (user.estDispo
+            ? _pastille(user.dispoTexte!, AppColors.online)
+            : null);
+
+    final photo = locked
+        ? _LockedBlurredPhoto(photoUrl: user.photoUrl, name: user.name)
+        : (user.photoUrl != null && user.photoUrl!.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: user.photoUrl!,
+                fit: BoxFit.cover,
+                memCacheWidth: 420,
+                fadeInDuration: const Duration(milliseconds: 220),
+                placeholder: (_, __) => _GradientAvatar(name: user.name),
+                errorWidget: (_, __, ___) => _GradientAvatar(name: user.name),
+              )
+            : _GradientAvatar(name: user.name));
+
+    final contenu = ClipRRect(
+      borderRadius: BorderRadius.circular(aContour ? _rayon - 2 : _rayon),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Photo (floutée si verrouillée) ──────────────────
+          photo,
+
+          // ── Dégradé bas : nom lisible même sur photo claire ──
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: locked ? 0.2 : 0.35),
+                    Colors.black.withValues(alpha: locked ? 0.55 : 0.88),
+                  ],
+                  stops: const [0.42, 0.7, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          if (!locked) ...[
+            // ── Pastille + nom (● en ligne) + distance ───────
+            Positioned(
+              bottom: 7,
+              left: 7,
+              right: 7,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pastille != null) pastille,
+                  Row(children: [
+                    if (user.isOnline) ...[
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.online,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.2),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Expanded(
+                      child: Text(
+                          user.showBirthdate
+                              ? '${user.name}, ${user.age}'
+                              : user.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              height: 1.2,
+                              shadows: _ombre)),
+                    ),
+                  ]),
+                  if (user.distanceMeters != null && user.showDistance)
+                    Text(HomeController.formatDistance(user.distanceMeters),
+                        maxLines: 1,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 11,
+                            height: 1.25,
+                            shadows: _ombre)),
+                ],
+              ),
+            ),
+
+            // ── ⚡ Boost : en haut à gauche ───────────────────
+            if (booste)
+              Positioned(
+                top: 6,
+                left: 6,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 7, 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.bolt_rounded, size: 12, color: Colors.white),
+                    Text('Boost',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+              ),
+
+            // ── Messages non lus : en haut à droite ──────────
+            if (hasUnread)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  constraints:
+                      const BoxConstraints(minWidth: 20, minHeight: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(unreadCount > 9 ? '9+' : '$unreadCount',
+                      style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900)),
+                ),
+              ),
+          ],
+
+          // ── Verrou Premium avec effet doré scintillant ────
+          if (locked)
+            Positioned.fill(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Shimmer.fromColors(
+                      baseColor: Colors.amber.shade200,
+                      highlightColor: Colors.white,
+                      period: const Duration(milliseconds: 1400),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                            color: Colors.amber, shape: BoxShape.circle),
+                        child: const Icon(Icons.lock_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Premium',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        padding: aContour ? EdgeInsets.all(epaisseur) : null,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: contour != null ? Border.all(color: contour, width: 2) : null,
-          boxShadow: contour != null
-              ? [BoxShadow(color: contour.withOpacity(0.3), blurRadius: 8)]
+          borderRadius: BorderRadius.circular(_rayon),
+          gradient: contourDegrade,
+          color: contourCouleur ?? AppColors.surface,
+          boxShadow: halo != null
+              ? [BoxShadow(color: halo.withValues(alpha: 0.35), blurRadius: 8)]
               : null,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ── Photo : vraie photo floutée si verrouillé ──────
-              // (montrer le vrai visage flouté donne plus envie
-              // qu'un pictogramme générique — le flou empêche
-              // seulement de distinguer les traits précis)
-              locked
-                  ? _LockedBlurredPhoto(
-                      photoUrl: user.photoUrl, name: user.name)
-                  : (user.photoUrl != null && user.photoUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: user.photoUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) =>
-                              _GradientAvatar(name: user.name),
-                          errorWidget: (_, __, ___) =>
-                              _GradientAvatar(name: user.name),
-                        )
-                      : _GradientAvatar(name: user.name)),
-
-              // ── Gradient bas ───────────────────────────────
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(locked ? 0.5 : 0.8)
-                      ],
-                      stops: const [0.5, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-
-              if (!locked) ...[
-                // ── Nom + distance ─────────────────────────────
-                Positioned(
-                  bottom: 8,
-                  left: 8,
-                  right: 8,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (memeEvenement != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 3),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('📅 $memeEvenement',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      if (user.estDispo)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 3),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.online.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(user.dispoTexte!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      Text(
-                          user.showBirthdate
-                              ? '${user.name}, ${user.age}'
-                              : user.name,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis),
-                      if (user.distanceMeters != null && user.showDistance)
-                        Text(HomeController.formatDistance(user.distanceMeters),
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 9)),
-                    ],
-                  ),
-                ),
-
-                // ── Dot en ligne ─────────────────────────────────
-                if (user.isOnline)
-                  Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                              color: Colors.green, shape: BoxShape.circle))),
-
-                // ── Badge Boost ⚡ ───────────────────────────────
-                if (user.estBooste)
-                  Positioned(
-                    top: hasUnread ? 30 : 6,
-                    right: 6,
-                    child: Container(
-                      padding: hasUnread
-                          ? const EdgeInsets.all(3)
-                          : const EdgeInsets.fromLTRB(4, 2, 7, 2),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
-                      ),
-                      child: hasUnread
-                          ? const Icon(Icons.bolt_rounded,
-                              size: 12, color: Colors.white)
-                          : const Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.bolt_rounded,
-                                  size: 12, color: Colors.white),
-                              Text('Boost',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800)),
-                            ]),
-                    ),
-                  ),
-
-                // ── Badge messages non lus ─────────────────────
-                if (hasUnread)
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                          color: Color(0xFFFFD700), shape: BoxShape.circle),
-                      child: Text(unreadCount > 9 ? '9+' : '$unreadCount',
-                          style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-              ],
-
-              // ── Verrou Premium avec effet doré scintillant ────
-              if (locked)
-                Positioned.fill(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Shimmer.fromColors(
-                          baseColor: Colors.amber.shade200,
-                          highlightColor: Colors.white,
-                          period: const Duration(milliseconds: 1400),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                                color: Colors.amber, shape: BoxShape.circle),
-                            child: const Icon(Icons.lock_rounded,
-                                color: Colors.white, size: 18),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text('Premium',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        child: contenu,
       ),
     );
   }

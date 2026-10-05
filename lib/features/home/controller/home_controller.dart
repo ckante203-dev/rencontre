@@ -676,17 +676,53 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         locationError.value = true;
         return;
       }
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 5),
-      );
-      _myLat = pos.latitude;
-      _myLng = pos.longitude;
+      // Autorisation OK : plus d'icône d'erreur, même si le GPS est lent
       locationError.value = false;
-      unawaited(_updateLocationIfAllowed(pos.latitude, pos.longitude));
+
+      // 1. Dernière position connue du téléphone : distances tout de suite
+      try {
+        final derniere = await Geolocator.getLastKnownPosition();
+        if (derniere != null && _myLat == null) {
+          _myLat = derniere.latitude;
+          _myLng = derniere.longitude;
+          _updateDistancesLocally();
+        }
+      } catch (_) {}
+
+      // 1 bis. Sinon, la dernière position enregistrée sur mon profil
+      // (sessions précédentes) : mieux que pas de distance du tout
+      final moi = _myProfile.value;
+      if (_myLat == null && moi?.latitude != null && moi?.longitude != null) {
+        _myLat = moi!.latitude;
+        _myLng = moi.longitude;
+        _updateDistancesLocally();
+      }
+
+      // 2. Suivi continu : prend le relais dès que le GPS répond (avant,
+      // un délai dépassé à l'intérieur arrêtait tout : plus de distances)
       _startListeningToPositionChanges();
+
+      // 3. Position précise, en arrière-plan : l'Accueil n'attend pas le
+      // GPS (lent à l'intérieur) pour afficher les profils
+      // Réseau (Wi-Fi / antennes) d'abord : rapide même à l'intérieur,
+      // puis GPS pour affiner.
+      unawaited(() async {
+        for (final precision in [LocationAccuracy.low, LocationAccuracy.medium]) {
+          try {
+            final pos = await Geolocator.getCurrentPosition(
+              desiredAccuracy: precision,
+              timeLimit: const Duration(seconds: 20),
+            );
+            _myLat = pos.latitude;
+            _myLng = pos.longitude;
+            _updateDistancesLocally();
+            unawaited(_updateLocationIfAllowed(pos.latitude, pos.longitude));
+          } catch (e) {
+            debugPrint('_locateMe ($precision) : $e');
+          }
+        }
+      }());
     } catch (e) {
-      locationError.value = true;
       debugPrint('_locateMe error: $e');
     }
   }
@@ -861,8 +897,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   static String formatDistance(double? meters) {
     if (meters == null) return '';
-    if (meters < 1000) return '${meters.round()} m';
-    return '${(meters / 1000).toStringAsFixed(1)} km';
+    // Sécurité : jamais de distance précise de près (on ne doit pas
+    // pouvoir localiser quelqu'un) → « < 2 km », puis le km entier.
+    // Les positions sont aussi arrondies à ~500 m en base (SQL 047).
+    if (meters < 2000) return '< 2 km';
+    return '${(meters / 1000).round()} km';
   }
 
   // ✅ Ouvre le profil dans un carrousel (swipe pour passer

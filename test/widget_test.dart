@@ -11,24 +11,24 @@ import 'package:rencontre/features/groupes/groupe_model.dart';
 
 void main() {
   group('UserModel', () {
-    test('distanceLabel affiche les mètres sous 1km', () {
+    test('distanceLabel masque la distance précise sous 2 km', () {
       const user = UserModel(
         id: '1',
         name: 'Alex',
         age: 24,
         distanceMeters: 350,
       );
-      expect(user.distanceLabel, '350m');
+      expect(user.distanceLabel, '< 2 km');
     });
 
-    test('distanceLabel affiche les km au-dessus de 1000m', () {
+    test('distanceLabel arrondit au km entier à partir de 2 km', () {
       const user = UserModel(
         id: '2',
         name: 'Jordan',
         age: 27,
         distanceMeters: 2500,
       );
-      expect(user.distanceLabel, '2.5km');
+      expect(user.distanceLabel, '3 km');
     });
 
     test('distanceLabel vide si null', () {

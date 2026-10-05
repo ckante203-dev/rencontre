@@ -1,5 +1,6 @@
 package com.snapmeet.app
 
+import android.content.pm.ApplicationInfo
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -18,10 +19,16 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         // Discrétion : captures et enregistrements d'écran bloqués dans toute
         // l'appli (image noire), et aperçu masqué dans les applis récentes.
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE
-        )
+        // Sauf en version de développement (flutter run), pour pouvoir
+        // vérifier l'affichage : la version release garde la protection.
+        val developpement =
+            (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!developpement) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
