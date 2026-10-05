@@ -12,6 +12,7 @@ import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
+import 'package:rencontre/features/premium/view/boost_sheet.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -594,6 +595,21 @@ class NotificationService {
       );
       return;
     }
+    // ⚡ Bilan du Boost terminé reçu app ouverte
+    if (type == 'boost_bilan') {
+      if (!await AwesomeNotifications().isNotificationAllowed()) return;
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: 'boost_bilan'.hashCode.abs() % 2147483647,
+          channelKey: 'smart',
+          title: title ?? '⚡ Ton Boost est terminé',
+          body: body ?? '',
+          notificationLayout: NotificationLayout.Default,
+          payload: {'type': 'boost_bilan'},
+        ),
+      );
+      return;
+    }
     if (type == 'like' || type == 'match') {
       final fromUserId = s('fromUserId') ?? s('from_user_id') ?? '';
       final userName = s('userName') ?? s('from_user_name') ?? 'Quelqu\'un';
@@ -736,6 +752,16 @@ class NotificationService {
       if (Get.isRegistered<EvenementsController>()) {
         await EvenementsController.to.ouvrirParId(id);
       }
+    }
+
+    // ⚡ Bilan du Boost → la fenêtre Boost (bilan + relancer)
+    else if (type == 'boost_bilan') {
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!Get.isRegistered<HomeController>()) {
+        Get.offAllNamed(AppRoutes.main);
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
+      if (Get.isRegistered<HomeController>()) showBoostSheet();
     }
 
     // ✅ Réengagement (relance de 19 h) → Accueil, Messages ou filtre Dispo

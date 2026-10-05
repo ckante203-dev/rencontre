@@ -59,7 +59,30 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   final Rx<UserModel?> _myProfile = Rx<UserModel?>(null);
   UserModel? get myProfile => _myProfile.value;
 
+  /// ⚡ Mon Boost est en cours → droits Premium pendant sa durée.
+  /// Réactif : repasse à false tout seul à la fin du Boost.
+  final RxBool boostActif = false.obs;
+  Timer? _finBoostTimer;
+
+  void _majBoostActif() {
+    _finBoostTimer?.cancel();
+    final fin = _myProfile.value?.boostJusqua;
+    final actif = fin != null && fin.isAfter(DateTime.now());
+    boostActif.value = actif;
+    if (actif) {
+      _finBoostTimer = Timer(
+          fin.difference(DateTime.now()) + const Duration(seconds: 1),
+          _majBoostActif);
+    }
+  }
+
   final RxList<StoryModel> _allStories = <StoryModel>[].obs;
+  // ⚡ Fin du Boost des auteurs de stories : leurs stories passent devant
+  final Map<String, DateTime> _boostStories = {};
+
+  /// Le profil [userId] a-t-il un Boost en cours ? (stories chargées)
+  bool storyBoostee(String userId) =>
+      _boostStories[userId]?.isAfter(DateTime.now()) ?? false;
   final Set<String> _viewedStoryIds = {};
   final RxList<StoryModel> _discoverOrder = <StoryModel>[].obs;
 
@@ -328,7 +351,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         result.add(s.copyWith(isSeen: _viewedStoryIds.contains(s.id)));
       }
     }
-    return result;
+    // ⚡ Profils boostés en tête de la barre (ordre conservé sinon)
+    return [
+      ...result.where((s) => storyBoostee(s.userId)),
+      ...result.where((s) => !storyBoostee(s.userId)),
+    ];
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -365,12 +392,17 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
 
     unseen.shuffle(Random());
-    final premiumUnseen = unseen.where((l) => l.first.isPremium);
-    final autresUnseen = unseen.where((l) => !l.first.isPremium);
+    // ⚡ Boostés d'abord, puis Premium, puis le reste
+    final boostesUnseen = unseen.where((l) => storyBoostee(l.first.userId));
+    final premiumUnseen = unseen
+        .where((l) => !storyBoostee(l.first.userId) && l.first.isPremium);
+    final autresUnseen = unseen
+        .where((l) => !storyBoostee(l.first.userId) && !l.first.isPremium);
 
     dejaVues.sort((a, b) => a.last.createdAt.compareTo(b.last.createdAt));
 
     final fresh = [
+      ...boostesUnseen,
       ...premiumUnseen,
       ...autresUnseen,
       ...dejaVues,
@@ -398,6 +430,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       }
     }
     final added = fresh.where((s) => !keptIds.contains(s.id));
+    // ⚡ Nouvelles stories d'un profil boosté : juste après celles déjà
+    // vues, au lieu de la fin du fil
+    final premiereNonVue = kept.indexWhere((s) => !vu(s));
+    final addedBoost = added.where((s) => storyBoostee(s.userId)).toList();
+    final addedAutres = added.where((s) => !storyBoostee(s.userId));
+    if (addedBoost.isNotEmpty && premiereNonVue >= 0) {
+      kept.insertAll(premiereNonVue, addedBoost);
+      _discoverOrder.value = [...kept, ...addedAutres];
+      return;
+    }
     _discoverOrder.value = [...kept, ...added];
   }
 
@@ -408,6 +450,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
+    ever(_myProfile, (_) => _majBoostActif());
     // Ville gardée en mémoire (avec ses coordonnées : utilisable tout de
     // suite). Ancien format = juste le nom d'une ville ivoirienne.
     final gardee = _storageBox.read(_kVilleVoyage);
@@ -906,15 +949,21 @@ class HomeController extends GetxController with WidgetsBindingObserver {
           .from('stories')
           .select(
               '*, profiles(name, photo_url, latitude, longitude, is_premium, '
-              'is_online, last_seen, show_distance)')
+              'is_online, last_seen, show_distance, boost_jusqua)')
           // ✅ UTC : une date locale "naïve" est lue comme UTC par Postgres
           .gt('expires_at', DateTime.now().toUtc().toIso8601String())
           .order('created_at', ascending: false);
 
       final stories = <StoryModel>[];
+      _boostStories.clear();
       for (final row in (data as List)) {
         if (_hiddenStoryIds.contains(row['id']?.toString())) continue;
         final profile = row['profiles'] as Map<String, dynamic>?;
+        final finBoost =
+            DateTime.tryParse('${profile?['boost_jusqua'] ?? ''}');
+        if (finBoost != null && row['user_id'] != null) {
+          _boostStories['${row['user_id']}'] = finBoost;
+        }
         stories.add(_rowToStory(row, profile, hasChatted: true));
       }
       _allStories.value = stories;
@@ -1323,6 +1372,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
+    _finBoostTimer?.cancel();
     _heartbeatTimer?.cancel();
     _offlineTimer?.cancel();
     _storiesReloadDebounce?.cancel();

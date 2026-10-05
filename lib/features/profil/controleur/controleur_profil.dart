@@ -26,12 +26,16 @@ class ControleurProfil extends GetxController {
 
   /// Premium = profil (webhook RevenueCat) OU RevenueCat en direct : juste
   /// après un achat, le profil n'est pas encore à jour.
+  /// ⚡ Un Boost en cours donne aussi tous les droits Premium (le serveur
+  /// applique la même règle : premium_effectif, migration 043).
   static bool estPremiumMaintenant() {
     final profil = Get.isRegistered<ControleurProfil>() &&
         Get.find<ControleurProfil>().isPremium.value;
     final rc = Get.isRegistered<RevenueCatService>() &&
         Get.find<RevenueCatService>().isPremium.value;
-    return profil || rc;
+    final boost = Get.isRegistered<HomeController>() &&
+        Get.find<HomeController>().boostActif.value;
+    return profil || rc || boost;
   }
 
   final _service = SupabaseService();

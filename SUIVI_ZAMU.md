@@ -45,6 +45,16 @@ Mis à jour le 04/10/2026.
 3. **Suppression des comptes** : vérifier le lien `https://supportsnapmeet-jpg.github.io/zamu-legal/suppression-compte.html`.
 4. Version : passer le numéro dans `pubspec.yaml` (actuellement `1.0.14+2024`), `flutter build appbundle`, envoyer en **test interne**.
 
+### À faire — Prix des Boosts (Play Console, quand tu veux : pas besoin de nouvelle version)
+Monétiser avec Play → Produits → Produits ponctuels (ou « Produits intégrés ») → chaque produit → Prix → Côte d'Ivoire (XOF), convertir pour les autres pays, Enregistrer, produit Actif :
+- [ ] `boost_1h` → **1 000 FCFA**
+- [ ] `boost_2h` → **1 500 FCFA**
+- [ ] `boost_24h` → **5 000 FCFA**
+Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines dans RevenueCat avant d'ajuster.
+- [ ] Exécuter le script SQL `20261005000041_bilan_boost.sql` (bilan du Boost + notification de fin).
+- [ ] Puis `20261005000042_boost_offert_premium.sql` (1 Boost d'1 h offert par mois aux Premium).
+- [ ] Puis `20261005000043_boost_droits_premium.sql` (Boost en cours = droits Premium : qui m'a liké / vu, proposer un événement).
+
 ### À faire — APRÈS la mise en production de la nouvelle version (quand la 1.0.11 n'existe plus nulle part)
 - **Contenu de l'appli → Autorisations photos et vidéos** : déclarer que l'app n'utilise plus `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (ne pas le faire avant : la 1.0.11 les utilise encore).
 
@@ -59,6 +69,7 @@ Mis à jour le 04/10/2026.
 ### Plus tard
 - Mode clair (fond blanc) : chantier dédié après la sortie.
 - Écran « Nouveautés » affiché une fois après la mise à jour.
+- **Offrir Premium** (après la sortie de la 1.1.0) : produits Play Console à paiement unique « Offrir 1 semaine / 1 mois » (pas l'abonnement : non transférable), le serveur crédite les jours au destinataire (comme le Boost), notification « 🎁 X t'a offert Premium » + message dans la discussion, bouton « Offrir » sur le profil et la discussion. Paiement Google Play / RevenueCat uniquement.
 - Parrainage (jours de Premium offerts).
 
 ## 1. Vérifier quels scripts SQL sont déjà passés

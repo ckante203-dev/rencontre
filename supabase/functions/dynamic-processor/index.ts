@@ -300,7 +300,10 @@ serve(async (req) => {
     // 💸 Like reçu par un compte GRATUIT : on ne dévoile pas qui (c'est
     // l'avantage Premium « Vois qui t'a liké »). Le tap ouvre l'onglet ❤️
     // (photos floutées). Un match reste nominatif (like réciproque).
-    if (eventType === "like" && toProfile.is_premium !== true) {
+    // ⚡ Un Boost en cours donne les droits Premium (migration 043)
+    const boostActif = !!toProfile.boost_jusqua &&
+      new Date(toProfile.boost_jusqua).getTime() > Date.now();
+    if (eventType === "like" && toProfile.is_premium !== true && !boostActif) {
       title = "❤️ Quelqu'un t'a liké !";
       body = "Découvre qui t'a liké 👀";
       data = { type: "like_anonyme" };

@@ -6,6 +6,7 @@
 // veille et 2 h avant, « des personnes que tu as likées y vont »,
 // « nouvel événement près de toi ». Chaque envoi est noté dans
 // evenement_notifs : jamais deux fois la même notification.
+// Envoie aussi le bilan des Boosts terminés (migration 041).
 //
 // Déploiement : supabase functions deploy rappel-evenements --no-verify-jwt
 // Secret      : PURGE_SECRET (le même que purge-expired, Vault purge_secret)
@@ -92,7 +93,10 @@ type NotifEvenement = {
 };
 
 // "ok" | "jeton_mort" (appli désinstallée) | "erreur"
-async function envoyer(n: NotifEvenement, sa: any): Promise<string> {
+async function envoyerFcm(
+  token: string, titre: string, corps: string,
+  data: Record<string, string>, sa: any, urgent = false,
+): Promise<string> {
   const accessToken = await getAccessToken(sa);
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
@@ -104,11 +108,11 @@ async function envoyer(n: NotifEvenement, sa: any): Promise<string> {
       },
       body: JSON.stringify({
         message: {
-          token: n.fcm_token,
-          notification: { title: n.titre, body: n.corps },
-          data: { type: "evenement", evenement_id: n.evenement_id, rappel: n.type },
+          token,
+          notification: { title: titre, body: corps },
+          data,
           android: {
-            priority: n.type === "2h" ? "high" : "normal",
+            priority: urgent ? "high" : "normal",
             notification: {
               sound: "default",
               channel_id: "smart",
@@ -123,8 +127,58 @@ async function envoyer(n: NotifEvenement, sa: any): Promise<string> {
   const err = await res.json().catch(() => ({}));
   const code = JSON.stringify(err);
   if (res.status === 404 || code.includes("UNREGISTERED")) return "jeton_mort";
-  console.error(`FCM ${n.user_id}:`, code);
+  console.error("FCM:", code);
   return "erreur";
+}
+
+const envoyer = (n: NotifEvenement, sa: any) =>
+  envoyerFcm(n.fcm_token, n.titre, n.corps,
+    { type: "evenement", evenement_id: n.evenement_id, rappel: n.type },
+    sa, n.type === "2h");
+
+// ── ⚡ Bilan des Boosts terminés (migration 041) ──────────────────
+type BilanBoost = {
+  user_id: string; fcm_token: string;
+  vues: number; likes: number; multiplicateur: number | null;
+};
+
+async function traiterBoosts(sa: any) {
+  const { data, error } = await admin.rpc("boosts_a_notifier");
+  if (error) {
+    // Script 041 pas encore exécuté : rien à faire
+    console.error("boosts_a_notifier:", error.message);
+    return { boosts: 0 };
+  }
+  const liste = (data ?? []) as BilanBoost[];
+  const traites: string[] = [];
+  const morts: string[] = [];
+  for (let i = 0; i < liste.length; i += PAR_LOT) {
+    const lot = liste.slice(i, i + PAR_LOT);
+    const res = await Promise.all(lot.map((b) => {
+      const x = b.multiplicateur && b.multiplicateur > 1
+        ? ` — ×${String(b.multiplicateur).replace(".", ",")} que d'habitude`
+        : "";
+      const corps = b.vues > 0
+        ? `👀 ${b.vues} vue${b.vues > 1 ? "s" : ""} · ❤️ ${b.likes} like${b.likes > 1 ? "s" : ""}${x}`
+        : "Découvre ton bilan et relance un Boost ⚡";
+      return envoyerFcm(b.fcm_token, "⚡ Ton Boost est terminé", corps,
+        { type: "boost_bilan" }, sa).catch(() => "erreur");
+    }));
+    res.forEach((statut, j) => {
+      if (statut === "erreur") return; // réessayé à l'heure suivante
+      traites.push(lot[j].user_id);
+      if (statut === "jeton_mort") morts.push(lot[j].user_id);
+    });
+  }
+  if (traites.length) {
+    await admin.from("profiles")
+      .update({ boost_bilan_envoye_le: new Date().toISOString() })
+      .in("id", traites);
+  }
+  if (morts.length) {
+    await admin.from("profiles").update({ fcm_token: null }).in("id", morts);
+  }
+  return { boosts: traites.length - morts.length };
 }
 
 serve(async (req) => {
@@ -148,11 +202,6 @@ serve(async (req) => {
       JSON.stringify(liste.map(({ fcm_token: _, ...n }) => n)),
       { headers: { "Content-Type": "application/json" } },
     );
-  }
-  if (liste.length === 0) {
-    return new Response(JSON.stringify({ candidats: 0 }), {
-      headers: { "Content-Type": "application/json" },
-    });
   }
 
   const sa = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!);
@@ -182,7 +231,12 @@ serve(async (req) => {
     await admin.from("profiles").update({ fcm_token: null }).in("id", [...morts]);
   }
 
-  const bilan = { candidats: liste.length, envoyes, jetons_morts: morts.size, erreurs };
+  const boosts = await traiterBoosts(sa);
+
+  const bilan = {
+    candidats: liste.length, envoyes, jetons_morts: morts.size, erreurs,
+    ...boosts,
+  };
   console.log("✅ rappel-evenements:", JSON.stringify(bilan));
   return new Response(JSON.stringify(bilan), {
     headers: { "Content-Type": "application/json" },

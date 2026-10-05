@@ -1568,21 +1568,20 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasUnread = unreadCount > 0 && !locked;
+    // ⚡ Profil boosté : contour orange (le doré = messages non lus)
+    final bool booste = user.estBooste && !locked && !hasUnread;
+    final Color? contour = hasUnread
+        ? const Color(0xFFFFD700)
+        : (booste ? const Color(0xFFFFA500) : null);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: hasUnread
-              ? Border.all(color: const Color(0xFFFFD700), width: 2)
-              : null,
-          boxShadow: hasUnread
-              ? [
-                  BoxShadow(
-                      color: const Color(0xFFFFD700).withOpacity(0.3),
-                      blurRadius: 8)
-                ]
+          border: contour != null ? Border.all(color: contour, width: 2) : null,
+          boxShadow: contour != null
+              ? [BoxShadow(color: contour.withOpacity(0.3), blurRadius: 8)]
               : null,
         ),
         child: ClipRRect(
@@ -1704,14 +1703,26 @@ class _UserCard extends StatelessWidget {
                     top: hasUnread ? 30 : 6,
                     right: 6,
                     child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
+                      padding: hasUnread
+                          ? const EdgeInsets.all(3)
+                          : const EdgeInsets.fromLTRB(4, 2, 7, 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: const LinearGradient(
                             colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
                       ),
-                      child: const Icon(Icons.bolt_rounded,
-                          size: 12, color: Colors.white),
+                      child: hasUnread
+                          ? const Icon(Icons.bolt_rounded,
+                              size: 12, color: Colors.white)
+                          : const Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.bolt_rounded,
+                                  size: 12, color: Colors.white),
+                              Text('Boost',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800)),
+                            ]),
                     ),
                   ),
 

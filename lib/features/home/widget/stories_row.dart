@@ -90,9 +90,8 @@ class _MyStoryItem extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: hasStory
-                                ? AppColors.accent
-                                : AppColors.border,
+                            color:
+                                hasStory ? AppColors.accent : AppColors.border,
                             width: hasStory ? 2.5 : 2,
                           ),
                         ),
@@ -198,6 +197,8 @@ class _StoryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = Get.find<HomeController>();
     final allSeen = ctrl.userStoryIsSeen(story.userId);
+    // ⚡ Profil boosté : cercle or → orange et petit éclair
+    final booste = ctrl.storyBoostee(story.userId);
 
     return Padding(
       padding: const EdgeInsets.only(right: 12),
@@ -220,47 +221,72 @@ class _StoryItem extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: allSeen ? null : AppColors.gradientPink,
-                    color: allSeen ? AppColors.border : null,
-                  ),
-                  padding: const EdgeInsets.all(2.5),
-                  child: Container(
+                Stack(clipBehavior: Clip.none, children: [
+                  Container(
+                    width: 62,
+                    height: 62,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.bg, width: 2),
+                      gradient: allSeen
+                          ? null
+                          : (booste
+                              ? const LinearGradient(colors: [
+                                  Color(0xFFFFD700),
+                                  Color(0xFFFFA500)
+                                ])
+                              : AppColors.gradientPink),
+                      color: allSeen ? AppColors.border : null,
                     ),
-                    child: ClipOval(
-                      child: story.userPhotoUrl != null &&
-                              story.userPhotoUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: story.userPhotoUrl!, fit: BoxFit.cover)
-                          : Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [
-                                  AppColors.accent,
-                                  AppColors.accent2
-                                ]),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  story.userName.isNotEmpty
-                                      ? story.userName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 20),
+                    padding: const EdgeInsets.all(2.5),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.bg, width: 2),
+                      ),
+                      child: ClipOval(
+                        child: story.userPhotoUrl != null &&
+                                story.userPhotoUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: story.userPhotoUrl!,
+                                fit: BoxFit.cover)
+                            : Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [
+                                    AppColors.accent,
+                                    AppColors.accent2
+                                  ]),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    story.userName.isNotEmpty
+                                        ? story.userName[0].toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 20),
+                                  ),
                                 ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
-                ),
+                  if (booste)
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFFFFA500),
+                          border: Border.all(color: AppColors.bg, width: 2),
+                        ),
+                        child: const Icon(Icons.bolt_rounded,
+                            size: 12, color: Colors.white),
+                      ),
+                    ),
+                ]),
                 const SizedBox(height: 5),
                 SizedBox(
                   width: 62,

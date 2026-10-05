@@ -3,6 +3,30 @@ import 'package:get/get.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/shared/widgets/avatar_rayonnant.dart';
+
+// Échelle de texte unique de la page (même police, mêmes graisses)
+class _T {
+  static TextStyle titre() => TextStyle(
+      fontSize: 22,
+      fontWeight: FontWeight.w800,
+      color: AppColors.textPrimary,
+      letterSpacing: -0.2);
+  static TextStyle sousTitre() =>
+      TextStyle(fontSize: 13.5, color: AppColors.textMuted, height: 1.4);
+  static TextStyle section() => TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textMuted,
+      letterSpacing: 0.8);
+  static TextStyle ligne() => TextStyle(
+      fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary);
+  static TextStyle detail() =>
+      TextStyle(fontSize: 12.5, color: AppColors.textMuted, height: 1.35);
+  static TextStyle prix() => TextStyle(
+      fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary);
+}
 
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
@@ -14,10 +38,26 @@ class PaywallScreen extends StatefulWidget {
 class _PaywallScreenState extends State<PaywallScreen> {
   final rc = Get.find<RevenueCatService>();
   Package? _choisie;
+  final _scroll = ScrollController();
+  bool _enBas = false; // flèche « encore du contenu » masquée en bas
+
+  void _majFleche() {
+    if (!_scroll.hasClients) return;
+    final p = _scroll.position;
+    final enBas = p.maxScrollExtent <= 0 || p.pixels >= p.maxScrollExtent - 40;
+    if (enBas != _enBas) setState(() => _enBas = enBas);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_majFleche);
     // ✅ Si le chargement des offres avait échoué au démarrage, le paywall
     // tournait indéfiniment : on relance le chargement à l'ouverture.
     if (rc.formulesPremium.isEmpty) rc.fetchOfferings();
@@ -38,7 +78,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: const Text('Zamu Premium'),
+        elevation: 0,
       ),
       body: Obx(() {
         final packages = rc.formulesPremium;
@@ -46,116 +86,144 @@ class _PaywallScreenState extends State<PaywallScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         final populaire = _populaire(packages);
-        final choisie = packages.contains(_choisie)
-            ? _choisie!
-            : (populaire ?? packages.first);
+        // Par défaut : la formule 1 semaine (la plus courte, en premier)
+        final choisie =
+            packages.contains(_choisie) ? _choisie! : packages.first;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _majFleche());
         // Référence pour calculer l'économie : la formule la plus courte.
         final reference = packages.first.storeProduct;
 
         return Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                children: [
-                  // ─── En-tête ─────────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Column(
-                      children: [
-                        Icon(Icons.workspace_premium_rounded,
-                            color: Colors.white, size: 40),
-                        SizedBox(height: 8),
-                        Text(
-                          'Zamu Premium',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Débloque tout le potentiel de Zamu',
-                          style: TextStyle(fontSize: 13, color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ─── Avantages ───────────────────────────────
-                  _BenefitTile(
-                    icon: Icons.remove_red_eye_rounded,
-                    iconColor: AppColors.accent,
-                    title: 'Vois qui t\'a vu',
-                    subtitle:
-                        'Découvre l\'identité de toutes les personnes qui ont consulté ton profil',
-                  ),
-                  _BenefitTile(
-                    icon: Icons.favorite_rounded,
-                    iconColor: AppColors.accent,
-                    title: 'Vois qui t\'a liké',
-                    subtitle:
-                        'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi',
-                  ),
-                  _BenefitTile(
-                    icon: Icons.people_alt_rounded,
-                    iconColor: AppColors.accent2,
-                    title: 'Beaucoup plus de profils',
-                    subtitle:
-                        'Accède à un nombre de profils bien plus large que la version gratuite',
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ─── Formules ────────────────────────────────
-                  const Text(
-                    'CHOISIS TA FORMULE',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white54,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...packages.map((pkg) => _FormuleTile(
-                        package: pkg,
-                        reference: reference,
-                        choisie: identical(pkg, choisie),
-                        populaire: identical(pkg, populaire),
-                        onTap: () => setState(() => _choisie = pkg),
-                      )),
-
-                  const SizedBox(height: 4),
-                  Center(
-                    child: TextButton(
-                      onPressed: rc.isProcessing.value
-                          ? null
-                          : () async {
-                              final restored = await rc.restorePurchases();
-                              if (restored && context.mounted) {
-                                Navigator.of(context).pop();
-                              }
-                            },
-                      child: const Text(
-                        'Restaurer mes achats',
-                        style: TextStyle(color: Colors.white54),
+              child: Stack(children: [
+                ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  children: [
+                    // ─── En-tête : ta photo qui rayonne ──────────
+                    Center(
+                      child: AvatarRayonnant(
+                        photoUrl: Get.isRegistered<HomeController>()
+                            ? Get.find<HomeController>().myProfile?.photoUrl
+                            : null,
+                        actif: true,
+                        icone: Icons.workspace_premium_rounded,
                       ),
                     ),
+                    Text('Zamu Premium',
+                        textAlign: TextAlign.center, style: _T.titre()),
+                    const SizedBox(height: 4),
+                    Text('Débloque tout le potentiel de Zamu',
+                        textAlign: TextAlign.center, style: _T.sousTitre()),
+                    const SizedBox(height: 24),
+
+                    // ─── Avantages ───────────────────────────────
+                    _BenefitTile(
+                      icon: Icons.remove_red_eye_rounded,
+                      iconColor: AppColors.accent,
+                      title: 'Vois qui t\'a vu',
+                      subtitle:
+                          'Découvre l\'identité de toutes les personnes qui ont consulté ton profil',
+                    ),
+                    _BenefitTile(
+                      icon: Icons.favorite_rounded,
+                      iconColor: AppColors.accent,
+                      title: 'Vois qui t\'a liké',
+                      subtitle:
+                          'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi',
+                    ),
+                    _BenefitTile(
+                      icon: Icons.people_alt_rounded,
+                      iconColor: AppColors.accent2,
+                      title: 'Beaucoup plus de profils',
+                      subtitle:
+                          'Accède à un nombre de profils bien plus large que la version gratuite',
+                    ),
+                    _BenefitTile(
+                      icon: Icons.location_city_rounded,
+                      iconColor: AppColors.accent2,
+                      title: 'Explore une autre ville',
+                      subtitle:
+                          'Découvre les profils d\'Abidjan, Bouaké ou ailleurs avant d\'y aller',
+                    ),
+                    _BenefitTile(
+                      icon: Icons.bolt_rounded,
+                      iconColor: const Color(0xFFFFA500),
+                      title: '1 Boost offert chaque mois',
+                      subtitle:
+                          'Ton profil passe en tête de l\'Accueil pendant 1 heure',
+                    ),
+                    _BenefitTile(
+                      icon: Icons.visibility_off_rounded,
+                      iconColor: AppColors.accent,
+                      title: 'Mode fantôme sur la carte',
+                      subtitle: 'Vois les autres sans apparaître toi-même',
+                    ),
+                    _BenefitTile(
+                      icon: Icons.event_rounded,
+                      iconColor: AppColors.accent2,
+                      title: 'Propose tes événements',
+                      subtitle:
+                          'Soirées, sorties, rencontres : crée ton événement',
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ─── Formules ────────────────────────────────
+                    Text('CHOISIS TA FORMULE', style: _T.section()),
+                    const SizedBox(height: 12),
+                    ...packages.map((pkg) => _FormuleTile(
+                          package: pkg,
+                          reference: reference,
+                          choisie: identical(pkg, choisie),
+                          populaire: identical(pkg, populaire),
+                          onTap: () => setState(() => _choisie = pkg),
+                        )),
+
+                    const SizedBox(height: 4),
+                    Center(
+                      child: TextButton(
+                        onPressed: rc.isProcessing.value
+                            ? null
+                            : () async {
+                                final restored = await rc.restorePurchases();
+                                if (restored && context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                        child: Text(
+                          'Restaurer mes achats',
+                          style:
+                              _T.detail().copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                // ─── Flèche : il reste du contenu plus bas ───
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 10,
+                  child: IgnorePointer(
+                    ignoring: _enBas,
+                    child: AnimatedOpacity(
+                      opacity: _enBas ? 0 : 1,
+                      duration: const Duration(milliseconds: 250),
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () => _scroll.animateTo(
+                              _scroll.position.maxScrollExtent,
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.easeOutCubic),
+                          child: const _FlecheRebond(),
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ]),
             ),
 
             // ─── Bouton d'achat ──────────────────────────────
@@ -187,18 +255,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                 strokeWidth: 2.5, color: Colors.white))
                         : Text(
                             'Continuer · ${RevenueCatService.libellePrix(choisie.storeProduct)}',
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
+                            style: _T.ligne().copyWith(color: Colors.white),
                           ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Renouvellement automatique. Résiliable à tout moment dans Google Play.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.white38),
+                  style: _T.detail().copyWith(fontSize: 11),
                 ),
               ]),
             ),
@@ -308,13 +373,7 @@ class _FormuleTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Text(
-                      _duree(p.subscriptionPeriod),
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary),
-                    ),
+                    Text(_duree(p.subscriptionPeriod), style: _T.ligne()),
                     if (populaire) ...[
                       const SizedBox(width: 8),
                       Container(
@@ -327,7 +386,7 @@ class _FormuleTile extends StatelessWidget {
                         child: const Text('POPULAIRE',
                             style: TextStyle(
                                 fontSize: 9,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                                 letterSpacing: 0.5)),
                       ),
@@ -337,8 +396,7 @@ class _FormuleTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       'soit ${_montant(parSemaine, p.currencyCode)} / semaine',
-                      style:
-                          TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: _T.detail(),
                     ),
                   ],
                 ],
@@ -347,20 +405,12 @@ class _FormuleTile extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  p.priceString,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary),
-                ),
+                Text(p.priceString, style: _T.prix()),
                 if (economie >= 5)
                   Text(
                     '−$economie %',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.online),
+                    style: _T.detail().copyWith(
+                        fontWeight: FontWeight.w800, color: AppColors.online),
                   ),
               ],
             ),
@@ -407,27 +457,59 @@ class _BenefitTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+                Text(title, style: _T.ligne()),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 12, color: Colors.white54),
-                ),
+                Text(subtitle, style: _T.detail()),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── FLÈCHE QUI REBONDIT (« encore du contenu en bas ») ─────────
+
+class _FlecheRebond extends StatefulWidget {
+  const _FlecheRebond();
+  @override
+  State<_FlecheRebond> createState() => _FlecheRebondState();
+}
+
+class _FlecheRebondState extends State<_FlecheRebond>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _anim = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, child) => Transform.translate(
+        offset: Offset(0, 6 * Curves.easeInOut.transform(_anim.value)),
+        child: child,
+      ),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.surface2,
+          border: Border.all(color: AppColors.border),
+          boxShadow: const [
+            BoxShadow(color: Colors.black38, blurRadius: 10),
+          ],
+        ),
+        child: Icon(Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textPrimary, size: 26),
       ),
     );
   }

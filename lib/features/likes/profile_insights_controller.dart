@@ -114,6 +114,10 @@ class ProfileInsightsController extends GetxController {
     if (Get.isRegistered<RevenueCatService>()) {
       ever(Get.find<RevenueCatService>().isPremium, (_) => _rechargerBientot());
     }
+    // ⚡ Début / fin d'un Boost (droits Premium pendant le Boost)
+    if (Get.isRegistered<HomeController>()) {
+      ever(Get.find<HomeController>().boostActif, (_) => _rechargerBientot());
+    }
   }
 
   @override
