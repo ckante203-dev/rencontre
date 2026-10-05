@@ -12,15 +12,29 @@ import 'package:rencontre/features/notifications/model/notification_model.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  late final NotificationController ctrl;
+
+  @override
+  void initState() {
+    super.initState();
     if (!Get.isRegistered<NotificationController>()) {
       Get.put(NotificationController(), permanent: true);
     }
-    final ctrl = Get.find<NotificationController>();
+    ctrl = Get.find<NotificationController>();
+    // Ouvrir l'écran = tout est vu (badge de la cloche à 0)
+    ctrl.ouvrirEcran();
+  }
+
+  @override
+  Widget build(BuildContext context) {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -57,7 +71,7 @@ class NotificationsScreen extends StatelessWidget {
                 Text('Aucune notification pour le moment',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 const SizedBox(height: 4),
-                Text('Stories des comptes que tu suis',
+                Text('Likes, matchs, amis et stories de tes favoris',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
               ],
             ),
@@ -69,8 +83,11 @@ class NotificationsScreen extends StatelessWidget {
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: ctrl.notifications.length,
-            itemBuilder: (_, i) =>
-                _NotifTile(notif: ctrl.notifications[i], ctrl: ctrl),
+            itemBuilder: (_, i) => _NotifTile(
+                notif: ctrl.notifications[i],
+                ctrl: ctrl,
+                nouvelle: ctrl.nouvellesCetteVisite
+                    .contains(ctrl.notifications[i].id)),
           ),
         );
       }),
@@ -81,7 +98,11 @@ class NotificationsScreen extends StatelessWidget {
 class _NotifTile extends StatelessWidget {
   final NotificationModel notif;
   final NotificationController ctrl;
-  const _NotifTile({required this.notif, required this.ctrl});
+  final bool nouvelle; // non lue à l'ouverture de l'écran
+  const _NotifTile(
+      {required this.notif, required this.ctrl, this.nouvelle = false});
+
+  bool get _enAvant => !notif.isRead || nouvelle;
 
   IconData get _icon {
     switch (notif.type) {
@@ -168,9 +189,9 @@ class _NotifTile extends StatelessWidget {
     return GestureDetector(
       onTap: _onTap,
       child: Container(
-        color: notif.isRead
-            ? Colors.transparent
-            : AppColors.accent.withOpacity(0.05),
+        color: _enAvant
+            ? AppColors.accent.withValues(alpha: 0.07)
+            : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
@@ -245,7 +266,7 @@ class _NotifTile extends StatelessWidget {
               timeago.format(notif.createdAt, locale: 'fr'),
               style: TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
-            if (!notif.isRead) ...[
+            if (_enAvant) ...[
               const SizedBox(width: 8),
               Container(
                 width: 8,

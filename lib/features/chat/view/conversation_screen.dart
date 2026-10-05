@@ -31,15 +31,11 @@ part 'conversation_bulles.dart';
 part 'conversation_medias.dart';
 part 'conversation_saisie.dart';
 
-enum SnapDuration { unique, s3, s10, s30, none }
+enum SnapDuration { s10, s30, none }
 
 extension SnapDurationExt on SnapDuration {
   String get label {
     switch (this) {
-      case SnapDuration.unique:
-        return 'Vue unique';
-      case SnapDuration.s3:
-        return '3 secondes';
       case SnapDuration.s10:
         return '10 secondes';
       case SnapDuration.s30:
@@ -51,10 +47,6 @@ extension SnapDurationExt on SnapDuration {
 
   int? get seconds {
     switch (this) {
-      case SnapDuration.unique:
-        return 0;
-      case SnapDuration.s3:
-        return 3;
       case SnapDuration.s10:
         return 10;
       case SnapDuration.s30:

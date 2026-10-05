@@ -8,6 +8,9 @@ class NotificationController extends GetxController {
   final RxList<NotificationModel> notifications = <NotificationModel>[].obs;
   final RxInt unreadCount = 0.obs;
   final RxBool isLoading = false.obs;
+  // Non lues au moment d'ouvrir l'écran : restent surlignées pendant la
+  // visite, même si elles sont déjà marquées « vues » (façon Instagram)
+  final RxSet<String> nouvellesCetteVisite = <String>{}.obs;
 
   RealtimeChannel? _channel;
 
@@ -35,6 +38,13 @@ class NotificationController extends GetxController {
           .from('notifications')
           .select('*, profiles!notifications_actor_id_fkey(name, photo_url)')
           .eq('user_id', uid)
+          // Historique de 30 jours (au-delà : supprimées, SQL 045)
+          .gte(
+              'created_at',
+              DateTime.now()
+                  .toUtc()
+                  .subtract(const Duration(days: 30))
+                  .toIso8601String())
           .order('created_at', ascending: false)
           .limit(100);
 
@@ -96,6 +106,36 @@ class NotificationController extends GetxController {
       await _sb.from('notifications').update({'is_read': true}).eq('id', id);
     } catch (e) {
       Get.log('markAsRead error: $e');
+    }
+  }
+
+  /// Ouverture de l'écran Notifications : tout passe en « vu » (le badge
+  /// de la cloche repart à 0), les nouvelles restent surlignées.
+  Future<void> ouvrirEcran() async {
+    await loadNotifications();
+    nouvellesCetteVisite
+      ..clear()
+      ..addAll(notifications.where((n) => !n.isRead).map((n) => n.id));
+    if (nouvellesCetteVisite.isEmpty) return;
+    notifications.value =
+        notifications.map((n) => n.copyWith(isRead: true)).toList();
+    unreadCount.value = 0;
+    try {
+      await _sb.rpc('marquer_notifications_lues');
+    } catch (e) {
+      // Script 045 pas encore exécuté : mise à jour directe
+      Get.log('marquer_notifications_lues : $e');
+      final uid = _myUid;
+      if (uid == null) return;
+      try {
+        await _sb
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('user_id', uid)
+            .eq('is_read', false);
+      } catch (e2) {
+        Get.log('markAllAsRead error: $e2');
+      }
     }
   }
 

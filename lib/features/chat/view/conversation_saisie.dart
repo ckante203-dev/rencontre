@@ -519,53 +519,54 @@ class _PreviewSheetState extends State<_PreviewSheet> {
             padding: EdgeInsets.fromLTRB(
                 16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
             child: Row(children: [
-              GestureDetector(
-                onTap: () => setState(() {
-                  _modeEphemere = !_modeEphemere;
-                  if (_modeEphemere) _showDureePicker = true;
-                }),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _modeEphemere
-                        ? AppColors.accent.withOpacity(0.15)
-                        : AppColors.surface2,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: _modeEphemere
-                            ? AppColors.accent.withOpacity(0.5)
-                            : AppColors.border),
+              if (!widget.isVideo)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _modeEphemere = !_modeEphemere;
+                    if (_modeEphemere) _showDureePicker = true;
+                  }),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _modeEphemere
+                          ? AppColors.accent.withOpacity(0.15)
+                          : AppColors.surface2,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: _modeEphemere
+                              ? AppColors.accent.withOpacity(0.5)
+                              : AppColors.border),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.timer_rounded,
+                          size: 16,
+                          color: _modeEphemere
+                              ? AppColors.accent
+                              : AppColors.textMuted),
+                      const SizedBox(width: 5),
+                      Text(_modeEphemere ? _duree.label : 'Éphémère',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: _modeEphemere
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontWeight: FontWeight.w500)),
+                      if (_modeEphemere) ...[
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                            onTap: () => setState(
+                                () => _showDureePicker = !_showDureePicker),
+                            child: Icon(
+                                _showDureePicker
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                size: 16,
+                                color: AppColors.accent)),
+                      ],
+                    ]),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.timer_rounded,
-                        size: 16,
-                        color: _modeEphemere
-                            ? AppColors.accent
-                            : AppColors.textMuted),
-                    const SizedBox(width: 5),
-                    Text(_modeEphemere ? _duree.label : 'Éphémère',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: _modeEphemere
-                                ? AppColors.textPrimary
-                                : AppColors.textMuted,
-                            fontWeight: FontWeight.w500)),
-                    if (_modeEphemere) ...[
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                          onTap: () => setState(
-                              () => _showDureePicker = !_showDureePicker),
-                          child: Icon(
-                              _showDureePicker
-                                  ? Icons.expand_less
-                                  : Icons.expand_more,
-                              size: 16,
-                              color: AppColors.accent)),
-                    ],
-                  ]),
                 ),
-              ),
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => setState(() => _sensible = !_sensible),

@@ -1768,7 +1768,9 @@ class ConversationController extends GetxController
             .toUtc() // ✅ FIX — horodatage envoyé en UTC (timestamptz)
             .toIso8601String(),
       }).eq('id', msg.id);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('openSnap : ouverture non enregistrée — $e');
+    }
     // Comme Snapchat : le snap n'est plus visible mais une trace
     // « Snap ouvert » reste dans la discussion (la bulle passe d'elle-même
     // en trace à la fin du compte à rebours ; le serveur supprime la photo).
