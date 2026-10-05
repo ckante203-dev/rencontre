@@ -157,10 +157,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
       body: Column(children: [
         const _EphemeralBanner(),
         Expanded(
-          child: Obx(() => _FondConversation(
-                id: ctrl.fond.value,
-                child: _MessageList(ctrl: ctrl),
-              )),
+          child: Stack(children: [
+            Positioned.fill(
+              child: Obx(() => _FondConversation(
+                    id: ctrl.fond.value,
+                    child: _MessageList(ctrl: ctrl),
+                  )),
+            ),
+            // ⌄ Redescendre aux derniers messages (+ nombre de nouveaux)
+            Positioned(right: 12, bottom: 10, child: _BoutonBas(ctrl: ctrl)),
+          ]),
         ),
         _BandeauEnvoi(ctrl: ctrl),
         _InputBar(ctrl: ctrl),
@@ -238,7 +244,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                               fontStyle: FontStyle.italic));
                     }
                     return Text(
-                      ctrl.isOtherOnline.value ? 'en ligne' : 'hors ligne',
+                      ctrl.isOtherOnline.value
+                          ? 'en ligne'
+                          : _vuLe(ctrl.otherLastSeen.value),
                       style: TextStyle(
                           // ✅ Fix 3 : taille et poids réduits
                           fontSize: 11,
@@ -262,6 +270,35 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ),
       ],
     );
+  }
+
+  /// « vu aujourd'hui à 14:32 », « vu hier à 21:05 », « vu le 3 oct. »
+  static String _vuLe(DateTime? d) {
+    if (d == null) return 'hors ligne';
+    final now = DateTime.now();
+    final jours = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(d.year, d.month, d.day))
+        .inDays;
+    final h =
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    if (jours <= 0) return "vu aujourd'hui à $h";
+    if (jours == 1) return 'vu hier à $h';
+    if (jours < 7) return 'vu il y a $jours jours';
+    const mois = [
+      'janv.',
+      'févr.',
+      'mars',
+      'avr.',
+      'mai',
+      'juin',
+      'juil.',
+      'août',
+      'sept.',
+      'oct.',
+      'nov.',
+      'déc.'
+    ];
+    return 'vu le ${d.day} ${mois[d.month - 1]}';
   }
 
   Future<void> _ouvrirProfil(ConversationModel conv) async {
@@ -468,9 +505,7 @@ class _ConvMenu extends StatelessWidget {
   }
 
   Future<bool?> _confirmer(BuildContext context,
-      {required String titre,
-      required String texte,
-      required String action}) {
+      {required String titre, required String texte, required String action}) {
     return showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
@@ -494,8 +529,7 @@ class _ConvMenu extends StatelessWidget {
                   onPressed: () => Get.back(result: true),
                   child: Text(action,
                       style: TextStyle(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w700)),
+                          color: AppColors.error, fontWeight: FontWeight.w700)),
                 ),
               ],
             ));
@@ -803,8 +837,8 @@ class _BadgeBientot extends StatelessWidget {
 
 class _Div extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Divider(
-      height: 0.5, thickness: 0.5, color: AppColors.border, indent: 62);
+  Widget build(BuildContext context) =>
+      Divider(height: 0.5, thickness: 0.5, color: AppColors.border, indent: 62);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1047,7 +1081,8 @@ class _BandeauEnvoi extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         color: AppColors.surface2,
         child: Row(children: [
-          Icon(Icons.hourglass_top_rounded, size: 14, color: AppColors.textMuted),
+          Icon(Icons.hourglass_top_rounded,
+              size: 14, color: AppColors.textMuted),
           const SizedBox(width: 8),
           Expanded(
             child: Text(texte,
@@ -1083,3 +1118,122 @@ class _EphemeralBanner extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 //  MESSAGE LIST
 // ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOUTON « REDESCENDRE » (façon WhatsApp)
+// ═══════════════════════════════════════════════════════════════════
+
+class _BoutonBas extends StatefulWidget {
+  final ConversationController ctrl;
+  const _BoutonBas({required this.ctrl});
+  @override
+  State<_BoutonBas> createState() => _BoutonBasState();
+}
+
+class _BoutonBasState extends State<_BoutonBas> {
+  bool _visible = false;
+  int _nouveaux = 0;
+  int _nbVu = 0;
+  Worker? _worker;
+
+  ScrollController get _scroll => widget.ctrl.scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nbVu = widget.ctrl.messages.length;
+    _scroll.addListener(_surDefilement);
+    // Messages reçus pendant qu'on lit plus haut → compteur
+    _worker = ever(widget.ctrl.messages, (List<MessageModel> l) {
+      if (!mounted) return;
+      if (!_visible) {
+        _nbVu = l.length;
+        return;
+      }
+      final n = l.length - _nbVu;
+      final recus = l.reversed
+          .take(n.clamp(0, l.length))
+          .where((m) => m.senderId != widget.ctrl.myId)
+          .length;
+      if (recus != _nouveaux) setState(() => _nouveaux = recus);
+    });
+  }
+
+  void _surDefilement() {
+    if (!_scroll.hasClients) return;
+    // Liste inversée : 0 = tout en bas
+    final loin = _scroll.offset > 400;
+    if (loin != _visible) {
+      setState(() {
+        _visible = loin;
+        if (!loin) {
+          _nouveaux = 0;
+          _nbVu = widget.ctrl.messages.length;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _worker?.dispose();
+    try {
+      _scroll.removeListener(_surDefilement);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !_visible,
+      child: AnimatedScale(
+        scale: _visible ? 1 : 0.6,
+        duration: const Duration(milliseconds: 180),
+        child: AnimatedOpacity(
+          opacity: _visible ? 1 : 0,
+          duration: const Duration(milliseconds: 180),
+          child: GestureDetector(
+            onTap: () => _scroll.animateTo(0,
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOutCubic),
+            child: Stack(clipBehavior: Clip.none, children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surface2,
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black38, blurRadius: 8),
+                  ],
+                ),
+                child: Icon(Icons.keyboard_double_arrow_down_rounded,
+                    color: AppColors.textPrimary, size: 22),
+              ),
+              if (_nouveaux > 0)
+                Positioned(
+                  top: -6,
+                  right: -4,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.gradientPink,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(_nouveaux > 99 ? '99+' : '$_nouveaux',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}

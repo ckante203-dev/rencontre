@@ -40,11 +40,12 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
         title: const Text('📅 Événements',
             style: TextStyle(fontFamily: 'Syne', fontWeight: FontWeight.w800)),
         actions: [
-          IconButton(
-            tooltip: 'Proposer un événement',
-            onPressed: () => ouvrirProposition(),
-            icon: const Icon(Icons.add_circle_outline_rounded),
-          ),
+          if (propositionsOuvertes)
+            IconButton(
+              tooltip: 'Proposer un événement',
+              onPressed: () => ouvrirProposition(),
+              icon: const Icon(Icons.add_circle_outline_rounded),
+            ),
         ],
       ),
       body: Column(children: [

@@ -24,6 +24,7 @@ class BandeEvenements extends StatelessWidget {
       final liste = ctrl.evenements;
       // Aucun événement : simple lien pour en proposer un
       if (liste.isEmpty) {
+        if (!propositionsOuvertes) return const SizedBox.shrink();
         return GestureDetector(
           onTap: () => ouvrirProposition(),
           child: Padding(
@@ -77,7 +78,7 @@ class BandeEvenements extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: bande.length + 1,
+                itemCount: bande.length + (propositionsOuvertes ? 1 : 0),
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, i) => i < bande.length
                     ? _CarteEvenement(ev: bande[i])

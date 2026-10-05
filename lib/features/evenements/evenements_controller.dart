@@ -258,12 +258,25 @@ class EvenementsController extends GetxController {
   /// Notification « événement » touchée : ouvre l'écran de l'événement.
   Future<void> ouvrirParId(String id) async {
     if (!evenements.any((e) => e.id == id)) await charger();
-    final ev = evenements.firstWhereOrNull((e) => e.id == id);
+    var ev = evenements.firstWhereOrNull((e) => e.id == id);
+    // Événement terminé (« Tu as croisé… ») : chargé à part (SQL 044)
+    if (ev == null) {
+      try {
+        final rows = await supabase
+            .rpc('evenement_par_id', params: {'p_ev': id}) as List;
+        if (rows.isNotEmpty) {
+          ev = EvenementModel.fromJson(Map<String, dynamic>.from(rows.first));
+        }
+      } catch (e) {
+        debugPrint('evenement_par_id : $e');
+      }
+    }
     if (ev == null) {
       _snack('Événement terminé', 'Cet événement n\'est plus disponible');
       return;
     }
-    Get.to(() => EcranEvenement(evenement: ev));
+    final aOuvrir = ev;
+    Get.to(() => EcranEvenement(evenement: aOuvrir));
   }
 
   /// Événement auquel je participe et qui a lieu maintenant (pour

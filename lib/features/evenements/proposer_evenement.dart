@@ -6,6 +6,11 @@ import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 
+/// Au lancement, seul Zamu crée les événements (qualité, sécurité des
+/// lieux) : les boutons « Proposer » sont masqués. Passer à true pour
+/// rouvrir les propositions (Premium, validées dans le panneau admin).
+const bool propositionsOuvertes = false;
+
 /// Proposer un événement est réservé aux membres Premium 👑 : sinon on
 /// explique pourquoi et on propose de passer Premium.
 void ouvrirProposition() {

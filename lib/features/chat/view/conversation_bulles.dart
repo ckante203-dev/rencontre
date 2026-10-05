@@ -17,9 +17,10 @@ class _MessageList extends StatelessWidget {
       final msgs = ctrl.messages.where(ctrl.estVisible).toList();
       if (msgs.isEmpty) return _buildEmpty();
       // « Lu HH:MM » seulement sous mon dernier message lu (✓✓ ailleurs)
-      final dernierLuId = msgs
-          .reversed.toList().firstWhereOrNull((m) =>
-              m.senderId == ctrl.myId && m.status == MessageStatus.read)
+      final dernierLuId = msgs.reversed
+          .toList()
+          .firstWhereOrNull(
+              (m) => m.senderId == ctrl.myId && m.status == MessageStatus.read)
           ?.id;
       final items = <_ChatItem>[];
       for (int i = 0; i < msgs.length; i++) {
@@ -125,8 +126,8 @@ class _MessageList extends StatelessWidget {
                         TextSelection.collapsed(offset: phrase.length);
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 9),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
                       color: AppColors.surface2,
                       borderRadius: BorderRadius.circular(18),
@@ -236,74 +237,91 @@ class _MessageBubble extends StatelessWidget {
     final isMine = msg.senderId == ctrl.myId;
     final h = msg.createdAt.hour.toString().padLeft(2, '0');
     final m = msg.createdAt.minute.toString().padLeft(2, '0');
-    return GestureDetector(
-      onLongPress: () => ctrl.showMessageOptions(context, msg),
-      child: Padding(
-        padding: EdgeInsets.only(
-            top: isFirst ? 4 : 1,
-            bottom: isLast ? 4 : 1,
-            left: isMine ? 56 : 4,
-            right: isMine ? 4 : 56),
-        child: Column(
-          crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment:
-                  isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (!isMine) ...[
-                  SizedBox(
-                      width: 30,
-                      child: isLast
-                          ? _Avatar(
-                              name: ctrl.conversation.userName,
-                              size: 28,
-                              photoUrl: ctrl.conversation.userPhotoUrl)
-                          : const SizedBox()),
-                  const SizedBox(width: 4),
-                ],
-                Flexible(
-                    child: Column(
-                  crossAxisAlignment: isMine
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  children: [
-                    if (msg.storyReply != null)
-                      _StoryReplyPreview(
-                          storyReply: msg.storyReply!, isMine: isMine),
-                    if (msg.replyTo != null && msg.storyReply == null)
-                      _ReplyPreview(
-                          replyTo: msg.replyTo!, isMine: isMine, ctrl: ctrl),
-                    _buildContent(isMine, context),
-                    const SizedBox(height: 2),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (msg.modifieLe != null)
-                        Text('modifié · ',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontStyle: FontStyle.italic,
-                                color: AppColors.textMuted)),
-                      Text('$h:$m',
-                          style: TextStyle(
-                              fontSize: 10, color: AppColors.textMuted)),
-                      if (isMine) ...[
-                        const SizedBox(width: 3),
-                        // ✅ Heure de lecture de CE message (read_at, posé par
-                        // le serveur). Avant : la même heure — souvent celle
-                        // d'envoi du dernier message lu — sur tous les messages.
-                        _StatusIcon(
-                            status: msg.status,
-                            readAt: dernierLu ? msg.readAt : null),
-                      ],
-                    ]),
+    // Texte simple : heure + coches DANS la bulle (façon WhatsApp)
+    final texteSimple = msg.type == MessageType.text &&
+        msg.text != ConversationController.texteAlbum &&
+        !_TextBubble.emojisSeuls(msg.text);
+    return _GlisserPourRepondre(
+      onRepondre: () => ctrl.setReplyTo(msg),
+      child: GestureDetector(
+        onLongPress: () => ctrl.showMessageOptions(context, msg),
+        child: Padding(
+          padding: EdgeInsets.only(
+              top: isFirst ? 4 : 1,
+              bottom: isLast ? 4 : 1,
+              left: isMine ? 56 : 4,
+              right: isMine ? 4 : 56),
+          child: Column(
+            crossAxisAlignment:
+                isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment:
+                    isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (!isMine) ...[
+                    SizedBox(
+                        width: 30,
+                        child: isLast
+                            ? _Avatar(
+                                name: ctrl.conversation.userName,
+                                size: 28,
+                                photoUrl: ctrl.conversation.userPhotoUrl)
+                            : const SizedBox()),
+                    const SizedBox(width: 4),
                   ],
-                )),
-              ],
-            ),
-            if (msg.hasReactions) _ReactionsRow(msg: msg, ctrl: ctrl),
-          ],
+                  Flexible(
+                      child: Column(
+                    crossAxisAlignment: isMine
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
+                    children: [
+                      if (msg.storyReply != null)
+                        _StoryReplyPreview(
+                            storyReply: msg.storyReply!, isMine: isMine),
+                      if (msg.replyTo != null && msg.storyReply == null)
+                        _ReplyPreview(
+                            replyTo: msg.replyTo!, isMine: isMine, ctrl: ctrl),
+                      _buildContent(isMine, context),
+                      if (texteSimple) ...[
+                        // « Lu 14:32 » sous mon dernier message lu seulement
+                        if (isMine && dernierLu && msg.readAt != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: _StatusIcon(
+                                status: msg.status, readAt: msg.readAt),
+                          ),
+                      ] else ...[
+                        const SizedBox(height: 2),
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          if (msg.modifieLe != null)
+                            Text('modifié · ',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontStyle: FontStyle.italic,
+                                    color: AppColors.textMuted)),
+                          Text('$h:$m',
+                              style: TextStyle(
+                                  fontSize: 10, color: AppColors.textMuted)),
+                          if (isMine) ...[
+                            const SizedBox(width: 3),
+                            // ✅ Heure de lecture de CE message (read_at, posé par
+                            // le serveur). Avant : la même heure — souvent celle
+                            // d'envoi du dernier message lu — sur tous les messages.
+                            _StatusIcon(
+                                status: msg.status,
+                                readAt: dernierLu ? msg.readAt : null),
+                          ],
+                        ]),
+                      ],
+                    ],
+                  )),
+                ],
+              ),
+              if (msg.hasReactions) _ReactionsRow(msg: msg, ctrl: ctrl),
+            ],
+          ),
         ),
       ),
     );
@@ -333,7 +351,8 @@ class _MessageBubble extends StatelessWidget {
           );
         }
         final sensible = !isMine &&
-            (msg.text ?? '').startsWith(ConversationController.prefixeSensible) &&
+            (msg.text ?? '')
+                .startsWith(ConversationController.prefixeSensible) &&
             ConversationController.flouterSensibles;
         if (sensible) {
           return _FlouSensible(
@@ -350,6 +369,7 @@ class _MessageBubble extends StatelessWidget {
         }
         return _TextBubble(
             msg: msg, isMine: isMine, isFirst: isFirst, isLast: isLast);
+      // (heure + coches ajoutées dans _TextBubble)
     }
   }
 }
@@ -396,7 +416,9 @@ class _ReactionsRow extends StatelessWidget {
                     Text('$count',
                         style: TextStyle(
                             fontSize: 10,
-                            color: me ? AppColors.textPrimary : AppColors.textMuted,
+                            color: me
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
                             fontWeight: FontWeight.w600))
                   ],
                 ]),
@@ -469,18 +491,17 @@ class _StoryReplyPreview extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 color: Colors.white,
-                                fontSize:
-                                    storyReply.storyText == null ? 18 : 8,
+                                fontSize: storyReply.storyText == null ? 18 : 8,
                                 fontWeight: FontWeight.w800))),
                   )
                 else
-                CachedNetworkImage(
-                    imageUrl: storyReply.storyPreviewUrl,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(
-                        color: AppColors.surface,
-                        child: const Icon(Icons.photo_camera_rounded,
-                            color: Colors.white38, size: 18))),
+                  CachedNetworkImage(
+                      imageUrl: storyReply.storyPreviewUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(
+                          color: AppColors.surface,
+                          child: const Icon(Icons.photo_camera_rounded,
+                              color: Colors.white38, size: 18))),
                 if (storyReply.storyIsVideo)
                   Container(
                     color: Colors.black26,
@@ -507,7 +528,8 @@ class _StoryReplyPreview extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isMine ? Colors.white70 : AppColors.textPrimary)),
+                          color:
+                              isMine ? Colors.white70 : AppColors.textPrimary)),
                   const SizedBox(height: 3),
                   Text(
                       storyReply.storyOwnerName.isNotEmpty
@@ -611,14 +633,15 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                               height: 1.3)),
                     )
                   : CachedNetworkImage(
-                  imageUrl: story.storyPreviewUrl,
-                  fit: BoxFit.contain,
-                  placeholder: (_, __) => const Center(
-                      child: CircularProgressIndicator(color: Colors.white)),
-                  errorWidget: (_, __, ___) => const Center(
-                      child: Icon(Icons.broken_image_rounded,
-                          color: Colors.white38, size: 48)),
-                ),
+                      imageUrl: story.storyPreviewUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (_, __) => const Center(
+                          child:
+                              CircularProgressIndicator(color: Colors.white)),
+                      errorWidget: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image_rounded,
+                              color: Colors.white38, size: 48)),
+                    ),
         ),
         // ── Dégradé + en-tête façon Snapchat ──
         Positioned(
@@ -735,34 +758,87 @@ class _TextBubble extends StatelessWidget {
       required this.isMine,
       this.isFirst = true,
       this.isLast = true});
+
+  /// 1 à 3 emojis sans texte → affichés en grand, sans bulle.
+  static bool emojisSeuls(String? texte) {
+    final t = (texte ?? '').trim();
+    if (t.isEmpty || t.characters.length > 3) return false;
+    return RegExp(
+                r'^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f|\s)+$',
+                unicode: true)
+            .hasMatch(t) &&
+        !RegExp(r'[0-9#*]').hasMatch(t);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final h = msg.createdAt.hour.toString().padLeft(2, '0');
+    final mn = msg.createdAt.minute.toString().padLeft(2, '0');
+    final modifie = msg.modifieLe != null;
+    final couleurMeta = isMine ? Colors.white70 : AppColors.textMuted;
+
+    // Heure (+ « modifié ») et coches, en bas à droite de la bulle
+    final meta = Row(mainAxisSize: MainAxisSize.min, children: [
+      if (modifie)
+        Text('modifié ',
+            style: TextStyle(
+                fontSize: 10.5,
+                fontStyle: FontStyle.italic,
+                color: couleurMeta)),
+      Text('$h:$mn', style: TextStyle(fontSize: 10.5, color: couleurMeta)),
+      if (isMine) ...[
+        const SizedBox(width: 3),
+        _CochesBulle(status: msg.status),
+      ],
+    ]);
+
+    // 😂 Gros emojis, sans bulle
+    // 😂 Gros emojis, sans bulle (heure affichée dessous par la bulle)
+    if (emojisSeuls(msg.text)) {
+      return Text(msg.text!.trim(),
+          style: const TextStyle(fontSize: 42, height: 1.15));
+    }
+
     const r = Radius.circular(18);
     const rs = Radius.circular(5);
+    // Coins resserrés côté expéditeur à l'intérieur d'un groupe de messages
     final borderRadius = isMine
         ? BorderRadius.only(
             topLeft: r,
             topRight: isFirst ? r : rs,
             bottomLeft: r,
-            bottomRight: isLast ? rs : rs)
+            bottomRight: isLast ? r : rs)
         : BorderRadius.only(
             topLeft: isFirst ? r : rs,
             topRight: r,
-            bottomLeft: isLast ? rs : rs,
+            bottomLeft: isLast ? r : rs,
             bottomRight: r);
+    // Largeur réservée à la fin du texte pour que l'heure ne le chevauche pas
+    final largeurMeta = 36.0 + (modifie ? 44 : 0) + (isMine ? 18 : 0);
     return Container(
       constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+      padding: const EdgeInsets.fromLTRB(12, 7, 9, 6),
       decoration: BoxDecoration(
           gradient: isMine ? AppColors.gradientPink : null,
           color: isMine ? null : AppColors.surface2,
           borderRadius: borderRadius),
-      child: Text(msg.text ?? '',
-          style: TextStyle(
-              fontSize: 15,
-              color: isMine ? Colors.white : AppColors.textPrimary,
-              height: 1.35)),
+      child: Stack(children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text.rich(
+            TextSpan(children: [
+              TextSpan(text: msg.text ?? ''),
+              WidgetSpan(child: SizedBox(width: largeurMeta, height: 12)),
+            ]),
+            style: TextStyle(
+                fontSize: 15,
+                color: isMine ? Colors.white : AppColors.textPrimary,
+                height: 1.35),
+          ),
+        ),
+        Positioned(right: 0, bottom: 0, child: meta),
+      ]),
     );
   }
 }
@@ -977,8 +1053,9 @@ class _AnnonceReplyBubble extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color:
-                                    isMine ? Colors.white70 : AppColors.textPrimary,
+                                color: isMine
+                                    ? Colors.white70
+                                    : AppColors.textPrimary,
                               ),
                             ),
                           ],
@@ -1203,4 +1280,108 @@ Color _storyBgColor(String? hex) {
   var h = (hex ?? '').replaceFirst('#', '');
   if (h.length == 6) h = 'FF$h';
   return Color(int.tryParse(h, radix: 16) ?? 0xFF7B2FFF);
+}
+
+/// Coches dans une bulle (couleurs lisibles sur le dégradé rose)
+class _CochesBulle extends StatelessWidget {
+  final MessageStatus status;
+  const _CochesBulle({required this.status});
+  @override
+  Widget build(BuildContext context) {
+    switch (status) {
+      case MessageStatus.sending:
+        return const Icon(Icons.schedule_rounded,
+            size: 12, color: Colors.white70);
+      case MessageStatus.sent:
+        return const Icon(Icons.check_rounded, size: 14, color: Colors.white70);
+      case MessageStatus.delivered:
+        return const Icon(Icons.done_all_rounded,
+            size: 14, color: Colors.white70);
+      case MessageStatus.read:
+        // Lu : coches bleu clair, bien visibles sur le rose
+        return const Icon(Icons.done_all_rounded,
+            size: 14, color: Color(0xFF8BE9FF));
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GLISSER POUR RÉPONDRE (vers la droite, façon WhatsApp)
+// ═══════════════════════════════════════════════════════════════════
+
+class _GlisserPourRepondre extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onRepondre;
+  const _GlisserPourRepondre({required this.child, required this.onRepondre});
+  @override
+  State<_GlisserPourRepondre> createState() => _GlisserPourRepondreState();
+}
+
+class _GlisserPourRepondreState extends State<_GlisserPourRepondre>
+    with SingleTickerProviderStateMixin {
+  static const _seuil = 60.0;
+  static const _max = 80.0;
+  double _dx = 0;
+  bool _vibre = false;
+  late final AnimationController _retour = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 180))
+    ..addListener(() {
+      setState(() => _dx = _depart * (1 - _retour.value));
+    });
+  double _depart = 0;
+
+  @override
+  void dispose() {
+    _retour.dispose();
+    super.dispose();
+  }
+
+  void _fin() {
+    if (_dx >= _seuil) widget.onRepondre();
+    _depart = _dx;
+    _vibre = false;
+    _retour.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = (_dx / _seuil).clamp(0.0, 1.0);
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: (d) {
+        if (_retour.isAnimating) _retour.stop();
+        final v = (_dx + d.delta.dx).clamp(0.0, _max);
+        if (v >= _seuil && !_vibre) {
+          _vibre = true;
+          HapticFeedback.lightImpact();
+        }
+        setState(() => _dx = v);
+      },
+      onHorizontalDragEnd: (_) => _fin(),
+      onHorizontalDragCancel: _fin,
+      child: Stack(alignment: Alignment.centerLeft, children: [
+        if (_dx > 0)
+          Positioned(
+            left: 10,
+            child: Opacity(
+              opacity: p,
+              child: Transform.scale(
+                scale: 0.6 + 0.4 * p,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surface2,
+                  ),
+                  child: Icon(Icons.reply_rounded,
+                      size: 18, color: AppColors.textPrimary),
+                ),
+              ),
+            ),
+          ),
+        Transform.translate(offset: Offset(_dx, 0), child: widget.child),
+      ]),
+    );
+  }
 }

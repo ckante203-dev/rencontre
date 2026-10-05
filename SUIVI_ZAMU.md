@@ -54,6 +54,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - [ ] Exécuter le script SQL `20261005000041_bilan_boost.sql` (bilan du Boost + notification de fin).
 - [ ] Puis `20261005000042_boost_offert_premium.sql` (1 Boost d'1 h offert par mois aux Premium).
 - [ ] Puis `20261005000043_boost_droits_premium.sql` (Boost en cours = droits Premium : qui m'a liké / vu, proposer un événement).
+- [ ] Puis `20261005000044_croises_evenement.sql` (« Tu as croisé… » le lendemain d'un événement ; rappel-evenements déjà déployé).
 
 ### À faire — APRÈS la mise en production de la nouvelle version (quand la 1.0.11 n'existe plus nulle part)
 - **Contenu de l'appli → Autorisations photos et vidéos** : déclarer que l'app n'utilise plus `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (ne pas le faire avant : la 1.0.11 les utilise encore).

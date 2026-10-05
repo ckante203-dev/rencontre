@@ -248,9 +248,9 @@ class _EcranEvenementState extends State<EcranEvenement> {
 
               // ── Qui vient ──
               const SizedBox(height: 22),
-              _titre('Qui vient'),
+              _titre(termine ? '👋 Ils étaient là aussi' : 'Qui vient'),
               const SizedBox(height: 10),
-              _qui(ev),
+              _qui(ev, termine),
 
               if ((ev.description ?? '').isNotEmpty) ...[
                 const SizedBox(height: 22),
@@ -398,7 +398,11 @@ class _EcranEvenementState extends State<EcranEvenement> {
     ]);
   }
 
-  Widget _qui(EvenementModel ev) {
+  Widget _qui(EvenementModel ev, bool termine) {
+    if (!ev.jeParticipe && termine) {
+      return Text('Cet événement est terminé.',
+          style: TextStyle(fontSize: 13, color: AppColors.textMuted));
+    }
     if (!ev.jeParticipe) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -428,8 +432,17 @@ class _EcranEvenementState extends State<EcranEvenement> {
     }
     if (liste.isEmpty) {
       return Text(
-          'Personne d\'autre pour l\'instant. Partage l\'événement à tes amis !',
+          termine
+              ? "Personne d'autre n'était inscrit cette fois."
+              : 'Personne d\'autre pour l\'instant. Partage l\'événement à tes amis !',
           style: TextStyle(fontSize: 13, color: AppColors.textMuted));
+    }
+    // Après l'événement : tout le monde ensemble, pour se dire bonjour
+    if (termine) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _sousTitre('Tu les as peut-être croisés : dis-leur bonjour 👋'),
+        _grille(liste),
+      ]);
     }
     final surPlace = liste.where((p) => p.surPlace).toList();
     final autres = liste.where((p) => !p.surPlace).toList();

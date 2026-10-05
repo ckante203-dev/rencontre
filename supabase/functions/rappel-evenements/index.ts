@@ -6,7 +6,8 @@
 // veille et 2 h avant, « des personnes que tu as likées y vont »,
 // « nouvel événement près de toi ». Chaque envoi est noté dans
 // evenement_notifs : jamais deux fois la même notification.
-// Envoie aussi le bilan des Boosts terminés (migration 041).
+// Envoie aussi le bilan des Boosts terminés (migration 041) et
+// « Tu as croisé… » le lendemain d'un événement (migration 044).
 //
 // Déploiement : supabase functions deploy rappel-evenements --no-verify-jwt
 // Secret      : PURGE_SECRET (le même que purge-expired, Vault purge_secret)
@@ -181,6 +182,48 @@ async function traiterBoosts(sa: any) {
   return { boosts: traites.length - morts.length };
 }
 
+// ── 👋 « Tu as croisé… » le lendemain d'un événement (migration 044) ──
+type Croise = {
+  user_id: string; fcm_token: string; evenement_id: string;
+  titre: string; corps: string;
+};
+
+async function traiterCroises(sa: any) {
+  const { data, error } = await admin.rpc("croises_a_notifier");
+  if (error) {
+    // Script 044 pas encore exécuté : rien à faire
+    console.error("croises_a_notifier:", error.message);
+    return { croises: 0 };
+  }
+  const liste = (data ?? []) as Croise[];
+  const notees: { evenement_id: string; user_id: string; type: string }[] = [];
+  const morts: string[] = [];
+  let envoyes = 0;
+  for (let i = 0; i < liste.length; i += PAR_LOT) {
+    const lot = liste.slice(i, i + PAR_LOT);
+    const res = await Promise.all(lot.map((c) =>
+      envoyerFcm(c.fcm_token, c.titre, c.corps,
+        { type: "evenement", evenement_id: c.evenement_id, rappel: "croises" },
+        sa).catch(() => "erreur")
+    ));
+    res.forEach((statut, j) => {
+      const c = lot[j];
+      if (statut === "erreur") return; // réessayé à l'heure suivante
+      if (statut === "ok") envoyes++;
+      else morts.push(c.user_id);
+      notees.push({ evenement_id: c.evenement_id, user_id: c.user_id, type: "croises" });
+    });
+  }
+  for (let i = 0; i < notees.length; i += 500) {
+    await admin.from("evenement_notifs")
+      .upsert(notees.slice(i, i + 500), { ignoreDuplicates: true });
+  }
+  if (morts.length) {
+    await admin.from("profiles").update({ fcm_token: null }).in("id", morts);
+  }
+  return { croises: envoyes };
+}
+
 serve(async (req) => {
   if (!PURGE_SECRET) {
     return new Response("PURGE_SECRET non configuré", { status: 500 });
@@ -232,10 +275,11 @@ serve(async (req) => {
   }
 
   const boosts = await traiterBoosts(sa);
+  const croises = await traiterCroises(sa);
 
   const bilan = {
     candidats: liste.length, envoyes, jetons_morts: morts.size, erreurs,
-    ...boosts,
+    ...boosts, ...croises,
   };
   console.log("✅ rappel-evenements:", JSON.stringify(bilan));
   return new Response(JSON.stringify(bilan), {

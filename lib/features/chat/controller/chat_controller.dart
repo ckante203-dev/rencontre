@@ -597,6 +597,8 @@ class ConversationController extends GetxController
   final Rx<MessageModel?> enModification = Rx<MessageModel?>(null);
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
+  // Dernière activité de l'autre (« vu à 14:32 » dans l'en-tête)
+  final Rx<DateTime?> otherLastSeen = Rx<DateTime?>(null);
   final Rx<DateTime?> lastReadAt = Rx<DateTime?>(null);
   // ✅ Messages directs : limite de 3 messages tant que l'autre n'a pas
   // répondu (sans match), et blocage. Règles appliquées par le serveur ;
@@ -906,6 +908,8 @@ class ConversationController extends GetxController
       if (data != null) {
         isOtherOnline.value = SupabaseService.isReallyOnline(
             data['is_online'], data['last_seen']);
+        otherLastSeen.value =
+            DateTime.tryParse('${data['last_seen'] ?? ''}')?.toLocal();
       }
     } catch (_) {}
   }
@@ -1066,6 +1070,8 @@ class ConversationController extends GetxController
             final r = payload.newRecord;
             isOtherOnline.value =
                 SupabaseService.isReallyOnline(r['is_online'], r['last_seen']);
+            final vu = DateTime.tryParse('${r['last_seen'] ?? ''}')?.toLocal();
+            if (vu != null) otherLastSeen.value = vu;
           },
         )
         .subscribe();
