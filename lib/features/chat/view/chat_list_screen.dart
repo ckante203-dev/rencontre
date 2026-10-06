@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/groupes/liste_groupes.dart';
 import 'package:rencontre/features/notifications/view/bouton_cloche.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
@@ -387,8 +388,41 @@ class _ConversationList extends GetView<ChatListController> {
           Icon(Icons.chat_bubble_outline_rounded,
               size: 48, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          Text(msgs[filter] ?? 'Aucune conversation',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          Text(msgs[filter] ?? 'Aucune conversation pour le moment',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700)),
+          // Aucune discussion du tout : une piste pour commencer
+          if (!msgs.containsKey(filter)) ...[
+            const SizedBox(height: 6),
+            Text("Écris à quelqu'un qui te plaît, ou réponds à une story.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            const SizedBox(height: 18),
+            GestureDetector(
+              onTap: () {
+                if (Get.isRegistered<NavigationController>()) {
+                  Get.find<NavigationController>()
+                      .goTo(NavigationController.accueilIndex);
+                }
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                decoration: BoxDecoration(
+                  gradient: AppColors.gradientPink,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: const Text('Découvrir des profils',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
         ],
       ),
     );
