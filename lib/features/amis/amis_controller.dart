@@ -73,7 +73,7 @@ class AmisController extends GetxController {
   void _snack(String t, String m) => Get.snackbar(t, m,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white);
+      colorText: AppColors.textPrimary);
 
   /// Ajouter en ami (ou accepter si l'autre m'a déjà demandé).
   Future<String> demander(String userId) async {

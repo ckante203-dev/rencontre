@@ -1359,7 +1359,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         message,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
-        colorText: Colors.white,
+        colorText: AppColors.textPrimary,
         duration: Duration(
             seconds: result == ModerationResult.approved ? 2 : 4),
       );
@@ -1370,7 +1370,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         "Impossible de publier la story",
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
-        colorText: Colors.white,
+        colorText: AppColors.textPrimary,
       );
     } finally {
       isUploadingStory.value = false;
@@ -1414,7 +1414,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         'Visible pendant ${_formatDurationLabel(durationHours)}',
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
-        colorText: Colors.white,
+        colorText: AppColors.textPrimary,
         duration: const Duration(seconds: 2),
       );
     } catch (e) {
@@ -1424,7 +1424,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         "Impossible de publier la story",
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
-        colorText: Colors.white,
+        colorText: AppColors.textPrimary,
       );
     } finally {
       isUploadingStory.value = false;

@@ -1249,13 +1249,13 @@ class ControleurProfil extends GetxController {
   void _snackSuccess(String msg) => Get.snackbar('✅ $msg', '',
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.online.withOpacity(0.15),
-      colorText: Colors.white,
+      colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 2));
 
   void _snackError(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white,
+      colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 4));
 
   @override

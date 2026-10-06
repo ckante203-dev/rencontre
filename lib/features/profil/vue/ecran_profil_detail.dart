@@ -265,7 +265,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
       Get.snackbar('Erreur', "Impossible d'ouvrir la conversation",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     } finally {
       if (mounted) setState(() => _isLoadingMsg = false);
     }
@@ -800,7 +800,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                     r ? '${user.name} ne le saura pas' : '',
                                     snackPosition: SnackPosition.TOP,
                                     backgroundColor: AppColors.surface,
-                                    colorText: Colors.white,
+                                    colorText: AppColors.textPrimary,
                                     duration: const Duration(seconds: 2));
                               });
                         }),

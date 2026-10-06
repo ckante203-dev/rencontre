@@ -896,7 +896,7 @@ class ConversationController extends GetxController
   void _snackRefus(String texte) => Get.snackbar('Message non envoyé', texte,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white);
+      colorText: AppColors.textPrimary);
 
   Future<void> _fetchOtherOnlineStatus(String otherUserId) async {
     try {
@@ -1464,7 +1464,7 @@ class ConversationController extends GetxController
       Get.snackbar('Erreur', 'Message non envoyé',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 
@@ -1631,7 +1631,7 @@ class ConversationController extends GetxController
       Get.snackbar('Copié', 'Message copié',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white,
+          colorText: AppColors.textPrimary,
           duration: const Duration(seconds: 2));
     }
   }
@@ -1807,7 +1807,7 @@ class ConversationController extends GetxController
       Get.snackbar('Erreur', "Impossible d'envoyer le snap",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 
@@ -1845,7 +1845,7 @@ class ConversationController extends GetxController
       Get.snackbar('Erreur', "Impossible d'envoyer la photo",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 
@@ -1980,7 +1980,7 @@ class ConversationController extends GetxController
           'Vérifie ta connexion et réessaie',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white,
+          colorText: AppColors.textPrimary,
           duration: const Duration(seconds: 5),
           mainButton: TextButton(
             onPressed: () => envoyerMediaEnFond(
@@ -2079,7 +2079,7 @@ class ConversationController extends GetxController
           'Permission refusée', 'Active le microphone dans les paramètres',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white,
+          colorText: AppColors.textPrimary,
           mainButton: TextButton(
               onPressed: () => openAppSettings(),
               child: Text('Paramètres',
@@ -2102,7 +2102,7 @@ class ConversationController extends GetxController
         Get.snackbar('Erreur', 'Enregistrement non supporté sur cet appareil',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         return;
       }
       final dir = await getTemporaryDirectory();
@@ -2206,7 +2206,7 @@ class ConversationController extends GetxController
       Get.snackbar('Erreur', "Impossible d'envoyer le vocal",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 
@@ -2257,7 +2257,7 @@ class ConversationController extends GetxController
       Get.snackbar('Erreur', "Impossible d'envoyer la photo",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 
@@ -2270,7 +2270,7 @@ class ConversationController extends GetxController
         Get.snackbar('GPS désactivé', 'Active la localisation',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         return;
       }
       LocationPermission permission = await Geolocator.checkPermission();
@@ -2282,7 +2282,7 @@ class ConversationController extends GetxController
           snackPosition: SnackPosition.TOP,
           duration: const Duration(seconds: 1),
           backgroundColor: AppColors.surface2,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
       final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
       await _service.sendMessage(
@@ -2295,7 +2295,7 @@ class ConversationController extends GetxController
       Get.snackbar('Erreur', 'Impossible de récupérer la position',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 

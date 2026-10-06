@@ -91,7 +91,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
       Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
       return;
     }
     setState(() => _sending = true);
@@ -143,7 +143,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
         Get.snackbar('Erreur', "Impossible d'envoyer le message",
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
       }
     } finally {
       if (mounted) setState(() => _sending = false);

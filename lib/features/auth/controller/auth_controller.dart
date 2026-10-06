@@ -331,8 +331,8 @@ class AuthController extends GetxController {
       errorMessage.value = '';
       Get.snackbar('Code renvoyé', 'Vérifie ta boîte mail 📧',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF1A1A2E),
-          colorText: Colors.white);
+          backgroundColor: AppColors.surface,
+          colorText: AppColors.textPrimary);
     } catch (_) {
       errorMessage.value = 'Impossible de renvoyer. Réessaie.';
     } finally {
@@ -392,7 +392,7 @@ class AuthController extends GetxController {
       Get.snackbar('Email envoyé 📧', 'Vérifie ta boîte mail',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
     } finally {

@@ -265,7 +265,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
   void _erreur(String msg) => Get.snackbar('Oups', msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white);
+      colorText: AppColors.textPrimary);
 
   void _options(MessageGroupe m) {
     final moi = m.senderId == _moi;
@@ -364,7 +364,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
           "Merci, notre équipe va l'examiner.",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     } catch (_) {
       _erreur("Impossible d'envoyer le signalement");
     }

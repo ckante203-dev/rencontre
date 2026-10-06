@@ -1871,7 +1871,7 @@ class _ProfilCard extends StatelessWidget {
       Get.snackbar('Erreur', "Impossible d'ouvrir la conversation",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 }

@@ -54,7 +54,7 @@ class EvenementsController extends GetxController {
   void _snack(String titre, String msg) => Get.snackbar(titre, msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white);
+      colorText: AppColors.textPrimary);
 
   Future<void> charger() async {
     if (supabase.auth.currentUser == null) return;

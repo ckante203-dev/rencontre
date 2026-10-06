@@ -572,7 +572,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         Get.snackbar('Story supprimée', '',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white,
+            colorText: AppColors.textPrimary,
             duration: const Duration(seconds: 2));
       }
     } catch (e) {
@@ -581,7 +581,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         Get.snackbar('Erreur', "Impossible de supprimer la story",
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         _resumeWhenVisible(); // ✅ la story reste affichée : on reprend
       }
     }
@@ -1323,7 +1323,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                       '⭐ Premium', 'Bientôt disponible !',
                                       snackPosition: SnackPosition.TOP,
                                       backgroundColor: AppColors.surface,
-                                      colorText: Colors.white);
+                                      colorText: AppColors.textPrimary);
                                 },
                                 child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -1914,7 +1914,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   void _snack(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white);
+      colorText: AppColors.textPrimary);
 
   void _showSettingsSheet() {
     showModalBottomSheet(
@@ -2667,7 +2667,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 'Ajoute des personnes, sinon personne ne verra cette story',
                 snackPosition: SnackPosition.TOP,
                 backgroundColor: AppColors.surface,
-                colorText: Colors.white,
+                colorText: AppColors.textPrimary,
                 mainButton: TextButton(
                   onPressed: () async {
                     await Get.to(() => const EcranAmisProches());

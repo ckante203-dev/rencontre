@@ -136,7 +136,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
       Get.snackbar('Il manque quelque chose', erreur,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
       return;
     }
     setState(() => _envoi = true);
@@ -156,7 +156,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
           'Zamu la vérifie et la publie si elle est validée',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white,
+          colorText: AppColors.textPrimary,
           duration: const Duration(seconds: 4));
     }
   }

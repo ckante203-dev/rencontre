@@ -139,6 +139,6 @@ void _snack(String msg) {
   Get.snackbar('Signalement', msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white,
+      colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 3));
 }

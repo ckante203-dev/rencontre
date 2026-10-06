@@ -155,7 +155,7 @@ class _EcranScanQrState extends State<EcranScanQr> {
           Get.snackbar('Pas un code Zamu', 'Scanne le QR code Zamu d\'un ami',
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
-              colorText: Colors.white);
+              colorText: AppColors.textPrimary);
         }
         continue;
       }

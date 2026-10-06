@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Color, Colors;
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -67,7 +67,7 @@ class LikeController extends GetxController {
         'Vous êtes en match — impossible de retirer le like',
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
-        colorText: Colors.white,
+        colorText: AppColors.textPrimary,
         duration: const Duration(seconds: 2),
       );
       return;

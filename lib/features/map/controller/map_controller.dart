@@ -300,7 +300,7 @@ class MapController extends GetxController {
             Get.snackbar('👑 Premium', 'Bientôt disponible !',
                 snackPosition: SnackPosition.TOP,
                 backgroundColor: AppColors.surface,
-                colorText: Colors.white);
+                colorText: AppColors.textPrimary);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -574,12 +574,12 @@ class MapController extends GetxController {
   void _snackSuccess(String msg) => Get.snackbar('✅ $msg', '',
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.online.withOpacity(0.15),
-      colorText: Colors.white,
+      colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 2));
 
   void _snackError(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white,
+      colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 4));
 }

@@ -33,7 +33,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
   void _snack(String t, String m) => Get.snackbar(t, m,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white);
+      colorText: AppColors.textPrimary);
 
   Future<void> _rechargerMembres() async {
     try {

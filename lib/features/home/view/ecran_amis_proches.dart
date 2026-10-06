@@ -144,7 +144,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
       Get.snackbar('Oups', 'Modification non enregistrée, vérifie ta connexion',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     }
   }
 

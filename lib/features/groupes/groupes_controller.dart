@@ -98,7 +98,7 @@ class GroupesController extends GetxController {
       Get.snackbar('Groupe non créé', 'Vérifie ta connexion et réessaie',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
       return null;
     }
   }
@@ -115,7 +115,7 @@ class GroupesController extends GetxController {
           'Ce groupe n\'existe plus ou tu n\'en fais plus partie',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
       return;
     }
     Get.to(() => EcranGroupe(groupe: g!));
@@ -131,7 +131,7 @@ class GroupesController extends GetxController {
             'Indique « J\'y vais » ou « Intéressé » pour rejoindre la discussion',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         return;
       }
       await ouvrirParId(id);

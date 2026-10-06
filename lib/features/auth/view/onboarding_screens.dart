@@ -318,7 +318,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
         Get.snackbar('Erreur', 'Date invalide. Entre JJ/MM/AAAA.',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         return;
       }
 
@@ -342,7 +342,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
         Get.snackbar('Erreur', 'Âge invalide ($age ans).',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         return;
       }
 
@@ -360,7 +360,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
         Get.snackbar('Erreur', 'Session expirée. Reconnecte-toi.',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         Get.offAllNamed('/splash');
         return;
       }
@@ -416,7 +416,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
               : e.toString(),
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white,
+          colorText: AppColors.textPrimary,
           duration: const Duration(seconds: 6));
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -743,7 +743,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
     Get.snackbar('Photo', msg,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
-        colorText: Colors.white,
+        colorText: AppColors.textPrimary,
         duration: const Duration(seconds: 4));
   }
 

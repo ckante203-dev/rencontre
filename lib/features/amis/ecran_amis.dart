@@ -310,7 +310,7 @@ class _BoutonAmiState extends State<BoutonAmi> {
               "Cette personne n'accepte pas les demandes d'ami",
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
-              colorText: Colors.white)
+              colorText: AppColors.textPrimary)
         ),
       'envoyee' => (
           widget.compact ? 'Envoyée' : 'Demande envoyée',

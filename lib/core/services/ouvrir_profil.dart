@@ -34,7 +34,7 @@ Future<void> ouvrirProfilParId(String id) async {
       Get.snackbar('C\'est toi 😄', 'Ce code est ton propre profil',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
       return;
     }
     Get.toNamed('/profile/view', arguments: profilComplet(row));
@@ -48,4 +48,4 @@ void _introuvable() => Get.snackbar(
     'Profil introuvable', 'Ce profil n\'existe plus ou n\'est pas disponible',
     snackPosition: SnackPosition.TOP,
     backgroundColor: AppColors.surface,
-    colorText: Colors.white);
+    colorText: AppColors.textPrimary);
