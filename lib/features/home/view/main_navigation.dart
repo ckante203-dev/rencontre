@@ -268,7 +268,7 @@ class _NavItemStory extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.auto_awesome_mosaic_rounded,
+                  Icons.amp_stories_rounded, // onglet Stories
                   size: 22,
                   color: isActive ? AppColors.accent : AppColors.textMuted,
                 ),
