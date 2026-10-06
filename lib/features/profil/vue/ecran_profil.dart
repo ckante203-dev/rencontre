@@ -1068,10 +1068,12 @@ class _BoutonsLigne extends StatelessWidget {
             () => Get.toNamed(AppRoutes.profilEdit),
             principal: true),
         const SizedBox(width: 10),
-        _bouton(Icons.visibility_rounded, 'Aperçu', _apercu),
+        _bouton(Icons.visibility_rounded, 'Aperçu', _apercu,
+            principal: true),
         const SizedBox(width: 10),
         _bouton(Icons.settings_rounded, 'Paramètres',
-            () => Get.toNamed(AppRoutes.profilSettings)),
+            () => Get.toNamed(AppRoutes.profilSettings),
+            principal: true),
       ]),
     );
   }

@@ -73,7 +73,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 ### Thème Blanc — reste à faire (noté le 06/10)
 - Vérifier par capture : Paramètres, carte, événements, groupes, inscription.
 - Vérifier l'alignement des avatars dans la liste des discussions (corrigé pour les avatars sans story, pas encore vu à l'écran).
-- ~~Mon profil : fond des boutons Modifier / Aperçu / Paramètres~~ fait le 06/10 (Modifier plein accent, les autres gris plein) — à vérifier par capture.
+- ~~Mon profil : fond des boutons Modifier / Aperçu / Paramètres~~ fait le 06/10 (les 3 boutons pleins : noirs en thème Blanc, couleur du thème ailleurs) — à vérifier par capture.
 - Filtre « Non lus » des discussions : afficher le nombre de conversations non lues (comme WhatsApp) au lieu du nombre de messages — à valider.
 - Événements refaits dans le style de l'onglet Stories (proposé).
 
