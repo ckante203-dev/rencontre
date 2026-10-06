@@ -427,11 +427,11 @@ class ControleurProfil extends GetxController {
     final confirm = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Supprimer la photo ?',
+      title: Text('Supprimer la photo ?',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white)),
+              color: AppColors.textPrimary)),
       content: Text('Ta photo de profil sera supprimée définitivement.',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
@@ -478,12 +478,12 @@ class ControleurProfil extends GetxController {
                   color: AppColors.surface2,
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          const Text('Photo de profil',
+          Text('Photo de profil',
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white)),
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 20),
           _SheetBtn(
               icon: '📷',
@@ -671,12 +671,20 @@ class ControleurProfil extends GetxController {
       lastDate: lastDate,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.dark(
-            primary: AppColors.accent,
-            onPrimary: Colors.white,
-            surface: AppColors.surface,
-            onSurface: Colors.white,
-          ),
+          // Calendrier aux couleurs du thème (fond blanc ou sombre)
+          colorScheme: AppColors.clair
+              ? ColorScheme.light(
+                  primary: AppColors.accent,
+                  onPrimary: AppColors.surAccent,
+                  surface: AppColors.surface,
+                  onSurface: AppColors.textPrimary,
+                )
+              : ColorScheme.dark(
+                  primary: AppColors.accent,
+                  onPrimary: AppColors.surAccent,
+                  surface: AppColors.surface,
+                  onSurface: AppColors.textPrimary,
+                ),
           dialogBackgroundColor: AppColors.surface,
         ),
         child: child!,
@@ -1101,11 +1109,11 @@ class ControleurProfil extends GetxController {
     final confirmed = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Tout débloquer ?',
+      title: Text('Tout débloquer ?',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white)),
+              color: AppColors.textPrimary)),
       content: Text('Tous les profils bloqués seront débloqués.',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
@@ -1123,7 +1131,7 @@ class ControleurProfil extends GetxController {
                   borderRadius: BorderRadius.circular(12)),
               child: const Text('Débloquer tout',
                   style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700)),
+                      color: AppColors.surAccent, fontWeight: FontWeight.w700)),
             )),
       ],
     ));
@@ -1165,11 +1173,11 @@ class ControleurProfil extends GetxController {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Se déconnecter ?',
+      title: Text('Se déconnecter ?',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 18)),
       content: Text('Tu devras te reconnecter pour accéder à ton compte.',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
@@ -1191,7 +1199,7 @@ class ControleurProfil extends GetxController {
                 borderRadius: BorderRadius.circular(12)),
             child: const Text('Déconnexion',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -1202,11 +1210,11 @@ class ControleurProfil extends GetxController {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Supprimer ton compte ?',
+      title: Text('Supprimer ton compte ?',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 18)),
       content: Text(
           'Cette action est irréversible. Toutes tes données (profil, photos, messages, matchs) seront définitivement supprimées.',
@@ -1237,7 +1245,7 @@ class ControleurProfil extends GetxController {
                 borderRadius: BorderRadius.circular(12)),
             child: const Text('Supprimer définitivement',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -1296,12 +1304,12 @@ class _SheetBtn extends StatelessWidget {
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(icon, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Text(label,
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isCancel ? AppColors.textMuted : Colors.white)),
+                  color: isCancel ? AppColors.textMuted : AppColors.textPrimary)),
         ]),
       ),
     );

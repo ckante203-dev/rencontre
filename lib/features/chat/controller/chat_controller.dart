@@ -1577,9 +1577,9 @@ class ConversationController extends GetxController
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('Supprimer le message ?',
+      title: Text('Supprimer le message ?',
           style: TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+              color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
       actionsAlignment: MainAxisAlignment.end,
       actionsOverflowDirection: VerticalDirection.down,
       actionsOverflowButtonSpacing: 4,
@@ -2438,7 +2438,7 @@ class _MsgOption extends StatelessWidget {
       this.color});
   @override
   Widget build(BuildContext context) {
-    final c = color ?? Colors.white;
+    final c = color ?? AppColors.textPrimary;
     return ListTile(
       onTap: onTap,
       leading: Icon(icon, color: c, size: 22),

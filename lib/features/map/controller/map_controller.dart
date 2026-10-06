@@ -279,11 +279,11 @@ class MapController extends GetxController {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Mode Fantôme 👻',
+      title: Text('Mode Fantôme 👻',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 18)),
       content: Text(
           'Le mode fantôme est une fonctionnalité Premium.\n\nTu peux voir tous les profils sur la carte sans que personne ne te voit.',
@@ -311,7 +311,7 @@ class MapController extends GetxController {
             ),
             child: const Text('Passer Premium 👑',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
