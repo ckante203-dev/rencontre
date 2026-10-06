@@ -460,11 +460,11 @@ class _StoryReplyPreview extends StatelessWidget {
             BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.68),
         margin: const EdgeInsets.only(bottom: 3),
         decoration: BoxDecoration(
-          color: isMine ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
+          color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
           borderRadius: BorderRadius.circular(12),
           border: Border(
               left: BorderSide(
-                  color: isMine ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
+                  color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           ClipRRect(
@@ -532,7 +532,7 @@ class _StoryReplyPreview extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color:
-                              isMine ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
+                              isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
                   const SizedBox(height: 3),
                   Text(
                       storyReply.storyOwnerName.isNotEmpty
@@ -727,18 +727,18 @@ class _ReplyPreview extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 3),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isMine ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
+        color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
         borderRadius: BorderRadius.circular(8),
         border: Border(
             left: BorderSide(
-                color: isMine ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
+                color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(isReplyMine ? 'Vous' : ctrl.conversation.userName,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isMine ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
+                color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(_preview,
             maxLines: 1,
