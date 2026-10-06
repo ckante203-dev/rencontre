@@ -545,13 +545,19 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
+                          // Fond blanc : voile plus léger, fondu plus doux
+                          // vers le blanc (pas de bande sombre)
                           colors: [
                             Colors.transparent,
                             Colors.transparent,
-                            const Color(0xCC000000),
+                            AppColors.clair
+                                ? const Color(0x8C000000)
+                                : const Color(0xCC000000),
                             AppColors.bg,
                           ],
-                          stops: const [0.0, 0.5, 0.85, 1.0],
+                          stops: AppColors.clair
+                              ? const [0.0, 0.45, 0.8, 1.0]
+                              : const [0.0, 0.5, 0.85, 1.0],
                         ),
                       ),
                     ),
