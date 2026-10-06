@@ -104,6 +104,8 @@ void main() async {
   // ✅ Thème : chargé AVANT runApp pour éviter le flash de thème par défaut.
   final themeCtrl = Get.put(ThemeController(), permanent: true);
   themeCtrl.loadInitial();
+  // Barre d'état adaptée au thème (fond sombre ou blanc)
+  SystemChrome.setSystemUIOverlayStyle(themeCtrl.palette.value.barreSysteme);
 
   String startRoute = AppRoutes.login;
 

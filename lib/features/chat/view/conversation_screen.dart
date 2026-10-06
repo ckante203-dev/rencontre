@@ -171,7 +171,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       backgroundColor: AppColors.surface,
       elevation: 0,
       titleSpacing: 0,
-      systemOverlayStyle: SystemUiOverlayStyle.light,
+      systemOverlayStyle: AppColors.barreSysteme,
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(0.5),
         child: Container(color: AppColors.border, height: 0.5),

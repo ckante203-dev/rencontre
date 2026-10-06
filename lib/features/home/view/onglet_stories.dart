@@ -9,15 +9,6 @@ import 'package:rencontre/features/home/view/discover_feed_viewer.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
 import 'package:rencontre/shared/models/story_model.dart';
 
-// ── ESSAI « fond blanc » de l'onglet (false = thème de l'app) ──────
-const bool _clair = false;
-Color get _fond => _clair ? Colors.white : AppColors.bg;
-Color get _texte => _clair ? const Color(0xFF111111) : AppColors.textPrimary;
-Color get _texteDoux => _clair ? const Color(0xFF8A8A8E) : AppColors.textMuted;
-Color get _surface => _clair ? const Color(0xFFF2F2F7) : AppColors.surface;
-Color get _surface2 => _clair ? const Color(0xFFE9E9EE) : AppColors.surface2;
-Color get _bordure => _clair ? const Color(0xFFE0E0E5) : AppColors.border;
-
 // ══════════════════════════════════════════════════════════════════
 //  ONGLET « STORIES » — calqué sur Snapchat, 3 sections :
 //   • Amis      : grands ronds avec l'APERÇU de la story (Ma story 1er)
@@ -39,9 +30,9 @@ class OngletStories extends StatelessWidget {
     final ctrl = Get.find<HomeController>();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: _clair ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+      value: AppColors.barreSysteme,
       child: Scaffold(
-        backgroundColor: _fond,
+        backgroundColor: AppColors.bg,
         body: SafeArea(
           child: Obx(() {
             bool estAmi(String uid) =>
@@ -76,7 +67,7 @@ class OngletStories extends StatelessWidget {
                                 fontFamily: 'Syne',
                                 fontSize: 26,
                                 fontWeight: FontWeight.w800,
-                                color: _texte)),
+                                color: AppColors.textPrimary)),
                         const Spacer(),
                         _BoutonRond(
                           icone: Icons.add_a_photo_rounded,
@@ -191,7 +182,7 @@ class OngletStories extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
           child: Text(texte,
               style: TextStyle(
-                  fontSize: 19, fontWeight: FontWeight.w800, color: _texte)),
+                  fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         ),
       );
 
@@ -240,14 +231,14 @@ Widget _apercu(StoryModel s, {double texte = 13}) {
   }
   // Vidéo : pas de vignette en base → photo du profil
   final url = s.isVideo ? (s.userPhotoUrl ?? '') : s.mediaUrl;
-  if (url.isEmpty) return Container(color: _surface2);
+  if (url.isEmpty) return Container(color: AppColors.surface2);
   return CachedNetworkImage(
     imageUrl: url,
     fit: BoxFit.cover,
     memCacheWidth: 400,
     fadeInDuration: const Duration(milliseconds: 200),
-    placeholder: (_, __) => Container(color: _surface2),
-    errorWidget: (_, __, ___) => Container(color: _surface2),
+    placeholder: (_, __) => Container(color: AppColors.surface2),
+    errorWidget: (_, __, ___) => Container(color: AppColors.surface2),
   );
 }
 
@@ -301,18 +292,18 @@ class _RondStory extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: anneau,
-                color: anneau == null ? _bordure : null,
+                color: anneau == null ? AppColors.border : null,
               ),
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(shape: BoxShape.circle, color: _fond),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.bg),
                 child: ClipOval(
                   child: s != null
                       ? _apercu(s, texte: 9)
                       : ((photoProfil ?? '').isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: photoProfil!, fit: BoxFit.cover)
-                          : Container(color: _surface2)),
+                          : Container(color: AppColors.surface2)),
                 ),
               ),
             ),
@@ -326,7 +317,7 @@ class _RondStory extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: AppColors.gradientPink,
-                    border: Border.all(color: _fond, width: 2),
+                    border: Border.all(color: AppColors.bg, width: 2),
                   ),
                   child: const Icon(Icons.add_rounded,
                       color: Colors.white, size: 16),
@@ -341,7 +332,7 @@ class _RondStory extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: aVoir ? FontWeight.w700 : FontWeight.w500,
-                  color: aVoir ? _texte : _texteDoux)),
+                  color: aVoir ? AppColors.textPrimary : AppColors.textMuted)),
         ]),
       ),
     );
@@ -421,7 +412,7 @@ class _CarteStory extends StatelessWidget {
                   ),
                   child: CircleAvatar(
                     radius: avatar,
-                    backgroundColor: _surface2,
+                    backgroundColor: AppColors.surface2,
                     backgroundImage: (s.userPhotoUrl ?? '').isNotEmpty
                         ? CachedNetworkImageProvider(s.userPhotoUrl!)
                         : null,
@@ -471,10 +462,10 @@ class _BoutonRond extends StatelessWidget {
         height: 42,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _surface,
-          border: Border.all(color: _bordure),
+          color: AppColors.surface,
+          border: Border.all(color: AppColors.border),
         ),
-        child: Icon(icone, color: _texte, size: 21),
+        child: Icon(icone, color: AppColors.textPrimary, size: 21),
       ),
     );
   }
@@ -491,11 +482,11 @@ class _Vide extends StatelessWidget {
         Text('Pas encore de story à découvrir',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 15, fontWeight: FontWeight.w700, color: _texte)),
+                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         const SizedBox(height: 6),
         Text('Publie la tienne avec le « + » de Ma story : sois le premier !',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: _texteDoux)),
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ]),
     );
   }

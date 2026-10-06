@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppPalette {
   final String id;
@@ -16,6 +17,9 @@ class AppPalette {
   final Color online;
   final Color error;
 
+  /// Fond clair (palette « Blanc ») : textes sombres, barre d'état sombre
+  final bool clair;
+
   const AppPalette({
     required this.id,
     required this.label,
@@ -31,7 +35,16 @@ class AppPalette {
     required this.textMuted,
     required this.online,
     required this.error,
+    this.clair = false,
   });
+
+  Brightness get luminosite => clair ? Brightness.light : Brightness.dark;
+
+  /// Icônes de la barre d'état (heure, batterie) lisibles sur le fond
+  SystemUiOverlayStyle get barreSysteme => (clair
+          ? SystemUiOverlayStyle.dark
+          : SystemUiOverlayStyle.light)
+      .copyWith(statusBarColor: Colors.transparent);
 
   LinearGradient get gradientPink => LinearGradient(
         colors: [accent, accent2],
@@ -154,6 +167,27 @@ class AppPalettes {
     error: Color(0xFFEF4444),
   );
 
+  /// Fond blanc avec un seul thème « noir » : boutons et accents noirs ou
+  /// gris foncé, texte blanc sur ces boutons. EN PRÉPARATION : absente de
+  /// [all] (donc du choix de thème) tant que les écrans ne sont pas prêts.
+  static const blanc = AppPalette(
+    id: 'blanc',
+    label: 'Blanc',
+    bg: Color(0xFFFFFFFF),
+    surface: Color(0xFFF4F4F6),
+    surface2: Color(0xFFEAEAEE),
+    border: Color(0xFFE0E0E6),
+    accent: Color(0xFF111111),
+    accent2: Color(0xFF2C2C2E),
+    accent3: Color(0xFF48484A),
+    yellow: Color(0xFFE0A800),
+    textPrimary: Color(0xFF111111),
+    textMuted: Color(0xFF6E6E73),
+    online: Color(0xFF16A34A),
+    error: Color(0xFFDC2626),
+    clair: true,
+  );
+
   /// Thème par défaut (nouveaux comptes) : les couleurs du logo.
   static const defaut = zamu;
 
@@ -175,9 +209,12 @@ class AppPalettes {
     'or_noir': 'champagne',
   };
 
+  /// Palettes en préparation : utilisables, mais pas encore proposées
+  static const Map<String, AppPalette> enPreparation = {'blanc': blanc};
+
   /// Palette pour un id enregistré (ancien ou nouveau), sinon null.
   static AppPalette? resoudre(String? id) =>
-      all[id] ?? all[_anciens[id]];
+      all[id] ?? enPreparation[id] ?? all[_anciens[id]];
 }
 
 /// Dégradés sobres des avatars sans photo (initiale) : teintes sourdes,

@@ -45,6 +45,8 @@ SQL changes live in [supabase/migrations/](supabase/migrations/) but are applied
 
 **Theming:** multiple palettes in [app_palette.dart](lib/core/theme/app_palette.dart); `ThemeController.to.palette` is reactive, persisted in GetStorage and in `profiles.theme`, and `AppTheme.buildFrom(palette)` rebuilds the whole app. Because colors come from the runtime palette, widgets using them cannot be `const` (hence `tool/fix_const_theme.dart`).
 
+**Fond blanc (en préparation) :** la palette `AppPalettes.blanc` (fond blanc, un seul thème noir : boutons noirs/gris foncé, texte blanc dessus) existe mais n'est pas proposée (`AppPalettes.enPreparation`, hors de `all`). `AppTheme.buildFrom` bascule thème Flutter, `ColorScheme` et barre d'état selon `palette.clair`. **Règle pour tout nouveau code** : jamais `Colors.white` / `Colors.black` pour un texte ou une icône posé sur le FOND de l'écran → `AppColors.textPrimary` / `textMuted` / `surface`… Couleurs fixes seulement par rôle : `AppColors.surMedia` (texte sur photo/vidéo, toujours blanc), `AppColors.surAccent` (texte sur bouton accent/dégradé), `AppColors.voileMedia` (voile sur photo), `AppColors.barreSysteme` (barre d'état). Les écrans photo/vidéo plein écran (lecteur de stories, caméra) restent noirs dans tous les thèmes. `test/theme_test.dart` vérifie la lisibilité (contraste) de chaque palette.
+
 ## Notes
 
 - `document/` holds Word docs (architecture, DB schema, deployment guide, update procedure) — the DB schema is not versioned as SQL in this repo.
