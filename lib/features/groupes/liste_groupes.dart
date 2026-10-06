@@ -39,7 +39,7 @@ class ListeGroupes extends StatelessWidget {
               ),
               title: Text('Nouveau groupe',
                   style: TextStyle(
-                      fontWeight: FontWeight.w700, color: AppColors.accent)),
+                      fontWeight: FontWeight.w700, color: AppColors.lien)),
               subtitle: Text('Discute avec plusieurs amis à la fois',
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             ),

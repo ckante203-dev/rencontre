@@ -522,7 +522,7 @@ class _ConversationTile extends GetView<ChatListController> {
                                           fontSize: 13,
                                           fontStyle: FontStyle.italic,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.accent))
+                                          color: AppColors.lien))
                                   : _buildLastMessage())),
                       if (conv.unreadCount > 0) ...[
                         const SizedBox(width: 8),

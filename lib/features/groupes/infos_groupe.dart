@@ -283,7 +283,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
             ),
             title: Text('Ajouter des membres',
                 style: TextStyle(
-                    color: AppColors.accent, fontWeight: FontWeight.w700)),
+                    color: AppColors.lien, fontWeight: FontWeight.w700)),
           ),
         for (final m in membres)
           ListTile(
@@ -314,7 +314,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.accent)),
+                            color: AppColors.lien)),
                   )
                 : null,
           ),

@@ -49,6 +49,10 @@ class AppColors {
   /// blanc, couleur du texte en fond sombre
   static Color get texteNonLu => _p.nouveau ?? _p.textPrimary;
 
+  /// Texte cliquable ou mis en valeur (liens, « Voir tout », noms) : bleu
+  /// en fond blanc (l'accent y est noir), accent du thème en fond sombre
+  static Color get lien => _p.nouveau ?? _p.accent;
+
   /// Fond des pastilles de compteur (non lus, demandes…)
   static LinearGradient get pastille => _p.pastille != null
       ? LinearGradient(colors: [_p.pastille!, _p.pastille!])

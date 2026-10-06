@@ -1990,7 +1990,7 @@ class ConversationController extends GetxController
                 snapSecondes: snapSecondes,
                 sensible: sensible),
             child: Text('Réessayer',
-                style: TextStyle(color: AppColors.accent)),
+                style: TextStyle(color: AppColors.lien)),
           ));
     } finally {
       etatsEnvoi.remove(tempId);

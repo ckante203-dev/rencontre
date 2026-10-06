@@ -178,7 +178,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                       fontSize: 11,
                       letterSpacing: 1,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.accent)),
+                      color: AppColors.lien)),
               const SizedBox(height: 6),
               Text(ev.titre,
                   style: TextStyle(
@@ -211,7 +211,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.accent)),
+                          color: AppColors.lien)),
                 ),
               ],
 
@@ -239,7 +239,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.accent)),
+                                  color: AppColors.lien)),
                         ]),
                   ),
                 ),
@@ -665,7 +665,7 @@ class _Ligne extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.accent)),
+                    color: AppColors.lien)),
           ),
       ]);
 }

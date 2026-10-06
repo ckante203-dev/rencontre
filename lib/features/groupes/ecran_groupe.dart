@@ -587,7 +587,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.accent)),
+                            color: AppColors.lien)),
                   ),
                 Text(m.contenu ?? '',
                     style: TextStyle(
@@ -631,7 +631,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.accent)),
+                              color: AppColors.lien)),
                     ),
                   corps,
                   if (finSerie)

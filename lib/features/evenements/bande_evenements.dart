@@ -38,7 +38,7 @@ class BandeEvenements extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.accent)),
+                      color: AppColors.lien)),
             ]),
           ),
         );
@@ -69,7 +69,7 @@ class BandeEvenements extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.accent)),
+                          color: AppColors.lien)),
                 ),
               ]),
             ),

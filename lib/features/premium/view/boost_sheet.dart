@@ -418,11 +418,14 @@ class _BoostSheetState extends State<_BoostSheet> {
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary)),
                           if (meilleur)
-                            const Text('⭐ Recommandé',
+                            Text('⭐ Recommandé',
                                 style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFFFFA500))),
+                                    // orange plus soutenu sur fond blanc
+                                    color: AppColors.clair
+                                        ? const Color(0xFFC06A00)
+                                        : const Color(0xFFFFA500))),
                         ]),
                   ),
                   Text(pkg.storeProduct.priceString,
