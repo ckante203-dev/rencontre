@@ -1044,17 +1044,20 @@ class _BoutonsLigne extends StatelessWidget {
       Expanded(
         child: GestureDetector(
           onTap: onTap,
-          // Action principale pleine (noire en thème Blanc), les autres en
-          // gris plein : bien visibles sur tous les fonds.
+          // Même style que les cartes : noir à texte blanc en thème Blanc,
+          // surface sobre bordée dans les thèmes sombres.
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: principal ? AppColors.accent : AppColors.surface2,
+              color: principal ? AppColors.carte : AppColors.surface2,
               borderRadius: BorderRadius.circular(16),
+              border: principal && !AppColors.clair
+                  ? Border.all(color: AppColors.carteBord)
+                  : null,
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(icone,
-                  color: principal ? AppColors.surAccent : AppColors.textPrimary,
+                  color: principal ? AppColors.surCarte : AppColors.textPrimary,
                   size: 22),
               const SizedBox(height: 4),
               Text(libelle,
@@ -1062,7 +1065,7 @@ class _BoutonsLigne extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: principal
-                          ? AppColors.surAccent
+                          ? AppColors.surCarte
                           : AppColors.textPrimary)),
             ]),
           ),

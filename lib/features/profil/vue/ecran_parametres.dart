@@ -10,6 +10,10 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
 
+/// « tout le monde » → « Tout le monde » (pas « Tout Le Monde »)
+String _majuscule(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
 class EcranParametres extends StatelessWidget {
   const EcranParametres({super.key});
 
@@ -117,7 +121,7 @@ class EcranParametres extends StatelessWidget {
                                           ? Colors.transparent
                                           : AppColors.border),
                                 ),
-                                child: Text(genre.capitalize!,
+                                child: Text(_majuscule(genre),
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -177,7 +181,7 @@ class EcranParametres extends StatelessWidget {
                                           ? Colors.transparent
                                           : AppColors.border),
                                 ),
-                                child: Text(opt.capitalize!,
+                                child: Text(_majuscule(opt),
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -355,18 +359,6 @@ class EcranParametres extends StatelessWidget {
                 onTap: ctrl.contacterSupport,
               ),
             ],
-            const SizedBox(height: 10),
-            Obx(() => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                        ctrl.versionApp.value.isEmpty
-                            ? ''
-                            : 'Zamu · version ${ctrl.versionApp.value}',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textMuted)),
-                  ),
-                )),
             const SizedBox(height: 28),
 
             // ════ PROFILS BLOQUÉS ════════════════════════════════
@@ -482,6 +474,19 @@ class EcranParametres extends StatelessWidget {
                 ),
               ),
             ),
+            // Version tout en bas de la page
+            Obx(() => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                        ctrl.versionApp.value.isEmpty
+                            ? ''
+                            : 'Zamu · version ${ctrl.versionApp.value}',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textMuted)),
+                  ),
+                )),
+            const SizedBox(height: 16),
           ],
         ),
       ),
