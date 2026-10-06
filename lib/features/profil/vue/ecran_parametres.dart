@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/nouveautes/ecran_nouveautes.dart';
 import 'package:rencontre/features/home/view/ecran_amis_proches.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:get_storage/get_storage.dart';
@@ -320,6 +321,14 @@ class EcranParametres extends StatelessWidget {
 
             // ════ AIDE & INFORMATIONS ════════════════════════════
             const _Titre('Aide & informations'),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '✨',
+              title: 'Quoi de neuf',
+              subtitle: 'Les nouveautés de Zamu',
+              onTap: () => Get.to(() => const EcranNouveautes(),
+                  fullscreenDialog: true),
+            ),
             const SizedBox(height: 10),
             _Tuile(
               icon: '📄',
