@@ -104,6 +104,20 @@ class _NotifTile extends StatelessWidget {
 
   bool get _enAvant => !notif.isRead || nouvelle;
 
+  /// Fond blanc : une couleur douce par type (rose = like / match,
+  /// violet = story, bleu = amis, vert = album) ; fond sombre : accent
+  Gradient get _pastilleType {
+    if (!AppColors.clair) return AppColors.gradientPink;
+    final c = switch (notif.type) {
+      'like' || 'like_story' || 'match' => const Color(0xFFE8508E),
+      'new_story' || 'favori_story' => const Color(0xFF9B5DE5),
+      'ami_demande' || 'ami_accepte' => const Color(0xFF1D8FE1),
+      'album' => const Color(0xFF22A55B),
+      _ => AppColors.accent,
+    };
+    return LinearGradient(colors: [c, c]);
+  }
+
   IconData get _icon {
     switch (notif.type) {
       case 'new_story':
@@ -184,7 +198,7 @@ class _NotifTile extends StatelessWidget {
       onTap: _onTap,
       child: Container(
         color: _enAvant
-            ? AppColors.accent.withValues(alpha: 0.07)
+            ? AppColors.lien.withValues(alpha: 0.07)
             : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
@@ -228,7 +242,7 @@ class _NotifTile extends StatelessWidget {
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(
-                      gradient: AppColors.gradientPink,
+                      gradient: _pastilleType,
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.bg, width: 2),
                     ),
@@ -266,7 +280,7 @@ class _NotifTile extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                    color: AppColors.accent, shape: BoxShape.circle),
+                    color: AppColors.lien, shape: BoxShape.circle),
               ),
             ],
           ],
