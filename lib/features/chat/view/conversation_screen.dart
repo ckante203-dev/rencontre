@@ -275,21 +275,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (jours <= 0) return "vu aujourd'hui à $h";
     if (jours == 1) return 'vu hier à $h';
     if (jours < 7) return 'vu il y a $jours jours';
-    const mois = [
-      'janv.',
-      'févr.',
-      'mars',
-      'avr.',
-      'mai',
-      'juin',
-      'juil.',
-      'août',
-      'sept.',
-      'oct.',
-      'nov.',
-      'déc.'
-    ];
-    return 'vu le ${d.day} ${mois[d.month - 1]}';
+    // Pas plus précis au-delà (discrétion sur l'activité de chacun)
+    return "vu il y a plus d'une semaine";
   }
 
   // Profil complet (taille, « Cherche », lieux, distance…) — avant, la

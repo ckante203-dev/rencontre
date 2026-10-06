@@ -1131,7 +1131,9 @@ String _ilYa(DateTime d) {
   if (e.inMinutes < 1) return "à l'instant";
   if (e.inMinutes < 60) return 'il y a ${e.inMinutes} min';
   if (e.inHours < 24) return 'il y a ${e.inHours} h';
-  return 'il y a ${e.inDays} j';
+  if (e.inDays < 7) return 'il y a ${e.inDays} j';
+  // Pas plus précis au-delà (discrétion sur l'activité de chacun)
+  return "il y a plus d'une semaine";
 }
 
 // ── Badge physique ────────────────────────────────────────────────
