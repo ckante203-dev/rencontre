@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/discover_feed_viewer.dart';
 import 'package:rencontre/features/home/view/story_screen.dart';
@@ -28,12 +29,19 @@ class OngletStories extends StatelessWidget {
       Get.put(HomeController(), permanent: true);
     }
     final ctrl = Get.find<HomeController>();
+    // Façon Snapchat : en haut mes proches (amis, favoris), en dessous
+    // tous les autres — sans doublon
+    bool proche(String uid) =>
+        ctrl.estFavori(uid) ||
+        (Get.isRegistered<AmisController>() && AmisController.to.estAmi(uid));
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Obx(() {
-          final cartes = buildDiscoverCards(ctrl.discoverStories);
+          final cartes = buildDiscoverCards(ctrl.discoverStories
+              .where((s) => !proche(s.userId))
+              .toList());
           return RefreshIndicator(
             onRefresh: ctrl.loadStories,
             color: AppColors.accent,
@@ -52,7 +60,7 @@ class OngletStories extends StatelessWidget {
                   ),
                 ),
                 // Ma story + ronds (non vues en rose, boostés en or)
-                const SliverToBoxAdapter(child: StoriesRow()),
+                SliverToBoxAdapter(child: StoriesRow(filtre: proche)),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),

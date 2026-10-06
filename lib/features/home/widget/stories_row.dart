@@ -12,12 +12,16 @@ import 'package:rencontre/shared/models/story_model.dart';
 // ═══════════════════════════════════════════════════════════════
 
 class StoriesRow extends GetView<HomeController> {
-  const StoriesRow({super.key});
+  /// Si fourni : seuls ces profils ont un rond (ex. amis et favoris)
+  final bool Function(String userId)? filtre;
+  const StoriesRow({super.key, this.filtre});
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final stories = controller.stories;
+      final stories = filtre == null
+          ? controller.stories
+          : controller.stories.where((s) => filtre!(s.userId)).toList();
       final myStory = controller.myActiveStory;
       final hasMyStory = myStory != null;
 
