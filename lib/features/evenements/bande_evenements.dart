@@ -147,7 +147,7 @@ class _CarteEvenement extends StatelessWidget {
               ),
               child: Text(ev.annule ? 'Annulé' : ev.dateCourte,
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.surMedia,
                       fontSize: 10,
                       fontWeight: FontWeight.w700)),
             ),
@@ -165,7 +165,7 @@ class _CarteEvenement extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surMedia,
                         fontSize: 14,
                         height: 1.15,
                         fontWeight: FontWeight.w800)),
@@ -176,7 +176,7 @@ class _CarteEvenement extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: Colors.white70, fontSize: 11)),
+                            color: Color(0xB3FFFFFF), fontSize: 11)),
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -188,7 +188,7 @@ class _CarteEvenement extends StatelessWidget {
                       style: TextStyle(
                           color: ev.jeParticipe
                               ? AppColors.online
-                              : Colors.white,
+                              : AppColors.surMedia,
                           fontSize: 11,
                           fontWeight: FontWeight.w800)),
                 ]),

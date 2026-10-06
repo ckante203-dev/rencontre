@@ -177,7 +177,7 @@ class _HomeBodyState extends State<_HomeBody> {
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.fastOutSlowIn),
               backgroundColor: AppColors.accent,
-              child: const Icon(Icons.arrow_upward, color: Colors.white),
+              child: const Icon(Icons.arrow_upward, color: AppColors.surAccent),
             ),
           ),
       ],
@@ -254,7 +254,7 @@ class _BoutonBoost extends GetView<HomeController> {
         ),
         child: Stack(clipBehavior: Clip.none, children: [
           const Center(
-              child: Icon(Icons.bolt_rounded, color: Colors.white, size: 30)),
+              child: Icon(Icons.bolt_rounded, color: AppColors.surAccent, size: 30)),
           // Point vert : Boost en cours
           Obx(() => (controller.myProfile?.estBooste ?? false)
               ? Positioned(
@@ -522,7 +522,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
         Get.snackbar('✈️ Mode voyage', 'Réservé aux membres Premium',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
       }
       return;
     }
@@ -580,13 +580,13 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Filtres avancés',
                   style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 TextButton(
@@ -751,7 +751,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ),
             ]),
             const SizedBox(height: 4),
@@ -799,7 +799,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppColors.surAccent,
                     ),
                   ),
                 ),
@@ -1217,7 +1217,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white)),
+                                color: AppColors.surAccent)),
                       ),
                     ),
                   ],
@@ -1294,7 +1294,7 @@ class _PremiumUnlockBannerState extends State<_PremiumUnlockBanner>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: AppColors.surAccent.withValues(alpha: 0.2),
                       shape: BoxShape.circle),
                   child: const Center(
                       child: Text('🔥', style: TextStyle(fontSize: 20))),
@@ -1310,15 +1310,15 @@ class _PremiumUnlockBannerState extends State<_PremiumUnlockBanner>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surAccent,
                             fontWeight: FontWeight.w800,
                             fontSize: 14)),
                     const Text('Passe Premium pour tous les débloquer',
-                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                        style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 11)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.surAccent),
             ],
           ),
         ),
@@ -1380,7 +1380,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
               decoration: BoxDecoration(
                   gradient: AppColors.gradientPink, shape: BoxShape.circle),
               child: const Icon(Icons.workspace_premium_rounded,
-                  color: Colors.white, size: 30),
+                  color: AppColors.surAccent, size: 30),
             ),
             const SizedBox(height: 16),
             Text('Débloque tous les profils',
@@ -1436,7 +1436,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                       'Tu profites de Premium gratuitement pendant 30 minutes',
                       snackPosition: SnackPosition.TOP,
                       backgroundColor: AppColors.surface,
-                      colorText: Colors.white,
+                      colorText: AppColors.textPrimary,
                       duration: const Duration(seconds: 3),
                     );
                   }
@@ -1452,13 +1452,13 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                     children: [
                       Text('Essayer gratuitement 30 minutes',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.surAccent,
                               fontWeight: FontWeight.w700,
                               fontSize: 15)),
                       SizedBox(height: 2),
                       Text('Sans engagement, une seule fois',
                           style:
-                              TextStyle(color: Colors.white70, fontSize: 12)),
+                              TextStyle(color: Color(0xB3FFFFFF), fontSize: 12)),
                     ],
                   ),
                 ),
@@ -1486,7 +1486,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                     Text('Passer Premium',
                         style: TextStyle(
                             color:
-                                canTrial ? AppColors.textPrimary : Colors.white,
+                                canTrial ? AppColors.textPrimary : AppColors.surAccent,
                             fontWeight: FontWeight.w700,
                             fontSize: 15)),
                     const SizedBox(height: 2),
@@ -1499,7 +1499,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                         style: TextStyle(
                             color: canTrial
                                 ? AppColors.textMuted
-                                : Colors.white.withOpacity(0.85),
+                                : AppColors.surAccent.withValues(alpha: 0.85),
                             fontSize: 12)),
                   ],
                 ),
@@ -1553,7 +1553,7 @@ class _UserCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.surMedia,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 height: 1.2)),
@@ -1655,7 +1655,7 @@ class _UserCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.online,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.2),
+                          border: Border.all(color: AppColors.surMedia, width: 1.2),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -1668,7 +1668,7 @@ class _UserCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.surMedia,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               height: 1.2,
@@ -1679,7 +1679,7 @@ class _UserCard extends StatelessWidget {
                     Text(HomeController.formatDistance(user.distanceMeters),
                         maxLines: 1,
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
+                            color: AppColors.surMedia.withValues(alpha: 0.85),
                             fontSize: 11,
                             height: 1.25,
                             shadows: _ombre)),
@@ -1700,10 +1700,10 @@ class _UserCard extends StatelessWidget {
                         colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
                   ),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.bolt_rounded, size: 12, color: Colors.white),
+                    Icon(Icons.bolt_rounded, size: 12, color: AppColors.surAccent),
                     Text('Boost',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surAccent,
                             fontSize: 10,
                             fontWeight: FontWeight.w800)),
                   ]),
@@ -1749,13 +1749,13 @@ class _UserCard extends StatelessWidget {
                         decoration: const BoxDecoration(
                             color: Colors.amber, shape: BoxShape.circle),
                         child: const Icon(Icons.lock_rounded,
-                            color: Colors.white, size: 18),
+                            color: AppColors.surMedia, size: 18),
                       ),
                     ),
                     const SizedBox(height: 6),
                     const Text('Premium',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surMedia,
                             fontSize: 11,
                             fontWeight: FontWeight.w800)),
                   ],
@@ -1837,7 +1837,7 @@ class _GradientAvatar extends StatelessWidget {
           style: const TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: AppColors.surMedia,
           ),
         ),
       ),
@@ -1877,7 +1877,7 @@ class _Chip extends StatelessWidget {
             const SizedBox(width: 6),
             Text(label,
                 style: TextStyle(
-                    color: isActive ? Colors.white : AppColors.textPrimary,
+                    color: isActive ? AppColors.surAccent : AppColors.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
           ],

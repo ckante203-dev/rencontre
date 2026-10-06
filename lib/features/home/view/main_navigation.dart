@@ -298,7 +298,7 @@ class _NavItemStory extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.surAccent,
                         ),
                       ),
                     ),
@@ -371,7 +371,7 @@ class _NavItemMessages extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 8,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                            color: AppColors.surAccent,
                           ),
                         ),
                       ),
@@ -537,7 +537,7 @@ class _Pastille extends StatelessWidget {
           style: const TextStyle(
             fontSize: 8,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: AppColors.surAccent,
           ),
         ),
       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/nouveautes/ecran_nouveautes.dart';
@@ -633,7 +634,11 @@ class _SelecteurTheme extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Pastille : le fond du thème avec sa couleur d'accent au centre
-    final themes = AppPalettes.all.values.toList();
+    final themes = [
+      ...AppPalettes.all.values,
+      // Fond blanc en préparation : visible en développement seulement
+      if (kDebugMode) ...AppPalettes.enPreparation.values,
+    ];
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
