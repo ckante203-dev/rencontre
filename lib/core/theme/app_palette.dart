@@ -168,7 +168,8 @@ class AppPalettes {
     surface: Color(0xFF181613),
     surface2: Color(0xFF211E1A),
     border: Color(0xFF37322A),
-    accent: Color(0xFFC9A24B),
+    // Or un peu plus profond : texte blanc lisible sur les boutons (3,2)
+    accent: Color(0xFFB08A3E),
     accent2: Color(0xFFA8853A),
     accent3: Color(0xFFE6C77D),
     yellow: Color(0xFFF5C451),

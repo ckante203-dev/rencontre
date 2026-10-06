@@ -27,12 +27,7 @@ void main() {
       });
       test('${p.label} : texte blanc lisible sur les boutons', () {
         expect(contraste(Colors.white, p.accent), greaterThanOrEqualTo(3));
-      },
-          // Connu : doré trop clair sous du texte blanc (2,4) — à corriger
-          // en même temps que le chantier des couleurs
-          skip: p.id == 'champagne'
-              ? 'Champagne : contraste 2,4 sur les boutons (à revoir)'
-              : null);
+      });
     }
 
     test('La palette Blanc est claire, les autres sombres', () {
