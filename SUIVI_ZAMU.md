@@ -19,6 +19,8 @@ Mis à jour le 04/10/2026.
 
 **État :** tous les scripts SQL (000000 à 000009) sont appliqués ; toutes les fonctions serveur sont déployées (notifications testées OK le 29/09) ; commit `7723aed`. Restent les points 4 et 5.
 
+**06/10 — 1.1.1 (10101) envoyée en examen en PRODUCTION**, Côte d'Ivoire seule, déploiement 100 %, remplace la 1.0.11 qui était encore en examen. Envoyés avec : classification refaite (18+, Social, rencontres), Sécurité des données complète (selfie = Photos ; orientation sexuelle ; historique des achats ; aucune donnée partagée ; liens suppression compte + `#donnees`), instructions de connexion pour les testeurs (compte `test.zamu@gmail.com`, Premium + vérifié + date de naissance mis en base, mode voyage → Abidjan car l'Accueil n'affiche que < 50 km). Pages légales en ligne mises à jour le 06/10 (confidentialité, conditions, suppression). Prix Premium/Boosts à finaliser dans Monétiser (proposition : semaine 990, mois 2 490, 3 mois 5 990, an 17 990 ; Boosts 790 / 1 190 / 3 990).
+
 ## 0. Prochaine version — Google Play (préparé le 04/10)
 
 **Nouveautés de la version (test interne d'abord, la production reste en 1.0.11) :** recherche @pseudo + QR code, « Dispo maintenant », relances de 19 h, stories Amis proches / Amis / Masquer à, caméra Zamu (photo, vidéo, selfie miroir), stickers / emoji / GIF / textes sur les stories, événements (J'y vais / Intéressé / sur place / stories / propositions / rappels), discussions de groupe, système d'amis + compte privé, cloche 🔔 sur l'Accueil, bulles de messages, thèmes pro (Zamu par défaut).
