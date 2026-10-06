@@ -286,8 +286,8 @@ class _Onglet extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(label,
-            style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: actif ? AppColors.surAccent : AppColors.textPrimary)),
       ),
     );
   }

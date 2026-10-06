@@ -276,8 +276,8 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
             (p.photo ?? '').isNotEmpty ? (_, __) {} : null,
         child: (p.photo ?? '').isEmpty
             ? Text(p.nom.isEmpty ? '?' : p.nom[0].toUpperCase(),
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700))
+                style: TextStyle(
+                    color: AppColors.textPrimary, fontWeight: FontWeight.w700))
             : null,
       ),
       title: Text(p.nom,
@@ -298,7 +298,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         ),
         child: dans
             ? Icon(_masques ? Icons.block_rounded : Icons.star_rounded,
-                size: 16, color: Colors.white)
+                size: 16, color: AppColors.surAccent)
             : null,
       ),
     );

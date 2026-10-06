@@ -172,7 +172,7 @@ class _EcranNouveautesState extends State<EcranNouveautes> {
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ),
             ),
           ),
@@ -228,7 +228,7 @@ class _Diapo extends StatelessWidget {
                       gradient: AppColors.gradientPink,
                       shape: BoxShape.circle),
                   child: const Icon(Icons.check_rounded,
-                      size: 14, color: Colors.white),
+                      size: 14, color: AppColors.surAccent),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

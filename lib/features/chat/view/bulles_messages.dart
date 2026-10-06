@@ -215,7 +215,7 @@ class _Avatar extends StatelessWidget {
                         ? '?'
                         : conv.userName[0].toUpperCase(),
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surMedia,
                         fontSize: 20,
                         fontWeight: FontWeight.w800))
                 : null,
@@ -228,7 +228,7 @@ class _Avatar extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surAccent,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.accent, width: 1.5),
             ),

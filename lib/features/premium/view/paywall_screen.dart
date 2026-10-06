@@ -256,10 +256,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2.5, color: Colors.white))
+                                strokeWidth: 2.5, color: AppColors.surAccent))
                         : Text(
                             'Continuer · ${RevenueCatService.libellePrix(choisie.storeProduct)}',
-                            style: _T.ligne().copyWith(color: Colors.white),
+                            style: _T.ligne().copyWith(color: AppColors.surAccent),
                           ),
                   ),
                 ),
@@ -391,7 +391,7 @@ class _FormuleTile extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                                color: AppColors.surAccent,
                                 letterSpacing: 0.5)),
                       ),
                     ],

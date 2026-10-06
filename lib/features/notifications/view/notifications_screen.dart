@@ -199,8 +199,8 @@ class _NotifTile extends StatelessWidget {
                     child: _anonyme
                         ? Container(
                             color: AppColors.surface2,
-                            child: const Icon(Icons.lock_rounded,
-                                color: Colors.white54, size: 20),
+                            child: Icon(Icons.lock_rounded,
+                                color: AppColors.textMuted.withValues(alpha: 0.54), size: 20),
                           )
                         : notif.actorPhotoUrl != null &&
                             notif.actorPhotoUrl!.isNotEmpty
@@ -213,8 +213,8 @@ class _NotifTile extends StatelessWidget {
                                 notif.actorName.isNotEmpty
                                     ? notif.actorName[0].toUpperCase()
                                     : '?',
-                                style: const TextStyle(
-                                    color: Colors.white54,
+                                style: TextStyle(
+                                    color: AppColors.textMuted.withValues(alpha: 0.54),
                                     fontWeight: FontWeight.w800),
                               ),
                             ),
@@ -232,7 +232,7 @@ class _NotifTile extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.bg, width: 2),
                     ),
-                    child: Icon(_icon, size: 11, color: Colors.white),
+                    child: Icon(_icon, size: 11, color: AppColors.surAccent),
                   ),
                 ),
               ],

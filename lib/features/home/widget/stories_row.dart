@@ -114,7 +114,7 @@ class _MyStoryItem extends StatelessWidget {
                                   ),
                                   child: const Center(
                                     child: Icon(Icons.person_rounded,
-                                        color: Colors.white, size: 24),
+                                        color: AppColors.surMedia, size: 24),
                                   ),
                                 ),
                         ),
@@ -139,7 +139,7 @@ class _MyStoryItem extends StatelessWidget {
                             ],
                           ),
                           child: const Icon(Icons.add_rounded,
-                              color: Colors.white, size: 17),
+                              color: AppColors.surAccent, size: 17),
                         ),
                       ),
                     ),
@@ -260,7 +260,7 @@ class _StoryItem extends StatelessWidget {
                                         ? story.userName[0].toUpperCase()
                                         : '?',
                                     style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.surMedia,
                                         fontWeight: FontWeight.w800,
                                         fontSize: 18),
                                   ),
@@ -281,7 +281,7 @@ class _StoryItem extends StatelessWidget {
                           border: Border.all(color: AppColors.bg, width: 2),
                         ),
                         child: const Icon(Icons.bolt_rounded,
-                            size: 12, color: Colors.white),
+                            size: 12, color: AppColors.surAccent),
                       ),
                     ),
                 ]),

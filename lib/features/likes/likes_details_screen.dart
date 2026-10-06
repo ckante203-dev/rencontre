@@ -243,8 +243,8 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
                                           name.isNotEmpty
                                               ? name[0].toUpperCase()
                                               : '?',
-                                          style: const TextStyle(
-                                              color: Colors.white54,
+                                          style: TextStyle(
+                                              color: AppColors.textMuted.withValues(alpha: 0.54),
                                               fontWeight: FontWeight.w700),
                                         ),
                                       ),

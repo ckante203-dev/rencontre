@@ -89,10 +89,10 @@ class UpdateService {
         // ✅ WillPopScope déprécié → PopScope (Flutter 3.12+)
         canPop: !forceUpdate,
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: AppColors.surface,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          title: Row(
             children: [
               Text('🚀 ', style: TextStyle(fontSize: 24)),
               SizedBox(width: 8),
@@ -100,7 +100,7 @@ class UpdateService {
                 child: Text(
                   'Mise à jour disponible',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -156,7 +156,7 @@ class UpdateService {
               child: const Text(
                 'Télécharger',
                 style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    TextStyle(color: AppColors.surAccent, fontWeight: FontWeight.bold),
               ),
             ),
           ],

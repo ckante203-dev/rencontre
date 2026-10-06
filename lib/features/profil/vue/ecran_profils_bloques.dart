@@ -182,10 +182,10 @@ class EcranProfilsBloques extends StatelessWidget {
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text('Débloquer $name ?',
-          style: const TextStyle(
+          style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 17)),
       content: Text(
           '$name pourra à nouveau voir ton profil et t\'envoyer des messages.',
@@ -207,7 +207,7 @@ class EcranProfilsBloques extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12)),
             child: const Text('Débloquer',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -226,7 +226,7 @@ class _InitialAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(fontSize: 20, color: Colors.white38),
+          style: TextStyle(fontSize: 20, color: AppColors.textMuted.withValues(alpha: 0.38)),
         ),
       ),
     );

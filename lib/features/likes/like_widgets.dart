@@ -40,7 +40,7 @@ class LikeButton extends StatelessWidget {
                     end: Alignment.bottomRight,
                   )
                 : null,
-            color: filled ? null : Colors.white.withOpacity(0.08),
+            color: filled ? null : AppColors.surface2.withValues(alpha: 0.08),
             border: filled
                 ? null
                 : Border.all(color: AppColors.accent, width: 2),
@@ -73,7 +73,7 @@ class LikeButton extends StatelessWidget {
                       filled
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
-                      color: filled ? Colors.white : AppColors.accent,
+                      color: filled ? AppColors.surAccent : AppColors.accent,
                       size: size * 0.5,
                     ),
                     if (matched)

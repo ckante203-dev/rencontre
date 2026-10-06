@@ -224,7 +224,7 @@ Widget _apercu(StoryModel s, {double texte = 13}) {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: TextStyle(
-              color: Colors.white,
+              color: AppColors.surMedia,
               fontSize: texte,
               fontWeight: FontWeight.w700)),
     );
@@ -320,7 +320,7 @@ class _RondStory extends StatelessWidget {
                     border: Border.all(color: AppColors.bg, width: 2),
                   ),
                   child: const Icon(Icons.add_rounded,
-                      color: Colors.white, size: 16),
+                      color: AppColors.surAccent, size: 16),
                 ),
               ),
           ]),
@@ -371,7 +371,7 @@ class _CarteStory extends StatelessWidget {
           if (s.isVideo)
             const Center(
               child: Icon(Icons.play_circle_fill_rounded,
-                  color: Colors.white70, size: 36),
+                  color: Color(0xB3FFFFFF), size: 36),
             ),
           // Déjà vue : assombrie, comme Snapchat
           if (!aVoir) Container(color: Colors.black.withValues(alpha: 0.35)),
@@ -408,7 +408,7 @@ class _CarteStory extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: aVoir ? AppColors.anneauStory : null,
-                    color: aVoir ? null : Colors.white54,
+                    color: aVoir ? null : Color(0x8AFFFFFF),
                   ),
                   child: CircleAvatar(
                     radius: avatar,
@@ -423,7 +423,7 @@ class _CarteStory extends StatelessWidget {
                     maxLines: compacte ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surMedia,
                         fontSize: compacte ? 13.5 : 17,
                         fontWeight: FontWeight.w800,
                         height: 1.1,
@@ -438,7 +438,7 @@ class _CarteStory extends StatelessWidget {
                             ? '${_ilYa(s.createdAt)} · $distance'
                             : _ilYa(s.createdAt),
                         style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
+                            color: Color(0xB3FFFFFF), fontSize: 12)),
                   ),
               ],
             ),

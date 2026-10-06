@@ -91,7 +91,7 @@ class AvatarRayonnantState extends State<AvatarRayonnant>
               color: const Color(0xFFFFA500),
               border: Border.all(color: AppColors.bg, width: 2),
             ),
-            child: Icon(widget.icone, color: Colors.white, size: 16),
+            child: Icon(widget.icone, color: AppColors.surAccent, size: 16),
           ),
         ),
       ]),
@@ -100,7 +100,7 @@ class AvatarRayonnantState extends State<AvatarRayonnant>
 
   Widget _vide() => Container(
         color: AppColors.surface2,
-        child: const Icon(Icons.person, color: Colors.white54, size: 36),
+        child: Icon(Icons.person, color: AppColors.textMuted.withValues(alpha: 0.54), size: 36),
       );
 }
 

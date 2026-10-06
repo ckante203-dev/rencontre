@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/core/theme/app_theme.dart';
 
 /// ✅ Badge "certifié" affiché à côté du nom des utilisateurs premium
 class PremiumBadge extends StatelessWidget {
@@ -21,7 +22,7 @@ class PremiumBadge extends StatelessWidget {
       child: Icon(
         Icons.check_rounded,
         size: size * 0.7,
-        color: Colors.white,
+        color: AppColors.surAccent,
       ),
     );
   }

@@ -227,10 +227,10 @@ class _BoostSheetState extends State<_BoostSheet> {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2, color: AppColors.surAccent))
                 : const Text('Activer',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surAccent,
                         fontSize: 13,
                         fontWeight: FontWeight.w800)),
           ),
