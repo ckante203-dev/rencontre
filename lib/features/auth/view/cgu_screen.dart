@@ -83,23 +83,23 @@ class _CguScreenState extends State<CguScreen> {
                   child: Column(children: [
                     const Text('Zamu',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surAccent,
                             fontFamily: 'Syne',
                             fontSize: 22,
                             fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
                     const Text("Conditions Générales d'Utilisation",
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                        style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 13),
                         textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: AppColors.surAccent.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8)),
                       child: const Text('Dernière mise à jour : Mars 2026',
-                          style: TextStyle(color: Colors.white, fontSize: 11)),
+                          style: TextStyle(color: AppColors.surAccent, fontSize: 11)),
                     ),
                   ]),
                 ),
@@ -211,7 +211,7 @@ class _CguScreenState extends State<CguScreen> {
                     ),
                     child: _accepted
                         ? const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 14)
+                            color: AppColors.surAccent, size: 14)
                         : null,
                   ),
                   const SizedBox(width: 12),
@@ -253,7 +253,7 @@ class _CguScreenState extends State<CguScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color:
-                              _accepted ? Colors.white : AppColors.textMuted)),
+                              _accepted ? AppColors.surAccent : AppColors.textMuted)),
                 ),
               ),
             ]),

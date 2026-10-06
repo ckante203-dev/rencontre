@@ -101,10 +101,10 @@ class _OnboardBase extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.3),
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white24),
+                            border: Border.all(color: Color(0x3DFFFFFF)),
                           ),
                           child: const Icon(Icons.arrow_back_ios_rounded,
-                              size: 16, color: Colors.white),
+                              size: 16, color: AppColors.surMedia),
                         ),
                       ),
                     ),
@@ -164,11 +164,11 @@ class _OnboardBase extends StatelessWidget {
                       children: [
                         WidgetSpan(
                           child: Text(titleHighlight,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Syne',
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                 )),
                         ),
                       ],
@@ -585,12 +585,12 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
 
                 const Text('🎂', style: TextStyle(fontSize: 40)),
                 const SizedBox(height: 16),
-                const Text('Ta date de\nnaissance',
+                Text('Ta date de\nnaissance',
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           height: 1.2)),
                 const SizedBox(height: 8),
                 Text(
@@ -701,7 +701,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                                  strokeWidth: 2, color: AppColors.surAccent))
                           : Text(
                               _isValid
                                   ? 'Continuer →'
@@ -710,7 +710,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: _isValid
-                                      ? Colors.white
+                                      ? AppColors.surAccent
                                       : AppColors.textMuted),
                             ),
                     ),
@@ -789,7 +789,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                         gradient: AppColors.gradientPink,
                         borderRadius: BorderRadius.circular(12)),
                     child: const Icon(Icons.camera_alt_rounded,
-                        color: Colors.white, size: 22)),
+                        color: AppColors.surAccent, size: 22)),
                 title: Text('Prendre une photo',
                     style: TextStyle(
                         color: AppColors.textPrimary,
@@ -933,7 +933,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                                       end: Alignment.bottomRight)),
                               child: const Center(
                                   child: Icon(Icons.person_rounded,
-                                      size: 60, color: Colors.white54))),
+                                      size: 60, color: Color(0x8AFFFFFF)))),
                     ),
                   ),
                   Positioned(
@@ -948,7 +948,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                             border:
                                 Border.all(color: AppColors.surface, width: 2)),
                         child: const Icon(Icons.camera_alt_rounded,
-                            size: 16, color: Colors.white)),
+                            size: 16, color: AppColors.surAccent)),
                   ),
                   if (_isUploading)
                     Positioned.fill(
@@ -1085,7 +1085,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: isSelected
-                              ? Colors.white
+                              ? AppColors.surAccent
                               : AppColors.textPrimary)),
                 ]),
               ),
@@ -1135,12 +1135,12 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: isSelected
-                              ? Colors.white
+                              ? AppColors.surAccent
                               : AppColors.textPrimary)),
                   const Spacer(),
                   if (isSelected)
                     const Icon(Icons.check_circle_rounded,
-                        color: Colors.white, size: 20),
+                        color: AppColors.surAccent, size: 20),
                 ]),
               ),
             ),
@@ -1266,7 +1266,7 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color:
-                            isSelected ? Colors.white : AppColors.textMuted)),
+                            isSelected ? AppColors.surAccent : AppColors.textMuted)),
               ),
             );
           }).toList()),
@@ -1413,7 +1413,7 @@ class _InitialAvatar extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white54))));
+                    color: Color(0x8AFFFFFF)))));
   }
 }
 

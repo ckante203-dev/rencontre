@@ -196,12 +196,12 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 const Text('📱', style: TextStyle(fontSize: 48)),
                 const SizedBox(height: 16),
 
-                const Text('Connexion par\ntéléphone',
+                Text('Connexion par\ntéléphone',
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           height: 1.2)),
                 const SizedBox(height: 8),
                  Text(
@@ -370,13 +370,13 @@ class _ActionButton extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 18,
-                color: isPrimary ? Colors.white : AppColors.textPrimary),
+                color: isPrimary ? AppColors.surAccent : AppColors.textPrimary),
             const SizedBox(width: 10),
             Text(label,
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: isPrimary ? Colors.white : AppColors.textPrimary)),
+                    color: isPrimary ? AppColors.surAccent : AppColors.textPrimary)),
           ],
         ),
       ),

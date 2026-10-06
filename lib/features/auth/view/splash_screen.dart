@@ -131,13 +131,13 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           const SizedBox(height: 28),
-                          const Text(
+                          Text(
                               'Zamu',
                               style: TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 40,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 letterSpacing: -1.5,
                               ),
                             ),
@@ -180,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                    color: AppColors.surAccent,
                                     letterSpacing: 0.3,
                                   )),
                             ),

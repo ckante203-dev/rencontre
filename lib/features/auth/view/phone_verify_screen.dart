@@ -209,11 +209,11 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
       final confirm = await Get.dialog<bool>(AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Format inhabituel',
+        title: Text('Format inhabituel',
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 16)),
         content: Text(
           '$_formatWarning\n\nTu peux quand même continuer si ton numéro est correct.',
@@ -236,7 +236,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
               ),
               child: const Text('Continuer quand même',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.surAccent,
                       fontWeight: FontWeight.w700,
                       fontSize: 13)),
             ),
@@ -324,12 +324,12 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                const Text('Ajoute ton\nnuméro 📱',
+                Text('Ajoute ton\nnuméro 📱',
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           height: 1.2)),
                 const SizedBox(height: 8),
                  Text(

@@ -43,13 +43,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 28),
 
                 // ── HEADER : Nom ──
-                const Text(
+                Text(
                     'Zamu',
                     style: TextStyle(
                       fontFamily: 'Syne',
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       letterSpacing: -0.5,
                     ),
                   ),

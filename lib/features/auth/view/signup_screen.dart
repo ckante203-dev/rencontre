@@ -88,12 +88,12 @@ class _SignupForm extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              const Text('Crée ton\ncompte 🚀',
+              Text('Crée ton\ncompte 🚀',
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 30,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         height: 1.2)),
               const SizedBox(height: 8),
               Text('Rejoins des milliers de personnes autour de toi',
@@ -463,12 +463,12 @@ class _EmailOtpScreen extends StatelessWidget {
                     child: Text('📧', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 28),
-              const Text('Vérifie\nton email',
+              Text('Vérifie\nton email',
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         height: 1.1)),
               const SizedBox(height: 12),
               Text(
