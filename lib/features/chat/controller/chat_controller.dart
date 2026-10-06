@@ -112,6 +112,8 @@ class ChatListController extends GetxController {
   final Map<String, int> _deliveredMarkedFor = {};
 
   int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
+  int get conversationsNonLues =>
+      conversations.where((c) => c.unreadCount > 0).length;
 
   List<ConversationModel> get filteredConversations {
     List<ConversationModel> list;

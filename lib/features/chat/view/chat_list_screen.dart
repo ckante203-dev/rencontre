@@ -176,8 +176,11 @@ class _FilterBar extends GetView<ChatListController> {
                 icon: Icons.mark_chat_unread_outlined,
                 active: controller.activeFilter.value == ChatFilter.unread,
                 onTap: () => controller.setFilter(ChatFilter.unread),
-                badge:
-                    controller.totalUnread > 0 ? controller.totalUnread : null,
+                // Nombre de conversations non lues (comme WhatsApp), pas
+                // de messages : il correspond aux lignes affichées.
+                badge: controller.conversationsNonLues > 0
+                    ? controller.conversationsNonLues
+                    : null,
               ),
               _FilterChip(
                 label: 'En ligne',
