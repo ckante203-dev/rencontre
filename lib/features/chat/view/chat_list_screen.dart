@@ -966,11 +966,15 @@ class _AvatarWithStoryRing extends StatelessWidget {
     });
   }
 
+  /// Sans story : même encombrement que l'avatar entouré de l'anneau
+  /// (2,2 + 1,5 px), pour que tous les noms restent alignés.
   Widget _withOnlineDot(Widget avatar) {
-    if (!isOnline) return avatar;
+    final aligne =
+        Padding(padding: const EdgeInsets.all(3.7), child: avatar);
+    if (!isOnline) return aligne;
     return Stack(
       children: [
-        avatar,
+        aligne,
         Positioned(
           bottom: 1,
           right: 1,
