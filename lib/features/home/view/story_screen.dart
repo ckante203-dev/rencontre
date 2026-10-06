@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/home/widget/barre_reponse_story.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
@@ -1319,11 +1320,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             GestureDetector(
                                 onTap: () {
                                   Get.back();
-                                  Get.snackbar(
-                                      '⭐ Premium', 'Bientôt disponible !',
-                                      snackPosition: SnackPosition.TOP,
-                                      backgroundColor: CouleursMedia.surface,
-                                      colorText: CouleursMedia.textPrimary);
+                                  Get.toNamed(AppRoutes.paywall);
                                 },
                                 child: Container(
                                     padding: const EdgeInsets.symmetric(

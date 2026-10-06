@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -297,10 +298,7 @@ class MapController extends GetxController {
         GestureDetector(
           onTap: () {
             Get.back();
-            Get.snackbar('👑 Premium', 'Bientôt disponible !',
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: AppColors.surface,
-                colorText: AppColors.textPrimary);
+            Get.toNamed(AppRoutes.paywall);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
