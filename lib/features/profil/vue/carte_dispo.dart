@@ -61,19 +61,19 @@ class CarteDispo extends StatelessWidget {
             decoration: BoxDecoration(
               color: actif
                   ? AppColors.online.withOpacity(0.12)
-                  : AppColors.surface,
+                  : AppColors.carte,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                   color: actif
                       ? AppColors.online.withOpacity(0.5)
-                      : AppColors.border),
+                      : AppColors.carteBord),
             ),
             child: Row(children: [
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: actif ? AppColors.online : AppColors.surface2,
+                  color: actif ? AppColors.online : AppColors.carteIcone,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Center(
@@ -88,14 +88,18 @@ class CarteDispo extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
+                            color: actif ? AppColors.textPrimary : AppColors.surCarte)),
                     const SizedBox(height: 2),
                     Text(
                         actif
                             ? '${dureeRestanteDispo(ctrl.dispoJusqua.value!)} · visible sur l\'accueil'
                             : 'Dis aux autres ce que tu as envie de faire',
                         style:
-                            TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                            TextStyle(
+                            fontSize: 12,
+                            color: actif
+                                ? AppColors.textMuted
+                                : AppColors.surCarteDiscret)),
                   ],
                 ),
               ),
@@ -106,7 +110,8 @@ class CarteDispo extends StatelessWidget {
                   icon: Icon(Icons.close_rounded, color: AppColors.textMuted),
                 )
               else
-                Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                Icon(Icons.chevron_right_rounded,
+                    color: AppColors.surCarteDiscret),
             ]),
           ),
         );

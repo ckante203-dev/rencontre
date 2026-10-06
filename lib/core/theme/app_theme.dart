@@ -53,6 +53,18 @@ class AppColors {
   /// en fond blanc (l'accent y est noir), accent du thème en fond sombre
   static Color get lien => _p.nouveau ?? _p.accent;
 
+  /// Cartes et boutons cliquables (Mon profil…) : noirs à texte blanc en
+  /// thème Blanc, surface du thème ailleurs.
+  static Color get carte => _p.clair ? _p.accent : _p.surface;
+  static Color get surCarte => _p.clair ? surAccent : _p.textPrimary;
+  static Color get surCarteDiscret =>
+      _p.clair ? surAccent.withValues(alpha: 0.72) : _p.textMuted;
+  static Color get carteBord => _p.clair ? _p.accent : _p.border;
+
+  /// Pastille d'icône / bouton secondaire posé sur une [carte]
+  static Color get carteIcone =>
+      _p.clair ? surAccent.withValues(alpha: 0.14) : _p.surface2;
+
   /// Fond des pastilles de compteur (non lus, demandes…)
   static LinearGradient get pastille => _p.pastille != null
       ? LinearGradient(colors: [_p.pastille!, _p.pastille!])

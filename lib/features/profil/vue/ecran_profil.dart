@@ -332,9 +332,9 @@ class _Completion extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.carte,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: AppColors.carteBord),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,16 +344,16 @@ class _Completion extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                          color: AppColors.surCarte)),
                   const Spacer(),
                   Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textMuted, size: 20),
+                      color: AppColors.surCarteDiscret, size: 20),
                 ]),
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: Stack(children: [
-                    Container(height: 6, color: AppColors.surface2),
+                    Container(height: 6, color: AppColors.carteIcone),
                     FractionallySizedBox(
                       widthFactor: pct / 100,
                       child: Container(
@@ -366,7 +366,7 @@ class _Completion extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text('$conseil pour recevoir plus de likes',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    style: TextStyle(fontSize: 12, color: AppColors.surCarteDiscret)),
               ],
             ),
           ),
@@ -542,9 +542,9 @@ class _CartePseudo extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.carte,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.carteBord),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,14 +574,14 @@ class _CartePseudo extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
+                              color: AppColors.surCarte)),
                       const SizedBox(height: 2),
                       Text(
                           aucun
                               ? 'Tes amis pourront te retrouver avec'
                               : 'Donne-le à tes amis pour qu\'ils te retrouvent',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.textMuted)),
+                              fontSize: 12, color: AppColors.surCarteDiscret)),
                     ],
                   ),
                 ),
@@ -593,7 +593,7 @@ class _CartePseudo extends StatelessWidget {
                     backgroundColor: Colors.transparent,
                   ),
                   icon: Icon(Icons.qr_code_2_rounded,
-                      color: AppColors.textPrimary, size: 28),
+                      color: AppColors.surCarte, size: 28),
                 ),
               ]),
               const SizedBox(height: 12),
@@ -641,11 +641,11 @@ class _CartePseudo extends StatelessWidget {
                 Expanded(
                   child: Text('Les autres peuvent me trouver avec ce pseudo',
                       style: TextStyle(
-                          fontSize: 13, color: AppColors.textPrimary)),
+                          fontSize: 13, color: AppColors.surCarte)),
                 ),
                 Switch.adaptive(
                   value: ctrl.trouvableParPseudo.value,
-                  activeColor: AppColors.accent,
+                  activeColor: AppColors.clair ? AppColors.lien : AppColors.accent,
                   onChanged: (v) => ctrl.majReglage(
                       ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v),
                 ),
@@ -677,21 +677,23 @@ class _BoutonCarte extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           gradient: degrade ? AppColors.gradientPink : null,
-          color: degrade ? null : AppColors.surface2,
+          color: degrade ? null : AppColors.carteIcone,
           borderRadius: BorderRadius.circular(12),
-          border: degrade ? null : Border.all(color: AppColors.border),
+          border: degrade || AppColors.clair
+              ? null
+              : Border.all(color: AppColors.border),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon,
               size: 16,
-              color: degrade ? AppColors.surAccent : AppColors.textPrimary),
+              color: degrade ? AppColors.surAccent : AppColors.surCarte),
           const SizedBox(width: 6),
           Text(label,
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color:
-                      degrade ? AppColors.surAccent : AppColors.textPrimary)),
+                      degrade ? AppColors.surAccent : AppColors.surCarte)),
         ]),
       ),
     );
@@ -892,17 +894,17 @@ class _CarteAmis extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.carte,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: demandes > 0 ? AppColors.accent : AppColors.border),
+                  color: demandes > 0 ? AppColors.lien : AppColors.carteBord),
             ),
             child: Row(children: [
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.surface2,
+                  color: AppColors.carteIcone,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Center(
@@ -917,7 +919,7 @@ class _CarteAmis extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary)),
+                              color: AppColors.surCarte)),
                       const SizedBox(height: 2),
                       Text(
                           demandes > 0
@@ -926,8 +928,8 @@ class _CarteAmis extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 12,
                               color: demandes > 0
-                                  ? AppColors.accent
-                                  : AppColors.textMuted)),
+                                  ? AppColors.lien
+                                  : AppColors.surCarteDiscret)),
                     ]),
               ),
               if (demandes > 0)
@@ -944,7 +946,7 @@ class _CarteAmis extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w800)),
                 ),
-              Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              Icon(Icons.chevron_right_rounded, color: AppColors.surCarteDiscret),
             ]),
           ),
         );
@@ -967,9 +969,9 @@ class _CarteAlbum extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.carte,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.carteBord),
           ),
           child: Row(children: [
             Container(
@@ -991,15 +993,15 @@ class _CarteAlbum extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                          color: AppColors.surCarte)),
                   const SizedBox(height: 2),
                   Text('Des photos visibles seulement par qui tu choisis',
                       style:
-                          TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          TextStyle(fontSize: 12, color: AppColors.surCarteDiscret)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            Icon(Icons.chevron_right_rounded, color: AppColors.surCarteDiscret),
           ]),
         ),
       ),
