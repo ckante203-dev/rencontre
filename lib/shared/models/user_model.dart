@@ -29,6 +29,7 @@ class UserModel {
   final DateTime? boostJusqua; // Boost acheté : fin de la mise en avant
   final String? dispoTexte; // Statut « Dispo maintenant » (☕ café…)
   final DateTime? dispoJusqua; // fin du statut
+  final bool estVerifie; // selfie validé par l'équipe (badge bleu)
 
   const UserModel({
     required this.id,
@@ -59,6 +60,7 @@ class UserModel {
     this.boostJusqua,
     this.dispoTexte,
     this.dispoJusqua,
+    this.estVerifie = false,
   });
 
   // ✅ Nouveau membre = inscrit depuis moins de 7 jours
@@ -107,6 +109,7 @@ class UserModel {
     DateTime? boostJusqua,
     String? dispoTexte,
     DateTime? dispoJusqua,
+    bool? estVerifie,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -137,6 +140,7 @@ class UserModel {
         boostJusqua: boostJusqua ?? this.boostJusqua,
         dispoTexte: dispoTexte ?? this.dispoTexte,
         dispoJusqua: dispoJusqua ?? this.dispoJusqua,
+        estVerifie: estVerifie ?? this.estVerifie,
       );
 
   /// "175cm · 70kg"

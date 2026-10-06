@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rencontre/features/profil/vue/ecran_verification.dart';
+import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
@@ -58,6 +60,7 @@ class EcranProfil extends StatelessWidget {
                   _Stats(),
                   const SizedBox(height: 14),
                   _Completion(ctrl: ctrl),
+                  _CarteVerification(ctrl: ctrl),
                   CarteDispo(ctrl: ctrl),
                   const SizedBox(height: 14),
                   _CartePremium(ctrl: ctrl),
@@ -273,6 +276,10 @@ class _NomStatut extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                         color: AppColors.textPrimary)),
               ),
+              if (ctrl.monProfil.value?.estVerifie == true) ...[
+                const SizedBox(width: 6),
+                const BadgeVerifie(size: 22),
+              ],
               if (ctrl.isPremium.value) ...[
                 const SizedBox(width: 6),
                 const PremiumBadge(size: 20),
@@ -960,6 +967,96 @@ class _CarteAmis extends StatelessWidget {
         );
       }),
     );
+  }
+}
+
+// ─── VÉRIFICATION PAR SELFIE ─────────────────────────────────────
+
+class _CarteVerification extends StatefulWidget {
+  final ControleurProfil ctrl;
+  const _CarteVerification({required this.ctrl});
+
+  @override
+  State<_CarteVerification> createState() => _CarteVerificationState();
+}
+
+class _CarteVerificationState extends State<_CarteVerification> {
+  String? _statut; // en_attente / validee / refusee
+
+  @override
+  void initState() {
+    super.initState();
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    final d = await derniereVerification();
+    if (mounted) setState(() => _statut = d?['statut'] as String?);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      // Déjà vérifié : le badge à côté du nom suffit
+      if (widget.ctrl.monProfil.value?.estVerifie == true) {
+        return const SizedBox.shrink();
+      }
+      final attente = _statut == 'en_attente';
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+        child: GestureDetector(
+          onTap: () async {
+            await Get.to(() => const EcranVerification());
+            _charger();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.carte,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.carteBord),
+            ),
+            child: Row(children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.carteIcone,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                    child: attente
+                        ? Icon(Icons.hourglass_top_rounded,
+                            size: 20, color: AppColors.surCarte)
+                        : const BadgeVerifie(size: 22)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(attente ? 'Vérification en cours' : 'Fais vérifier ton profil',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.surCarte)),
+                    const SizedBox(height: 2),
+                    Text(
+                        attente
+                            ? 'L\'équipe compare ton selfie à tes photos'
+                            : 'Un selfie et tu as le badge bleu ✓',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.surCarteDiscret)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: AppColors.surCarteDiscret),
+            ]),
+          ),
+        ),
+      );
+    });
   }
 }
 

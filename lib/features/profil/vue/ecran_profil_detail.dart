@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -679,6 +680,10 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                             blurRadius: 8)
                                       ])),
                             ),
+                            if (user.estVerifie) ...[
+                              const SizedBox(width: 8),
+                              const BadgeVerifie(size: 24),
+                            ],
                             if (user.isPremium) ...[
                               const SizedBox(width: 8),
                               const Icon(Icons.workspace_premium_rounded,

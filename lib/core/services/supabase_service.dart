@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/shared/models/user_model.dart';
@@ -31,6 +32,32 @@ class SupabaseService {
   }) async {
     final uid = currentUserId;
     if (uid == null) return [];
+
+    // Fonction serveur (SQL 049) : profils les plus proches, infos
+    // affichées seulement, blocages filtrés côté serveur. Si elle
+    // n'existe pas encore, ancienne méthode ci-dessous.
+    if (offset == 0) {
+      try {
+        final res = await supabase.rpc('profils_accueil', params: {
+          'p_lat': myLat,
+          'p_lng': myLng,
+          'p_limite': limit.clamp(1, 500),
+        });
+        if (res is List) {
+          return _apresChargement(
+            List<Map<String, dynamic>>.from(res)
+                .map(profileToUser)
+                .toList(),
+            genderFilter: genderFilter,
+            maxDistanceKm: maxDistanceKm,
+            myLat: myLat,
+            myLng: myLng,
+          );
+        }
+      } catch (e) {
+        debugPrint('profils_accueil indisponible, ancienne méthode : $e');
+      }
+    }
 
     final myData = await supabase
         .from('profiles')
@@ -78,11 +105,25 @@ class SupabaseService {
       }
     }
 
-    List<UserModel> users = rows
+    final users = rows
         .map((row) => profileToUser(row))
         .where((u) => !allExcluded.contains(u.id))
         .toList();
+    return _apresChargement(users,
+        genderFilter: genderFilter,
+        maxDistanceKm: maxDistanceKm,
+        myLat: myLat,
+        myLng: myLng);
+  }
 
+  /// Filtre de genre, distance depuis ma position, distance maximale.
+  List<UserModel> _apresChargement(
+    List<UserModel> users, {
+    String? genderFilter,
+    double? maxDistanceKm,
+    double? myLat,
+    double? myLng,
+  }) {
     if (genderFilter != null) {
       final normalizedFilter = genderFilter.toLowerCase().trim();
       const showAllValues = {'tout', 'tous', 'all', 'tout le monde'};
@@ -670,6 +711,7 @@ class SupabaseService {
       dispoJusqua: row['dispo_jusqua'] != null
           ? DateTime.tryParse(row['dispo_jusqua'].toString())?.toLocal()
           : null,
+      estVerifie: row['est_verifie'] == true,
     );
   }
 }

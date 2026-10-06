@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -288,6 +289,7 @@ const _filterItems = [
   _FilterItem(mode: 'dispo', label: 'Dispo', icon: '🙋'),
   _FilterItem(mode: 'evenement', label: 'Même événement', icon: '📅'),
   _FilterItem(mode: 'nearby', label: 'Proches', icon: '📍'),
+  _FilterItem(mode: 'verifies', label: 'Vérifiés', icon: '✅'),
   _FilterItem(mode: 'new', label: 'Nouveaux', icon: '✨'),
   _FilterItem(mode: 'favoris', label: 'Favoris', icon: '⭐'),
 ];
@@ -1166,6 +1168,8 @@ class _UsersGridScrollable extends GetView<HomeController> {
       'nearby' => ('📍', 'Personne tout près',
           'Élargis ta recherche avec le filtre « Tous ».'),
       'new' => ('✨', 'Pas de nouveau membre', 'Reviens demain !'),
+      'verifies' => ('✅', 'Aucun profil vérifié ici',
+          'Fais vérifier le tien depuis Mon profil.'),
       'favoris' => ('⭐', "Aucun favori pour l'instant",
           "Ajoute des profils en favori avec l'étoile ⭐."),
       _ => ('🔍', 'Aucun profil pour le moment',
@@ -1659,7 +1663,7 @@ class _UserCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                     ],
-                    Expanded(
+                    Flexible(
                       child: Text(
                           user.showBirthdate
                               ? '${user.name}, ${user.age}'
@@ -1673,6 +1677,10 @@ class _UserCard extends StatelessWidget {
                               height: 1.2,
                               shadows: _ombre)),
                     ),
+                    if (user.estVerifie) ...[
+                      const SizedBox(width: 3),
+                      const BadgeVerifie(size: 14),
+                    ],
                   ]),
                   if (user.distanceMeters != null && user.showDistance)
                     Text(HomeController.formatDistance(user.distanceMeters),

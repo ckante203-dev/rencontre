@@ -880,6 +880,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         if (u.age < age.start) return false;
         if (age.end < ageMax && u.age > age.end) return false;
       }
+      if (filterMode.value == 'verifies' && !u.estVerifie) return false;
       if (filterMode.value == 'new' && !u.isNewMember)
         return false; // ← ligne ajoutée
       if (filterMode.value == 'nearby') {
