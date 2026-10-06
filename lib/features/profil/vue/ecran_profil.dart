@@ -671,29 +671,37 @@ class _BoutonCarte extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Thème Blanc : bouton principal blanc sur la carte noire
+    final blanc = degrade && AppColors.clair;
+    final texte = blanc
+        ? AppColors.accent
+        : degrade
+            ? AppColors.surAccent
+            : AppColors.surCarte;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          gradient: degrade ? AppColors.gradientPink : null,
-          color: degrade ? null : AppColors.carteIcone,
+          gradient: degrade && !blanc ? AppColors.gradientPink : null,
+          color: blanc
+              ? AppColors.surAccent
+              : degrade
+                  ? null
+                  : AppColors.carteIcone,
           borderRadius: BorderRadius.circular(12),
           border: degrade || AppColors.clair
               ? null
               : Border.all(color: AppColors.border),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon,
-              size: 16,
-              color: degrade ? AppColors.surAccent : AppColors.surCarte),
+          Icon(icon, size: 16, color: texte),
           const SizedBox(width: 6),
           Text(label,
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color:
-                      degrade ? AppColors.surAccent : AppColors.surCarte)),
+                  color: texte)),
         ]),
       ),
     );
