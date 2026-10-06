@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/chat/view/bulles_messages.dart';
@@ -79,6 +80,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
     // Tap sur la barre du bas → la page suit (glissée si onglet voisin).
     _suiviOnglet = ever(_navCtrl.currentIndex, (int i) {
+      _barreEtat(i);
       if (!_pageCtrl.hasClients) return;
       final actuelle = (_pageCtrl.page ?? i.toDouble()).round();
       if (actuelle == i) return;
@@ -95,10 +97,20 @@ class _MainNavigationState extends State<MainNavigation> {
       _navCtrl.currentIndex.value =
           NavigationController.pendingIndex ?? NavigationController.accueilIndex;
       NavigationController.pendingIndex = null;
+      _barreEtat(_navCtrl.currentIndex.value);
       _refreshForCurrentUser();
       // « Quoi de neuf » une fois après la mise à jour (anciens membres)
       afficherNouveautesSiBesoin();
     });
+  }
+
+  /// Heure / batterie lisibles : Mon profil commence par ma photo (barre
+  /// claire), les autres onglets suivent le thème (sombre sur fond blanc).
+  static void _barreEtat(int onglet) {
+    SystemChrome.setSystemUIOverlayStyle(onglet == 4
+        ? SystemUiOverlayStyle.light
+            .copyWith(statusBarColor: Colors.transparent)
+        : AppColors.barreSysteme);
   }
 
   void _refreshForCurrentUser() {
@@ -434,24 +446,34 @@ class _NavItemProfil extends StatelessWidget {
               }
               // Clé distincte : sinon Flutter anime le carré arrondi (sans
               // photo) vers ce cercle, ce qui est impossible (erreur rouge).
+              // Façon Instagram : liseré gris au repos, anneau Zamu une fois
+              // l'onglet ouvert, fin espace (couleur du fond) autour de la
+              // photo pour qu'elle se détache, même sombre sur fond blanc
               return AnimatedContainer(
                 key: const ValueKey('profil-photo'),
                 duration: const Duration(milliseconds: 200),
-                width: 34,
-                height: 34,
-                padding: const EdgeInsets.all(2),
+                width: 36,
+                height: 36,
+                padding: EdgeInsets.all(isActive ? 2.2 : 1.2),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(17),
-                  border: Border.all(
-                      color: isActive ? AppColors.accent : Colors.transparent,
-                      width: 2),
+                  shape: BoxShape.circle,
+                  gradient: isActive ? AppColors.anneauStory : null,
+                  color: isActive
+                      ? null
+                      : AppColors.textMuted.withValues(alpha: 0.45),
                 ),
-                child: ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: photo,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => _bonhomme(),
-                    errorWidget: (_, __, ___) => _bonhomme(),
+                child: Container(
+                  padding: const EdgeInsets.all(1.6),
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle, color: AppColors.bg),
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: photo,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 120,
+                      placeholder: (_, __) => _bonhomme(),
+                      errorWidget: (_, __, ___) => _bonhomme(),
+                    ),
                   ),
                 ),
               );

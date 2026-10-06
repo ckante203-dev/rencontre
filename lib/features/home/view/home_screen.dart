@@ -115,7 +115,6 @@ class HomeScreen extends GetView<HomeController> {
       Get.put(NotificationController(), permanent: true);
     }
 
-    SystemChrome.setSystemUIOverlayStyle(AppColors.barreSysteme);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
