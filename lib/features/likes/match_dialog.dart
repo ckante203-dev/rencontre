@@ -91,18 +91,18 @@ class _MatchDialogState extends State<MatchDialog>
                     ],
                   ),
                   child: const Icon(Icons.favorite_rounded,
-                      color: Colors.white, size: 38),
+                      color: AppColors.surAccent, size: 38),
                 ),
               ),
               const SizedBox(height: 20),
 
               // Titre
-              const Text(
+              Text(
                   "C'est un Match !",
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -113,17 +113,17 @@ class _MatchDialogState extends State<MatchDialog>
               const SizedBox(height: 14),
 
               Text(user.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   )),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 'Vous vous êtes likés mutuellement 💫',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.white.withOpacity(0.55),
+                  color: AppColors.textMuted,
                   height: 1.4,
                 ),
                 textAlign: TextAlign.center,
@@ -162,20 +162,20 @@ class _MatchDialogState extends State<MatchDialog>
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                        Icon(Icons.send_rounded, color: AppColors.surAccent, size: 18),
                         SizedBox(width: 9),
                         Text('Envoyer un message',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: AppColors.surAccent,
                             )),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
 
               TextButton(
                 onPressed: () => Get.back(),
@@ -183,7 +183,7 @@ class _MatchDialogState extends State<MatchDialog>
                   'Continuer à explorer',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withOpacity(0.4),
+                    color: AppColors.textMuted,
                   ),
                 ),
               ),
@@ -268,7 +268,7 @@ class _MatchAvatar extends StatelessWidget {
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : '?',
             style: const TextStyle(
-                fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white),
+                fontSize: 36, fontWeight: FontWeight.w900, color: AppColors.surMedia),
           ),
         ),
       );

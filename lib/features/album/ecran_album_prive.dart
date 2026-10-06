@@ -81,8 +81,8 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
   Future<void> _supprimer(PhotoAlbum photo) async {
     final ok = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
-      title: const Text('Supprimer cette photo ?',
-          style: TextStyle(color: Colors.white, fontSize: 16)),
+      title: Text('Supprimer cette photo ?',
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
@@ -118,12 +118,12 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: const Text('🔒 Mon album privé',
+        title: Text('🔒 Mon album privé',
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
-                color: Colors.white)),
+                color: AppColors.textPrimary)),
       ),
       body: _chargement
           ? Center(child: CircularProgressIndicator(color: AppColors.accent))
@@ -168,8 +168,8 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: AppColors.accent))
-                                : const Icon(Icons.add_rounded,
-                                    color: Colors.white, size: 30),
+                                : Icon(Icons.add_rounded,
+                                    color: AppColors.textPrimary, size: 30),
                           ),
                         ),
                       ),
@@ -181,11 +181,11 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                     'appui long pour supprimer',
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 const SizedBox(height: 24),
-                const Text('Qui peut voir mon album',
+                Text('Qui peut voir mon album',
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white)),
+                        color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
                 if (_acces.isEmpty)
                   Text('Personne pour le moment',
@@ -200,12 +200,12 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                             ? CachedNetworkImageProvider(p.photoUrl!)
                             : null,
                         child: (p.photoUrl ?? '').isEmpty
-                            ? const Icon(Icons.person_rounded,
-                                color: Colors.white)
+                            ? Icon(Icons.person_rounded,
+                                color: AppColors.textPrimary)
                             : null,
                       ),
                       title: Text(p.nom,
-                          style: const TextStyle(color: Colors.white)),
+                          style: TextStyle(color: AppColors.textPrimary)),
                       trailing: TextButton(
                         onPressed: () => _retirer(p),
                         child: const Text('Retirer',
@@ -255,11 +255,11 @@ class EcranAlbumDe extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         title: Text('🔓 Album de $nom',
-            style: const TextStyle(
+            style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
-                color: Colors.white)),
+                color: AppColors.textPrimary)),
         actions: [
           IconButton(
             tooltip: 'Signaler',
@@ -346,7 +346,7 @@ class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
               ),
               child: Row(children: [
                 const Icon(Icons.lock_open_rounded,
-                    color: Colors.white, size: 22),
+                    color: AppColors.surAccent, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -355,9 +355,9 @@ class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white)),
+                          color: AppColors.surAccent)),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.surAccent),
               ]),
             ),
           ),
@@ -383,8 +383,8 @@ class _Vignette extends StatelessWidget {
         placeholder: (_, __) => Container(color: AppColors.surface2),
         errorWidget: (_, __, ___) => Container(
             color: AppColors.surface2,
-            child: const Icon(Icons.broken_image_rounded,
-                color: Colors.white38)),
+            child: Icon(Icons.broken_image_rounded,
+                color: AppColors.textMuted.withValues(alpha: 0.38))),
       ),
     );
   }
@@ -405,7 +405,7 @@ class _PleinEcran extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
           backgroundColor: Colors.black,
-          iconTheme: const IconThemeData(color: Colors.white)),
+          iconTheme: const IconThemeData(color: AppColors.surMedia)),
       body: PageView.builder(
         controller: PageController(initialPage: debut < 0 ? 0 : debut),
         itemCount: photos.length,
@@ -416,7 +416,7 @@ class _PleinEcran extends StatelessWidget {
               cacheKey: Uri.parse(photos[i].url).path,
               fit: BoxFit.contain,
               placeholder: (_, __) => const Center(
-                  child: CircularProgressIndicator(color: Colors.white)),
+                  child: CircularProgressIndicator(color: AppColors.surMedia)),
             ),
           ),
         ),

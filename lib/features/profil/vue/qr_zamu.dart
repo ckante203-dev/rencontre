@@ -103,13 +103,13 @@ class FeuilleQrZamu extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.qr_code_scanner_rounded,
-                        color: Colors.white, size: 20),
+                        color: AppColors.surAccent, size: 20),
                     SizedBox(width: 8),
                     Text('Scanner le code d\'un ami',
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white)),
+                            color: AppColors.surAccent)),
                   ],
                 ),
               ),
@@ -183,7 +183,7 @@ class _EcranScanQrState extends State<EcranScanQr> {
                     ? 'Autorise l\'appareil photo pour scanner un code'
                     : 'Appareil photo indisponible',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 15),
+                style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 15),
               ),
             ),
           ),
@@ -194,7 +194,7 @@ class _EcranScanQrState extends State<EcranScanQr> {
             width: 240,
             height: 240,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: AppColors.surMedia, width: 3),
               borderRadius: BorderRadius.circular(24),
             ),
           ),
@@ -206,13 +206,13 @@ class _EcranScanQrState extends State<EcranScanQr> {
               IconButton(
                 onPressed: Get.back,
                 icon: const Icon(Icons.close_rounded,
-                    color: Colors.white, size: 28),
+                    color: AppColors.surMedia, size: 28),
               ),
               const Spacer(),
               IconButton(
                 onPressed: () => _scanner.toggleTorch(),
                 icon: const Icon(Icons.flash_on_rounded,
-                    color: Colors.white, size: 26),
+                    color: AppColors.surMedia, size: 26),
               ),
             ]),
           ),
@@ -224,7 +224,7 @@ class _EcranScanQrState extends State<EcranScanQr> {
           child: Text('Vise le QR code Zamu de ton ami',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.surMedia,
                   fontSize: 15,
                   fontWeight: FontWeight.w600)),
         ),
