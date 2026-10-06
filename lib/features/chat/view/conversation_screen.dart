@@ -147,7 +147,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       backgroundColor: AppColors.bg,
       appBar: _buildAppBar(context),
       body: Column(children: [
-        const _EphemeralBanner(),
         Expanded(
           child: Stack(children: [
             Positioned.fill(
@@ -1044,19 +1043,27 @@ class _EphemeralBanner extends StatelessWidget {
   const _EphemeralBanner();
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: AppColors.surface2,
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.timer_outlined, size: 13, color: AppColors.textMuted),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text('Les messages disparaissent 24h après avoir été vus',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+    // Petite note centrée en haut de la discussion (façon WhatsApp)
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 10, 32, 6),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.surface2,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.timer_outlined, size: 13, color: AppColors.textMuted),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text('Les messages disparaissent 24 h après avoir été vus',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+            ),
+          ]),
         ),
-      ]),
+      ),
     );
   }
 }

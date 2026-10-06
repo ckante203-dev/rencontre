@@ -44,8 +44,11 @@ class _MessageList extends StatelessWidget {
         reverse: true,
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
         physics: const BouncingScrollPhysics(),
-        itemCount: items.length,
+        // +1 : l'info « messages éphémères » tout en haut de la discussion
+        // (elle défile avec les messages, au lieu d'un bandeau fixe)
+        itemCount: items.length + 1,
         itemBuilder: (_, i) {
+          if (i == items.length) return const _EphemeralBanner();
           final item = items[items.length - 1 - i];
           if (item.isDateSep) return _DateLabel(date: item.date!);
           return _MessageBubble(
