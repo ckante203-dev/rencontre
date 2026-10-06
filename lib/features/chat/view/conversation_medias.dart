@@ -87,7 +87,7 @@ class _SnapBubbleState extends State<_SnapBubble> {
             gradient: AppColors.gradientPink,
             borderRadius: BorderRadius.circular(16)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.auto_awesome_rounded, size: 15, color: Colors.white),
+          const Icon(Icons.auto_awesome_rounded, size: 15, color: AppColors.surAccent),
           const SizedBox(width: 8),
           Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,10 +97,10 @@ class _SnapBubbleState extends State<_SnapBubble> {
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
                 Text(msg.isOpened ? 'Ouvert ✓' : 'En attente',
                     style: TextStyle(
-                        fontSize: 10, color: Colors.white.withOpacity(0.7))),
+                        fontSize: 10, color: AppColors.surAccent.withValues(alpha: 0.7))),
               ]),
         ]),
       );
@@ -134,7 +134,7 @@ class _SnapBubbleState extends State<_SnapBubble> {
               child: Text('${_countdown}s',
                   style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.white,
+                      color: AppColors.surAccent,
                       fontWeight: FontWeight.w700)),
             )),
         Positioned(
@@ -145,7 +145,7 @@ class _SnapBubbleState extends State<_SnapBubble> {
                 borderRadius: BorderRadius.circular(2),
                 child: LinearProgressIndicator(
                     value: _countdown / 10.0,
-                    backgroundColor: Colors.white24,
+                    backgroundColor: Color(0x3DFFFFFF),
                     valueColor: AlwaysStoppedAnimation<Color>(
                         urgent ? Colors.red : AppColors.accent3),
                     minHeight: 3))),
@@ -176,15 +176,15 @@ class _SnapBubbleState extends State<_SnapBubble> {
           child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.photo_camera_rounded, size: 26, color: Colors.white),
+                Icon(Icons.photo_camera_rounded, size: 26, color: AppColors.surAccent),
                 SizedBox(height: 6),
                 Text('Appuie pour voir',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
                 Text('Disparaît après ouverture',
-                    style: TextStyle(fontSize: 10, color: Colors.white70)),
+                    style: TextStyle(fontSize: 10, color: Color(0xB3FFFFFF))),
               ]),
         ),
       );
@@ -274,10 +274,10 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
                 imageUrl: widget.url,
                 fit: BoxFit.contain,
                 placeholder: (_, __) => const Center(
-                    child: CircularProgressIndicator(color: Colors.white)),
+                    child: CircularProgressIndicator(color: AppColors.surMedia)),
                 errorWidget: (_, __, ___) => const Center(
                     child: Icon(Icons.broken_image_rounded,
-                        color: Colors.white38, size: 48)))),
+                        color: Color(0x61FFFFFF), size: 48)))),
         if (widget.snapDuration > 0)
           Positioned(
               top: MediaQuery.of(context).padding.top + 16,
@@ -291,13 +291,13 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
                     borderRadius: BorderRadius.circular(20)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.timer_rounded,
-                      size: 14, color: urgent ? Colors.white : Colors.white70),
+                      size: 14, color: urgent ? AppColors.surMedia : Color(0xB3FFFFFF)),
                   const SizedBox(width: 5),
                   Text('${_countdown}s',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: urgent ? Colors.white : Colors.white70)),
+                          color: urgent ? AppColors.surMedia : Color(0xB3FFFFFF))),
                 ]),
               )),
         if (widget.snapDuration > 0)
@@ -307,7 +307,7 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
               right: 0,
               child: LinearProgressIndicator(
                   value: _countdown / widget.snapDuration,
-                  backgroundColor: Colors.white24,
+                  backgroundColor: Color(0x3DFFFFFF),
                   valueColor: AlwaysStoppedAnimation<Color>(
                       urgent ? Colors.red : AppColors.accent3),
                   minHeight: 4)),
@@ -316,7 +316,7 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
             left: 8,
             child: IconButton(
                 icon: const Icon(Icons.close_rounded,
-                    color: Colors.white, size: 28),
+                    color: AppColors.surMedia, size: 28),
                 onPressed: () => Navigator.pop(context))),
       ]),
     );
@@ -402,7 +402,7 @@ class _MediaBubble extends StatelessWidget {
                 radius: 26,
                 backgroundColor: Colors.black45,
                 child: Icon(Icons.play_arrow_rounded,
-                    color: Colors.white, size: 34),
+                    color: AppColors.surMedia, size: 34),
               ),
             ),
           Positioned(
@@ -415,12 +415,12 @@ class _MediaBubble extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.videocam_rounded,
-                    color: Colors.white, size: 13),
+                    color: AppColors.surMedia, size: 13),
                 if (msg.audioDurationSec != null) ...[
                   const SizedBox(width: 4),
                   Text(_duree(msg.audioDurationSec!),
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.surMedia,
                           fontSize: 11,
                           fontWeight: FontWeight.w600)),
                 ],
@@ -449,11 +449,11 @@ class _MediaBubble extends StatelessWidget {
                       width: 34,
                       height: 34,
                       child: CircularProgressIndicator(
-                          strokeWidth: 3, color: Colors.white)),
+                          strokeWidth: 3, color: AppColors.surMedia)),
                   const SizedBox(height: 8),
                   Text(etat,
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.surMedia,
                           fontSize: 12,
                           fontWeight: FontWeight.w600)),
                 ]);
@@ -486,7 +486,7 @@ class _MediaBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(14), color: AppColors.surface2),
       child: const Center(
           child: Icon(Icons.broken_image_rounded,
-              size: 36, color: Colors.white38)));
+              size: 36, color: Color(0x61FFFFFF))));
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -535,7 +535,7 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.surMedia),
             onPressed: () => Navigator.pop(context)),
         actions: [
           if (widget.isVideo && _videoReady)
@@ -544,7 +544,7 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
                   _videoCtrl!.value.isPlaying
                       ? Icons.pause_rounded
                       : Icons.play_arrow_rounded,
-                  color: Colors.white),
+                  color: AppColors.surMedia),
               onPressed: () {
                 setState(() {
                   _videoCtrl!.value.isPlaying
@@ -561,16 +561,16 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
                   ? AspectRatio(
                       aspectRatio: _videoCtrl!.value.aspectRatio,
                       child: VideoPlayer(_videoCtrl!))
-                  : const CircularProgressIndicator(color: Colors.white))
+                  : const CircularProgressIndicator(color: AppColors.surMedia))
               : InteractiveViewer(
                   child: CachedNetworkImage(
                       imageUrl: widget.url,
                       fit: BoxFit.contain,
                       placeholder: (_, __) =>
-                          const CircularProgressIndicator(color: Colors.white),
+                          const CircularProgressIndicator(color: AppColors.surMedia),
                       errorWidget: (_, __, ___) => const Icon(
                           Icons.broken_image_rounded,
-                          color: Colors.white38,
+                          color: Color(0x61FFFFFF),
                           size: 48)))),
     );
   }
@@ -612,18 +612,24 @@ class _AudioBubble extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.15)),
+                    color: (isMine ? AppColors.surAccent : AppColors.textPrimary)
+                        .withValues(alpha: 0.15)),
                 child: Icon(
                     isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     size: 18,
-                    color: Colors.white)),
+                    color: isMine ? AppColors.surAccent : AppColors.textPrimary)),
             const SizedBox(width: 8),
-            Flexible(child: _AudioWaveform(isPlaying: isPlaying)),
+            Flexible(
+                child: _AudioWaveform(
+                    isPlaying: isPlaying,
+                    couleur: isMine ? AppColors.surAccent : AppColors.textPrimary)),
             const SizedBox(width: 8),
             Text('$min:$sec',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white70,
+                    color: isMine
+                        ? AppColors.surAccent.withValues(alpha: 0.7)
+                        : AppColors.textMuted,
                     fontWeight: FontWeight.w500)),
             if (isPlaying) ...[
               const SizedBox(width: 6),
@@ -633,12 +639,13 @@ class _AudioBubble extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: (isMine ? AppColors.surAccent : AppColors.textPrimary)
+                          .withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10)),
                   child: Text(ctrl.vitesseAudioLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11,
-                          color: Colors.white,
+                          color: isMine ? AppColors.surAccent : AppColors.textPrimary,
                           fontWeight: FontWeight.w700)),
                 ),
               ),
@@ -652,7 +659,8 @@ class _AudioBubble extends StatelessWidget {
 
 class _AudioWaveform extends StatefulWidget {
   final bool isPlaying;
-  const _AudioWaveform({required this.isPlaying});
+  final Color couleur; // blanc sur ma bulle, couleur du texte sinon
+  const _AudioWaveform({required this.isPlaying, required this.couleur});
   @override
   State<_AudioWaveform> createState() => _AudioWaveformState();
 }
@@ -694,8 +702,8 @@ class _AudioWaveformState extends State<_AudioWaveform>
                       height: h.clamp(3.0, 18.0),
                       margin: const EdgeInsets.symmetric(horizontal: 0.8),
                       decoration: BoxDecoration(
-                          color: Colors.white
-                              .withOpacity(widget.isPlaying ? 0.9 : 0.4),
+                          color: widget.couleur
+                              .withValues(alpha: widget.isPlaying ? 0.9 : 0.4),
                           borderRadius: BorderRadius.circular(1.5)));
                 }),
               ),
@@ -732,9 +740,9 @@ class _StatusIcon extends StatelessWidget {
           final h = readAt!.hour.toString().padLeft(2, '0');
           final m = readAt!.minute.toString().padLeft(2, '0');
           return Text('Lu $h:$m',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 10,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600));
         }
         return ShaderMask(
@@ -854,7 +862,7 @@ class _LocationBubble extends StatelessWidget {
                                 ],
                               ),
                               child: const Icon(Icons.location_on_rounded,
-                                  color: Colors.white, size: 18),
+                                  color: AppColors.surAccent, size: 18),
                             ),
                             const SizedBox(height: 3),
                             Container(
@@ -883,13 +891,13 @@ class _LocationBubble extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.my_location_rounded,
-                                  size: 10, color: Colors.white),
+                                  size: 10, color: AppColors.surAccent),
                               const SizedBox(width: 4),
                               Text('Position',
                                   style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white)),
+                                      color: AppColors.surAccent)),
                             ],
                           ),
                         ),
@@ -951,13 +959,13 @@ class _LocationBubble extends StatelessWidget {
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const Icon(Icons.directions_rounded,
-                        size: 13, color: Colors.white),
+                        size: 13, color: AppColors.surAccent),
                     const SizedBox(width: 4),
                     const Text('Itinéraire',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white)),
+                            color: AppColors.surAccent)),
                   ]),
                 ),
               ),

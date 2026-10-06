@@ -460,11 +460,11 @@ class _StoryReplyPreview extends StatelessWidget {
             BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.68),
         margin: const EdgeInsets.only(bottom: 3),
         decoration: BoxDecoration(
-          color: isMine ? Colors.white.withOpacity(0.1) : AppColors.surface2,
+          color: isMine ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
           borderRadius: BorderRadius.circular(12),
           border: Border(
               left: BorderSide(
-                  color: isMine ? Colors.white38 : AppColors.accent, width: 3)),
+                  color: isMine ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           ClipRRect(
@@ -493,7 +493,7 @@ class _StoryReplyPreview extends StatelessWidget {
                             maxLines: 4,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.surMedia,
                                 fontSize: storyReply.storyText == null ? 18 : 8,
                                 fontWeight: FontWeight.w800))),
                   )
@@ -504,13 +504,13 @@ class _StoryReplyPreview extends StatelessWidget {
                       errorWidget: (_, __, ___) => Container(
                           color: AppColors.surface,
                           child: const Icon(Icons.photo_camera_rounded,
-                              color: Colors.white38, size: 18))),
+                              color: Color(0x61FFFFFF), size: 18))),
                 if (storyReply.storyIsVideo)
                   Container(
                     color: Colors.black26,
                     child: const Center(
                         child: Icon(Icons.play_circle_fill_rounded,
-                            color: Colors.white, size: 22)),
+                            color: AppColors.surMedia, size: 22)),
                   ),
               ]),
             ),
@@ -532,7 +532,7 @@ class _StoryReplyPreview extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color:
-                              isMine ? Colors.white70 : AppColors.textPrimary)),
+                              isMine ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
                   const SizedBox(height: 3),
                   Text(
                       storyReply.storyOwnerName.isNotEmpty
@@ -617,7 +617,7 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                   ? AspectRatio(
                       aspectRatio: _videoCtrl!.value.aspectRatio,
                       child: VideoPlayer(_videoCtrl!))
-                  : const CircularProgressIndicator(color: Colors.white))
+                  : const CircularProgressIndicator(color: AppColors.surMedia))
               : story.isTextStory
                   ? Container(
                       color: story.storyBgColor != null
@@ -629,8 +629,8 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               color: story.storyText != null
-                                  ? Colors.white
-                                  : Colors.white70,
+                                  ? AppColors.surMedia
+                                  : AppColors.surMedia.withValues(alpha: 0.7),
                               fontSize: story.storyText != null ? 28 : 20,
                               fontWeight: FontWeight.w800,
                               height: 1.3)),
@@ -640,10 +640,10 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                       fit: BoxFit.contain,
                       placeholder: (_, __) => const Center(
                           child:
-                              CircularProgressIndicator(color: Colors.white)),
+                              CircularProgressIndicator(color: AppColors.surMedia)),
                       errorWidget: (_, __, ___) => const Center(
                           child: Icon(Icons.broken_image_rounded,
-                              color: Colors.white38, size: 48)),
+                              color: Color(0x61FFFFFF), size: 48)),
                     ),
         ),
         // ── Dégradé + en-tête façon Snapchat ──
@@ -670,9 +670,9 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                   decoration: BoxDecoration(
                       color: Colors.black38,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24)),
+                      border: Border.all(color: AppColors.surMedia.withValues(alpha: 0.24))),
                   child: const Icon(Icons.close_rounded,
-                      color: Colors.white, size: 18),
+                      color: AppColors.surMedia, size: 18),
                 ),
               ),
               const SizedBox(width: 12),
@@ -682,7 +682,7 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                       ? 'Story de ${story.storyOwnerName}'
                       : 'Story',
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.surMedia,
                       fontSize: 15,
                       fontWeight: FontWeight.w700),
                   maxLines: 1,
@@ -727,18 +727,18 @@ class _ReplyPreview extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 3),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isMine ? Colors.white.withOpacity(0.1) : AppColors.surface2,
+        color: isMine ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
         borderRadius: BorderRadius.circular(8),
         border: Border(
             left: BorderSide(
-                color: isMine ? Colors.white38 : AppColors.accent, width: 3)),
+                color: isMine ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(isReplyMine ? 'Vous' : ctrl.conversation.userName,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isMine ? Colors.white70 : AppColors.textPrimary)),
+                color: isMine ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(_preview,
             maxLines: 1,
@@ -782,7 +782,7 @@ class _TextBubble extends StatelessWidget {
     final h = msg.createdAt.hour.toString().padLeft(2, '0');
     final mn = msg.createdAt.minute.toString().padLeft(2, '0');
     final modifie = msg.modifieLe != null;
-    final couleurMeta = isMine ? Colors.white70 : AppColors.textMuted;
+    final couleurMeta = isMine ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textMuted;
 
     // Heure (+ « modifié ») et coches, en bas à droite de la bulle
     final meta = Row(mainAxisSize: MainAxisSize.min, children: [
@@ -840,7 +840,7 @@ class _TextBubble extends StatelessWidget {
             ]),
             style: TextStyle(
                 fontSize: 15,
-                color: isMine ? Colors.white : AppColors.textPrimary,
+                color: isMine ? AppColors.surAccent : AppColors.textPrimary,
                 height: 1.35),
           ),
         ),
@@ -887,10 +887,10 @@ class _FlouSensibleState extends State<_FlouSensible> {
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white)),
+                    color: AppColors.surMedia)),
             SizedBox(height: 2),
             Text('Touche pour voir',
-                style: TextStyle(fontSize: 12, color: Colors.white)),
+                style: TextStyle(fontSize: 12, color: AppColors.surMedia)),
           ]),
         ]),
       ),
@@ -925,7 +925,7 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
         Get.snackbar('Album privé', "L'accès à cet album a été retiré",
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
       } else {
         Get.to(() => EcranAlbumDe(
             nom: widget.ctrl.conversation.userName, photos: photos));
@@ -934,7 +934,7 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
       Get.snackbar('Album privé', "Impossible d'ouvrir l'album",
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     } finally {
       if (mounted) setState(() => _ouverture = false);
     }
@@ -957,16 +957,16 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: AppColors.surAccent.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: _ouverture
                 ? const Padding(
                     padding: EdgeInsets.all(11),
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2, color: AppColors.surAccent))
                 : const Icon(Icons.lock_open_rounded,
-                    color: Colors.white, size: 22),
+                    color: AppColors.surAccent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -977,13 +977,13 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
                 const SizedBox(height: 2),
                 Text(
                     widget.isMine
                         ? 'Tu as partagé ton album avec $nom'
                         : 'Touche pour voir les photos',
-                    style: const TextStyle(fontSize: 12, color: Colors.white)),
+                    style: const TextStyle(fontSize: 12, color: AppColors.surAccent)),
               ],
             ),
           ),
@@ -1028,11 +1028,11 @@ class _AnnonceReplyBubble extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color:
-                  isMine ? Colors.white.withOpacity(0.12) : AppColors.surface2,
+                  isMine ? AppColors.surAccent.withValues(alpha: 0.12) : AppColors.surface2,
               borderRadius: BorderRadius.circular(14),
               border: Border(
                 left: BorderSide(
-                  color: isMine ? Colors.white38 : AppColors.accent,
+                  color: isMine ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent,
                   width: 3,
                 ),
               ),
@@ -1061,7 +1061,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: isMine
-                                    ? Colors.white70
+                                    ? AppColors.surAccent.withValues(alpha: 0.7)
                                     : AppColors.textPrimary,
                               ),
                             ),
@@ -1075,7 +1075,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color:
-                                isMine ? Colors.white : AppColors.textPrimary,
+                                isMine ? AppColors.surAccent : AppColors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1087,7 +1087,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               color:
-                                  isMine ? Colors.white54 : AppColors.textMuted,
+                                  isMine ? AppColors.surAccent.withValues(alpha: 0.54) : AppColors.textMuted,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1146,7 +1146,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                 msg.text!,
                 style: TextStyle(
                   fontSize: 14,
-                  color: isMine ? Colors.white : AppColors.textPrimary,
+                  color: isMine ? AppColors.surAccent : AppColors.textPrimary,
                   height: 1.35,
                 ),
               ),
@@ -1192,7 +1192,7 @@ class _Avatar extends StatelessWidget {
                 style: TextStyle(
                     fontSize: size * 0.4,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white))));
+                    color: AppColors.surMedia))));
     if (photoUrl != null && photoUrl!.isNotEmpty) {
       return ClipOval(
           child: CachedNetworkImage(
@@ -1298,12 +1298,12 @@ class _CochesBulle extends StatelessWidget {
     switch (status) {
       case MessageStatus.sending:
         return const Icon(Icons.schedule_rounded,
-            size: 12, color: Colors.white70);
+            size: 12, color: Color(0xB3FFFFFF));
       case MessageStatus.sent:
-        return const Icon(Icons.check_rounded, size: 14, color: Colors.white70);
+        return const Icon(Icons.check_rounded, size: 14, color: Color(0xB3FFFFFF));
       case MessageStatus.delivered:
         return const Icon(Icons.done_all_rounded,
-            size: 14, color: Colors.white70);
+            size: 14, color: Color(0xB3FFFFFF));
       case MessageStatus.read:
         // Lu : coches bleu clair, bien visibles sur le rose
         return const Icon(Icons.done_all_rounded,

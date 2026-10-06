@@ -52,7 +52,7 @@ class _InputBar extends StatelessWidget {
                                 ? Icons.close_rounded
                                 : Icons.add_rounded,
                             size: 20,
-                            color: Colors.white)),
+                            color: ctrl.showAttachMenu.value ? AppColors.surAccent : AppColors.textPrimary)),
                   )),
               const SizedBox(width: 8),
               Expanded(
@@ -106,7 +106,7 @@ class _InputBar extends StatelessWidget {
                             ? Icons.send_rounded
                             : (isRec ? Icons.stop_rounded : Icons.mic_rounded),
                         size: 18,
-                        color: Colors.white),
+                        color: AppColors.surAccent),
                   ),
                 );
               }),
@@ -344,11 +344,11 @@ class _AttachMenu extends StatelessWidget {
                     'Ajoute des photos, puis partage-le',
                     snackPosition: SnackPosition.TOP,
                     backgroundColor: AppColors.surface,
-                    colorText: Colors.white,
+                    colorText: AppColors.textPrimary,
                     mainButton: TextButton(
                         onPressed: () => Get.to(() => const EcranMonAlbum()),
-                        child: const Text('Ajouter',
-                            style: TextStyle(color: Colors.white))));
+                        child: Text('Ajouter',
+                            style: TextStyle(color: AppColors.textPrimary))));
               }
             }),
         _AttachItem(
@@ -465,7 +465,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: Color(0x3DFFFFFF),
                   borderRadius: BorderRadius.circular(2))),
           Expanded(
               child: ClipRRect(
@@ -476,7 +476,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                         aspectRatio: _videoCtrl!.value.aspectRatio,
                         child: VideoPlayer(_videoCtrl!))
                     : const Center(
-                        child: CircularProgressIndicator(color: Colors.white)))
+                        child: CircularProgressIndicator(color: AppColors.surMedia)))
                 : Image.file(File(widget.filePath), fit: BoxFit.contain),
           )),
           if (_modeEphemere && _showDureePicker)
@@ -611,14 +611,14 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                              strokeWidth: 2, color: AppColors.surAccent))
                       : Row(mainAxisSize: MainAxisSize.min, children: const [
                           Icon(Icons.send_rounded,
-                              color: Colors.white, size: 18),
+                              color: AppColors.surAccent, size: 18),
                           SizedBox(width: 6),
                           Text('Envoyer',
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.surAccent,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15)),
                         ]),

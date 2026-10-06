@@ -709,7 +709,7 @@ class _ItemAlbumState extends State<_ItemAlbum> {
               'Ajoute des photos depuis ton profil, puis partage-le',
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
-              colorText: Colors.white);
+              colorText: AppColors.textPrimary);
           return;
         }
       } else {
@@ -720,7 +720,7 @@ class _ItemAlbumState extends State<_ItemAlbum> {
       Get.snackbar('Album privé', 'Action impossible, réessaie',
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
-          colorText: Colors.white);
+          colorText: AppColors.textPrimary);
     } finally {
       if (mounted) setState(() => _enCours = false);
     }
@@ -981,7 +981,7 @@ class _ApercuBulles extends StatelessWidget {
             decoration:
                 BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
             child:
-                const Icon(Icons.check_rounded, size: 13, color: Colors.white),
+                const Icon(Icons.check_rounded, size: 13, color: AppColors.surAccent),
           ),
         ),
     ]);
@@ -1165,7 +1165,7 @@ class _BoutonBasState extends State<_BoutonBas> {
                     ),
                     child: Text(_nouveaux > 99 ? '99+' : '$_nouveaux',
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surAccent,
                             fontSize: 10,
                             fontWeight: FontWeight.w800)),
                   ),
