@@ -96,10 +96,10 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
     if (_profiles.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.bg,
-        body: const Center(
+        body: Center(
           child: Text(
             'Profil introuvable',
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppColors.textMuted),
           ),
         ),
       );
@@ -297,10 +297,10 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
                 title: Text('Bloquer ${user.name} ?',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontFamily: 'Syne',
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 17)),
                 content: Text(
                     '${user.name} ne pourra plus voir ton profil ni t\'envoyer des messages.',
@@ -320,7 +320,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                           borderRadius: BorderRadius.circular(12)),
                       child: const Text('Bloquer',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.surAccent,
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
@@ -429,12 +429,12 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
-          const Text('Pourquoi signaler ce profil ?',
+          Text('Pourquoi signaler ce profil ?',
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white)),
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 16),
           ...raisons.map((r) => GestureDetector(
                 onTap: () {
@@ -501,9 +501,9 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                 decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.5),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white24)),
+                    border: Border.all(color: Color(0x3DFFFFFF))),
                 child: const Icon(Icons.arrow_back_ios_rounded,
-                    size: 18, color: Colors.white),
+                    size: 18, color: AppColors.surMedia),
               ),
             ),
             actions: [
@@ -515,11 +515,11 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                     decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.5),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white24)),
+                        border: Border.all(color: Color(0x3DFFFFFF))),
                     child: const Padding(
                       padding: EdgeInsets.all(8),
                       child: Icon(Icons.more_horiz_rounded,
-                          size: 20, color: Colors.white),
+                          size: 20, color: AppColors.surMedia),
                     ),
                   ),
                 ),
@@ -573,8 +573,8 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                               margin: const EdgeInsets.symmetric(horizontal: 2),
                               decoration: BoxDecoration(
                                 color: i == _currentPhotoIndex
-                                    ? Colors.white
-                                    : Colors.white38,
+                                    ? AppColors.surMedia
+                                    : Color(0x61FFFFFF),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -617,7 +617,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                         color: AppColors.surface2,
                                         child: const Icon(
                                             Icons.play_circle_outline_rounded,
-                                            color: Colors.white54,
+                                            color: Color(0x8AFFFFFF),
                                             size: 20)),
                                   ),
                                 ),
@@ -636,8 +636,8 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                     color: _activeStory!.isSeen
-                                        ? Colors.white54
-                                        : Colors.white),
+                                        ? Color(0x8AFFFFFF)
+                                        : AppColors.surMedia),
                               ),
                             ),
                           ],
@@ -665,7 +665,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                       fontFamily: 'Syne',
                                       fontSize: 28,
                                       fontWeight: FontWeight.w800,
-                                      color: Colors.white,
+                                      color: AppColors.surMedia,
                                       letterSpacing: -0.5,
                                       shadows: [
                                         Shadow(
@@ -761,19 +761,19 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                       width: 18,
                                       height: 18,
                                       child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white))
+                                          strokeWidth: 2, color: AppColors.surAccent))
                                   : const Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
                                           Icon(Icons.chat_bubble_rounded,
-                                              size: 17, color: Colors.white),
+                                              size: 17, color: AppColors.surAccent),
                                           SizedBox(width: 8),
                                           Text('Envoyer un message',
                                               style: TextStyle(
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.w700,
-                                                  color: Colors.white)),
+                                                  color: AppColors.surAccent)),
                                         ]),
                             ),
                           ),
@@ -789,7 +789,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                   ? Icons.star_rounded
                                   : Icons.star_border_rounded,
                               couleur:
-                                  fav ? const Color(0xFFFFC233) : Colors.white,
+                                  fav ? const Color(0xFFFFC233) : AppColors.textPrimary,
                               onTap: () async {
                                 final r = await home.basculerFavori(user.id);
                                 if (r == null) return;
@@ -931,7 +931,7 @@ class _FullScreenPhoto extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
         leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.surMedia),
             onPressed: () => Get.back()),
       ),
       body: InteractiveViewer(
@@ -940,9 +940,9 @@ class _FullScreenPhoto extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.contain,
             placeholder: (_, __) =>
-                const CircularProgressIndicator(color: Colors.white),
+                const CircularProgressIndicator(color: AppColors.surMedia),
             errorWidget: (_, __, ___) => const Icon(Icons.broken_image_rounded,
-                color: Colors.white38, size: 48),
+                color: Color(0x61FFFFFF), size: 48),
           ),
         ),
       ),
@@ -1112,7 +1112,7 @@ class _InfoEntete extends StatelessWidget {
             style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: Colors.white)),
+                color: AppColors.surMedia)),
       ]),
     );
   }
@@ -1173,9 +1173,9 @@ class _ActionBtn extends StatelessWidget {
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: AppColors.surface2,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white24)),
+            border: Border.all(color: AppColors.border)),
         child: Center(child: Icon(icone, color: couleur, size: 24)),
       ),
     );
@@ -1214,7 +1214,7 @@ class _GradientBg extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 100,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white24))),
+                  color: Color(0x3DFFFFFF)))),
     );
   }
 }
