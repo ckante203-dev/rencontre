@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/evenements/proposer_evenement.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/shared/widgets/avatar_rayonnant.dart';
 
@@ -160,13 +161,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       title: 'Mode fantôme sur la carte',
                       subtitle: 'Vois les autres sans apparaître toi-même',
                     ),
-                    _BenefitTile(
-                      icon: Icons.event_rounded,
-                      iconColor: AppColors.accent2,
-                      title: 'Propose tes événements',
-                      subtitle:
-                          'Soirées, sorties, rencontres : crée ton événement',
-                    ),
+                    // Seulement si les propositions sont ouvertes (sinon on
+                    // promettrait un avantage qui n'existe pas)
+                    if (propositionsOuvertes)
+                      _BenefitTile(
+                        icon: Icons.event_rounded,
+                        iconColor: AppColors.accent2,
+                        title: 'Propose tes événements',
+                        subtitle:
+                            'Soirées, sorties, rencontres : crée ton événement',
+                      ),
 
                     const SizedBox(height: 20),
 
