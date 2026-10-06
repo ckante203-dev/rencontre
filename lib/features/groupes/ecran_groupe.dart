@@ -592,7 +592,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                 Text(m.contenu ?? '',
                     style: TextStyle(
                         fontSize: 15,
-                        color: moi ? Colors.white : AppColors.textPrimary)),
+                        color: moi ? AppColors.surAccent : AppColors.textPrimary)),
               ]),
         );
     }
@@ -660,8 +660,8 @@ class _EcranGroupeState extends State<EcranGroupe> {
             (m?.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
         child: (m?.photoUrl ?? '').isEmpty
             ? Text((m?.nom ?? '?').isEmpty ? '?' : m!.nom[0].toUpperCase(),
-                style: const TextStyle(
-                    color: Colors.white,
+                style: TextStyle(
+                    color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700))
             : null,
@@ -670,7 +670,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
   void _voirPhoto(String url) => Get.to(() => Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-            backgroundColor: Colors.black, foregroundColor: Colors.white),
+            backgroundColor: Colors.black, foregroundColor: AppColors.surMedia),
         body: Center(
           child: InteractiveViewer(
             maxScale: 5,
@@ -732,9 +732,9 @@ class _EcranGroupeState extends State<EcranGroupe> {
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2, color: AppColors.surAccent))
                     : const Icon(Icons.send_rounded,
-                        color: Colors.white, size: 20),
+                        color: AppColors.surAccent, size: 20),
               ),
             ),
           ),
@@ -767,7 +767,7 @@ class AvatarGroupe extends StatelessWidget {
               style: TextStyle(
                   fontSize: rayon * 0.8,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white))
+                  color: AppColors.textPrimary))
           : null,
     );
   }

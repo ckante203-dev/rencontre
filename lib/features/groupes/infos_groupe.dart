@@ -279,7 +279,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
             onTap: _ajouter,
             leading: CircleAvatar(
               backgroundColor: AppColors.accent,
-              child: const Icon(Icons.person_add_rounded, color: Colors.white),
+              child: const Icon(Icons.person_add_rounded, color: AppColors.surAccent),
             ),
             title: Text('Ajouter des membres',
                 style: TextStyle(
@@ -297,7 +297,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
                   (m.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
               child: (m.photoUrl ?? '').isEmpty
                   ? Text(m.nom.isEmpty ? '?' : m.nom[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.white))
+                      style: TextStyle(color: AppColors.textPrimary))
                   : null,
             ),
             title: Text(m.id == _moi ? 'Toi' : m.nom,

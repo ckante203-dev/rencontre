@@ -157,14 +157,14 @@ class _ChoixMembresState extends State<ChoixMembres> {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check_rounded, color: Colors.white),
+                          strokeWidth: 2, color: AppColors.surAccent))
+                  : const Icon(Icons.check_rounded, color: AppColors.surAccent),
               label: Text(
                   widget.nouveauGroupe
                       ? 'Créer (${_choisis.length + 1})'
                       : 'Ajouter (${_choisis.length})',
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700)),
+                      color: AppColors.surAccent, fontWeight: FontWeight.w700)),
             )
           : null,
       body: Column(children: [
@@ -213,7 +213,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
                               radius: 8,
                               backgroundColor: Colors.black87,
                               child: Icon(Icons.close_rounded,
-                                  size: 11, color: Colors.white),
+                                  size: 11, color: AppColors.surMedia),
                             ),
                           ),
                         ]),
@@ -291,8 +291,8 @@ class _ChoixMembresState extends State<ChoixMembres> {
         onBackgroundImageError: (c.photo ?? '').isNotEmpty ? (_, __) {} : null,
         child: (c.photo ?? '').isEmpty
             ? Text(c.nom.isEmpty ? '?' : c.nom[0].toUpperCase(),
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700))
+                style: TextStyle(
+                    color: AppColors.textPrimary, fontWeight: FontWeight.w700))
             : null,
       );
 
@@ -319,7 +319,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
               color: choisi ? AppColors.accent : AppColors.border, width: 2),
         ),
         child: choisi
-            ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+            ? const Icon(Icons.check_rounded, size: 16, color: AppColors.surAccent)
             : null,
       ),
     );
