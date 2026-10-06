@@ -58,6 +58,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - [x] Puis `20261005000045_notifications_lues.sql` (cloche : tout est « vu » à l'ouverture, historique 30 jours).
 - [x] Puis `20261005000046_notifications_24h.sql` (notification supprimée 24 h après avoir été vue, tâche pg_cron horaire).
 - [x] Puis `20261006000047_positions_arrondies.sql` (sécurité : positions arrondies à ~500 m en base ; la requête de vérification en fin de script doit donner 0).
+- [ ] Puis `20261006000048_panneau_admin.sql` (panneau admin : boosts, albums signalés, purge & stockage, chiffres pseudos/amis ; la vérification en fin de script doit donner 6 lignes). Rien à faire côté app.
 
 ### À faire — APRÈS la mise en production de la nouvelle version (quand la 1.0.11 n'existe plus nulle part)
 - **Contenu de l'appli → Autorisations photos et vidéos** : déclarer que l'app n'utilise plus `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (ne pas le faire avant : la 1.0.11 les utilise encore).
@@ -78,7 +79,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - Événements refaits dans le style de l'onglet Stories (proposé).
 
 ### Panneau admin web — nouvelles pages (maquettes le 06/10, à terminer)
-- Maquettes : `snapmeet-admin/maquettes.html` (données fictives). À brancher sur Supabase dans `index.html` / `app.js` : Dashboard (nouveaux indicateurs), Boosts (suivi + offrir), Dispo maintenant (statuts + règles du texte libre), Pseudos & amis (signalés, réservés), Groupes, Albums privés (photos signalées), Stories (suppression en masse, mise en avant), Purge & stockage, Versions & thèmes (version minimale, thème Blanc à distance). Premium offert & Zamu Stars : plus tard.
+- Maquettes : `snapmeet-admin/maquettes.html` (données fictives). **Branché le 06/10** (`snapmeet-admin/nouveautes.js`) : Boosts, Dispo maintenant, Pseudos & amis, Groupes, Albums privés, Stories texte en masse, Purge & stockage, Versions & thèmes, indicateurs du Dashboard. Reste de la maquette, plus tard : règles du texte « Dispo » côté serveur (mots interdits), pseudos réservés, thème Blanc à distance, mise en avant dans Découvrir. Pages prévues au départ : à brancher sur Supabase dans `index.html` / `app.js` : Dashboard (nouveaux indicateurs), Boosts (suivi + offrir), Dispo maintenant (statuts + règles du texte libre), Pseudos & amis (signalés, réservés), Groupes, Albums privés (photos signalées), Stories (suppression en masse, mise en avant), Purge & stockage, Versions & thèmes (version minimale, thème Blanc à distance). Premium offert & Zamu Stars : plus tard.
 - Certaines pages demandent des colonnes / tables SQL (signalements de pseudos, groupes, albums ; historique de la purge ; réglages version minimale / mots interdits) — à préparer en même temps.
 
 ### Plus tard
