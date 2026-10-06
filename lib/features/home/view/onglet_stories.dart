@@ -316,7 +316,7 @@ class _RondStory extends StatelessWidget {
                   height: 26,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.gradientPink,
+                    gradient: AppColors.anneauStory, // « + » aux couleurs Zamu
                     border: Border.all(color: AppColors.bg, width: 2),
                   ),
                   child: const Icon(Icons.add_rounded,

@@ -129,7 +129,7 @@ class _MyStoryItem extends StatelessWidget {
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            gradient: AppColors.gradientPink,
+                            gradient: AppColors.anneauStory,
                             shape: BoxShape.circle,
                             border: Border.all(color: AppColors.bg, width: 2.5),
                             boxShadow: [
