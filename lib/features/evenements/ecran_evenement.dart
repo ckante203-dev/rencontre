@@ -113,7 +113,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
           expandedHeight: 240,
           pinned: true,
           backgroundColor: AppColors.bg,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.surMedia,
           actions: [
             IconButton(
               tooltip: 'Partager',
@@ -336,7 +336,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                         color: actif
                             ? AppColors.online
                             : (principal
-                                ? Colors.white
+                                ? AppColors.surAccent
                                 : AppColors.textPrimary))),
               ),
             ),
@@ -375,7 +375,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2, color: AppColors.surAccent))
                   : Text(
                       ev.jeSuisSurPlace
                           ? '📍 Tu es sur place'
@@ -385,7 +385,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                           fontWeight: FontWeight.w800,
                           color: ev.jeSuisSurPlace
                               ? AppColors.online
-                              : Colors.white)),
+                              : AppColors.surAccent)),
             ),
           ),
         ),
@@ -518,8 +518,8 @@ class _Participant extends StatelessWidget {
                   (p.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
               child: (p.photoUrl ?? '').isEmpty
                   ? Text(p.nom.isEmpty ? '?' : p.nom[0].toUpperCase(),
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: AppColors.textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.w700))
                   : null,
@@ -587,7 +587,7 @@ class _BulleStory extends StatelessWidget {
                 : null,
             onBackgroundImageError: (image ?? '').isNotEmpty ? (_, __) {} : null,
             child: (image ?? '').isEmpty
-                ? const Icon(Icons.auto_stories_rounded, color: Colors.white)
+                ? Icon(Icons.auto_stories_rounded, color: AppColors.textPrimary)
                 : null,
           ),
         ),

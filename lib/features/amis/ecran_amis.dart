@@ -197,8 +197,8 @@ class _EcranAmisState extends State<EcranAmis> {
               (a.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
           child: (a.photoUrl ?? '').isEmpty
               ? Text(a.nom.isEmpty ? '?' : a.nom[0].toUpperCase(),
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700))
+                  style: TextStyle(
+                      color: AppColors.textPrimary, fontWeight: FontWeight.w700))
               : null,
         ),
         if (a.enLigne)
@@ -340,13 +340,13 @@ class _BoutonAmiState extends State<BoutonAmi> {
             height: 16,
             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
         : Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: plein ? Colors.white : AppColors.textPrimary),
+            Icon(icon, size: 16, color: plein ? AppColors.surAccent : AppColors.textPrimary),
             const SizedBox(width: 6),
             Text(label,
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: plein ? Colors.white : AppColors.textPrimary)),
+                    color: plein ? AppColors.surAccent : AppColors.textPrimary)),
           ]);
     final bouton = GestureDetector(
       onTap: _envoi ? null : onTap,

@@ -64,7 +64,7 @@ class ProfileCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: AppColors.surMedia,
                         height: 1.2,
                       ),
                       maxLines: 1,
@@ -75,7 +75,7 @@ class ProfileCard extends StatelessWidget {
                         user.distanceLabel,
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.white.withOpacity(0.65),
+                          color: AppColors.surMedia.withValues(alpha: 0.65),
                         ),
                       ),
                   ],
@@ -119,7 +119,7 @@ class ProfileCard extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.play_circle_filled_rounded,
-                      color: Colors.white,
+                      color: AppColors.surMedia,
                       size: 12,
                     ),
                   ),
@@ -166,7 +166,7 @@ class ProfileCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 8,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: AppColors.surAccent,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -214,7 +214,7 @@ class ProfileCard extends StatelessWidget {
           style: const TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: AppColors.surMedia,
           ),
         ),
       ),

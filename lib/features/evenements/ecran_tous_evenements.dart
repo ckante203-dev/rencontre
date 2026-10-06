@@ -157,7 +157,7 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: actif ? Colors.white : AppColors.textPrimary)),
+                    color: actif ? AppColors.surAccent : AppColors.textPrimary)),
           ),
         ),
       );

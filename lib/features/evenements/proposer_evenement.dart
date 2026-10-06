@@ -57,7 +57,7 @@ void ouvrirProposition() {
               child: const Center(
                 child: Text('Découvrir Premium',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surAccent,
                         fontSize: 15,
                         fontWeight: FontWeight.w800)),
               ),
@@ -222,7 +222,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
                 backgroundColor: AppColors.surface,
                 labelStyle: TextStyle(
                     color: _categorie == c.key
-                        ? Colors.white
+                        ? AppColors.surAccent
                         : AppColors.textPrimary),
               ),
           ]),
@@ -281,10 +281,10 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2, color: AppColors.surAccent))
                     : const Text('Envoyer la proposition',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surAccent,
                             fontSize: 15,
                             fontWeight: FontWeight.w800)),
               ),
