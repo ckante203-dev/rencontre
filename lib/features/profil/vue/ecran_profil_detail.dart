@@ -1019,10 +1019,6 @@ class _CorpsProfil extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (user.lookingFor != null && user.lookingFor!.isNotEmpty)
-                  _PhysiqueBadge(
-                      icon: '💞',
-                      label: 'Cherche : ${_recherche(user.lookingFor!)}'),
                 if (user.taille != null)
                   _PhysiqueBadge(icon: '📏', label: '${user.taille} cm'),
                 if (user.poids != null)
@@ -1078,19 +1074,13 @@ class _CorpsProfil extends StatelessWidget {
     );
   }
 
+  // « Ce que je cherche » (hommes / femmes) n'est jamais affiché : il
+  // révèle l'orientation.
   static bool _aDesInfos(UserModel u) =>
-      (u.lookingFor != null && u.lookingFor!.isNotEmpty) ||
       u.taille != null ||
       u.poids != null ||
       u.morphologie != null ||
       u.lieuRencontre != null;
-
-  static String _recherche(String v) => switch (v) {
-        'hommes' => 'des hommes',
-        'femmes' => 'des femmes',
-        'tout le monde' => 'tout le monde',
-        _ => v,
-      };
 }
 
 /// Petite étiquette de l'en-tête (« ● En ligne », « 📍 3 km »…)
