@@ -7,6 +7,9 @@ import 'package:rencontre/features/evenements/proposer_evenement.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/shared/widgets/avatar_rayonnant.dart';
 
+/// Fond blanc : chaque avantage a sa couleur douce ; fond sombre : accent
+Color _icone(Color clair, Color sombre) => AppColors.clair ? clair : sombre;
+
 // Échelle de texte unique de la page (même police, mêmes graisses)
 class _T {
   static TextStyle titre() => TextStyle(
@@ -122,28 +125,28 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     // ─── Avantages ───────────────────────────────
                     _BenefitTile(
                       icon: Icons.remove_red_eye_rounded,
-                      iconColor: AppColors.accent,
+                      iconColor: _icone(const Color(0xFF1D8FE1), AppColors.accent),
                       title: 'Vois qui t\'a vu',
                       subtitle:
                           'Découvre l\'identité de toutes les personnes qui ont consulté ton profil',
                     ),
                     _BenefitTile(
                       icon: Icons.favorite_rounded,
-                      iconColor: AppColors.accent,
+                      iconColor: _icone(const Color(0xFFE8508E), AppColors.accent),
                       title: 'Vois qui t\'a liké',
                       subtitle:
                           'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi',
                     ),
                     _BenefitTile(
                       icon: Icons.people_alt_rounded,
-                      iconColor: AppColors.accent2,
+                      iconColor: _icone(const Color(0xFF22A55B), AppColors.accent2),
                       title: 'Beaucoup plus de profils',
                       subtitle:
                           'Accède à un nombre de profils bien plus large que la version gratuite',
                     ),
                     _BenefitTile(
                       icon: Icons.location_city_rounded,
-                      iconColor: AppColors.accent2,
+                      iconColor: _icone(const Color(0xFF8B5CF6), AppColors.accent2),
                       title: 'Explore une autre ville',
                       subtitle:
                           'Découvre les profils d\'Abidjan, Bouaké ou ailleurs avant d\'y aller',
@@ -157,7 +160,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     ),
                     _BenefitTile(
                       icon: Icons.visibility_off_rounded,
-                      iconColor: AppColors.accent,
+                      iconColor: _icone(const Color(0xFF64748B), AppColors.accent),
                       title: 'Mode fantôme sur la carte',
                       subtitle: 'Vois les autres sans apparaître toi-même',
                     ),
@@ -166,7 +169,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     if (propositionsOuvertes)
                       _BenefitTile(
                         icon: Icons.event_rounded,
-                        iconColor: AppColors.accent2,
+                        iconColor: _icone(const Color(0xFF0EA5A4), AppColors.accent2),
                         title: 'Propose tes événements',
                         subtitle:
                             'Soirées, sorties, rencontres : crée ton événement',
