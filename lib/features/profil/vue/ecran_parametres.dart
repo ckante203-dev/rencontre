@@ -122,7 +122,7 @@ class EcranParametres extends StatelessWidget {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: isSelected
-                                            ? Colors.white
+                                            ? AppColors.surAccent
                                             : AppColors.textMuted)),
                               ),
                             );
@@ -182,7 +182,7 @@ class EcranParametres extends StatelessWidget {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: isSelected
-                                            ? Colors.white
+                                            ? AppColors.surAccent
                                             : AppColors.textMuted)),
                               ),
                             );
@@ -427,7 +427,7 @@ class EcranParametres extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.white)),
+                                color: AppColors.surAccent)),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -493,16 +493,16 @@ class EcranParametres extends StatelessWidget {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Modifier l\'email',
+      title: Text('Modifier l\'email',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 17)),
       content: TextField(
         controller: emailCtrl,
         keyboardType: TextInputType.emailAddress,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: _passInputDeco('Nouvel email', false, () {}),
       ),
       actions: [
@@ -524,7 +524,7 @@ class EcranParametres extends StatelessWidget {
             ),
             child: const Text('Modifier',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -540,17 +540,17 @@ class EcranParametres extends StatelessWidget {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Modifier le mot de passe',
+      title: Text('Modifier le mot de passe',
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 16)),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         Obx(() => TextField(
               controller: newPassCtrl,
               obscureText: !showNew.value,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: _passInputDeco('Nouveau mot de passe', showNew.value,
                   () => showNew.value = !showNew.value),
             )),
@@ -558,7 +558,7 @@ class EcranParametres extends StatelessWidget {
         Obx(() => TextField(
               controller: confirmCtrl,
               obscureText: !showConfirm.value,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: _passInputDeco('Confirmer', showConfirm.value,
                   () => showConfirm.value = !showConfirm.value),
             )),
@@ -574,7 +574,7 @@ class EcranParametres extends StatelessWidget {
               Get.snackbar('Erreur', 'Les mots de passe ne correspondent pas',
                   snackPosition: SnackPosition.TOP,
                   backgroundColor: AppColors.surface,
-                  colorText: Colors.white);
+                  colorText: AppColors.textPrimary);
               return;
             }
             Get.back();
@@ -589,7 +589,7 @@ class EcranParametres extends StatelessWidget {
             ),
             child: const Text('Modifier',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -679,7 +679,7 @@ class _SelecteurTheme extends StatelessWidget {
                             shape: BoxShape.circle, color: p.accent),
                         child: selected == p.id
                             ? const Icon(Icons.check_rounded,
-                                color: Colors.white, size: 15)
+                                color: AppColors.surAccent, size: 15)
                             : null,
                       ),
                     ),

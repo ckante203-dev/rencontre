@@ -304,12 +304,12 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
+                                strokeWidth: 2, color: AppColors.surAccent))
                         : const Text('Publier mon statut',
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white)),
+                                color: AppColors.surAccent)),
                   ),
                 ),
               ),

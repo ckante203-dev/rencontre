@@ -165,8 +165,8 @@ class _GrandePhotoState extends State<_GrandePhoto> {
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         decoration: BoxDecoration(
                           color: i == _page
-                              ? Colors.white
-                              : Colors.white.withOpacity(0.35),
+                              ? AppColors.surMedia
+                              : AppColors.surMedia.withValues(alpha: 0.35),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -186,7 +186,7 @@ class _GrandePhotoState extends State<_GrandePhoto> {
                       child: const Padding(
                         padding: EdgeInsets.all(10),
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2, color: AppColors.surMedia),
                       ),
                     )
                   : _IconBtn(
@@ -212,8 +212,8 @@ class _PlaceholderAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(
-              fontSize: 80, fontWeight: FontWeight.w900, color: Colors.white24),
+          style: TextStyle(
+              fontSize: 80, fontWeight: FontWeight.w900, color: AppColors.textMuted.withValues(alpha: 0.5)),
         ),
       ),
     );
@@ -234,9 +234,9 @@ class _IconBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black54,
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+          border: Border.all(color: AppColors.surMedia.withValues(alpha: 0.15)),
         ),
-        child: Icon(icon, size: 20, color: Colors.white),
+        child: Icon(icon, size: 20, color: AppColors.surMedia),
       ),
     );
   }
@@ -470,7 +470,7 @@ class _CartePremium extends StatelessWidget {
             ),
             child: Row(children: [
               Icon(Icons.workspace_premium_rounded,
-                  color: premium ? AppColors.yellow : Colors.white, size: 28),
+                  color: premium ? AppColors.yellow : AppColors.surAccent, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -483,7 +483,7 @@ class _CartePremium extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: premium
                                 ? AppColors.textPrimary
-                                : Colors.white)),
+                                : AppColors.surAccent)),
                     const SizedBox(height: 2),
                     Text(
                         premium
@@ -493,12 +493,12 @@ class _CartePremium extends StatelessWidget {
                             fontSize: 12,
                             color: premium
                                 ? AppColors.textMuted
-                                : Colors.white.withOpacity(0.9))),
+                                : AppColors.surAccent.withValues(alpha: 0.9))),
                   ],
                 ),
               ),
               Icon(Icons.chevron_right_rounded,
-                  color: premium ? AppColors.textMuted : Colors.white),
+                  color: premium ? AppColors.textMuted : AppColors.surAccent),
             ]),
           ),
         ),
@@ -554,7 +554,7 @@ class _CartePseudo extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white)),
+                            color: AppColors.surAccent)),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -612,7 +612,7 @@ class _CartePseudo extends StatelessWidget {
                         Get.snackbar('Copié', '@$pseudo',
                             snackPosition: SnackPosition.TOP,
                             backgroundColor: AppColors.surface,
-                            colorText: Colors.white,
+                            colorText: AppColors.textPrimary,
                             duration: const Duration(seconds: 2));
                       },
                     ),
@@ -674,13 +674,13 @@ class _BoutonCarte extends StatelessWidget {
           border: degrade ? null : Border.all(color: AppColors.border),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 16, color: Colors.white),
+          Icon(icon, size: 16, color: degrade ? AppColors.surAccent : AppColors.textPrimary),
           const SizedBox(width: 6),
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white)),
+                  color: degrade ? AppColors.surAccent : AppColors.textPrimary)),
         ]),
       ),
     );
@@ -846,12 +846,12 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                              strokeWidth: 2, color: AppColors.surAccent))
                       : const Text('Enregistrer',
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white)),
+                              color: AppColors.surAccent)),
                 ),
               ),
             ),
@@ -929,7 +929,7 @@ class _CarteAmis extends StatelessWidget {
                   ),
                   child: Text('$demandes',
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.surAccent,
                           fontSize: 12,
                           fontWeight: FontWeight.w800)),
                 ),
@@ -969,7 +969,7 @@ class _CarteAlbum extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child:
-                  const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
+                  const Icon(Icons.lock_rounded, color: AppColors.surAccent, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(

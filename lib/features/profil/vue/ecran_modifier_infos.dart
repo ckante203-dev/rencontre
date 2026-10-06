@@ -270,7 +270,7 @@ class EcranModifierInfos extends StatelessWidget {
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: isSelected
-                                    ? Colors.white
+                                    ? AppColors.surAccent
                                     : AppColors.textMuted)),
                       ),
                     );
@@ -332,7 +332,7 @@ class EcranModifierInfos extends StatelessWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: isSelected
-                                      ? Colors.white
+                                      ? AppColors.surAccent
                                       : AppColors.textMuted)),
                         ]),
                       ),
@@ -368,12 +368,12 @@ class EcranModifierInfos extends StatelessWidget {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                                  strokeWidth: 2, color: AppColors.surAccent))
                           : const Text('Sauvegarder',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
+                                  color: AppColors.surAccent)),
                     ),
                   ),
                 )),
@@ -456,7 +456,7 @@ class _ChipRow extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : AppColors.textMuted)),
+                    color: isSelected ? AppColors.surAccent : AppColors.textMuted)),
           ),
         );
       }).toList(),
@@ -533,7 +533,7 @@ class _PhotoSlot extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ),
             ),
           Positioned(
@@ -547,7 +547,7 @@ class _PhotoSlot extends StatelessWidget {
                 decoration: const BoxDecoration(
                     color: Colors.black54, shape: BoxShape.circle),
                 child: const Icon(Icons.close_rounded,
-                    size: 16, color: Colors.white),
+                    size: 16, color: AppColors.surMedia),
               ),
             ),
           ),
