@@ -335,10 +335,15 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   // OUVRIR/consulter. Premium OU essai gratuit actif → illimité (dans
   // la limite chargée) ; sinon, limite gratuite. Au-delà, le tap doit
   // proposer le passage Premium au lieu de naviguer vers le profil.
+  /// Profils visibles sans Premium : 30 sur le Play Store, 60 dans l'APK
+  /// partagée aux amis (flutter build apk --dart-define=VERSION_AMIS=true).
+  static const limiteGratuite =
+      bool.fromEnvironment('VERSION_AMIS') ? 60 : 30;
+
   int get unlockedProfileCount {
     final isPremium = ControleurProfil.estPremiumMaintenant();
     if (isPremium || hasActiveTrial) return 600;
-    return 30;
+    return limiteGratuite;
   }
 
   // ✅ Toutes les stories actives que je peux voir (RLS filtre déjà les "amis" non autorisées), hors les miennes

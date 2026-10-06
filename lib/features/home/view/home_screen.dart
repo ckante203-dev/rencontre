@@ -1393,7 +1393,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                     fontSize: 17,
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            Text('Passe Premium pour voir jusqu\'à 600 profils au lieu de 30.',
+            Text('Passe Premium pour voir jusqu\'à 600 profils au lieu de ${HomeController.limiteGratuite}.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
 
