@@ -28,7 +28,7 @@ void _ouvrirPaywall() {
       'L\'abonnement premium arrive très bientôt — reviens vite !',
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
-      colorText: Colors.white,
+      colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 2),
     );
     return;
@@ -103,7 +103,7 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
             'Ce profil n\'existe plus ou n\'est pas disponible',
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
-            colorText: Colors.white);
+            colorText: AppColors.textPrimary);
         return;
       }
       Get.toNamed('/profile/view',
@@ -159,13 +159,13 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      const Text(
+                      Text(
                         'Likes',
                         style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -294,7 +294,7 @@ class _Onglet extends StatelessWidget {
               color: actif ? Colors.transparent : AppColors.border),
         ),
         child: Row(children: [
-          Icon(icon, size: 18, color: Colors.white),
+          Icon(icon, size: 18, color: actif ? AppColors.surAccent : AppColors.textPrimary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -303,16 +303,16 @@ class _Onglet extends StatelessWidget {
                 Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white)),
+                        color: actif ? AppColors.surAccent : AppColors.textPrimary)),
                 Text(count > 99 ? '99+' : '$count',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white)),
+                        color: actif ? AppColors.surAccent : AppColors.textPrimary)),
               ],
             ),
           ),
@@ -320,14 +320,14 @@ class _Onglet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: actif ? Colors.white : AppColors.accent,
+                color: actif ? AppColors.surAccent : AppColors.accent,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text('+$nouveaux',
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: actif ? AppColors.accent : Colors.white)),
+                      color: actif ? AppColors.accent : AppColors.surAccent)),
             ),
         ]),
       ),
@@ -358,7 +358,7 @@ class _BanniereDeblocage extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(children: [
-          const Icon(Icons.lock_open_rounded, color: Colors.white, size: 28),
+          const Icon(Icons.lock_open_rounded, color: AppColors.surAccent, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -369,27 +369,27 @@ class _BanniereDeblocage extends StatelessWidget {
                         fontFamily: 'Syne',
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
                 const SizedBox(height: 2),
                 Text(
                     vues
                         ? 'Passe en Premium pour voir qui c\'est'
                         : 'Passe en Premium et matche en un geste',
-                    style: const TextStyle(fontSize: 12, color: Colors.white)),
+                    style: const TextStyle(fontSize: 12, color: AppColors.surAccent)),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surAccent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text('Voir',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.bg)),
+                    color: const Color(0xFF111111))),
           ),
         ]),
       ),
@@ -430,7 +430,7 @@ class _CartePersonne extends StatelessWidget {
           ),
         ),
         child: Icon(Icons.person_rounded,
-            size: 64, color: Colors.white.withOpacity(0.5)),
+            size: 64, color: AppColors.surMedia.withValues(alpha: 0.5)),
       );
 
   @override
@@ -485,12 +485,12 @@ class _CartePersonne extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ),
             ),
           if (!premium)
             const Center(
-                child: Icon(Icons.lock_rounded, color: Colors.white, size: 30)),
+                child: Icon(Icons.lock_rounded, color: AppColors.surMedia, size: 30)),
           Positioned(
             left: 10,
             right: 10,
@@ -516,14 +516,14 @@ class _CartePersonne extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white),
+                            color: AppColors.surMedia),
                       ),
                     ),
                   ]),
                 if (p.date != null)
                   Text(_ilYa(p.date),
                       style:
-                          const TextStyle(fontSize: 11, color: Colors.white)),
+                          const TextStyle(fontSize: 11, color: AppColors.surMedia)),
               ],
             ),
           ),
@@ -583,9 +583,9 @@ class _BoutonRond extends StatelessWidget {
           color: fond,
           gradient: degrade ? AppColors.gradientPink : null,
           borderRadius: BorderRadius.circular(17),
-          border: degrade ? null : Border.all(color: Colors.white38),
+          border: degrade ? null : Border.all(color: AppColors.surMedia.withValues(alpha: 0.38)),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: AppColors.surMedia, size: 20),
       ),
     );
   }
@@ -615,8 +615,8 @@ class _Vide extends StatelessWidget {
                 ? 'Personne n\'a encore vu ton profil'
                 : 'Personne ne t\'a encore liké',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+            style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 6),
           Text(
@@ -637,13 +637,13 @@ class _Vide extends StatelessWidget {
                     colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
               ),
               child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+                Icon(Icons.bolt_rounded, color: AppColors.surAccent, size: 20),
                 SizedBox(width: 6),
                 Text('Booster mon profil',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ]),
             ),
           ),
