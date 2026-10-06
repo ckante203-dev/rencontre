@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:rencontre/core/services/avis_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -161,6 +162,7 @@ void main() async {
 }
 
 Future<void> _initEnArrierePlan() async {
+  AvisService.noterLancement();
   try {
     await NotificationService.initialize();
     NotificationService.listenToNotifications();

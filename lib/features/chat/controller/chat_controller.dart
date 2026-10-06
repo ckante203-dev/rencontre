@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:rencontre/core/services/avis_service.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1453,6 +1454,7 @@ class ConversationController extends GetxController
         type: 'text',
         replyToId: reply?.id,
       );
+      AvisService.messageEnvoye();
     } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
       // ✅ Le texte n'est plus perdu : il revient dans le champ

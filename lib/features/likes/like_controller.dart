@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' show Color;
+import 'package:rencontre/core/services/avis_service.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -134,6 +135,6 @@ class LikeController extends GetxController {
       MatchDialog(matchedUser: matchedUser),
       barrierDismissible: true,
       barrierColor: const Color(0xD9000000),
-    );
+    ).then((_) => AvisService.momentPositif()); // après le match : bon moment pour une note
   }
 }
