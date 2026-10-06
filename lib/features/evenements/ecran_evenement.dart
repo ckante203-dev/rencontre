@@ -114,11 +114,27 @@ class _EcranEvenementState extends State<EcranEvenement> {
           pinned: true,
           backgroundColor: AppColors.bg,
           foregroundColor: AppColors.surMedia,
+          // Pastilles sombres : lisibles sur la photo comme sur la barre
+          // (blanche en fond blanc une fois l'affiche repliée)
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: IconButton(
+              onPressed: Get.back,
+              style: IconButton.styleFrom(backgroundColor: Colors.black38),
+              icon: const Icon(Icons.arrow_back_rounded,
+                  color: AppColors.surMedia, size: 20),
+            ),
+          ),
           actions: [
-            IconButton(
-              tooltip: 'Partager',
-              onPressed: _partager,
-              icon: const Icon(Icons.share_rounded),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                tooltip: 'Partager',
+                onPressed: _partager,
+                style: IconButton.styleFrom(backgroundColor: Colors.black38),
+                icon: const Icon(Icons.share_rounded,
+                    color: AppColors.surMedia, size: 20),
+              ),
             ),
           ],
           flexibleSpace: FlexibleSpaceBar(
