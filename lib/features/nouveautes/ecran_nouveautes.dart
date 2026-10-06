@@ -42,9 +42,9 @@ class _Page {
 
 const _pages = [
   _Page('📸', 'Des stories façon Snapchat',
-      'Filme, ajoute des stickers et du texte, réponds en un geste.', [
-    'Caméra Zamu : photo, vidéo, selfie',
-    'Stickers, emojis, GIF et textes',
+      'Un onglet rien que pour elles : tes proches en haut, le reste à découvrir.', [
+    'Caméra Zamu : stickers, emojis, GIF et textes',
+    'Glisse vers le haut pour répondre, vers le bas pour fermer',
     'Réponds avec ❤️ ou 👍 en un appui',
   ]),
   _Page('📅', 'Les événements',
