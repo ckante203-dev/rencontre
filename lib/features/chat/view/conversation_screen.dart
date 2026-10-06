@@ -356,12 +356,6 @@ class _ConvMenu extends StatelessWidget {
                   ),
                 )),
             _ItemAlbum(ctrl: ctrl),
-            const _MenuItem(
-              icon: Icons.videocam_outlined,
-              label: 'Appel vidéo',
-              desactive: true,
-              trailing: _BadgeBientot(),
-            ),
             Obx(() => _MenuItem(
                   icon: Icons.wallpaper_rounded,
                   label: 'Fond d\'écran',
@@ -745,24 +739,6 @@ class _ItemAlbumState extends State<_ItemAlbum> {
               onChanged: (_) => _basculer(),
               activeColor: AppColors.accent,
             ),
-    );
-  }
-}
-
-class _BadgeBientot extends StatelessWidget {
-  const _BadgeBientot();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-          color: AppColors.accent.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20)),
-      child: Text('Bientôt',
-          style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary)),
     );
   }
 }

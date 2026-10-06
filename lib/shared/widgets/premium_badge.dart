@@ -1,29 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:rencontre/core/theme/app_theme.dart';
 
-/// ✅ Badge "certifié" affiché à côté du nom des utilisateurs premium
+/// Badge Premium (médaille dorée) affiché à côté du nom des abonnés.
+/// Pas de coche : une coche laisserait croire à un profil vérifié.
 class PremiumBadge extends StatelessWidget {
   final double size;
   const PremiumBadge({super.key, this.size = 16});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Icon(
-        Icons.check_rounded,
-        size: size * 0.7,
-        color: AppColors.surAccent,
-      ),
+    return Icon(
+      Icons.workspace_premium_rounded,
+      size: size * 1.15,
+      color: const Color(0xFFFFC233),
     );
   }
 }

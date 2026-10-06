@@ -46,7 +46,7 @@ class ControleurProfil extends GetxController {
   final RxBool isUploadingPhoto = false.obs;
   final RxBool isSaving = false.obs;
 
-  // ✅ Statut premium (badge certifié)
+  // ✅ Statut premium (badge Premium)
   final RxBool isPremium = false.obs;
 
   final nomController = TextEditingController();

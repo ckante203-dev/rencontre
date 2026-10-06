@@ -23,7 +23,7 @@ class UserModel {
   final String? morphologie;
   final String? lieuRencontre;
   final DateTime? createdAt;
-  final bool isPremium; // ✅ NOUVEAU — badge certifié
+  final bool isPremium; // badge Premium (médaille)
   final bool showBirthdate; // ✅ NOUVEAU — masque l'âge si false
   final bool showDistance; // ✅ réglage « Afficher ma distance »
   final DateTime? boostJusqua; // Boost acheté : fin de la mise en avant
