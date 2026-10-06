@@ -645,6 +645,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         myLng: _lngRecherche,
         limit: _profileLimit,
       );
+      _figerOrdre(fetched);
       _allUsers.value = fetched;
       profiles.value = fetched;
       await loadStories();
@@ -702,6 +703,21 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         _myLat = moi!.latitude;
         _myLng = moi.longitude;
         _updateDistancesLocally();
+      }
+
+      // 1 ter. Toujours rien : on attend quelques secondes une position
+      // réseau (rapide) avant d'afficher l'Accueil, plutôt que d'afficher
+      // un ordre sans distances puis de tout réordonner.
+      if (_myLat == null) {
+        try {
+          final pos = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low,
+            timeLimit: const Duration(seconds: 5),
+          );
+          _myLat = pos.latitude;
+          _myLng = pos.longitude;
+          unawaited(_updateLocationIfAllowed(pos.latitude, pos.longitude));
+        } catch (_) {}
       }
 
       // 2. Suivi continu : prend le relais dès que le GPS répond (avant,
@@ -828,6 +844,35 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     profiles.value = updated;
   }
 
+  // Ordre d'affichage figé au chargement : les distances se mettent à
+  // jour (GPS) sans que les cartes changent de place sous le doigt.
+  // Recalculé à chaque chargement (ouverture, actualisation, retour
+  // dans l'app, changement de ville).
+  final Map<String, int> _rang = {};
+
+  void _figerOrdre(List<UserModel> liste) {
+    // À égalité (sans position) : ordre du serveur, conservé
+    final indice = {for (var i = 0; i < liste.length; i++) liste[i].id: i};
+    final triee = [...liste]..sort((a, b) {
+        final c = _compareProximite(a, b);
+        return c != 0 ? c : indice[a.id]!.compareTo(indice[b.id]!);
+      });
+    _rang
+      ..clear()
+      ..addAll({for (var i = 0; i < triee.length; i++) triee[i].id: i});
+  }
+
+  static int _compareProximite(UserModel a, UserModel b) {
+    // ⚡ Boost en cours : toujours en tête
+    if (a.estBooste != b.estBooste) return a.estBooste ? -1 : 1;
+    final da = a.distanceMeters;
+    final db = b.distanceMeters;
+    if (da == null && db == null) return 0;
+    if (da == null) return 1;
+    if (db == null) return -1;
+    return da.compareTo(db);
+  }
+
   Future<void> loadProfiles() async {
     isLoading.value = true;
     try {
@@ -836,6 +881,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         myLng: _lngRecherche,
         limit: _profileLimit,
       );
+      _figerOrdre(fetched);
       _allUsers.value = fetched;
       profiles.value = fetched;
     } catch (e) {
@@ -909,14 +955,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }).toList();
 
     list.sort((a, b) {
-      // ⚡ Boost en cours : toujours en tête
-      if (a.estBooste != b.estBooste) return a.estBooste ? -1 : 1;
-      final da = a.distanceMeters;
-      final db = b.distanceMeters;
-      if (da == null && db == null) return 0;
-      if (da == null) return 1;
-      if (db == null) return -1;
-      return da.compareTo(db);
+      final ra = _rang[a.id], rb = _rang[b.id];
+      if (ra != null && rb != null) return ra.compareTo(rb);
+      if (ra != null) return -1; // arrivés après le chargement : à la fin
+      if (rb != null) return 1;
+      return _compareProximite(a, b);
     });
 
     return list;
