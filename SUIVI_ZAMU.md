@@ -78,6 +78,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - Événements refaits dans le style de l'onglet Stories (proposé).
 
 ### Plus tard
+- **Nouveau logo** (piste notée le 06/10) : moderniser le logo Zamu (icône simple et reconnaissable en petit, lisible sur fond blanc ET sombre, cohérente avec l'anneau magenta → violet des stories). Le jour venu : remplacer `assets/images/logo.png`, `dart run flutter_launcher_icons`, mettre à jour l'icône et les visuels de la fiche Play Store, l'écran de démarrage et les pages légales.
 - Mode clair (fond blanc) : chantier dédié après la sortie.
 - Écran « Nouveautés » affiché une fois après la mise à jour.
 - **Offrir Premium** (après la sortie de la 1.1.0) : produits Play Console à paiement unique « Offrir 1 semaine / 1 mois » (pas l'abonnement : non transférable), le serveur crédite les jours au destinataire (comme le Boost), notification « 🎁 X t'a offert Premium » + message dans la discussion, bouton « Offrir » sur le profil et la discussion. Paiement Google Play / RevenueCat uniquement.
