@@ -35,8 +35,8 @@ class _BoutonReponsePhotoState extends State<BoutonReponsePhoto> {
         titre,
         message,
         snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.surface,
-        colorText: AppColors.textPrimary,
+        backgroundColor: CouleursMedia.surface,
+        colorText: CouleursMedia.textPrimary,
         duration: const Duration(seconds: 2),
       );
 

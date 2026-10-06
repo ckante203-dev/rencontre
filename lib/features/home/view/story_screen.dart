@@ -525,7 +525,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     // avançait (ou Get.back() fermait le dialogue au lieu du viewer).
     _pause();
     final confirmed = await Get.dialog<bool>(AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: CouleursMedia.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Supprimer cette story ?',
           style: TextStyle(
@@ -534,19 +534,19 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               fontWeight: FontWeight.w800,
               fontSize: 17)),
       content: Text('Cette story sera définitivement supprimée.',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          style: TextStyle(color: CouleursMedia.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
             child: Text('Annuler',
                 style: TextStyle(
-                    color: AppColors.textMuted, fontWeight: FontWeight.w600))),
+                    color: CouleursMedia.textMuted, fontWeight: FontWeight.w600))),
         GestureDetector(
           onTap: () => Get.back(result: true),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
             decoration: BoxDecoration(
-                color: AppColors.error,
+                color: CouleursMedia.error,
                 borderRadius: BorderRadius.circular(12)),
             child: const Text('Supprimer',
                 style: TextStyle(
@@ -571,8 +571,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         Get.back();
         Get.snackbar('Story supprimée', '',
             snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: AppColors.textPrimary,
+            backgroundColor: CouleursMedia.surface,
+            colorText: CouleursMedia.textPrimary,
             duration: const Duration(seconds: 2));
       }
     } catch (e) {
@@ -580,8 +580,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       if (mounted) {
         Get.snackbar('Erreur', "Impossible de supprimer la story",
             snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: AppColors.textPrimary);
+            backgroundColor: CouleursMedia.surface,
+            colorText: CouleursMedia.textPrimary);
         _resumeWhenVisible(); // ✅ la story reste affichée : on reprend
       }
     }
@@ -909,7 +909,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                               ? CachedNetworkImage(
                                   imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
                               : Container(
-                                  color: AppColors.accent2,
+                                  color: CouleursMedia.accent2,
                                   child: Center(
                                       child: Text(
                                           s.userName.isNotEmpty
@@ -961,7 +961,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppColors.online,
+                                      color: CouleursMedia.online,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Row(
@@ -1219,7 +1219,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           maxHeight: MediaQuery.of(Get.context!).size.height * 0.65),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: CouleursMedia.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
       child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1230,16 +1230,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: AppColors.surface2,
+                        color: CouleursMedia.surface2,
                         borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
             Row(children: [
               Icon(Icons.remove_red_eye_outlined,
-                  color: AppColors.textMuted, size: 18),
+                  color: CouleursMedia.textMuted, size: 18),
               const SizedBox(width: 8),
               Text('${viewers.length} vue${viewers.length != 1 ? 's' : ''}',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: CouleursMedia.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.w700)),
             ]),
@@ -1250,7 +1250,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                   child: Center(
                       child: Text("Personne n'a encore vu cette story",
                           style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 14))))
+                              color: CouleursMedia.textMuted, fontSize: 14))))
             else
               Flexible(
                   child: ListView(shrinkWrap: true, children: [
@@ -1271,14 +1271,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                       height: 34,
                                       decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: AppColors.surface2
+                                          color: CouleursMedia.surface2
                                               .withOpacity(0.5))),
                                   const SizedBox(width: 10),
                                   Container(
                                       width: 120,
                                       height: 12,
                                       decoration: BoxDecoration(
-                                          color: AppColors.surface2
+                                          color: CouleursMedia.surface2
                                               .withOpacity(0.5),
                                           borderRadius:
                                               BorderRadius.circular(6))),
@@ -1291,8 +1291,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                               end: Alignment.bottomCenter,
                               colors: [
                             Colors.transparent,
-                            AppColors.surface.withOpacity(0.9),
-                            AppColors.surface
+                            CouleursMedia.surface.withOpacity(0.9),
+                            CouleursMedia.surface
                           ])),
                       child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1301,7 +1301,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    gradient: AppColors.gradientPink),
+                                    gradient: CouleursMedia.gradientPink),
                                 child: const Icon(Icons.lock_rounded,
                                     color: Colors.white, size: 22)),
                             const SizedBox(height: 10),
@@ -1314,7 +1314,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             const SizedBox(height: 6),
                             Text('Passe en Premium pour tout voir',
                                 style: TextStyle(
-                                    color: AppColors.textMuted, fontSize: 12)),
+                                    color: CouleursMedia.textMuted, fontSize: 12)),
                             const SizedBox(height: 14),
                             GestureDetector(
                                 onTap: () {
@@ -1322,14 +1322,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                   Get.snackbar(
                                       '⭐ Premium', 'Bientôt disponible !',
                                       snackPosition: SnackPosition.TOP,
-                                      backgroundColor: AppColors.surface,
-                                      colorText: AppColors.textPrimary);
+                                      backgroundColor: CouleursMedia.surface,
+                                      colorText: CouleursMedia.textPrimary);
                                 },
                                 child: Container(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 24, vertical: 10),
                                     decoration: BoxDecoration(
-                                        gradient: AppColors.gradientPink,
+                                        gradient: CouleursMedia.gradientPink,
                                         borderRadius:
                                             BorderRadius.circular(20)),
                                     child: const Text('Débloquer',
@@ -1456,7 +1456,7 @@ class _ViewerTileState extends State<_ViewerTile> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                  shape: BoxShape.circle, gradient: AppColors.gradientPink),
+                  shape: BoxShape.circle, gradient: CouleursMedia.gradientPink),
               child: _loading
                   ? const Padding(
                       padding: EdgeInsets.all(10),
@@ -1481,16 +1481,16 @@ class _ViewerTileState extends State<_ViewerTile> {
                   ? Container(
                       height: 10,
                       decoration: BoxDecoration(
-                          color: AppColors.surface2,
+                          color: CouleursMedia.surface2,
                           borderRadius: BorderRadius.circular(5)))
                   : Text(_name,
                       style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: CouleursMedia.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600))),
           if (!_loading)
             Icon(Icons.arrow_forward_ios_rounded,
-                color: AppColors.textMuted, size: 14),
+                color: CouleursMedia.textMuted, size: 14),
         ]),
       ),
     );
@@ -1572,7 +1572,7 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                  shape: BoxShape.circle, gradient: AppColors.gradientPink),
+                  shape: BoxShape.circle, gradient: CouleursMedia.gradientPink),
               child: _loading
                   ? const Padding(
                       padding: EdgeInsets.all(10),
@@ -1597,11 +1597,11 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
                   ? Container(
                       height: 10,
                       decoration: BoxDecoration(
-                          color: AppColors.surface2,
+                          color: CouleursMedia.surface2,
                           borderRadius: BorderRadius.circular(5)))
                   : Text(_name,
                       style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: CouleursMedia.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600))),
           if (!_loading && _hasLiked) ...[
@@ -1610,7 +1610,7 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
           ],
           if (!_loading)
             Icon(Icons.arrow_forward_ios_rounded,
-                color: AppColors.textMuted, size: 14),
+                color: CouleursMedia.textMuted, size: 14),
         ]),
       ),
     );
@@ -1913,8 +1913,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   void _snack(String msg) => Get.snackbar('Erreur', msg,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: AppColors.surface,
-      colorText: AppColors.textPrimary);
+      backgroundColor: CouleursMedia.surface,
+      colorText: CouleursMedia.textPrimary);
 
   void _showSettingsSheet() {
     showModalBottomSheet(
@@ -1928,7 +1928,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: CouleursMedia.surface,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Column(
@@ -1940,7 +1940,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                              color: AppColors.surface2,
+                              color: CouleursMedia.surface2,
                               borderRadius: BorderRadius.circular(2))),
                     ),
                     const SizedBox(height: 20),
@@ -1953,7 +1953,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     const SizedBox(height: 4),
                     Text(_formatDuration(_durationHours),
                         style: TextStyle(
-                            color: AppColors.textPrimary,
+                            color: CouleursMedia.textPrimary,
                             fontSize: 22,
                             fontWeight: FontWeight.w900)),
                     Slider(
@@ -1961,8 +1961,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       min: 1,
                       max: 48,
                       divisions: 47,
-                      activeColor: AppColors.accent,
-                      inactiveColor: AppColors.border,
+                      activeColor: CouleursMedia.accent,
+                      inactiveColor: CouleursMedia.border,
                       label: _formatDuration(_durationHours),
                       onChanged: (v) {
                         setSheetState(() => _durationHours = v);
@@ -1974,10 +1974,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       children: [
                         Text('1h',
                             style: TextStyle(
-                                fontSize: 11, color: AppColors.textMuted)),
+                                fontSize: 11, color: CouleursMedia.textMuted)),
                         Text('48h',
                             style: TextStyle(
-                                fontSize: 11, color: AppColors.textMuted)),
+                                fontSize: 11, color: CouleursMedia.textMuted)),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -2032,16 +2032,16 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.surface,
+                              color: CouleursMedia.surface,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                   color: vide
-                                      ? AppColors.error
-                                      : AppColors.border),
+                                      ? CouleursMedia.error
+                                      : CouleursMedia.border),
                             ),
                             child: Row(children: [
                               Icon(Icons.star_rounded,
-                                  color: AppColors.online, size: 20),
+                                  color: CouleursMedia.online, size: 20),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -2054,14 +2054,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: vide
-                                            ? AppColors.error
-                                            : AppColors.textPrimary)),
+                                            ? CouleursMedia.error
+                                            : CouleursMedia.textPrimary)),
                               ),
                               Text('Gérer',
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.accent)),
+                                      color: CouleursMedia.accent)),
                             ]),
                           ),
                         );
@@ -2080,13 +2080,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: CouleursMedia.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: CouleursMedia.border),
                         ),
                         child: Row(children: [
                           Icon(Icons.block_rounded,
-                              color: AppColors.error, size: 20),
+                              color: CouleursMedia.error, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: FutureBuilder<int>(
@@ -2099,14 +2099,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary)),
+                                      color: CouleursMedia.textPrimary)),
                             ),
                           ),
                           Text('Gérer',
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.accent)),
+                                  color: CouleursMedia.accent)),
                         ]),
                       ),
                     ),
@@ -2117,7 +2117,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          gradient: AppColors.gradientPink,
+                          gradient: CouleursMedia.gradientPink,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Text('OK',
@@ -2197,7 +2197,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                        gradient: AppColors.gradientPink,
+                        gradient: CouleursMedia.gradientPink,
                         borderRadius: BorderRadius.circular(20)),
                     child: _preparation
                         ? const SizedBox(
@@ -2626,7 +2626,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: _avecEvenement ? AppColors.online : Colors.black54,
+            color: _avecEvenement ? CouleursMedia.online : Colors.black54,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
                 color: _avecEvenement ? Colors.transparent : Colors.white24),
@@ -2666,15 +2666,15 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             Get.snackbar('Ta liste Amis proches est vide',
                 'Ajoute des personnes, sinon personne ne verra cette story',
                 snackPosition: SnackPosition.TOP,
-                backgroundColor: AppColors.surface,
-                colorText: AppColors.textPrimary,
+                backgroundColor: CouleursMedia.surface,
+                colorText: CouleursMedia.textPrimary,
                 mainButton: TextButton(
                   onPressed: () async {
                     await Get.to(() => const EcranAmisProches());
                     _nbAmisProches = nombreAmisProches();
                   },
                   child: Text('Gérer',
-                      style: TextStyle(color: AppColors.accent)),
+                      style: TextStyle(color: CouleursMedia.accent)),
                 ));
           }
         },
@@ -2683,7 +2683,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             color: actif
-                ? (valeur == 'friends' ? AppColors.online : Colors.white)
+                ? (valeur == 'friends' ? CouleursMedia.online : Colors.white)
                 : Colors.black54,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: actif ? Colors.transparent : Colors.white24),
@@ -2749,7 +2749,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            gradient: AppColors.gradientPink,
+            gradient: CouleursMedia.gradientPink,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Center(
@@ -2807,7 +2807,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           values: d,
           min: 0,
           max: total <= 0 ? 1 : total,
-          activeColor: AppColors.accent,
+          activeColor: CouleursMedia.accent,
           inactiveColor: Colors.white24,
           onChanged: (v) => setState(() {
             var debut = v.start, fin = v.end;
@@ -2848,10 +2848,10 @@ class _BoutonEditeur extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-            color: actif ? AppColors.accent.withOpacity(0.2) : Colors.black54,
+            color: actif ? CouleursMedia.accent.withOpacity(0.2) : Colors.black54,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: actif ? AppColors.accent : Colors.white24)),
+                color: actif ? CouleursMedia.accent : Colors.white24)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: Colors.white, size: 16),
           const SizedBox(width: 6),
@@ -2898,22 +2898,22 @@ class _VisibilityChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          gradient: selected ? AppColors.gradientPink : null,
-          color: selected ? null : AppColors.surface,
+          gradient: selected ? CouleursMedia.gradientPink : null,
+          color: selected ? null : CouleursMedia.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: selected ? Colors.transparent : AppColors.border),
+              color: selected ? Colors.transparent : CouleursMedia.border),
         ),
         child: Column(
           children: [
             Icon(icon,
-                size: 20, color: selected ? Colors.white : AppColors.textMuted),
+                size: 20, color: selected ? Colors.white : CouleursMedia.textMuted),
             const SizedBox(height: 4),
             Text(label,
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : AppColors.textMuted)),
+                    color: selected ? Colors.white : CouleursMedia.textMuted)),
           ],
         ),
       ),

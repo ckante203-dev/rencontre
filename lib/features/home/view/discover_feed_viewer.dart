@@ -255,7 +255,7 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 decoration: BoxDecoration(
-                  gradient: AppColors.gradientPink,
+                  gradient: CouleursMedia.gradientPink,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
@@ -736,7 +736,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                       ? CachedNetworkImage(
                           imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
                       : Container(
-                          color: AppColors.accent2,
+                          color: CouleursMedia.accent2,
                           child: Center(
                             child: Text(
                               s.userName.isNotEmpty

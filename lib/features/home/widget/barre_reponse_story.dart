@@ -90,8 +90,8 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
     if (uid == widget.story.userId) {
       Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: AppColors.textPrimary);
+          backgroundColor: CouleursMedia.surface,
+          colorText: CouleursMedia.textPrimary);
       return;
     }
     setState(() => _sending = true);
@@ -142,8 +142,8 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
       if (mounted) {
         Get.snackbar('Erreur', "Impossible d'envoyer le message",
             snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: AppColors.textPrimary);
+            backgroundColor: CouleursMedia.surface,
+            colorText: CouleursMedia.textPrimary);
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -185,7 +185,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
                 color: _focus.hasFocus
-                    ? AppColors.accent.withValues(alpha: 0.7)
+                    ? CouleursMedia.accent.withValues(alpha: 0.7)
                     : Colors.white24,
                 width: _focus.hasFocus ? 1.5 : 1,
               ),
@@ -262,7 +262,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                          gradient: AppColors.gradientPink,
+                          gradient: CouleursMedia.gradientPink,
                           shape: BoxShape.circle),
                       child: _sending
                           ? const Padding(

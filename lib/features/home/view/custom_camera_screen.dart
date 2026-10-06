@@ -171,7 +171,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
         else
           Container(color: Colors.black,
             child:  Center(child: CircularProgressIndicator(
-              color: AppColors.accent))),
+              color: CouleursMedia.accent))),
 
         // ── Gradient top ──
         Positioned(top: 0, left: 0, right: 0,
@@ -207,13 +207,13 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
                 child: Container(width: 40, height: 40,
                   decoration: BoxDecoration(
                     color: _flashOn
-                      ? AppColors.accent.withValues(alpha: 0.3)
+                      ? CouleursMedia.accent.withValues(alpha: 0.3)
                       : Colors.black45,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white24)),
                   child: Icon(
                     _flashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
-                    color: _flashOn ? AppColors.accent : Colors.white,
+                    color: _flashOn ? CouleursMedia.accent : Colors.white,
                     size: 20))),
               const SizedBox(width: 12),
               // Retourner caméra
@@ -244,7 +244,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
                     margin: const EdgeInsets.only(right: 12),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: isSelected ? AppColors.gradientPink : null,
+                      gradient: isSelected ? CouleursMedia.gradientPink : null,
                       color: isSelected ? null : Colors.black45,
                       border: Border.all(
                         color: isSelected ? Colors.transparent : Colors.white24,
@@ -293,9 +293,9 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
                   height: _isTakingPhoto ? 70 : 78,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.gradientPink,
+                    gradient: CouleursMedia.gradientPink,
                     boxShadow: [BoxShadow(
-                      color: AppColors.accent.withValues(alpha: 0.5),
+                      color: CouleursMedia.accent.withValues(alpha: 0.5),
                       blurRadius: 20, spreadRadius: 2)]),
                   child: _isTakingPhoto
                     ? const Center(child: SizedBox(width: 28, height: 28,

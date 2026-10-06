@@ -63,6 +63,30 @@ class AppColors {
       : _p.gradientPink;
 }
 
+/// Écrans PHOTO / VIDÉO (lecteur de stories, caméra, éditeur, réponses
+/// en photo) : toujours sombres, comme Snapchat, quel que soit le thème.
+/// En thème sombre : les couleurs du thème (rien ne change) ; en fond
+/// blanc : la palette sombre de la marque Zamu.
+class CouleursMedia {
+  static AppPalette get _m =>
+      AppColors.clair ? AppPalettes.zamu : ThemeController.to.palette.value;
+
+  static Color get bg => _m.bg;
+  static Color get surface => _m.surface;
+  static Color get surface2 => _m.surface2;
+  static Color get border => _m.border;
+  static Color get accent => _m.accent;
+  static Color get accent2 => _m.accent2;
+  static Color get accent3 => _m.accent3;
+  static Color get yellow => _m.yellow;
+  static Color get textPrimary => _m.textPrimary;
+  static Color get textMuted => _m.textMuted;
+  static Color get online => _m.online;
+  static Color get error => _m.error;
+  static LinearGradient get gradientPink => _m.gradientPink;
+  static LinearGradient get gradientFull => _m.gradientFull;
+}
+
 class AppTheme {
   static ThemeData buildFrom(AppPalette p) {
     // Fond blanc ou sombre selon la palette
