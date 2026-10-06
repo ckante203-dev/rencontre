@@ -597,14 +597,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                 shape: BoxShape.circle,
                                 gradient: _activeStory!.isSeen
                                     ? null
-                                    : LinearGradient(
-                                        colors: [
-                                            AppColors.accent,
-                                            AppColors.accent2,
-                                            AppColors.accent3,
-                                          ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight),
+                                    : AppColors.anneauStory,
                                 color: _activeStory!.isSeen
                                     ? AppColors.border
                                     : null,

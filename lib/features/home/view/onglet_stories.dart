@@ -277,7 +277,7 @@ class _RondStory extends StatelessWidget {
         ? (booste
             ? const LinearGradient(
                 colors: [Color(0xFFFFD700), Color(0xFFFFA500)])
-            : AppColors.gradientPink)
+            : AppColors.anneauStory)
         : null;
     return GestureDetector(
       onTap: onTap,
@@ -407,7 +407,7 @@ class _CarteStory extends StatelessWidget {
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: aVoir ? AppColors.gradientPink : null,
+                    gradient: aVoir ? AppColors.anneauStory : null,
                     color: aVoir ? null : Colors.white54,
                   ),
                   child: CircleAvatar(

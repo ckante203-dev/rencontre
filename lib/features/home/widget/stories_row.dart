@@ -232,7 +232,7 @@ class _StoryItem extends StatelessWidget {
                                   Color(0xFFFFD700),
                                   Color(0xFFFFA500)
                                 ])
-                              : AppColors.gradientPink),
+                              : AppColors.anneauStory),
                       color: allSeen ? AppColors.border : null,
                     ),
                     padding: const EdgeInsets.all(2.5),

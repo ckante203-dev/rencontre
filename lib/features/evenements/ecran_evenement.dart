@@ -576,7 +576,7 @@ class _BulleStory extends StatelessWidget {
           padding: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: story.isSeen ? null : AppColors.gradientPink,
+            gradient: story.isSeen ? null : AppColors.anneauStory,
             color: story.isSeen ? AppColors.border : null,
           ),
           child: CircleAvatar(

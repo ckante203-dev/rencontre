@@ -132,7 +132,7 @@ class _TuileGroupe extends StatelessWidget {
             margin: const EdgeInsets.only(left: 8),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              gradient: g.sourdine ? null : AppColors.gradientPink,
+              gradient: g.sourdine ? null : AppColors.pastille,
               color: g.sourdine ? AppColors.border : null,
               borderRadius: BorderRadius.circular(10),
             ),

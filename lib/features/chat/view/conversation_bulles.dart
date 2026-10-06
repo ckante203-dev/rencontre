@@ -1247,15 +1247,7 @@ class _AvatarWithStoryRing extends StatelessWidget {
             shape: BoxShape.circle,
             gradient: storySeen
                 ? null
-                : LinearGradient(
-                    colors: [
-                      AppColors.accent,
-                      AppColors.accent2,
-                      AppColors.accent3,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                : AppColors.anneauStory,
             color: storySeen ? AppColors.border : null,
           ),
           child: Container(

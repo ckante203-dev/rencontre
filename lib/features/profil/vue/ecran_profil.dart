@@ -924,7 +924,7 @@ class _CarteAmis extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    gradient: AppColors.gradientPink,
+                    gradient: AppColors.pastille,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text('$demandes',

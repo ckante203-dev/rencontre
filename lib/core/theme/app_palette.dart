@@ -20,6 +20,14 @@ class AppPalette {
   /// Fond clair (palette « Blanc ») : textes sombres, barre d'état sombre
   final bool clair;
 
+  // Touches de couleur (façon Snapchat) — null = couleurs habituelles :
+  /// « Nouveau » : messages non lus, nouveautés (bleu vif en fond blanc)
+  final Color? nouveau;
+  /// Pastilles de compteur (rouge en fond blanc)
+  final Color? pastille;
+  /// Anneau des stories à voir (couleurs du logo Zamu en fond blanc)
+  final List<Color>? anneauStory;
+
   const AppPalette({
     required this.id,
     required this.label,
@@ -36,6 +44,9 @@ class AppPalette {
     required this.online,
     required this.error,
     this.clair = false,
+    this.nouveau,
+    this.pastille,
+    this.anneauStory,
   });
 
   Brightness get luminosite => clair ? Brightness.light : Brightness.dark;
@@ -174,18 +185,21 @@ class AppPalettes {
     id: 'blanc',
     label: 'Blanc',
     bg: Color(0xFFFFFFFF),
-    surface: Color(0xFFF4F4F6),
-    surface2: Color(0xFFEAEAEE),
-    border: Color(0xFFE0E0E6),
+    surface: Color(0xFFF2F3F5),
+    surface2: Color(0xFFE9EAEE),
+    border: Color(0xFFE6E7EB),
     accent: Color(0xFF111111),
     accent2: Color(0xFF2C2C2E),
     accent3: Color(0xFF48484A),
     yellow: Color(0xFFE0A800),
     textPrimary: Color(0xFF111111),
-    textMuted: Color(0xFF6E6E73),
+    textMuted: Color(0xFF6C6C72),
     online: Color(0xFF16A34A),
     error: Color(0xFFDC2626),
     clair: true,
+    nouveau: Color(0xFF0A9DFF),
+    pastille: Color(0xFFFF3B30),
+    anneauStory: [Color(0xFFD637C5), Color(0xFFA433E5)],
   );
 
   /// Thème par défaut (nouveaux comptes) : les couleurs du logo.

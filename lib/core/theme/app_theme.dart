@@ -43,6 +43,24 @@ class AppColors {
 
   /// Barre d'état (heure, batterie) adaptée au fond de l'écran
   static SystemUiOverlayStyle get barreSysteme => _p.barreSysteme;
+
+  // ── Touches de couleur (inchangées en fond sombre) ─────────────────
+  /// Texte d'un élément NON LU (« Nouveau message ») : bleu vif en fond
+  /// blanc, couleur du texte en fond sombre
+  static Color get texteNonLu => _p.nouveau ?? _p.textPrimary;
+
+  /// Fond des pastilles de compteur (non lus, demandes…)
+  static LinearGradient get pastille => _p.pastille != null
+      ? LinearGradient(colors: [_p.pastille!, _p.pastille!])
+      : _p.gradientPink;
+
+  /// Anneau d'une story pas encore vue
+  static LinearGradient get anneauStory => _p.anneauStory != null
+      ? LinearGradient(
+          colors: _p.anneauStory!,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight)
+      : _p.gradientPink;
 }
 
 class AppTheme {

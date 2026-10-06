@@ -288,7 +288,7 @@ class _NavItemStory extends StatelessWidget {
                     height: 16,
                     padding: const EdgeInsets.symmetric(horizontal: 3),
                     decoration: BoxDecoration(
-                      gradient: AppColors.gradientPink,
+                      gradient: AppColors.pastille,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.white, width: 1),
                     ),
@@ -361,7 +361,7 @@ class _NavItemMessages extends StatelessWidget {
                       height: 16,
                       padding: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
-                        gradient: AppColors.gradientPink,
+                        gradient: AppColors.pastille,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.white, width: 1),
                       ),
@@ -527,7 +527,7 @@ class _Pastille extends StatelessWidget {
       height: 16,
       padding: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
-        gradient: AppColors.gradientPink,
+        gradient: AppColors.pastille,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white, width: 1),
       ),

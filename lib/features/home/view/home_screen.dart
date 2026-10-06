@@ -1574,7 +1574,7 @@ class _UserCard extends StatelessWidget {
     // (dégradé rose, façon Instagram) > Boost (orange) > story déjà vue
     // (gris discret)
     final Gradient? contourDegrade =
-        hasUnread ? null : (storyNonVue ? AppColors.gradientPink : null);
+        hasUnread ? null : (storyNonVue ? AppColors.anneauStory : null);
     final Color? contourCouleur = hasUnread
         ? const Color(0xFFFFD700)
         : storyNonVue

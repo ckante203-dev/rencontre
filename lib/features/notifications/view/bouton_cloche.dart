@@ -40,7 +40,7 @@ class BoutonCloche extends StatelessWidget {
               height: 18,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                gradient: AppColors.gradientPink,
+                gradient: AppColors.pastille,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(color: AppColors.bg, width: 2),
               ),

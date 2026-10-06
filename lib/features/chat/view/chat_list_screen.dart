@@ -502,7 +502,7 @@ class _ConversationTile extends GetView<ChatListController> {
                             style: TextStyle(
                               fontSize: 11,
                               color: conv.unreadCount > 0
-                                  ? AppColors.textPrimary
+                                  ? AppColors.texteNonLu
                                   : AppColors.textMuted,
                               fontWeight: conv.unreadCount > 0
                                   ? FontWeight.w600
@@ -530,7 +530,7 @@ class _ConversationTile extends GetView<ChatListController> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                              gradient: AppColors.gradientPink,
+                              gradient: AppColors.pastille,
                               borderRadius: BorderRadius.circular(10)),
                           child: Text('${conv.unreadCount}',
                               style: const TextStyle(
@@ -668,7 +668,7 @@ class _ConversationTile extends GetView<ChatListController> {
       style: TextStyle(
           fontSize: 13,
           color: conv.unreadCount > 0
-              ? AppColors.textPrimary
+              ? AppColors.texteNonLu
               : AppColors.textMuted,
           fontWeight: conv.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400),
     );
@@ -935,15 +935,7 @@ class _AvatarWithStoryRing extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: storySeen
                     ? null
-                    : LinearGradient(
-                        colors: [
-                          AppColors.accent,
-                          AppColors.accent2,
-                          AppColors.accent3,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                    : AppColors.anneauStory,
                 color: storySeen ? AppColors.border : null,
               ),
               child: Container(
