@@ -77,6 +77,10 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - Filtre « Non lus » des discussions : afficher le nombre de conversations non lues (comme WhatsApp) au lieu du nombre de messages — à valider.
 - Événements refaits dans le style de l'onglet Stories (proposé).
 
+### Panneau admin web — nouvelles pages (maquettes le 06/10, à terminer)
+- Maquettes : `snapmeet-admin/maquettes.html` (données fictives). À brancher sur Supabase dans `index.html` / `app.js` : Dashboard (nouveaux indicateurs), Boosts (suivi + offrir), Dispo maintenant (statuts + règles du texte libre), Pseudos & amis (signalés, réservés), Groupes, Albums privés (photos signalées), Stories (suppression en masse, mise en avant), Purge & stockage, Versions & thèmes (version minimale, thème Blanc à distance). Premium offert & Zamu Stars : plus tard.
+- Certaines pages demandent des colonnes / tables SQL (signalements de pseudos, groupes, albums ; historique de la purge ; réglages version minimale / mots interdits) — à préparer en même temps.
+
 ### Plus tard
 - **Nouveau logo** (piste notée le 06/10) : moderniser le logo Zamu (icône simple et reconnaissable en petit, lisible sur fond blanc ET sombre, cohérente avec l'anneau magenta → violet des stories). Le jour venu : remplacer `assets/images/logo.png`, `dart run flutter_launcher_icons`, mettre à jour l'icône et les visuels de la fiche Play Store, l'écran de démarrage et les pages légales.
 - Mode clair (fond blanc) : chantier dédié après la sortie.
