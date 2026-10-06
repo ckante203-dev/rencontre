@@ -351,6 +351,9 @@ class _FilterChipsState extends State<_FilterChips> {
       child: Obx(() {
         WidgetsBinding.instance.addPostFrameCallback((_) => _updateIndicator());
         final activeMode = controller.filterMode.value;
+        // « Même événement » seulement si je participe à un événement
+        final jeParticipe = Get.isRegistered<EvenementsController>() &&
+            EvenementsController.to.evenements.any((e) => e.jeParticipe);
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -382,7 +385,10 @@ class _FilterChipsState extends State<_FilterChips> {
                 ),
               Row(
                 children: [
-                  for (final f in _filterItems) ...[
+                  for (final f in _filterItems)
+                    if (f.mode != 'evenement' ||
+                        jeParticipe ||
+                        activeMode == 'evenement') ...[
                     _Chip(
                       key: _chipKeys[f.mode],
                       label: f.label,
