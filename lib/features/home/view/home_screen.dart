@@ -13,7 +13,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
-import 'package:rencontre/features/home/widget/stories_row.dart';
 import 'package:rencontre/features/premium/view/boost_sheet.dart';
 import 'package:rencontre/features/notifications/controller/notification_controller.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -136,7 +135,6 @@ class _HomeBody extends StatefulWidget {
 
 class _HomeBodyState extends State<_HomeBody> {
   final ScrollController _scrollCtrl = ScrollController();
-  bool _storiesVisible = true;
   bool _showScrollTop = false;
 
   @override
@@ -146,15 +144,9 @@ class _HomeBodyState extends State<_HomeBody> {
   }
 
   void _onScroll() {
-    final offset = _scrollCtrl.offset;
-    final newStoriesVisible = offset < 80;
-    final newShowTop = offset > 400;
-
-    if (newStoriesVisible != _storiesVisible || newShowTop != _showScrollTop) {
-      setState(() {
-        _storiesVisible = newStoriesVisible;
-        _showScrollTop = newShowTop;
-      });
+    final newShowTop = _scrollCtrl.offset > 400;
+    if (newShowTop != _showScrollTop) {
+      setState(() => _showScrollTop = newShowTop);
     }
   }
 
@@ -170,17 +162,9 @@ class _HomeBodyState extends State<_HomeBody> {
       children: [
         Column(
           children: [
+            // Les stories ont leur propre onglet (façon Snapchat) : l'Accueil
+            // se concentre sur les profils (contour rose = story à voir)
             const _TopBar(),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              height: _storiesVisible ? 96 : 0,
-              child: ClipRect(
-                child: _storiesVisible
-                    ? const StoriesRow()
-                    : const SizedBox.shrink(),
-              ),
-            ),
             const _FilterChips(),
             const SizedBox(height: 8),
             Expanded(child: _UsersGridScrollable(scrollCtrl: _scrollCtrl)),

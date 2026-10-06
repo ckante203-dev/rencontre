@@ -227,8 +227,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
     if (_activeStory == null) return;
 
     if (!Get.isRegistered<HomeController>()) {
-      Get.to(() => StoryViewerScreen(stories: [_activeStory!], initialIndex: 0),
-          transition: Transition.fadeIn);
+      ouvrirStories([_activeStory!]);
       return;
     }
 
@@ -245,10 +244,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
 
     if (combined.isEmpty) combined.add(_activeStory!);
 
-    Get.to(
-      () => StoryViewerScreen(stories: combined, initialIndex: startIndex),
-      transition: Transition.fadeIn,
-    );
+    ouvrirStories(combined, index: startIndex);
   }
 
   Future<void> _ouvrirChat() async {

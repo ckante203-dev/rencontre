@@ -12,7 +12,7 @@ import 'package:rencontre/features/chat/view/chat_list_screen.dart';
 import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/profil/vue/ecran_profil.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
-import 'package:rencontre/features/likes/likes_screen.dart';
+import 'package:rencontre/features/home/view/onglet_stories.dart';
 import 'package:rencontre/features/likes/like_controller.dart';
 import 'package:rencontre/features/likes/likes_insights_screen.dart';
 import 'package:rencontre/features/likes/profile_insights_controller.dart';
@@ -115,7 +115,7 @@ class _MainNavigationState extends State<MainNavigation> {
     HomeScreen(),
     ChatListScreen(),
     LikesInsightsScreen(),
-    LikesScreen(),
+    OngletStories(),
     EcranProfil(),
   ];
 

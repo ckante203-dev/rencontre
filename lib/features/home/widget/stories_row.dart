@@ -164,13 +164,7 @@ class _MyStoryItem extends StatelessWidget {
     if (hasStory && myStory != null) {
       final ctrl = Get.find<HomeController>();
       final chain = ctrl.buildStoryChain(myStory!.userId);
-      Get.to(
-        () => StoryViewerScreen(
-          stories: chain.stories,
-          initialIndex: chain.startIndex,
-        ),
-        transition: Transition.fadeIn,
-      );
+      ouvrirStories(chain.stories, index: chain.startIndex);
     } else {
       _openAddStory();
     }
@@ -317,13 +311,7 @@ class _StoryItem extends StatelessWidget {
     final chain = ctrl.buildStoryChain(story.userId);
     if (chain.stories.isEmpty) return;
 
-    Get.to(
-      () => StoryViewerScreen(
-        stories: chain.stories,
-        initialIndex: chain.startIndex,
-      ),
-      transition: Transition.fadeIn,
-    );
+    ouvrirStories(chain.stories, index: chain.startIndex);
     // ✅ Le marquage "vue" est désormais fait par StoryViewerScreen pour
     // CHAQUE story réellement affichée (et plus seulement la première
     // du profil), ce qui rend userStoryIsSeen cohérent.

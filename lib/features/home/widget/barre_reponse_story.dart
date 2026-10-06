@@ -20,12 +20,15 @@ class BarreReponseStory extends StatefulWidget {
   final bool aime;
   final VoidCallback onLike;
   final ValueChanged<bool> onFocusChanged;
+  /// Incrémenté par le lecteur (glisser vers le haut) : ouvre le clavier
+  final int demandeClavier;
   const BarreReponseStory(
       {super.key,
       required this.story,
       required this.aime,
       required this.onLike,
-      required this.onFocusChanged});
+      required this.onFocusChanged,
+      this.demandeClavier = 0});
   @override
   State<BarreReponseStory> createState() => _BarreReponseStoryState();
 }
@@ -56,6 +59,12 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
       final h = _ctrl.text.trim().isNotEmpty;
       if (h != _hasText) setState(() => _hasText = h);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant BarreReponseStory old) {
+    super.didUpdateWidget(old);
+    if (widget.demandeClavier != old.demandeClavier) _focus.requestFocus();
   }
 
   void _confirmer(String texte) {

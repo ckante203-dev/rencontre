@@ -47,6 +47,15 @@ Color _colorFromHex(String hex) {
 //  existant n'a besoin d'être modifié.
 // ══════════════════════════════════════════════════════════════════
 
+/// Ouvre le lecteur de stories façon Snapchat. Route transparente : en
+/// glissant vers le bas, l'écran d'origine réapparaît derrière la story.
+Future<void> ouvrirStories(List<StoryModel> stories, {int index = 0}) async {
+  await Get.to(() => StoryViewerScreen(stories: stories, initialIndex: index),
+      opaque: false,
+      transition: Transition.fadeIn,
+      duration: const Duration(milliseconds: 220));
+}
+
 class StoryViewerScreen extends StatefulWidget {
   final List<StoryModel> stories;
   final int initialIndex;
@@ -59,7 +68,15 @@ class StoryViewerScreen extends StatefulWidget {
 }
 
 class _StoryViewerScreenState extends State<StoryViewerScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  // ── Glisser façon Snapchat : ↓ fermer (la story suit le doigt),
+  //    ↑ répondre (ou voir qui a vu ma story) ──────────────────────
+  double _dragY = 0;
+  bool _drague = false;
+  late final AnimationController _retourCtrl;
+  double _retourDepuis = 0;
+  int _demandeClavier = 0;
+
   // ── Regroupement par profil ──────────────────────────────────
   late List<List<StoryModel>> _groups;
   late int _profileIndex;
@@ -105,6 +122,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
 
     _pageCtrl = PageController(initialPage: _profileIndex);
+    _retourCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 220))
+      ..addListener(() {
+        setState(() => _dragY = _retourDepuis *
+            (1 - Curves.easeOut.transform(_retourCtrl.value)));
+      });
     _progressCtrl = AnimationController(vsync: this);
     _progressCtrl.addStatusListener((status) {
       if (status == AnimationStatus.completed) _advance();
@@ -153,6 +176,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   @override
   void dispose() {
     _pageCtrl.dispose();
+    _retourCtrl.dispose();
     _progressCtrl.dispose();
     for (final c in _videoCache.values) {
       c.dispose();
@@ -673,10 +697,40 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     final keyboardH = MediaQuery.of(context).viewInsets.bottom;
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
+    final h = MediaQuery.of(context).size.height;
+    final bas = (_dragY > 0 ? _dragY : 0.0).clamp(0.0, h);
+    final avance = (bas / (h * 0.6)).clamp(0.0, 1.0);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      body: GestureDetector(
+      body: Stack(children: [
+        // Fond noir qui s'efface : l'écran d'origine réapparaît derrière
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ColoredBox(
+                color: Colors.black.withValues(alpha: 1 - avance * 0.9)),
+          ),
+        ),
+        Transform.translate(
+          offset: Offset(0, _dragY > 0 ? bas : _dragY * 0.25),
+          child: Transform.scale(
+            scale: 1 - avance * 0.3,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(avance > 0 ? 24 : 0),
+              child: _lecteur(context, s, isOwner, keyboardH, bottomPad),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _lecteur(BuildContext context, StoryModel s, bool isOwner,
+      double keyboardH, double bottomPad) {
+    return ColoredBox(
+      color: Colors.black,
+      child: GestureDetector(
         onLongPressStart: (_) {
           _pause();
           setState(() => _longPressing = true);
@@ -685,10 +739,37 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           _resume();
           setState(() => _longPressing = false);
         },
-        // ✅ Balayer vers le bas = fermer (comme WhatsApp / Snapchat)
-        onVerticalDragEnd: (d) {
+        // Glisser : ↓ la story suit le doigt puis se ferme, ↑ répondre
+        onVerticalDragStart: (_) {
           if (_replyFocused) return;
-          if ((d.primaryVelocity ?? 0) > 600) Get.back();
+          _drague = true;
+          _retourCtrl.stop();
+          _pause();
+        },
+        onVerticalDragUpdate: (d) {
+          if (!_drague) return;
+          setState(() => _dragY += d.delta.dy);
+        },
+        onVerticalDragEnd: (d) {
+          if (!_drague) return;
+          _drague = false;
+          final v = d.primaryVelocity ?? 0;
+          if (_dragY > 140 || v > 900) {
+            Get.back();
+            return;
+          }
+          final versLeHaut = _dragY < -70 || v < -700;
+          _retourDepuis = _dragY;
+          _retourCtrl.forward(from: 0);
+          if (versLeHaut) {
+            if (isOwner) {
+              _showViewers(s); // reprend la lecture à sa fermeture
+            } else {
+              setState(() => _demandeClavier++);
+            }
+            return;
+          }
+          _resume();
         },
         onTapUp: (d) {
           if (_replyFocused) {
@@ -779,6 +860,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           // ✅ Barre de progression — un segment par story DU PROFIL
           // COURANT UNIQUEMENT (se réinitialise à chaque changement
           // de profil), façon WhatsApp/Instagram.
+          if (!_longPressing)
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 12,
@@ -807,16 +889,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                   minHeight: 2.5))));
             })),
           ),
-          if (_paused)
-            Center(
-                child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                        color: Colors.black45,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white24)),
-                    child: const Icon(Icons.pause_rounded,
-                        color: Colors.white, size: 36))),
+          if (!_longPressing)
           Positioned(
             top: MediaQuery.of(context).padding.top + 20,
             left: 12,
@@ -922,30 +995,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                       _reportStory(s);
                     }
                   },
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                        color: Colors.black38,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white24)),
-                    child: const Icon(Icons.more_vert_rounded,
-                        color: Colors.white, size: 18),
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.more_horiz_rounded,
+                        color: Colors.white, size: 26,
+                        shadows: [Shadow(color: Colors.black54, blurRadius: 6)]),
                   ),
                 ),
               ],
-              GestureDetector(
-                  onTap: () => Get.back(),
-                  child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                          color: Colors.black38,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24)),
-                      child: const Icon(Icons.close_rounded,
-                          color: Colors.white, size: 18))),
             ]),
           ),
           if (!_longPressing && !_replyFocused)
@@ -1009,6 +1067,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         key: ValueKey('reponse_${s.id}'),
                         story: s,
                         aime: _likedStoryIds.contains(s.id),
+                        demandeClavier: _demandeClavier,
                         onLike: () => _likeStory(s),
                         onFocusChanged: (focused) {
                           setState(() => _replyFocused = focused);
