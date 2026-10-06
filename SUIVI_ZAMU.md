@@ -60,6 +60,7 @@ Vérifier ensuite dans l'app (Accueil → ⚡). Suivre les ventes 2–3 semaines
 - [x] Puis `20261006000047_positions_arrondies.sql` (sécurité : positions arrondies à ~500 m en base ; la requête de vérification en fin de script doit donner 0).
 - [ ] Puis `20261006000048_panneau_admin.sql` (panneau admin : boosts, albums signalés, purge & stockage, chiffres pseudos/amis ; la vérification en fin de script doit donner 6 lignes). Rien à faire côté app.
 - [x] Puis `20261006000049_accueil_verification.sql` (**avant** d'envoyer la nouvelle version) : Accueil allégé (profils les plus proches, infos utiles seulement) + vérification par selfie (badge bleu, page « Vérifications » du panneau admin). La vérification en fin de script doit donner 5 lignes. Sans ce script, l'app marche quand même (ancienne méthode pour l'Accueil) mais la vérification par selfie échoue.
+- [ ] Puis `20261006000050_pays_benin_gabon_congo.sql` : villes du mode voyage du Bénin, du Gabon et du Congo-Brazzaville (pays retenus le 06/10 : francophones, FCFA, sans loi contre l'homosexualité). Résultat attendu : Côte d'Ivoire, Bénin, Gabon, Congo. Puis Play Console → Production → Pays/régions → ajouter ces 3 pays.
 
 ### À faire — APRÈS la mise en production de la nouvelle version (quand la 1.0.11 n'existe plus nulle part)
 - **Contenu de l'appli → Autorisations photos et vidéos** : déclarer que l'app n'utilise plus `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (ne pas le faire avant : la 1.0.11 les utilise encore).
