@@ -1298,7 +1298,7 @@ class _SheetBtn extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: isCancel ? Colors.transparent : const Color(0xFF191926),
+          color: isCancel ? Colors.transparent : AppColors.surface2,
           borderRadius: BorderRadius.circular(14),
           border: isCancel ? null : Border.all(color: AppColors.surface2),
         ),

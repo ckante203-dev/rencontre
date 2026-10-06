@@ -66,7 +66,13 @@ class _OnboardBase extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [heroColor1, heroColor2],
+                      // Fond blanc : la même teinte en pastel (doux pour l'œil)
+                      colors: AppColors.clair
+                          ? [
+                              Color.lerp(heroColor1, Colors.white, 0.86)!,
+                              Color.lerp(heroColor2, Colors.white, 0.86)!,
+                            ]
+                          : [heroColor1, heroColor2],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),

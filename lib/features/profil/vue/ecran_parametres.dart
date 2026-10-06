@@ -601,7 +601,7 @@ class EcranParametres extends StatelessWidget {
       hintText: hint,
       hintStyle: TextStyle(color: AppColors.textMuted),
       filled: true,
-      fillColor: const Color(0xFF191926),
+      fillColor: AppColors.surface2,
       suffixIcon: GestureDetector(
         onTap: toggle,
         child: Icon(
