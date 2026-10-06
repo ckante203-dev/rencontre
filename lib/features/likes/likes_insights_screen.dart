@@ -489,8 +489,16 @@ class _CartePersonne extends StatelessWidget {
               ),
             ),
           if (!premium)
-            const Center(
-                child: Icon(Icons.lock_rounded, color: AppColors.surMedia, size: 30)),
+            // Cadenas sur pastille sombre : lisible même sur une photo claire
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                    color: Colors.black38, shape: BoxShape.circle),
+                child: const Icon(Icons.lock_rounded,
+                    color: AppColors.surMedia, size: 26),
+              ),
+            ),
           Positioned(
             left: 10,
             right: 10,
