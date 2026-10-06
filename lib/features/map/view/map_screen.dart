@@ -85,7 +85,8 @@ class _MapScreenState extends State<MapScreen>
                     // ✅ Tuiles sombres CartoDB Dark Matter
                     fm.TileLayer(
                       urlTemplate:
-                          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                          // Fond de carte clair ou sombre selon le thème
+                          'https://{s}.basemaps.cartocdn.com/${AppColors.clair ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png',
                       subdomains: const ['a', 'b', 'c', 'd'],
                       userAgentPackageName: 'com.snapmeet.app',
                       retinaMode: true,
@@ -148,7 +149,7 @@ class _MapScreenState extends State<MapScreen>
                                     gradient: AppColors.gradientPink,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                        color: Colors.white, width: 2),
+                                        color: AppColors.surAccent, width: 2),
                                     boxShadow: [
                                       BoxShadow(
                                           color:
@@ -161,7 +162,7 @@ class _MapScreenState extends State<MapScreen>
                                     child: Text(
                                       '${markers.length}',
                                       style: const TextStyle(
-                                          color: Colors.white,
+                                          color: AppColors.surAccent,
                                           fontWeight: FontWeight.w900,
                                           fontSize: 15),
                                     ),
@@ -399,12 +400,12 @@ class _Header extends StatelessWidget {
         ),
       ),
       child: Row(children: [
-        const Text('Carte',
+        Text('Carte',
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white)),
+                  color: AppColors.textPrimary)),
         const Spacer(),
 
         // ✅ Bouton Vue liste/carte avec tooltip
@@ -946,7 +947,7 @@ class _CarteProfilListe extends StatelessWidget {
                 ],
               ),
               child: const Icon(Icons.chat_bubble_outline_rounded,
-                  color: Colors.white, size: 18),
+                  color: AppColors.surAccent, size: 18),
             ),
           ),
         ]),
@@ -1013,14 +1014,14 @@ class _AvatarProfil extends StatelessWidget {
                       errorWidget: (_, __, ___) => Center(
                             child: Text(letter,
                                 style: TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.surMedia,
                                     fontWeight: FontWeight.w900,
                                     fontSize: size * 0.38)),
                           ))
                   : Center(
                       child: Text(letter,
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.surMedia,
                               fontWeight: FontWeight.w900,
                               fontSize: size * 0.38)),
                     ),
@@ -1057,12 +1058,12 @@ class _PanelParametresCarte extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
-          const Text('Paramètres de la carte',
+          Text('Paramètres de la carte',
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white)),
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 20),
           _SectionTitre('👁️ Visibilité sur la carte'),
           const SizedBox(height: 10),
@@ -1186,7 +1187,7 @@ class _PanelParametresCarte extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w800,
-                                      color: Colors.white)),
+                                      color: AppColors.surAccent)),
                             ),
                           ]),
                           const SizedBox(height: 2),
@@ -1381,7 +1382,7 @@ class _FiltresBar extends StatelessWidget {
                   height: 7,
                   decoration: BoxDecoration(
                     color: ctrl.filterStatus.value == 'online'
-                        ? Colors.white
+                        ? AppColors.surAccent
                         : AppColors.online,
                     shape: BoxShape.circle,
                   ),
@@ -1392,7 +1393,7 @@ class _FiltresBar extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: ctrl.filterStatus.value == 'online'
-                            ? Colors.white
+                            ? AppColors.surAccent
                             : AppColors.textPrimary)),
               ]),
             ),
@@ -1497,7 +1498,7 @@ class _MonMarqueurState extends State<_MonMarqueur> {
                       colors: [Colors.purple, Color(0xFF9C27B0)])
                   : AppColors.gradientPink,
               border: Border.all(
-                  color: isGhost ? Colors.purple : Colors.white, width: 3),
+                  color: isGhost ? Colors.purple : AppColors.surMedia, width: 3),
               boxShadow: [
                 BoxShadow(
                     color: (isGhost ? Colors.purple : AppColors.accent)
@@ -1513,10 +1514,10 @@ class _MonMarqueurState extends State<_MonMarqueur> {
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => const Icon(
                           Icons.person_rounded,
-                          color: Colors.white,
+                          color: AppColors.surMedia,
                           size: 26))
                   : const Icon(Icons.person_rounded,
-                      color: Colors.white, size: 26),
+                      color: AppColors.surMedia, size: 26),
             ),
           ),
           if (isGhost)
@@ -1561,7 +1562,7 @@ class _MarqueurProfil extends StatelessWidget {
           shape: BoxShape.circle,
           // ✅ Bordure verte si en ligne, blanche sinon
           border: Border.all(
-            color: user.isOnline ? AppColors.online : Colors.white,
+            color: user.isOnline ? AppColors.online : AppColors.surMedia,
             width: 2.5,
           ),
           boxShadow: [
@@ -1594,7 +1595,7 @@ class _MarqueurProfil extends StatelessWidget {
                                 ? user.name[0].toUpperCase()
                                 : '?',
                             style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.surMedia,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 20),
                           ),
@@ -1613,7 +1614,7 @@ class _MarqueurProfil extends StatelessWidget {
                     child: Text(
                       user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.surMedia,
                           fontWeight: FontWeight.w900,
                           fontSize: 20),
                     ),
@@ -1625,7 +1626,7 @@ class _MarqueurProfil extends StatelessWidget {
       CustomPaint(
         size: const Size(12, 8),
         painter: _TrianglePainter(
-            color: user.isOnline ? AppColors.online : Colors.white),
+            color: user.isOnline ? AppColors.online : AppColors.surMedia),
       ),
     ]);
   }
@@ -1785,7 +1786,7 @@ class _ProfilCard extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ),
             ),
           ),
@@ -1817,13 +1818,13 @@ class _ProfilCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.person_rounded,
-                              color: Colors.white, size: 17),
+                              color: AppColors.surAccent, size: 17),
                           SizedBox(width: 8),
                           Text('Voir le profil',
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
+                                  color: AppColors.surAccent)),
                         ]),
                   ),
                 ),
