@@ -24,51 +24,56 @@ class EcranProfil extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = Get.find<ControleurProfil>();
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: Obx(() {
-        if (ctrl.isLoading.value) {
-          return Center(
-              child: CircularProgressIndicator(color: AppColors.accent));
-        }
-        return RefreshIndicator(
-          color: AppColors.accent,
-          onRefresh: () async {
-            await ctrl.chargerMonProfil();
-            if (Get.isRegistered<ProfileInsightsController>()) {
-              await Get.find<ProfileInsightsController>().loadCounts();
-            }
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              children: [
-                // Rangé par usage : qui je suis → modifier → mes chiffres
-                // → ce qui me met en avant → le reste
-                _GrandePhoto(ctrl: ctrl),
-                const SizedBox(height: 16),
-                _NomStatut(ctrl: ctrl),
-                const SizedBox(height: 16),
-                _BoutonsLigne(ctrl: ctrl),
-                const SizedBox(height: 16),
-                _Stats(),
-                const SizedBox(height: 14),
-                _Completion(ctrl: ctrl),
-                CarteDispo(ctrl: ctrl),
-                const SizedBox(height: 14),
-                _CartePremium(ctrl: ctrl),
-                const SizedBox(height: 14),
-                const _CarteAmis(),
-                const SizedBox(height: 14),
-                _CartePseudo(ctrl: ctrl),
-                const SizedBox(height: 14),
-                const _CarteAlbum(),
-                const SizedBox(height: 40),
-              ],
+    // L'écran commence par ma photo : barre d'état claire (heure lisible)
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light
+          .copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Obx(() {
+          if (ctrl.isLoading.value) {
+            return Center(
+                child: CircularProgressIndicator(color: AppColors.accent));
+          }
+          return RefreshIndicator(
+            color: AppColors.accent,
+            onRefresh: () async {
+              await ctrl.chargerMonProfil();
+              if (Get.isRegistered<ProfileInsightsController>()) {
+                await Get.find<ProfileInsightsController>().loadCounts();
+              }
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  // Rangé par usage : qui je suis → modifier → mes chiffres
+                  // → ce qui me met en avant → le reste
+                  _GrandePhoto(ctrl: ctrl),
+                  const SizedBox(height: 16),
+                  _NomStatut(ctrl: ctrl),
+                  const SizedBox(height: 16),
+                  _BoutonsLigne(ctrl: ctrl),
+                  const SizedBox(height: 16),
+                  _Stats(),
+                  const SizedBox(height: 14),
+                  _Completion(ctrl: ctrl),
+                  CarteDispo(ctrl: ctrl),
+                  const SizedBox(height: 14),
+                  _CartePremium(ctrl: ctrl),
+                  const SizedBox(height: 14),
+                  const _CarteAmis(),
+                  const SizedBox(height: 14),
+                  _CartePseudo(ctrl: ctrl),
+                  const SizedBox(height: 14),
+                  const _CarteAlbum(),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
@@ -213,7 +218,9 @@ class _PlaceholderAvatar extends StatelessWidget {
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: TextStyle(
-              fontSize: 80, fontWeight: FontWeight.w900, color: AppColors.textMuted.withValues(alpha: 0.5)),
+              fontSize: 80,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textMuted.withValues(alpha: 0.5)),
         ),
       ),
     );
@@ -470,7 +477,8 @@ class _CartePremium extends StatelessWidget {
             ),
             child: Row(children: [
               Icon(Icons.workspace_premium_rounded,
-                  color: premium ? AppColors.yellow : AppColors.surAccent, size: 28),
+                  color: premium ? AppColors.yellow : AppColors.surAccent,
+                  size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -674,13 +682,16 @@ class _BoutonCarte extends StatelessWidget {
           border: degrade ? null : Border.all(color: AppColors.border),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 16, color: degrade ? AppColors.surAccent : AppColors.textPrimary),
+          Icon(icon,
+              size: 16,
+              color: degrade ? AppColors.surAccent : AppColors.textPrimary),
           const SizedBox(width: 6),
           Text(label,
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: degrade ? AppColors.surAccent : AppColors.textPrimary)),
+                  color:
+                      degrade ? AppColors.surAccent : AppColors.textPrimary)),
         ]),
       ),
     );
@@ -968,8 +979,8 @@ class _CarteAlbum extends StatelessWidget {
                 gradient: AppColors.gradientPink,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child:
-                  const Icon(Icons.lock_rounded, color: AppColors.surAccent, size: 20),
+              child: const Icon(Icons.lock_rounded,
+                  color: AppColors.surAccent, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1028,8 +1039,8 @@ class _BoutonsLigne extends StatelessWidget {
             decoration: BoxDecoration(
               color: fond ? AppColors.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: AppColors.border, width: fond ? 1 : 1.5),
+              border:
+                  Border.all(color: AppColors.border, width: fond ? 1 : 1.5),
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(icone, color: AppColors.textPrimary, size: 22),
