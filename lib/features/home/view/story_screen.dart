@@ -1348,10 +1348,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   String _ago(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inDays > 0) return 'il y a ${diff.inDays}j';
-    if (diff.inHours > 0) return 'il y a ${diff.inHours}h';
-    if (diff.inMinutes > 0) return 'il y a ${diff.inMinutes}min';
-    return "à l'instant";
+    // Court, façon Snapchat : « 5 min », « 23 h », « 2 j »
+    if (diff.inDays > 0) return '${diff.inDays} j';
+    if (diff.inHours > 0) return '${diff.inHours} h';
+    if (diff.inMinutes > 0) return '${diff.inMinutes} min';
+    return 'maintenant';
   }
 }
 
