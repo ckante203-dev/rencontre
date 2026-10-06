@@ -1030,26 +1030,30 @@ class _BoutonsLigne extends StatelessWidget {
   }
 
   Widget _bouton(IconData icone, String libelle, VoidCallback onTap,
-          {bool fond = true}) =>
+          {bool principal = false}) =>
       Expanded(
         child: GestureDetector(
           onTap: onTap,
+          // Action principale pleine (noire en thème Blanc), les autres en
+          // gris plein : bien visibles sur tous les fonds.
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: fond ? AppColors.surface : Colors.transparent,
+              color: principal ? AppColors.accent : AppColors.surface2,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: AppColors.border, width: fond ? 1 : 1.5),
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icone, color: AppColors.textPrimary, size: 22),
+              Icon(icone,
+                  color: principal ? AppColors.surAccent : AppColors.textPrimary,
+                  size: 22),
               const SizedBox(height: 4),
               Text(libelle,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: principal
+                          ? AppColors.surAccent
+                          : AppColors.textPrimary)),
             ]),
           ),
         ),
@@ -1062,7 +1066,7 @@ class _BoutonsLigne extends StatelessWidget {
       child: Row(children: [
         _bouton(Icons.edit_rounded, 'Modifier',
             () => Get.toNamed(AppRoutes.profilEdit),
-            fond: false),
+            principal: true),
         const SizedBox(width: 10),
         _bouton(Icons.visibility_rounded, 'Aperçu', _apercu),
         const SizedBox(width: 10),
