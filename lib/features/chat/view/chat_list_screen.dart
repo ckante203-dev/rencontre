@@ -50,12 +50,12 @@ class ChatListScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
       child: Row(
         children: [
-          const Text('Messages',
+          Text('Messages',
                 style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white)),
+                    color: AppColors.textPrimary)),
           const Spacer(),
           // 🔔 Activité : likes, matchs, demandes d'amis…
           const BoutonCloche(taille: 38),
@@ -99,7 +99,7 @@ class _BoutonRecherche extends GetView<ChatListController> {
                 color: actif ? Colors.transparent : AppColors.border),
           ),
           child: Icon(actif ? Icons.close_rounded : Icons.search_rounded,
-              size: 19, color: Colors.white),
+              size: 19, color: actif ? AppColors.surAccent : AppColors.textPrimary),
         ),
       );
     });
@@ -247,27 +247,27 @@ class _FilterChip extends StatelessWidget {
             Icon(icon,
                 size: label == 'En ligne' ? 8 : 13,
                 color:
-                    active ? Colors.white : (iconColor ?? AppColors.textMuted)),
+                    active ? AppColors.surAccent : (iconColor ?? AppColors.textMuted)),
             const SizedBox(width: 5),
             Text(label,
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: active ? Colors.white : AppColors.textMuted)),
+                    color: active ? AppColors.surAccent : AppColors.textMuted)),
             if (badge != null) ...[
               const SizedBox(width: 5),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
                     color: active
-                        ? Colors.white.withValues(alpha: 0.3)
+                        ? AppColors.surAccent.withValues(alpha: 0.3)
                         : AppColors.accent,
                     borderRadius: BorderRadius.circular(10)),
                 child: Text('$badge',
                     style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: AppColors.surAccent)),
               ),
             ],
           ],
@@ -417,7 +417,7 @@ class _ConversationList extends GetView<ChatListController> {
                 ),
                 child: const Text('Découvrir des profils',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surAccent,
                         fontSize: 14,
                         fontWeight: FontWeight.w700)),
               ),
@@ -536,7 +536,7 @@ class _ConversationTile extends GetView<ChatListController> {
                               style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.white)),
+                                  color: AppColors.surAccent)),
                         ),
                       ],
                     ],
@@ -718,10 +718,10 @@ class _ConversationOptions extends GetView<ChatListController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(conv.userName,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white)),
+                          color: AppColors.textPrimary)),
                   Text(conv.isOnline ? 'En ligne' : 'Hors ligne',
                       style: TextStyle(
                           fontSize: 12,
@@ -785,9 +785,9 @@ class _ConversationOptions extends GetView<ChatListController> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer la conversation',
+        title: Text('Supprimer la conversation',
             style: TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.w800,
                 fontSize: 16)),
         content: Text(
@@ -826,7 +826,7 @@ class _Option extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? Colors.white;
+    final c = color ?? AppColors.textPrimary;
     return ListTile(
       onTap: onTap,
       leading: Icon(icon, color: c, size: 22),
@@ -874,7 +874,7 @@ class _Avatar extends StatelessWidget {
               style: TextStyle(
                   fontSize: size * 0.38,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white))),
+                  color: AppColors.surMedia))),
     );
 
     if (photoUrl != null && photoUrl!.isNotEmpty) {
@@ -1080,8 +1080,8 @@ class _ResultatsRecherche extends GetView<ChatListController> {
                         : null,
                     child: (p.photoUrl ?? '').isEmpty
                         ? Text(p.name.isEmpty ? '?' : p.name[0].toUpperCase(),
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(
+                                color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w700))
                         : null,
                   ),
@@ -1137,8 +1137,8 @@ class BadgeFlamme extends StatelessWidget {
       padding: const EdgeInsets.only(left: 6, right: 4),
       child: Text(
         conv.flammeEnDanger ? '🔥$n ⏳' : '🔥$n',
-        style: const TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
       ),
     );
   }

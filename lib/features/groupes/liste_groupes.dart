@@ -35,7 +35,7 @@ class ListeGroupes extends StatelessWidget {
                 radius: 26,
                 backgroundColor: AppColors.accent,
                 child:
-                    const Icon(Icons.group_add_rounded, color: Colors.white),
+                    const Icon(Icons.group_add_rounded, color: AppColors.surAccent),
               ),
               title: Text('Nouveau groupe',
                   style: TextStyle(
@@ -137,10 +137,13 @@ class _TuileGroupe extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text('${g.nonLus}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white)),
+                    // groupe en sourdine : pastille grise → texte du thème
+                    color: g.sourdine
+                        ? AppColors.textPrimary
+                        : AppColors.surAccent)),
           ),
       ]),
     );

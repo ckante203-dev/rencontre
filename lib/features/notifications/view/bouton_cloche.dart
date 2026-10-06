@@ -47,7 +47,7 @@ class BoutonCloche extends StatelessWidget {
               child: Center(
                 child: Text(n > 99 ? '99+' : '$n',
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surAccent,
                         fontSize: 9,
                         fontWeight: FontWeight.w900)),
               ),
