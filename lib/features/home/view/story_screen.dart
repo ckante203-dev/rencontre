@@ -810,7 +810,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             // ✅ Effet cube 3D entre deux profils (comme WhatsApp)
             itemBuilder: (_, profileIdx) => AnimatedBuilder(
               animation: _pageCtrl,
-              child: _buildProfilePage(profileIdx),
+              child: Stack(fit: StackFit.expand, children: [
+                _buildProfilePage(profileIdx),
+                ..._enTete(profileIdx),
+              ]),
               builder: (_, child) {
                 var page = _profileIndex.toDouble();
                 if (_pageCtrl.hasClients &&
@@ -831,18 +834,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               },
             ),
           ),
-          // ✅ IgnorePointer : un DecoratedBox à dégradé « attrape » les
-          // touchers. Ces deux voiles (moitié haute + 200 px du bas)
-          // empêchaient le PageView de recevoir le balayage : il fallait
-          // viser le milieu de l'écran ou taper pour changer de story.
-          const IgnorePointer(
-            child: DecoratedBox(
-                decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.center,
-                        colors: [Color(0xCC000000), Colors.transparent]))),
-          ),
+          // ✅ IgnorePointer : le voile ne doit pas « attraper » les
+          // touchers (sinon le PageView ne reçoit plus le balayage).
           const IgnorePointer(
             child: Align(
                 alignment: Alignment.bottomCenter,
@@ -857,155 +850,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           Color(0xBB000000),
                           Colors.transparent
                         ]))))),
-          ),
-          // ✅ Barre de progression — un segment par story DU PROFIL
-          // COURANT UNIQUEMENT (se réinitialise à chaque changement
-          // de profil), façon WhatsApp/Instagram.
-          if (!_longPressing)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 12,
-            right: 12,
-            child: Row(
-                children: List.generate(_currentGroup.length, (i) {
-              return Expanded(
-                  child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: i == _storyIndexInProfile
-                              ? AnimatedBuilder(
-                                  animation: _progressCtrl,
-                                  builder: (_, __) => LinearProgressIndicator(
-                                      value: _progressCtrl.value,
-                                      backgroundColor: Colors.white30,
-                                      valueColor: const AlwaysStoppedAnimation(
-                                          Colors.white),
-                                      minHeight: 2.5))
-                              : LinearProgressIndicator(
-                                  value: i < _storyIndexInProfile ? 1.0 : 0.0,
-                                  backgroundColor: Colors.white30,
-                                  valueColor: const AlwaysStoppedAnimation(
-                                      Colors.white),
-                                  minHeight: 2.5))));
-            })),
-          ),
-          if (!_longPressing)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 20,
-            left: 12,
-            right: 12,
-            child: Row(children: [
-              GestureDetector(
-                  onTap: () => _openProfile(s),
-                  child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2)),
-                      child: ClipOval(
-                          child: s.userPhotoUrl != null &&
-                                  s.userPhotoUrl!.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
-                              : Container(
-                                  color: CouleursMedia.accent2,
-                                  child: Center(
-                                      child: Text(
-                                          s.userName.isNotEmpty
-                                              ? s.userName[0].toUpperCase()
-                                              : '?',
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 16))))))),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: GestureDetector(
-                      onTap: () => _openProfile(s),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(s.userName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                                if (s.visibility == 'amis') ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0A84FF),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text('👥 Amis',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700)),
-                                  ),
-                                ],
-                                if (s.visibility == 'friends') ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: CouleursMedia.online,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.star_rounded,
-                                              size: 11, color: Colors.white),
-                                          SizedBox(width: 2),
-                                          Text('Amis proches',
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight:
-                                                      FontWeight.w700)),
-                                        ]),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            Text(_ago(s.createdAt),
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 11)),
-                          ]))),
-              ...[
-                GestureDetector(
-                  onTap: () {
-                    _pause();
-                    if (isOwner) {
-                      _showStoryOptions(s);
-                    } else {
-                      _reportStory(s);
-                    }
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.more_horiz_rounded,
-                        color: Colors.white, size: 26,
-                        shadows: [Shadow(color: Colors.black54, blurRadius: 6)]),
-                  ),
-                ),
-              ],
-            ]),
           ),
           if (!_longPressing && !_replyFocused)
             CoucheStickers(s.stickers),
@@ -1125,6 +969,180 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   /// (vidéo qui joue, liée à la barre de progression) ; les pages
   /// voisines (visibles brièvement pendant un glissement en cours)
   /// affichent un simple aperçu statique de leur première story.
+
+  /// En-tête d'une page de profil : dégradé, barres de progression,
+  /// photo et nom. Il est DANS la page du PageView, pour suivre le doigt
+  /// pendant le balayage (cube façon WhatsApp) au lieu de rester figé.
+  /// Pages voisines : leur 1re story, barres vides, sans boutons actifs.
+  List<Widget> _enTete(int profileIdx) {
+    final actif = profileIdx == _profileIndex;
+    final groupe = _groups[profileIdx];
+    final idxStory = actif ? _storyIndexInProfile : 0;
+    final s = groupe[idxStory];
+    final bool isOwner = s.userId == _myUid;
+    return [
+      // ✅ IgnorePointer : le dégradé ne doit pas « attraper » les
+      // touchers (sinon le PageView ne reçoit plus le balayage).
+      const IgnorePointer(
+        child: DecoratedBox(
+            decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.center,
+                    colors: [Color(0xCC000000), Colors.transparent]))),
+      ),
+      // ✅ Barre de progression — un segment par story DU PROFIL
+      // COURANT UNIQUEMENT (se réinitialise à chaque changement
+      // de profil), façon WhatsApp/Instagram.
+      if (!_longPressing)
+      Positioned(
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 12,
+        right: 12,
+        child: Row(
+            children: List.generate(groupe.length, (i) {
+          return Expanded(
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: actif && i == idxStory
+                          ? AnimatedBuilder(
+                              animation: _progressCtrl,
+                              builder: (_, __) => LinearProgressIndicator(
+                                  value: _progressCtrl.value,
+                                  backgroundColor: Colors.white30,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                      Colors.white),
+                                  minHeight: 2.5))
+                          : LinearProgressIndicator(
+                              value: i < idxStory ? 1.0 : 0.0,
+                              backgroundColor: Colors.white30,
+                              valueColor: const AlwaysStoppedAnimation(
+                                  Colors.white),
+                              minHeight: 2.5))));
+        })),
+      ),
+      if (!_longPressing)
+      Positioned(
+        top: MediaQuery.of(context).padding.top + 20,
+        left: 12,
+        right: 12,
+        child: Row(children: [
+          GestureDetector(
+              onTap: () => _openProfile(s),
+              child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2)),
+                  child: ClipOval(
+                      child: s.userPhotoUrl != null &&
+                              s.userPhotoUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
+                          : Container(
+                              color: CouleursMedia.accent2,
+                              child: Center(
+                                  child: Text(
+                                      s.userName.isNotEmpty
+                                          ? s.userName[0].toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16))))))),
+          const SizedBox(width: 10),
+          Expanded(
+              child: GestureDetector(
+                  onTap: () => _openProfile(s),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(s.userName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                            if (s.visibility == 'amis') ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0A84FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('👥 Amis',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                            if (s.visibility == 'friends') ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: CouleursMedia.online,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.star_rounded,
+                                          size: 11, color: Colors.white),
+                                      SizedBox(width: 2),
+                                      Text('Amis proches',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight:
+                                                  FontWeight.w700)),
+                                    ]),
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(_ago(s.createdAt),
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 11)),
+                      ]))),
+          ...[
+            GestureDetector(
+              onTap: () {
+                _pause();
+                if (isOwner) {
+                  _showStoryOptions(s);
+                } else {
+                  _reportStory(s);
+                }
+              },
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.more_horiz_rounded,
+                    color: Colors.white, size: 26,
+                    shadows: [Shadow(color: Colors.black54, blurRadius: 6)]),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    ];
+  }
+
   Widget _buildProfilePage(int profileIndex) {
     if (profileIndex != _profileIndex) {
       return _buildStaticPreview(_groups[profileIndex].first);
