@@ -96,9 +96,24 @@ void main() async {
   // envoyé en mode debug (les erreurs restent dans la console du PC).
   await FirebaseCrashlytics.instance
       .setCrashlyticsCollectionEnabled(!kDebugMode);
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Une image qui ne se charge pas (story expirée, photo supprimée, réseau
+  // coupé) n'est pas un plantage : l'app affiche une image de secours.
+  // Avant, chacune comptait comme « plantage » dans Firebase et noyait
+  // les vrais problèmes. Elle reste envoyée, mais en erreur non fatale.
+  bool imageIntrouvable(Object erreur, String? origine) =>
+      erreur is HttpException ||
+      origine == 'image resource service' ||
+      erreur.toString().contains('HttpException');
+  FlutterError.onError = (details) {
+    if (imageIntrouvable(details.exception, details.library)) {
+      FirebaseCrashlytics.instance.recordFlutterError(details);
+      return;
+    }
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  };
   PlatformDispatcher.instance.onError = (erreur, pile) {
-    FirebaseCrashlytics.instance.recordError(erreur, pile, fatal: true);
+    FirebaseCrashlytics.instance
+        .recordError(erreur, pile, fatal: !imageIntrouvable(erreur, null));
     return true;
   };
 
