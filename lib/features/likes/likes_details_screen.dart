@@ -23,7 +23,7 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
   bool _loading = true;
 
   int _calcAge(dynamic birthdate) {
-    if (birthdate == null) return 18;
+    if (birthdate == null) return 0; // âge inconnu
     try {
       final birth = DateTime.parse(birthdate.toString());
       final now = DateTime.now();
@@ -34,7 +34,7 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
       }
       return age < 0 ? 18 : age;
     } catch (_) {
-      return 18;
+      return 0; // âge inconnu
     }
   }
 
@@ -266,7 +266,7 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
                               ),
                             ),
                         ]),
-                        title: Text('$name, $age',
+                        title: Text(age > 0 ? '$name, $age' : name,
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,

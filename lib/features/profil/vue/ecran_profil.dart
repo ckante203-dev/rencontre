@@ -269,7 +269,7 @@ class _NomStatut extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Flexible(
-                child: Text('${p.name}, ${p.age}',
+                child: Text(p.age > 0 ? '${p.name}, ${p.age}' : p.name,
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 26,

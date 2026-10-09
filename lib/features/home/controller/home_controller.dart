@@ -927,7 +927,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       }
       // Âge : les personnes qui cachent leur âge ne sont pas filtrées
       // (sinon le filtre révélerait leur tranche d'âge).
-      if (filtreAgeActif && u.showBirthdate) {
+      if (filtreAgeActif && u.showBirthdate && u.age > 0) {
         if (u.age < age.start) return false;
         if (age.end < ageMax && u.age > age.end) return false;
       }

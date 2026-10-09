@@ -831,7 +831,7 @@ class _CarteProfilListe extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Flexible(
-                  child: Text(user.showBirthdate ? '${user.name}, ${user.age}' : user.name,
+                  child: Text(user.showBirthdate && user.age > 0 ? '${user.name}, ${user.age}' : user.name,
                       style:  TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 15,
@@ -1698,7 +1698,7 @@ class _ProfilCard extends StatelessWidget {
                   children: [
                     Row(children: [
                       Flexible(
-                        child: Text(user.showBirthdate ? '${user.name}, ${user.age}' : user.name,
+                        child: Text(user.showBirthdate && user.age > 0 ? '${user.name}, ${user.age}' : user.name,
                             style:  TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 20,

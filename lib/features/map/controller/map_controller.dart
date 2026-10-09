@@ -509,7 +509,7 @@ class MapController extends GetxController {
   }
 
   int _calcAge(dynamic birthdate) {
-    if (birthdate == null) return 18;
+    if (birthdate == null) return 0; // âge inconnu
     try {
       DateTime birth;
       if (birthdate is String) {
@@ -521,7 +521,7 @@ class MapController extends GetxController {
           birth = DateTime.parse(birthdate);
         }
       } else {
-        return 18;
+        return 0; // âge inconnu
       }
       final now = DateTime.now();
       int age = now.year - birth.year;
@@ -529,7 +529,7 @@ class MapController extends GetxController {
           (now.month == birth.month && now.day < birth.day)) age--;
       return age < 0 ? 18 : age;
     } catch (_) {
-      return 18;
+      return 0; // âge inconnu
     }
   }
 

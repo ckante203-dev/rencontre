@@ -125,7 +125,7 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
       await likes.toggleLike(UserModel(
         id: p.id,
         name: p.name,
-        age: p.age ?? 18,
+        age: p.age ?? 0,
         photoUrl: p.photoUrl,
         isOnline: p.enLigne,
       ));

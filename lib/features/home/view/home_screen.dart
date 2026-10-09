@@ -1665,7 +1665,7 @@ class _UserCard extends StatelessWidget {
                     ],
                     Flexible(
                       child: Text(
-                          user.showBirthdate
+                          user.showBirthdate && user.age > 0
                               ? '${user.name}, ${user.age}'
                               : user.name,
                           maxLines: 1,

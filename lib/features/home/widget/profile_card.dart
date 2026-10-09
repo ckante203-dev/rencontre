@@ -60,7 +60,7 @@ class ProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${user.name}, ${user.age}',
+                      user.age > 0 ? '${user.name}, ${user.age}' : user.name,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
