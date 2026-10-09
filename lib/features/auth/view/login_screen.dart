@@ -172,27 +172,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 32),
 
-                // ── Pas de compte ──
+                // ── Pas de compte : gros bouton rouge, bien visible ──
+                Center(
+                  child: Text('Pas encore de compte ?',
+                      style: TextStyle(
+                          fontSize: 14, color: Color(0xFF9999BB))),
+                ),
+                const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () => Get.toNamed('/signup'),
-                  child: Center(
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Pas encore de compte ?  ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF9999BB),
+                  child: Container(
+                    width: double.infinity,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5304A),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE5304A).withValues(alpha: 0.35),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
                         ),
-                        children: [
-                          TextSpan(
-                            text: 'S\'inscrire',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'S\'inscrire',
+                        style: TextStyle(
+                          color: AppColors.surAccent,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
                       ),
                     ),
                   ),
