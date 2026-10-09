@@ -19,6 +19,8 @@ Mis à jour le 04/10/2026.
 
 **État :** tous les scripts SQL (000000 à 000009) sont appliqués ; toutes les fonctions serveur sont déployées (notifications testées OK le 29/09) ; commit `7723aed`. Restent les points 4 et 5.
 
+**09/10 — 1.1.1 VALIDÉE ET PUBLIÉE en production (Côte d'Ivoire, 100 %).** Prochaine version : 1.1.3 avec le code **12103** (un ancien APK 1.1.0 code 12100 existe chez 3 amis). Prête pour la 1.1.3 : stories (en-tête qui suit le balayage), Crashlytics (images introuvables non fatales).
+
 **06/10 — 1.1.1 (10101) envoyée en examen en PRODUCTION**, Côte d'Ivoire seule, déploiement 100 %, remplace la 1.0.11 qui était encore en examen. Envoyés avec : classification refaite (18+, Social, rencontres), Sécurité des données complète (selfie = Photos ; orientation sexuelle ; historique des achats ; aucune donnée partagée ; liens suppression compte + `#donnees`), instructions de connexion pour les testeurs (compte `test.zamu@gmail.com`, Premium + vérifié + date de naissance mis en base, mode voyage → Abidjan car l'Accueil n'affiche que < 50 km). Pages légales en ligne mises à jour le 06/10 (confidentialité, conditions, suppression). Prix Premium/Boosts à finaliser dans Monétiser (proposition : semaine 990, mois 2 490, 3 mois 5 990, an 17 990 ; Boosts 790 / 1 190 / 3 990).
 
 ## 0. Prochaine version — Google Play (préparé le 04/10)
