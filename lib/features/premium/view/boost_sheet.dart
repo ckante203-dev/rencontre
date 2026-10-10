@@ -504,21 +504,21 @@ class _BoostSheetState extends State<_BoostSheet> {
     final x = (_bilan?['multiplicateur'] as num?)?.toDouble();
     return [
       if (enLigne >= 2)
-        '🔥 $enLigne personnes en ligne autour de toi en ce moment',
+        '🔥 @enLigne personnes en ligne autour de toi en ce moment'.trParams({'enLigne': '$enLigne'}),
       if (actif) ...[
-        '👀 Ton profil est en tête chez les personnes autour de toi',
-        '⚡ Ton badge Boost attire les regards',
-        '📸 Tes stories sont montrées en premier',
-        "👑 Profite de tous les avantages Premium jusqu'à la fin",
-        '💬 Reste dans le coin : les messages arrivent pendant le Boost',
+        '👀 Ton profil est en tête chez les personnes autour de toi'.tr,
+        '⚡ Ton badge Boost attire les regards'.tr,
+        '📸 Tes stories sont montrées en premier'.tr,
+        "👑 Profite de tous les avantages Premium jusqu'à la fin".tr,
+        '💬 Reste dans le coin : les messages arrivent pendant le Boost'.tr,
       ] else ...[
-        "🔝 Passe en tête de l'Accueil autour de toi",
-        '⚡ Un badge Boost qui attire les regards',
-        '📸 Tes stories passent aussi en premier',
-        '👑 Tous les avantages Premium pendant ton Boost',
-        '💬 Plus de vues, plus de likes, plus de discussions',
+        "🔝 Passe en tête de l'Accueil autour de toi".tr,
+        '⚡ Un badge Boost qui attire les regards'.tr,
+        '📸 Tes stories passent aussi en premier'.tr,
+        '👑 Tous les avantages Premium pendant ton Boost'.tr,
+        '💬 Plus de vues, plus de likes, plus de discussions'.tr,
         if (x != null && x > 1)
-          "📈 Ton dernier Boost : ×${x.toStringAsFixed(1).replaceAll('.0', '').replaceAll('.', ',')} de vues que d'habitude",
+          "📈 Ton dernier Boost : ×@x de vues que d'habitude".trParams({'x': x.toStringAsFixed(1).replaceAll('.0', '').replaceAll('.', ',')}),
       ],
     ];
   }

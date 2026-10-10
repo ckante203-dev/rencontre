@@ -310,8 +310,8 @@ class AuthController extends GetxController {
       }
     } on AuthException catch (e) {
       errorMessage.value = e.message.contains('expired')
-          ? 'Code expiré. Renvoie un nouveau code.'
-          : 'Code incorrect. Vérifie ton email.';
+          ? 'Code expiré. Renvoie un nouveau code.'.tr
+          : 'Code incorrect. Vérifie ton email.'.tr;
     } catch (_) {
       errorMessage.value = 'Erreur de vérification. Réessaie.'.tr;
     } finally {

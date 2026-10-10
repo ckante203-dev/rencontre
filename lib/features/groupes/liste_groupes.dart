@@ -80,7 +80,7 @@ class _TuileGroupe extends StatelessWidget {
       return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     }
     if (ecart == 1) return 'Hier'.tr;
-    if (ecart < 7) return const ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][d.weekday - 1];
+    if (ecart < 7) return const ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][d.weekday - 1].tr;
     return '${d.day}/${d.month}';
   }
 

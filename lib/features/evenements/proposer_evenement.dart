@@ -213,7 +213,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final c in _categories.entries)
               ChoiceChip(
-                label: Text(c.value),
+                label: Text(c.value.tr),
                 selected: _categorie == c.key,
                 onSelected: (_) => setState(() => _categorie = c.key),
                 selectedColor: AppColors.accent,

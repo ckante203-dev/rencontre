@@ -120,7 +120,7 @@ class _MessageList extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final phrase in _brisGlace)
+              for (final phrase in _brisGlace.map((p) => p.tr))
                 GestureDetector(
                   onTap: () {
                     ctrl.textController.text = phrase;

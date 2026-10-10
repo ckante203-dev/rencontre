@@ -307,10 +307,10 @@ class _EcranEvenementState extends State<EcranEvenement> {
   Widget _compteurs(EvenementModel ev) {
     final parts = <String>[
       if (ev.nbParticipants > 0)
-        '${ev.nbParticipants} ${ev.nbParticipants > 1 ? 'y vont' : 'y va'}',
+        (ev.nbParticipants > 1 ? '@n y vont' : '@n y va').trParams({'n': '${ev.nbParticipants}'}),
       if (ev.nbInteresses > 0)
-        '${ev.nbInteresses} intéressé${ev.nbInteresses > 1 ? 's' : ''}',
-      if (ev.nbSurPlace > 0) '${ev.nbSurPlace} sur place',
+        (ev.nbInteresses > 1 ? '@n intéressés' : '@n intéressé').trParams({'n': '${ev.nbInteresses}'}),
+      if (ev.nbSurPlace > 0) '@n sur place'.trParams({'n': '${ev.nbSurPlace}'}),
     ];
     return Text(parts.isEmpty ? 'Sois le premier à y aller 🎉'.tr : parts.join('  ·  '),
         style: TextStyle(fontSize: 13, color: AppColors.textMuted));

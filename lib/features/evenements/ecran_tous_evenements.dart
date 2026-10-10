@@ -61,7 +61,7 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
               _puce('Toutes'.tr, _categorie == null,
                   () => setState(() => _categorie = null)),
               for (final c in _categories.entries)
-                _puce(c.value, _categorie == c.key,
+                _puce(c.value.tr, _categorie == c.key,
                     () => setState(() => _categorie = c.key)),
             ],
           ),
@@ -97,7 +97,7 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
                     if (s.value.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
-                        child: Text(s.key,
+                        child: Text(s.key.tr,
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -235,9 +235,9 @@ class _LigneEvenement extends StatelessWidget {
                         if (ev.nbParticipants > 0) '✋ ${ev.nbParticipants}',
                         if (ev.nbInteresses > 0) '⭐ ${ev.nbInteresses}',
                         if (ev.enCours && ev.nbSurPlace > 0)
-                          '📍 ${ev.nbSurPlace} sur place',
+                          '📍 @n sur place'.trParams({'n': '${ev.nbSurPlace}'}),
                         if (ev.jeParticipe)
-                          ev.jYVais ? '✓ J\'y vais' : '✓ Intéressé',
+                          ev.jYVais ? '✓ J\'y vais'.tr : '✓ Intéressé'.tr,
                       ].join('  ·  '),
                       style: TextStyle(
                           fontSize: 12,

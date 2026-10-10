@@ -973,11 +973,10 @@ class _BandeauEnvoi extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final String? texte = ctrl.bloque.value
-          ? 'Tu ne peux plus écrire à cette personne'
+          ? 'Tu ne peux plus écrire à cette personne'.tr
           : ctrl.limiteAtteinte.value
-              ? 'Tu as envoyé '
-                  '${ConversationController.limiteSansReponse} messages. '
-                  'Attends sa réponse pour continuer.'
+              ? 'Tu as envoyé @n messages. Attends sa réponse pour continuer.'
+                  .trParams({'n': '${ConversationController.limiteSansReponse}'})
               : null;
       if (texte == null) return const SizedBox.shrink();
       return Container(

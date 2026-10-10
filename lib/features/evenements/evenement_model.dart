@@ -165,7 +165,7 @@ class EvenementModel {
     final h = heure(debut);
     if (ecart == 0) return 'Aujourd\'hui · @h'.trParams({'h': h.toString()});
     if (ecart == 1) return 'Demain · @h'.trParams({'h': h.toString()});
-    return '${_jours[debut.weekday - 1]} ${debut.day} ${_mois[debut.month - 1]} · $h';
+    return '${_jours[debut.weekday - 1].tr} ${debut.day} ${_mois[debut.month - 1].tr} · $h';
   }
 
   /// « samedi 12 octobre, 20h00 – 23h00 » (écran de détail)
