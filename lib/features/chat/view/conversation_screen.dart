@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:shimmer/shimmer.dart';
@@ -102,6 +103,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
       Get.put(ctrl, tag: _convId, permanent: true);
     }
     ctrl.textController = _textController;
+    // Brouillon laissé dans cette conversation
+    try {
+      final brouillon = GetStorage().read<String>('brouillon_$_convId');
+      if ((brouillon ?? '').isNotEmpty) {
+        _textController.text = brouillon!;
+        ctrl.inputText.value = brouillon;
+      }
+    } catch (_) {}
     _textController.addListener(ctrl.onTextChanged);
     ctrl.init(conv);
   }
@@ -110,6 +119,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
   void dispose() {
     try {
       _textController.removeListener(ctrl.onTextChanged);
+    } catch (_) {}
+    // Garde le texte non envoyé pour la prochaine ouverture
+    try {
+      final texte = _textController.text;
+      texte.trim().isEmpty
+          ? GetStorage().remove('brouillon_$_convId')
+          : GetStorage().write('brouillon_$_convId', texte);
     } catch (_) {}
     _textController.dispose();
     final convId = _convId;

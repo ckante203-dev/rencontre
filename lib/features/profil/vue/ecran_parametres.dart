@@ -9,6 +9,7 @@ import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
+import 'package:rencontre/features/profil/vue/ecran_securite.dart';
 import 'package:rencontre/core/i18n/traductions.dart';
 
 /// « tout le monde » → « Tout le monde » (pas « Tout Le Monde »)
@@ -376,6 +377,13 @@ class EcranParametres extends StatelessWidget {
               subtitle: 'Les nouveautés de Zamu'.tr,
               onTap: () => Get.to(() => const EcranNouveautes(),
                   fullscreenDialog: true),
+            ),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '🛡️',
+              title: 'Conseils de sécurité'.tr,
+              subtitle: 'Rencontrer en toute confiance'.tr,
+              onTap: () => Get.to(() => const EcranSecurite()),
             ),
             const SizedBox(height: 10),
             _Tuile(

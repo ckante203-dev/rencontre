@@ -206,6 +206,13 @@ class _FilterBar extends GetView<ChatListController> {
                 active: controller.activeFilter.value == ChatFilter.favoris,
                 onTap: () => controller.setFilter(ChatFilter.favoris),
               ),
+              if (controller.archivees.isNotEmpty)
+                _FilterChip(
+                  label: 'Archivées'.tr,
+                  icon: Icons.archive_outlined,
+                  active: controller.activeFilter.value == ChatFilter.archives,
+                  onTap: () => controller.setFilter(ChatFilter.archives),
+                ),
             ],
           )),
     );
@@ -383,6 +390,7 @@ class _ConversationList extends GetView<ChatListController> {
       ChatFilter.unread: 'Aucun message non lu'.tr,
       ChatFilter.online: 'Personne en ligne pour le moment'.tr,
       ChatFilter.favoris: 'Aucune conversation avec tes favoris ⭐'.tr,
+      ChatFilter.archives: 'Aucune conversation archivée'.tr,
     };
     return Center(
       child: Column(
@@ -766,6 +774,18 @@ class _ConversationOptions extends GetView<ChatListController> {
             onTap: () {
               Get.back();
               controller.basculerSourdine(conv);
+            },
+          ),
+          _Option(
+            icon: controller.archivees.contains(conv.id)
+                ? Icons.unarchive_outlined
+                : Icons.archive_outlined,
+            label: controller.archivees.contains(conv.id)
+                ? 'Désarchiver'.tr
+                : 'Archiver'.tr,
+            onTap: () {
+              Get.back();
+              controller.basculerArchive(conv);
             },
           ),
           _Option(

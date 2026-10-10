@@ -88,6 +88,20 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   // Stories signalées par moi : masquées définitivement (mémorisé sur
   // l'appareil ; elles expirent de toute façon côté serveur).
+  // Profils masqués (« Pas intéressé ») : enregistrés sur le téléphone
+  static const _kProfilsMasquesKey = 'profils_masques';
+  late final RxSet<String> profilsMasques = <String>{
+    ...(_storageBox.read<List>(_kProfilsMasquesKey) ?? const [])
+        .map((e) => e.toString())
+  }.obs;
+
+  void masquerProfil(String userId) {
+    profilsMasques.add(userId);
+    try {
+      _storageBox.write(_kProfilsMasquesKey, profilsMasques.toList());
+    } catch (_) {}
+  }
+
   static const _kHiddenStoriesKey = 'hidden_story_ids';
   late final Set<String> _hiddenStoryIds = {
     ...(_storageBox.read<List>(_kHiddenStoriesKey) ?? const [])
@@ -865,6 +879,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   static int _compareProximite(UserModel a, UserModel b) {
     // ⚡ Boost en cours : toujours en tête
     if (a.estBooste != b.estBooste) return a.estBooste ? -1 : 1;
+    // Profils sans photo : après ceux qui en ont une
+    final pa = (a.photoUrl ?? '').isNotEmpty, pb = (b.photoUrl ?? '').isNotEmpty;
+    if (pa != pb) return pa ? -1 : 1;
     final da = a.distanceMeters;
     final db = b.distanceMeters;
     if (da == null && db == null) return 0;
@@ -915,6 +932,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   List<UserModel> get filteredUsers {
     final age = filterAge.value;
     final list = profiles.where((u) {
+      if (profilsMasques.contains(u.id)) return false;
       if (filterMode.value == 'online' && !u.isOnline) return false;
       if (filterMode.value == 'dispo' && !u.estDispo) return false;
       if (filterMode.value == 'evenement' &&

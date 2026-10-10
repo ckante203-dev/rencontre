@@ -22,7 +22,7 @@ import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
-enum ChatFilter { all, unread, online, favoris, groupes }
+enum ChatFilter { all, unread, online, favoris, groupes, archives }
 
 /// Profil trouvé par son nom d'utilisateur (recherche dans Messages).
 class ProfilTrouve {
@@ -90,6 +90,25 @@ class ChatListController extends GetxController {
   final RxSet<String> nonLuesForcees = <String>{}.obs;
   // Conversations en sourdine (table conversation_sourdines).
   final RxSet<String> sourdineIds = <String>{}.obs;
+
+  // Conversations archivées (enregistrées sur le téléphone). Une
+  // conversation archivée revient dans la liste dès qu'un message arrive.
+  late final RxSet<String> archivees = <String>{
+    ...(GetStorage().read<List>('conv_archivees') ?? const [])
+        .map((e) => e.toString())
+  }.obs;
+
+  void basculerArchive(ConversationModel conv) {
+    archivees.contains(conv.id)
+        ? archivees.remove(conv.id)
+        : archivees.add(conv.id);
+    try {
+      GetStorage().write('conv_archivees', archivees.toList());
+    } catch (_) {}
+  }
+
+  bool _estArchivee(ConversationModel c) =>
+      archivees.contains(c.id) && c.unreadCount == 0;
   final _box = GetStorage();
   String get _cleEpingles => 'chat_epingles_${myId ?? ''}';
   String get _cleNonLues => 'chat_non_lues_${myId ?? ''}';
@@ -131,9 +150,15 @@ class ChatListController extends GetxController {
             : <String>{};
         list = conversations.where((c) => favoris.contains(c.userId)).toList();
         break;
+      case ChatFilter.archives:
+        list = conversations.where(_estArchivee).toList();
+        break;
       case ChatFilter.all:
       case ChatFilter.groupes: // les groupes ont leur propre liste
         list = conversations.toList();
+    }
+    if (activeFilter.value != ChatFilter.archives) {
+      list = list.where((c) => !_estArchivee(c)).toList();
     }
     final q = searchQuery.value.trim().toLowerCase();
     if (q.isNotEmpty) {

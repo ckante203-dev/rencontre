@@ -417,7 +417,8 @@ class ControleurProfil extends GetxController {
       }
     } catch (e) {
       debugPrint('changerPhoto error: $e');
-      _snackError('Impossible de changer la photo : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Impossible de changer la photo. Réessaie.'.tr);
     } finally {
       isUploadingPhoto.value = false;
     }
@@ -458,7 +459,8 @@ class ControleurProfil extends GetxController {
       }
       _snackSuccess('Photo supprimée'.tr);
     } catch (e) {
-      _snackError('Impossible de supprimer la photo : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Impossible de supprimer la photo. Réessaie.'.tr);
     }
   }
 
@@ -553,7 +555,8 @@ class ControleurProfil extends GetxController {
       }
     } catch (e) {
       debugPrint('ajouterPhotoProfil error: $e');
-      _snackError('Impossible d\'ajouter la photo : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Impossible d\'ajouter la photo. Réessaie.'.tr);
     } finally {
       isUploadingPhoto.value = false;
     }
@@ -616,7 +619,8 @@ class ControleurProfil extends GetxController {
       }).eq('id', uid);
     } catch (e) {
       debugPrint('_sauvegarderPhotoUrls error: $e');
-      _snackError('Erreur de synchronisation : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Erreur de synchronisation. Réessaie.'.tr);
     }
   }
 
@@ -880,11 +884,12 @@ class ControleurProfil extends GetxController {
         usernameDispo.value = false;
         _snackError('Ce nom d\'utilisateur est déjà pris'.tr);
       } else {
-        _snackError('Erreur : @message'.trParams({'message': e.message.toString()}));
+        debugPrint(e.message);
+        _snackError('Enregistrement impossible. Réessaie.'.tr);
       }
     } catch (e) {
       _snackError(
-          'Erreur : @p'.trParams({'p': (e.toString().substring(0, e.toString().length.clamp(0, 120))).toString()}));
+          'Enregistrement impossible. Réessaie.'.tr);
     } finally {
       isSaving.value = false;
     }
@@ -972,7 +977,8 @@ class ControleurProfil extends GetxController {
       // ✅ Le dialog est déjà fermé par la vue : un 2e Get.back() fermait
       // l'écran Paramètres.
     } catch (e) {
-      _snackError('Impossible de modifier l\'email : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Impossible de modifier l\'email. Réessaie.'.tr);
     } finally {
       isSaving.value = false;
     }
@@ -988,7 +994,8 @@ class ControleurProfil extends GetxController {
       await supabase.auth.updateUser(UserAttributes(password: newPassword));
       _snackSuccess('Mot de passe mis à jour'.tr);
     } catch (e) {
-      _snackError('Impossible de modifier le mot de passe : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Impossible de modifier le mot de passe. Réessaie.'.tr);
     } finally {
       isSaving.value = false;
     }
@@ -1098,7 +1105,8 @@ class ControleurProfil extends GetxController {
       blockedProfiles.removeWhere((p) => p['id'] == blockedId);
       _snackSuccess('Utilisateur débloqué'.tr);
     } catch (e) {
-      _snackError('Impossible de débloquer : @e'.trParams({'e': e.toString()}));
+      debugPrint('$e');
+      _snackError('Impossible de débloquer. Réessaie.'.tr);
     }
   }
 
@@ -1232,7 +1240,8 @@ class ControleurProfil extends GetxController {
               await AuthController.to.signOut();
               Get.offAllNamed('/login');
             } catch (e) {
-              _snackError('Impossible de supprimer le compte : @e'.trParams({'e': e.toString()}));
+              debugPrint('$e');
+      _snackError('Impossible de supprimer le compte. Réessaie.'.tr);
             } finally {
               isSaving.value = false;
             }

@@ -70,6 +70,10 @@ class UserModel {
     return DateTime.now().difference(createdAt!).inDays < 7;
   }
 
+  /// Inscrit depuis moins de 48 h : pastille « Nouveau » sur l'Accueil
+  bool get estTresNouveau =>
+      createdAt != null && DateTime.now().difference(createdAt!).inHours < 48;
+
   /// Statut « Dispo maintenant » encore valable.
   bool get estDispo =>
       (dispoTexte ?? '').isNotEmpty &&

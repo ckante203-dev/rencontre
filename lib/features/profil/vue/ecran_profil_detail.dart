@@ -352,6 +352,40 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
             ),
           ),
           const SizedBox(height: 10),
+          // « Pas intéressé » : le profil disparaît de l'Accueil
+          GestureDetector(
+            onTap: () {
+              Get.find<HomeController>().masquerProfil(user.id);
+              Get.back();
+              Get.back();
+              Get.snackbar('Profil masqué'.tr,
+                  "Tu ne le verras plus sur l'Accueil".tr,
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: AppColors.surface,
+                  colorText: AppColors.textPrimary);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border)),
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.visibility_off_rounded,
+                        color: AppColors.textPrimary, size: 20),
+                    const SizedBox(width: 10),
+                    Text('Pas intéressé'.tr,
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                  ]),
+            ),
+          ),
+          const SizedBox(height: 10),
           GestureDetector(
             onTap: () {
               Get.back();

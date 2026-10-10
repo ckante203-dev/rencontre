@@ -250,6 +250,8 @@ class _MessageBubble extends StatelessWidget {
       onRepondre: () => ctrl.setReplyTo(msg),
       child: GestureDetector(
         onLongPress: () => ctrl.showMessageOptions(context, msg),
+        // Double appui : ❤️ (comme Instagram)
+        onDoubleTap: () => ctrl.toggleReaction(msg, '❤️'),
         child: Padding(
           padding: EdgeInsets.only(
               top: isFirst ? 4 : 1,
@@ -331,6 +333,11 @@ class _MessageBubble extends StatelessWidget {
                   )),
                 ],
               ),
+              // Alerte anti-arnaque sous un message reçu suspect
+              if (!isMine &&
+                  msg.type == MessageType.text &&
+                  _AlerteArnaque.suspect(msg.text))
+                const _AlerteArnaque(),
               if (msg.hasReactions) _ReactionsRow(msg: msg, ctrl: ctrl),
             ],
           ),
@@ -1478,6 +1485,49 @@ class _VignetteVideoStory extends StatelessWidget {
         if (octets == null) return Container(color: AppColors.surface);
         return Image.memory(octets, fit: BoxFit.cover, gaplessPlayback: true);
       },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ALERTE ANTI-ARNAQUE : argent, Mobile Money, codes, liens
+// ═══════════════════════════════════════════════════════════════════
+
+class _AlerteArnaque extends StatelessWidget {
+  const _AlerteArnaque();
+
+  static final _motif = RegExp(
+      r'(mobile ?money|orange ?money|\bmomo\b|\bwave\b|moov ?money|mtn ?money|'
+      r'western ?union|moneygram|transf[eé]r|envoie[- ]?moi .*(argent|fcfa|francs|cfa)|'
+      r"(pr[eê]te|donne)[- ]?moi .*(argent|fcfa|francs)|\bcode (de |d')?(v[ée]rification|confirmation|re[cç]u)|"
+      r'\d[\d .]{2,}\s?(fcfa|f cfa|cfa|francs)|https?://|bit\.ly|carte bancaire|crypto|bitcoin)',
+      caseSensitive: false);
+
+  static bool suspect(String? texte) =>
+      texte != null && texte.length > 3 && _motif.hasMatch(texte);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 34, right: 40),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('⚠️', style: TextStyle(fontSize: 13)),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+                "Prudence : n'envoie jamais d'argent, de code ou tes infos bancaires à quelqu'un que tu n'as pas rencontré.".tr,
+                style: TextStyle(
+                    fontSize: 11, color: AppColors.textPrimary, height: 1.3)),
+          ),
+        ]),
+      ),
     );
   }
 }

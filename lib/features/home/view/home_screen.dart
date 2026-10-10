@@ -1598,7 +1598,9 @@ class _UserCard extends StatelessWidget {
         ? _pastille('📅 $memeEvenement', AppColors.accent)
         : (user.estDispo
             ? _pastille(user.dispoTexte!, AppColors.online)
-            : null);
+            : (user.estTresNouveau
+                ? _pastille('✨ Nouveau'.tr, AppColors.accent)
+                : null));
 
     final photo = locked
         ? _LockedBlurredPhoto(photoUrl: user.photoUrl, name: user.name)

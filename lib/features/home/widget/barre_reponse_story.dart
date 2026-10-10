@@ -276,6 +276,23 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
                 ),
         ),
       ]),
+      // Réactions rapides : un emoji envoyé d'un seul appui
+      if (_focus.hasFocus && !_hasText && _confirmation == null)
+        Positioned(
+          top: -54,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (final e in const ['😂', '😍', '🔥', '😮', '😢', '👏'])
+                GestureDetector(
+                  onTap: _sending ? null : () => _send(e),
+                  child: Text(e, style: const TextStyle(fontSize: 30)),
+                ),
+            ],
+          ),
+        ),
       // Confirmation discrète au-dessus de la barre
       if (_confirmation != null)
         Positioned(
