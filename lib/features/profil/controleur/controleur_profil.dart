@@ -67,6 +67,51 @@ class ControleurProfil extends GetxController {
   final Rx<DateTime?> birthdate = Rx<DateTime?>(null);
   final RxString selectedMorphologie = ''.obs;
   final RxString selectedLieuRencontre = ''.obs;
+  // Profil enrichi (SQL 051)
+  final metierController = TextEditingController();
+  final etudesController = TextEditingController();
+  final RxList<String> languesChoisies = <String>[].obs;
+  final RxList<Map<String, String>> questionsChoisies = <Map<String, String>>[].obs;
+
+  static const List<String> languesDisponibles = [
+    'Français', 'Anglais', 'Dioula', 'Baoulé', 'Bété', 'Sénoufo', 'Agni',
+    'Yacouba', 'Arabe', 'Espagnol', 'Portugais', 'Allemand', 'Chinois',
+  ];
+
+  static const List<String> questionsDisponibles = [
+    'Mon dimanche idéal…',
+    'Ce qui me fait craquer…',
+    'Je suis fier(e) de…',
+    'Mon plat préféré…',
+    'Le meilleur endroit d\'Abidjan…',
+    'Un rendez-vous parfait, c\'est…',
+    'Ma chanson du moment…',
+    'On va bien s\'entendre si…',
+    'Mon talent caché…',
+    'Ce que je cherche ici…',
+  ];
+
+  void basculerLangue(String langue) {
+    languesChoisies.contains(langue)
+        ? languesChoisies.remove(langue)
+        : languesChoisies.add(langue);
+  }
+
+  /// Ajoute ou remplace la réponse à une question (3 au maximum)
+  void definirQuestion(String question, String reponse) {
+    final r = reponse.trim();
+    final i = questionsChoisies.indexWhere((e) => e['q'] == question);
+    if (r.isEmpty) {
+      if (i >= 0) questionsChoisies.removeAt(i);
+      return;
+    }
+    final texte = r.substring(0, r.length.clamp(0, 200));
+    if (i >= 0) {
+      questionsChoisies[i] = {'q': question, 'r': texte};
+    } else if (questionsChoisies.length < 3) {
+      questionsChoisies.add({'q': question, 'r': texte});
+    }
+  }
 
   final RxString selectedGender = ''.obs;
   final RxString selectedLookingFor = ''.obs;
@@ -290,6 +335,11 @@ class ControleurProfil extends GetxController {
       selectedLookingFor.value = data['looking_for']?.toString() ?? '';
       selectedMorphologie.value = data['morphologie']?.toString() ?? '';
       selectedLieuRencontre.value = data['lieu_rencontre']?.toString() ?? '';
+      metierController.text = data['metier']?.toString() ?? '';
+      etudesController.text = data['etudes']?.toString() ?? '';
+      languesChoisies.assignAll(List<String>.from(data['langues'] ?? const []));
+      questionsChoisies
+          .assignAll(SupabaseService.questionsDepuis(data['questions']));
 
       // ✅ Toujours réinitialisé (sinon l'ancienne valeur restait si null)
       selectedInterests.value = data['interests'] is List
@@ -871,6 +921,20 @@ class ControleurProfil extends GetxController {
             birthdate.value!.toIso8601String().split('T').first;
       }
       await supabase.from('profiles').update(updates).eq('id', uid);
+      // Profil enrichi : enregistré à part, pour ne pas bloquer le reste
+      // si les colonnes (SQL 051) ne sont pas encore créées.
+      try {
+        final metier = metierController.text.trim();
+        final etudes = etudesController.text.trim();
+        await supabase.from('profiles').update({
+          'metier': metier.isEmpty ? null : metier.substring(0, metier.length.clamp(0, 60)),
+          'etudes': etudes.isEmpty ? null : etudes.substring(0, etudes.length.clamp(0, 80)),
+          'langues': languesChoisies.toList(),
+          'questions': questionsChoisies.toList(),
+        }).eq('id', uid);
+      } catch (e) {
+        debugPrint('Profil enrichi non enregistré (SQL 051 ?) : $e');
+      }
       await chargerMonProfil();
       // ✅ FIX : redirige vers l'accueil et affiche le message de
       // confirmation AVANT la navigation (le snackbar GetX vit dans un

@@ -31,6 +31,12 @@ class UserModel {
   final String? dispoTexte; // Statut « Dispo maintenant » (☕ café…)
   final DateTime? dispoJusqua; // fin du statut
   final bool estVerifie; // selfie validé par l'équipe (badge bleu)
+  final String? metier;
+  final String? etudes;
+  final List<String> langues; // langues parlées
+  /// Questions de profil façon Hinge : [{'q': question, 'r': réponse}]
+  final List<Map<String, String>> questions;
+  final DateTime? naissance; // date de naissance (signe astrologique)
 
   const UserModel({
     required this.id,
@@ -62,7 +68,27 @@ class UserModel {
     this.dispoTexte,
     this.dispoJusqua,
     this.estVerifie = false,
+    this.metier,
+    this.etudes,
+    this.langues = const [],
+    this.questions = const [],
+    this.naissance,
   });
+
+  /// Signe astrologique (si la date de naissance est connue et affichée)
+  String? get signeAstro {
+    final d = naissance;
+    if (d == null || !showBirthdate) return null;
+    const signes = [
+      (1, 20, '♑ Capricorne'), (2, 19, '♒ Verseau'), (3, 20, '♓ Poissons'),
+      (4, 20, '♈ Bélier'), (5, 21, '♉ Taureau'), (6, 21, '♊ Gémeaux'),
+      (7, 22, '♋ Cancer'), (8, 23, '♌ Lion'), (9, 23, '♍ Vierge'),
+      (10, 23, '♎ Balance'), (11, 22, '♏ Scorpion'), (12, 22, '♐ Sagittaire'),
+    ];
+    final (mois, dernierJour, signe) = signes[d.month - 1];
+    if (d.day < dernierJour) return signe;
+    return d.month == 12 ? signes[0].$3 : signes[d.month].$3;
+  }
 
   // ✅ Nouveau membre = inscrit depuis moins de 7 jours
   bool get isNewMember {
@@ -115,6 +141,11 @@ class UserModel {
     String? dispoTexte,
     DateTime? dispoJusqua,
     bool? estVerifie,
+    String? metier,
+    String? etudes,
+    List<String>? langues,
+    List<Map<String, String>>? questions,
+    DateTime? naissance,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -146,6 +177,11 @@ class UserModel {
         dispoTexte: dispoTexte ?? this.dispoTexte,
         dispoJusqua: dispoJusqua ?? this.dispoJusqua,
         estVerifie: estVerifie ?? this.estVerifie,
+        metier: metier ?? this.metier,
+        etudes: etudes ?? this.etudes,
+        langues: langues ?? this.langues,
+        questions: questions ?? this.questions,
+        naissance: naissance ?? this.naissance,
       );
 
   /// "175cm · 70kg"

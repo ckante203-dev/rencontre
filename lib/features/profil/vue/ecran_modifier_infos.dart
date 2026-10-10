@@ -290,6 +290,107 @@ class EcranModifierInfos extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            // ── Métier / Études ────────────────────────────────
+             _SectionLabel(icon: '💼', title: 'Métier'.tr),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl.metierController,
+              maxLength: 60,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: _inputDeco('ex: Infirmière, Commerçant, Étudiant…'.tr),
+            ),
+            const SizedBox(height: 8),
+             _SectionLabel(icon: '🎓', title: 'Études'.tr),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl.etudesController,
+              maxLength: 80,
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: _inputDeco('ex: Université FHB, BTS Commerce…'.tr),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Langues parlées ────────────────────────────────
+             _SectionLabel(icon: '🗣️', title: 'Langues parlées'.tr),
+            const SizedBox(height: 10),
+            Obx(() => Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ControleurProfil.languesDisponibles.map((l) {
+                    final choisie = ctrl.languesChoisies.contains(l);
+                    return GestureDetector(
+                      onTap: () => ctrl.basculerLangue(l),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: choisie ? AppColors.gradientPink : null,
+                          color: choisie ? null : AppColors.surface,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                              color: choisie
+                                  ? Colors.transparent
+                                  : AppColors.border),
+                        ),
+                        child: Text(l.tr,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: choisie
+                                    ? AppColors.surAccent
+                                    : AppColors.textMuted)),
+                      ),
+                    );
+                  }).toList(),
+                )),
+            const SizedBox(height: 20),
+
+            // ── Questions façon Hinge ──────────────────────────
+            Row(children: [
+               _SectionLabel(icon: '💬', title: 'Mes réponses'.tr),
+              const Spacer(),
+              Obx(() => Text('${ctrl.questionsChoisies.length}/3',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted))),
+            ]),
+            const SizedBox(height: 4),
+            Text('Réponds à 3 questions : ça donne envie de t\'écrire'.tr,
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+            const SizedBox(height: 10),
+            Obx(() => Column(children: [
+                  for (final q in ctrl.questionsChoisies)
+                    _CarteQuestion(
+                      question: q['q']!,
+                      reponse: q['r']!,
+                      onTap: () => _editerQuestion(context, q['q']!, q['r']!),
+                    ),
+                  if (ctrl.questionsChoisies.length < 3)
+                    GestureDetector(
+                      onTap: () => _choisirQuestion(context),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_rounded,
+                                  color: AppColors.textPrimary, size: 18),
+                              const SizedBox(width: 6),
+                              Text('Ajouter une question'.tr,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                            ]),
+                      ),
+                    ),
+                ])),
+            const SizedBox(height: 20),
+
             // ── Intérêts ───────────────────────────────────────
             Row(children: [
                _SectionLabel(icon: '🎯', title: 'Mes intérêts'.tr),
@@ -384,7 +485,13 @@ class EcranModifierInfos extends StatelessWidget {
   }
 
   // ✅ FIX : fillColor = AppColors.surface pour matcher ecran_parametres
-  InputDecoration _inputDeco(String hint) => InputDecoration(
+  InputDecoration _inputDeco(String hint) => _decoChamp(hint);
+}
+
+// ─── WIDGETS ────────────────────────────────────────────────────────
+
+/// Style commun des champs de saisie de cet écran
+InputDecoration _decoChamp(String hint) => InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: AppColors.textMuted),
         filled: true,
@@ -402,9 +509,145 @@ class EcranModifierInfos extends StatelessWidget {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       );
+
+/// Choisir une question pas encore utilisée
+void _choisirQuestion(BuildContext context) {
+  final ctrl = ControleurProfil.to;
+  final restantes = ControleurProfil.questionsDisponibles
+      .where((q) => !ctrl.questionsChoisies.any((e) => e['q'] == q))
+      .toList();
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => SafeArea(
+      child: ConstrainedBox(
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+        child: ListView(shrinkWrap: true, children: [
+          for (final q in restantes)
+            ListTile(
+              title: Text(q.tr,
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600)),
+              trailing: Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textMuted),
+              onTap: () {
+                Get.back();
+                _editerQuestion(context, q, '');
+              },
+            ),
+        ]),
+      ),
+    ),
+  );
 }
 
-// ─── WIDGETS ────────────────────────────────────────────────────────
+/// Écrire (ou effacer) la réponse à une question
+void _editerQuestion(BuildContext context, String question, String reponse) {
+  final ctrl = ControleurProfil.to;
+  final saisie = TextEditingController(text: reponse);
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(question.tr,
+              style: TextStyle(
+                  fontFamily: 'Syne',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: saisie,
+            autofocus: true,
+            maxLength: 200,
+            maxLines: 3,
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+            decoration: _decoChamp('Ta réponse…'.tr),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            if (reponse.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  ctrl.definirQuestion(question, '');
+                  Get.back();
+                },
+                child: Text('Retirer'.tr,
+                    style: TextStyle(color: AppColors.error)),
+              ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () {
+                ctrl.definirQuestion(question, saisie.text);
+                Get.back();
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                decoration: BoxDecoration(
+                    gradient: AppColors.gradientPink,
+                    borderRadius: BorderRadius.circular(14)),
+                child: Text('Valider'.tr,
+                    style: const TextStyle(
+                        color: AppColors.surAccent,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    ),
+  );
+}
+
+class _CarteQuestion extends StatelessWidget {
+  final String question;
+  final String reponse;
+  final VoidCallback onTap;
+  const _CarteQuestion(
+      {required this.question, required this.reponse, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(question.tr,
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: 4),
+          Text(reponse,
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+        ]),
+      ),
+    );
+  }
+}
 
 class _SectionLabel extends StatelessWidget {
   final String icon, title;

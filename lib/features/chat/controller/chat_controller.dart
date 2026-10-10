@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:get/get.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_compress/video_compress.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
@@ -625,6 +626,8 @@ class ConversationController extends GetxController
   final Rx<MessageModel?> enModification = Rx<MessageModel?>(null);
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
+  final RxBool isOtherRecording = false.obs; // « enregistre un vocal… »
+  Timer? _vocalPing;
   // Dernière activité de l'autre (« vu à 14:32 » dans l'en-tête)
   final Rx<DateTime?> otherLastSeen = Rx<DateTime?>(null);
   final Rx<DateTime?> lastReadAt = Rx<DateTime?>(null);
@@ -987,7 +990,7 @@ class ConversationController extends GetxController
     });
   }
 
-  Future<void> _updateTypingStatus(bool typing) async {
+  Future<void> _updateTypingStatus(bool typing, {String? activite, bool avecActivite = false}) async {
     final uid = _service.currentUserId;
     if (uid == null) return;
     try {
@@ -995,6 +998,8 @@ class ConversationController extends GetxController
         'conversation_id': conversation.id,
         'user_id': uid,
         'is_typing': typing,
+        // colonne « activite » (SQL 051) envoyée seulement pour le vocal
+        if (avecActivite) 'activite': activite,
         // ✅ FIX — horodatage envoyé en UTC (timestamptz)
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
@@ -1017,11 +1022,14 @@ class ConversationController extends GetxController
             final record = payload.newRecord;
             if (record['user_id'] != otherUserId) return;
             final typing = record['is_typing'] == true;
+            isOtherRecording.value = typing && record['activite'] == 'vocal';
             if (typing) {
               isOtherTyping.value = true;
               _typingTimer?.cancel();
-              _typingTimer = Timer(const Duration(seconds: 4),
-                  () => isOtherTyping.value = false);
+              _typingTimer = Timer(const Duration(seconds: 4), () {
+                isOtherTyping.value = false;
+                isOtherRecording.value = false;
+              });
             } else {
               _typingTimer?.cancel();
               isOtherTyping.value = false;
@@ -1665,6 +1673,89 @@ class ConversationController extends GetxController
     }
   }
 
+  /// Transférer un message texte vers une autre conversation
+  void transferer(BuildContext context, MessageModel msg) {
+    final texte = (msg.text ?? '').trim();
+    if (texte.isEmpty || !Get.isRegistered<ChatListController>()) return;
+    final convs = Get.find<ChatListController>()
+        .conversations
+        .where((c) => c.id != conversation.id)
+        .toList();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Transférer à…'.tr,
+                  style: TextStyle(
+                      fontFamily: 'Syne',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary)),
+            ),
+            Expanded(
+              child: convs.isEmpty
+                  ? Center(
+                      child: Text('Aucune conversation pour le moment'.tr,
+                          style: TextStyle(color: AppColors.textMuted)))
+                  : ListView.builder(
+                      itemCount: convs.length,
+                      itemBuilder: (_, i) {
+                        final c = convs[i];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.surface2,
+                            backgroundImage: (c.userPhotoUrl ?? '').isNotEmpty
+                                ? CachedNetworkImageProvider(c.userPhotoUrl!)
+                                : null,
+                            child: (c.userPhotoUrl ?? '').isEmpty
+                                ? Text(c.userName.isNotEmpty
+                                    ? c.userName[0].toUpperCase()
+                                    : '?')
+                                : null,
+                          ),
+                          title: Text(c.userName,
+                              style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600)),
+                          trailing: Icon(Icons.send_rounded,
+                              color: AppColors.accent, size: 20),
+                          onTap: () async {
+                            Get.back();
+                            try {
+                              await _service.sendMessage(
+                                  conversationId: c.id, content: texte);
+                              Get.snackbar('Message transféré'.tr,
+                                  'Envoyé à @nom'.trParams({'nom': c.userName}),
+                                  snackPosition: SnackPosition.TOP,
+                                  backgroundColor: AppColors.surface,
+                                  colorText: AppColors.textPrimary);
+                            } catch (e) {
+                              debugPrint('Transfert échoué : $e');
+                              Get.snackbar('Message non envoyé'.tr,
+                                  'Vérifie ta connexion et réessaie'.tr,
+                                  snackPosition: SnackPosition.TOP,
+                                  backgroundColor: AppColors.surface,
+                                  colorText: AppColors.textPrimary);
+                            }
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   void showMessageOptions(BuildContext context, MessageModel msg) {
     HapticFeedback.mediumImpact();
     final isMine = msg.senderId == myId;
@@ -1753,6 +1844,14 @@ class ConversationController extends GetxController
                 onTap: () {
                   Get.back();
                   copyMessage(msg);
+                }),
+          if (msg.type == MessageType.text)
+            _MsgOption(
+                icon: Icons.forward_rounded,
+                label: 'Transférer'.tr,
+                onTap: () {
+                  Get.back();
+                  transferer(context, msg);
                 }),
           _MsgOption(
               icon: Icons.delete_outline_rounded,
@@ -2142,6 +2241,16 @@ class ConversationController extends GetxController
       await _recorder.startRecorder(
           toFile: _recordingPath!, codec: _detectedCodec!);
       isRecording.value = true;
+      // Signale à l'autre « enregistre un vocal… » (rafraîchi toutes les 3 s)
+      _updateTypingStatus(true, activite: 'vocal', avecActivite: true);
+      _vocalPing?.cancel();
+      _vocalPing = Timer.periodic(const Duration(seconds: 3), (t) {
+        if (!isRecording.value) {
+          t.cancel();
+          return;
+        }
+        _updateTypingStatus(true, activite: 'vocal', avecActivite: true);
+      });
       recordingSeconds.value = 0;
       recordingDb.value = 0;
       _recorder.onProgress!.listen((e) {
@@ -2166,8 +2275,14 @@ class ConversationController extends GetxController
     }
   }
 
+  void _finVocal() {
+    _vocalPing?.cancel();
+    _updateTypingStatus(false, activite: null, avecActivite: true);
+  }
+
   Future<void> stopRecording() async {
     if (!isRecording.value) return;
+    _finVocal();
     try {
       _recordingSecondsTimer?.cancel();
       final path = await _recorder.stopRecorder();
@@ -2185,6 +2300,7 @@ class ConversationController extends GetxController
 
   void cancelRecording() async {
     _recordingSecondsTimer?.cancel();
+    _finVocal();
     try {
       await _recorder.stopRecorder();
       await _recorder.closeRecorder();
@@ -2436,6 +2552,7 @@ class ConversationController extends GetxController
     _typingChannel = null;
     _typingTimer?.cancel();
     _myTypingTimer?.cancel();
+    _vocalPing?.cancel();
     _pollingTimer?.cancel();
     _pollingTimer = null;
     _recordingSecondsTimer?.cancel();

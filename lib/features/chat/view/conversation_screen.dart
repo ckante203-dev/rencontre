@@ -243,6 +243,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       }),
                   ]),
                   Obx(() {
+                    if (ctrl.isOtherRecording.value) {
+                      return Text('enregistre un vocal…'.tr,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.online,
+                              fontStyle: FontStyle.italic));
+                    }
                     if (ctrl.isOtherTyping.value) {
                       return Text('en train d\'écrire...'.tr,
                           style: TextStyle(
@@ -373,6 +381,14 @@ class _ConvMenu extends StatelessWidget {
                     activeColor: AppColors.accent,
                   ),
                 )),
+            _MenuItem(
+              icon: Icons.search_rounded,
+              label: 'Rechercher dans la conversation'.tr,
+              onTap: () {
+                Get.back();
+                _rechercher(context);
+              },
+            ),
             _ItemAlbum(ctrl: ctrl),
             Obx(() => _MenuItem(
                   icon: Icons.wallpaper_rounded,
@@ -436,6 +452,89 @@ class _ConvMenu extends StatelessWidget {
             ),
           ]),
         ]),
+      ),
+    );
+  }
+
+  /// Recherche d'un mot dans les messages chargés de la conversation
+  void _rechercher(BuildContext context) {
+    final requete = ''.obs;
+    final prenom = ctrl.conversation.userName.split(' ').first;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.75,
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: TextField(
+                autofocus: true,
+                onChanged: (v) => requete.value = v,
+                style: TextStyle(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Rechercher un mot…'.tr,
+                  hintStyle: TextStyle(color: AppColors.textMuted),
+                  prefixIcon:
+                      Icon(Icons.search_rounded, color: AppColors.textMuted),
+                  filled: true,
+                  fillColor: AppColors.surface2,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Obx(() {
+                final q = requete.value.trim().toLowerCase();
+                if (q.length < 2) {
+                  return Center(
+                      child: Text('Tape au moins 2 lettres'.tr,
+                          style: TextStyle(color: AppColors.textMuted)));
+                }
+                final trouves = ctrl.messages
+                    .where((m) =>
+                        m.type == MessageType.text &&
+                        (m.text ?? '').toLowerCase().contains(q))
+                    .toList()
+                    .reversed
+                    .toList();
+                if (trouves.isEmpty) {
+                  return Center(
+                      child: Text('Aucun résultat'.tr,
+                          style: TextStyle(color: AppColors.textMuted)));
+                }
+                return ListView.builder(
+                  itemCount: trouves.length,
+                  itemBuilder: (_, i) {
+                    final m = trouves[i];
+                    final d = m.createdAt;
+                    final date =
+                        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} '
+                        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+                    return ListTile(
+                      title: Text(m.text ?? '',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppColors.textPrimary)),
+                      subtitle: Text(
+                          '${m.senderId == ctrl.myId ? 'Toi'.tr : prenom} · $date',
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 12)),
+                    );
+                  },
+                );
+              }),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -1009,6 +1108,32 @@ class _BandeauEnvoi extends StatelessWidget {
             child: Text(texte,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ),
+          // Pourquoi cette limite ? (seulement pour la limite, pas le blocage)
+          if (!ctrl.bloque.value)
+            GestureDetector(
+              onTap: () => Get.dialog(AlertDialog(
+                backgroundColor: AppColors.surface,
+                title: Text('Pourquoi cette limite ?'.tr,
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800)),
+                content: Text(
+                    "Pour éviter les messages insistants, on peut envoyer @n messages à quelqu'un qui n'a pas encore répondu. Dès sa réponse, tu peux écrire librement.\n\nAstuce : un message personnalisé (une question sur son profil) reçoit bien plus de réponses."
+                        .trParams({'n': '${ConversationController.limiteSansReponse}'}),
+                    style: TextStyle(color: AppColors.textMuted, height: 1.5)),
+                actions: [
+                  TextButton(
+                      onPressed: Get.back,
+                      child: Text('Compris'.tr,
+                          style: TextStyle(color: AppColors.accent))),
+                ],
+              )),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(Icons.info_outline_rounded,
+                    size: 18, color: AppColors.textMuted),
+              ),
+            ),
         ]),
       );
     });

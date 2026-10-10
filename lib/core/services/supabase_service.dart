@@ -712,6 +712,23 @@ class SupabaseService {
           ? DateTime.tryParse(row['dispo_jusqua'].toString())?.toLocal()
           : null,
       estVerifie: row['est_verifie'] == true,
+      metier: row['metier'] as String?,
+      etudes: row['etudes'] as String?,
+      langues: List<String>.from(row['langues'] ?? const []),
+      questions: questionsDepuis(row['questions']),
+      naissance: DateTime.tryParse(
+          (row['birthdate'] ?? row['birth_date'] ?? '').toString()),
     );
+  }
+
+  /// Lit la colonne questions (jsonb) : [{'q': …, 'r': …}]
+  static List<Map<String, String>> questionsDepuis(dynamic v) {
+    if (v is! List) return const [];
+    return [
+      for (final e in v)
+        if (e is Map && (e['q'] ?? '').toString().isNotEmpty &&
+            (e['r'] ?? '').toString().trim().isNotEmpty)
+          {'q': e['q'].toString(), 'r': e['r'].toString()}
+    ];
   }
 }

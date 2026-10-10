@@ -177,6 +177,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                     const SizedBox(height: 20),
 
+                    // ─── Comparatif Gratuit / Premium ────────────
+                    const _Comparatif(),
+                    const SizedBox(height: 20),
+
                     // ─── Formules ────────────────────────────────
                     Text('CHOISIS TA FORMULE'.tr, style: _T.section()),
                     const SizedBox(height: 12),
@@ -518,6 +522,62 @@ class _FlecheRebondState extends State<_FlecheRebond>
         child: Icon(Icons.keyboard_arrow_down_rounded,
             color: AppColors.textPrimary, size: 26),
       ),
+    );
+  }
+}
+
+/// Tableau Gratuit / Premium : ce que l'abonnement change concrètement.
+class _Comparatif extends StatelessWidget {
+  const _Comparatif();
+
+  @override
+  Widget build(BuildContext context) {
+    final lignes = <(String, String, String)>[
+      ('Profils visibles'.tr, '${HomeController.limiteGratuite}', '600'),
+      ('Voir qui t\'a liké'.tr, '—', '✓'),
+      ('Voir qui a visité ton profil'.tr, '—', '✓'),
+      ('Mode voyage (autre ville)'.tr, '—', '✓'),
+      ('Mode fantôme sur la carte'.tr, '—', '✓'),
+      ('Boost offert chaque mois'.tr, '—', '1'),
+      ('Messages, stories, matchs'.tr, '✓', '✓'),
+    ];
+    Widget cellule(String t, {bool premium = false, bool entete = false}) =>
+        SizedBox(
+          width: 72,
+          child: Text(t,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: entete ? 12 : 14,
+                  fontWeight: FontWeight.w800,
+                  color: premium ? AppColors.accent : AppColors.textMuted)),
+        );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(children: [
+        Row(children: [
+          const Expanded(child: SizedBox()),
+          cellule('Gratuit'.tr, entete: true),
+          cellule('Premium', premium: true, entete: true),
+        ]),
+        const SizedBox(height: 6),
+        for (final (titre, gratuit, premium) in lignes)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(children: [
+              Expanded(
+                  child: Text(titre,
+                      style: TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary))),
+              cellule(gratuit),
+              cellule(premium, premium: true),
+            ]),
+          ),
+      ]),
     );
   }
 }

@@ -1064,6 +1064,18 @@ class _CorpsProfil extends StatelessWidget {
                   _PhysiqueBadge(icon: '⚖️', label: '@poids kg'.trParams({'poids': user.poids.toString()})),
                 if (user.morphologie != null)
                   _PhysiqueBadge(icon: '💪', label: user.morphologie!.tr),
+                if ((user.metier ?? '').isNotEmpty)
+                  _PhysiqueBadge(icon: '💼', label: user.metier!),
+                if ((user.etudes ?? '').isNotEmpty)
+                  _PhysiqueBadge(icon: '🎓', label: user.etudes!),
+                if (user.signeAstro != null)
+                  _PhysiqueBadge(
+                      icon: user.signeAstro!.split(' ').first,
+                      label: user.signeAstro!.split(' ').skip(1).join(' ').tr),
+                if (user.langues.isNotEmpty)
+                  _PhysiqueBadge(
+                      icon: '🗣️',
+                      label: user.langues.map((l) => l.tr).join(', ')),
                 if (user.lieuRencontre != null)
                   _PhysiqueBadge(
                       icon: '📍',
@@ -1073,6 +1085,38 @@ class _CorpsProfil extends StatelessWidget {
             ),
             const SizedBox(height: 20),
           ],
+
+          // ── Réponses aux questions (façon Hinge) ──
+          for (final q in user.questions) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(q['q']!.tr,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted)),
+                    const SizedBox(height: 6),
+                    Text(q['r']!,
+                        style: TextStyle(
+                            fontFamily: 'Syne',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            height: 1.3)),
+                  ]),
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (user.questions.isNotEmpty) const SizedBox(height: 10),
 
           if (user.interests.isNotEmpty) ...[
              _SectionTitle('Intérêts'.tr),
@@ -1119,7 +1163,11 @@ class _CorpsProfil extends StatelessWidget {
       u.taille != null ||
       u.poids != null ||
       u.morphologie != null ||
-      u.lieuRencontre != null;
+      u.lieuRencontre != null ||
+      (u.metier ?? '').isNotEmpty ||
+      (u.etudes ?? '').isNotEmpty ||
+      u.signeAstro != null ||
+      u.langues.isNotEmpty;
 }
 
 /// Petite étiquette de l'en-tête (« ● En ligne », « 📍 3 km »…)
