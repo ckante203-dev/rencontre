@@ -21,7 +21,7 @@ class Urgence {
   }
 
   /// Numéro au format international sans « + » (Côte d'Ivoire par défaut)
-  static String _international(String numero) {
+  static String international(String numero) {
     var n = numero.replaceAll(RegExp(r'[^0-9+]'), '');
     if (n.startsWith('+')) return n.substring(1);
     if (n.startsWith('00')) return n.substring(2);
@@ -155,7 +155,7 @@ class Urgence {
         ? "🚨 J'ai besoin d'aide, appelle-moi vite. (alerte envoyée depuis Zamu)".tr
         : "🚨 J'ai besoin d'aide, appelle-moi vite. Ma position : @lieu (alerte envoyée depuis Zamu)"
             .trParams({'lieu': lieu});
-    final numero = _international(contact!['numero']!);
+    final numero = international(contact!['numero']!);
     final whatsapp = Uri.parse(
         'https://wa.me/$numero?text=${Uri.encodeComponent(texte)}');
     final sms = Uri.parse('sms:+$numero?body=${Uri.encodeComponent(texte)}');

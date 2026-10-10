@@ -83,6 +83,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
   final _lieu = TextEditingController();
   final _ville = TextEditingController();
   final _description = TextEditingController();
+  final _lien = TextEditingController();
   String _categorie = 'sport';
   DateTime? _debut;
   bool _envoi = false;
@@ -145,6 +146,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
       lieu: lieu,
       ville: _ville.text.trim(),
       description: _description.text.trim(),
+      lien: _lien.text.trim(),
       debut: _debut!,
     );
     if (!mounted) return;
@@ -264,6 +266,13 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
               maxLines: 4,
               style: style,
               decoration: _deco('Infos pratiques, ambiance…'.tr)),
+          _label('Lien billets / réservation (facultatif)'.tr),
+          TextField(
+              controller: _lien,
+              maxLength: 300,
+              keyboardType: TextInputType.url,
+              style: style,
+              decoration: _deco('https://…'.tr)),
           const SizedBox(height: 24),
           GestureDetector(
             onTap: _envoi ? null : _envoyer,

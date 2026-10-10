@@ -5,6 +5,7 @@ import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/view/mode_swipe.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/evenements/bande_evenements.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
@@ -396,6 +397,31 @@ class _FilterChipsState extends State<_FilterChips> {
                     const SizedBox(width: 8),
                   ],
                   const _AdvancedFilterBtn(),
+                  const SizedBox(width: 8),
+                  // Mode cartes (glisser pour liker / passer)
+                  GestureDetector(
+                    onTap: () => Get.to(() => const ModeSwipe()),
+                    child: Container(
+                      height: 42,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.surface2,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.style_rounded,
+                            size: 16, color: AppColors.textMuted),
+                        const SizedBox(width: 6),
+                        Text('Cartes'.tr,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textMuted)),
+                      ]),
+                    ),
+                  ),
                 ],
               ),
             ],

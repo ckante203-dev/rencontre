@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zamu – Rencontres près de chez toi</title>
+<meta name="description" content="Zamu : rencontres, stories et sorties près de chez toi. Profils vérifiés, gratuit sur Google Play.">
+<meta property="og:title" content="Zamu – Rencontres près de chez toi">
+<meta property="og:description" content="Rencontres, stories et sorties près de chez toi. Profils vérifiés. Gratuit sur Google Play.">
+<style>
+  :root {
+    --fond: #0d0b16;
+    --carte: #1a1626;
+    --texte: #ffffff;
+    --doux: #b9b2cc;
+    --rose: #d94bc8;
+    --violet: #8c46f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--fond);
+    color: var(--texte);
+    line-height: 1.5;
+  }
+  .haut {
+    padding: 64px 16px 48px;
+    text-align: center;
+    background: radial-gradient(circle at 50% 0%, #3b1a66 0%, var(--fond) 70%);
+  }
+  .logo {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin: 0;
+  }
+  .accroche {
+    font-size: 26px;
+    font-weight: 800;
+    max-width: 560px;
+    margin: 18px auto 10px;
+  }
+  .sous {
+    color: var(--doux);
+    max-width: 520px;
+    margin: 0 auto 28px;
+  }
+  .bouton {
+    display: inline-block;
+    padding: 16px 30px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--violet), var(--rose));
+    color: #fff;
+    font-weight: 800;
+    font-size: 17px;
+    text-decoration: none;
+  }
+  .note { color: var(--doux); font-size: 13px; margin-top: 12px; }
+  .grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+  .carte {
+    background: var(--carte);
+    border-radius: 18px;
+    padding: 20px;
+  }
+  .carte .emoji { font-size: 30px; }
+  .carte h2 { font-size: 18px; margin: 8px 0 6px; }
+  .carte p { color: var(--doux); margin: 0; font-size: 15px; }
+  footer {
+    text-align: center;
+    padding: 24px 16px 40px;
+    color: var(--doux);
+    font-size: 14px;
+  }
+  footer a { color: var(--doux); margin: 0 8px; }
+</style>
+</head>
+<body>
+  <section class="haut">
+    <p class="logo">Zamu</p>
+    <p class="accroche">Quelqu'un te plaît à deux pas de toi&nbsp;?</p>
+    <p class="sous">Rencontres, discussions, stories et sorties près de chez toi. Des profils vérifiés par selfie, une appli pensée pour la sécurité.</p>
+    <a class="bouton" href="https://play.google.com/store/apps/details?id=com.vybestyle.zamu">Télécharger sur Google Play</a>
+    <p class="note">Gratuit · 18 ans et plus</p>
+  </section>
+
+  <section class="grille">
+    <div class="carte">
+      <div class="emoji">📍</div>
+      <h2>Près de toi</h2>
+      <p>Découvre les personnes autour de toi, triées par distance, et vois qui est en ligne.</p>
+    </div>
+    <div class="carte">
+      <div class="emoji">✅</div>
+      <h2>Profils vérifiés</h2>
+      <p>Le badge bleu montre que la personne ressemble bien à ses photos.</p>
+    </div>
+    <div class="carte">
+      <div class="emoji">📸</div>
+      <h2>Stories et snaps</h2>
+      <p>Partage tes moments, réponds aux stories, envoie des photos éphémères.</p>
+    </div>
+    <div class="carte">
+      <div class="emoji">🎉</div>
+      <h2>Sorties et événements</h2>
+      <p>Concerts, soirées, matchs : vois qui y va et retrouve-toi sur place.</p>
+    </div>
+    <div class="carte">
+      <div class="emoji">🛡️</div>
+      <h2>Sécurité</h2>
+      <p>Signalement, blocage, alerte anti-arnaque et bouton « Je suis en danger ».</p>
+    </div>
+    <div class="carte">
+      <div class="emoji">🌍</div>
+      <h2>Français et anglais</h2>
+      <p>L'appli parle ta langue.</p>
+    </div>
+  </section>
+
+  <footer>
+    <a href="conditions-utilisation.html">Conditions d'utilisation</a>
+    <a href="politique-confidentialite.html">Politique de confidentialité</a>
+    <a href="suppression-compte.html">Supprimer mon compte</a>
+    <p>© 2026 Zamu</p>
+  </footer>
+</body>
+</html>

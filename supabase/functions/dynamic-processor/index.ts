@@ -118,8 +118,10 @@ type EventType =
 function buildNotificationContent(
   eventType: EventType,
   fromName: string,
-  distanceKm?: number
+  distanceKm?: number,
+  en = false, // langue choisie dans l'app (profiles.langue = 'en')
 ): { title: string; body: string; channelId: string } {
+  if (en) return buildNotificationContentEn(eventType, fromName, distanceKm);
   switch (eventType) {
     case "favori_en_ligne":
       return {
@@ -176,6 +178,72 @@ function buildNotificationContent(
       return {
         title: `❤️ ${fromName} t'a liké !`,
         body: `${fromName} a liké ton profil. Like en retour !`,
+        channelId: "likes",
+      };
+  }
+}
+
+function buildNotificationContentEn(
+  eventType: EventType,
+  fromName: string,
+  distanceKm?: number,
+): { title: string; body: string; channelId: string } {
+  switch (eventType) {
+    case "favori_en_ligne":
+      return {
+        title: `⭐ ${fromName} is online`,
+        body: `Your favourite ${fromName} just came online. Say hi!`,
+        channelId: "likes",
+      };
+    case "favori_proche":
+      return {
+        title: `⭐ ${fromName} is near you`,
+        body: distanceKm != null && distanceKm < 1
+          ? `Your favourite is less than 1 km away`
+          : `Your favourite is about ${Math.round(distanceKm ?? 0)} km away`,
+        channelId: "likes",
+      };
+    case "favori_story":
+      return {
+        title: `⭐ ${fromName} posted a story`,
+        body: `Go see it before it disappears 👀`,
+        channelId: "likes",
+      };
+    case "favori_ville":
+      return {
+        title: `⭐ ${fromName} is in your city`,
+        body: `Your favourite ${fromName} just arrived near you`,
+        channelId: "likes",
+      };
+    case "ami_demande":
+      return {
+        title: `👥 ${fromName} wants to be your friend`,
+        body: `Accept their request to see their "Friends" stories`,
+        channelId: "follows",
+      };
+    case "ami_accepte":
+      return {
+        title: `👥 ${fromName} accepted your request`,
+        body: `You're now friends on Zamu 🎉`,
+        channelId: "follows",
+      };
+    case "match":
+      return {
+        title: "💘 New Match!",
+        body: `You and ${fromName} liked each other!`,
+        channelId: "matches",
+      };
+    case "follow":
+      return {
+        title: `👤 ${fromName} followed you!`,
+        body: `${fromName} now follows your profile.`,
+        channelId: "follows",
+      };
+    case "like":
+    default:
+      return {
+        title: `❤️ ${fromName} liked you!`,
+        body: `${fromName} liked your profile. Like them back!`,
         channelId: "likes",
       };
   }
@@ -284,10 +352,12 @@ serve(async (req) => {
       return new Response("favoris coupés", { status: 200 });
     }
 
+    const en = toProfile.langue === "en";
     let { title, body, channelId } = buildNotificationContent(
       eventType,
       fromProfile.name,
-      typeof payload.distance_km === "number" ? payload.distance_km : undefined
+      typeof payload.distance_km === "number" ? payload.distance_km : undefined,
+      en,
     );
 
     let data: Record<string, string> = {
@@ -304,8 +374,8 @@ serve(async (req) => {
     const boostActif = !!toProfile.boost_jusqua &&
       new Date(toProfile.boost_jusqua).getTime() > Date.now();
     if (eventType === "like" && toProfile.is_premium !== true && !boostActif) {
-      title = "❤️ Quelqu'un t'a liké !";
-      body = "Découvre qui t'a liké 👀";
+      title = en ? "❤️ Someone liked you!" : "❤️ Quelqu'un t'a liké !";
+      body = en ? "Find out who liked you 👀" : "Découvre qui t'a liké 👀";
       data = { type: "like_anonyme" };
     }
 

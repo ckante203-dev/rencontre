@@ -204,6 +204,15 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                       ),
                       title: Text(p.nom,
                           style: TextStyle(color: AppColors.textPrimary)),
+                      subtitle: Text(
+                          p.vues == 0
+                              ? 'Pas encore ouvert'.tr
+                              : (p.vues > 1
+                                      ? 'Ouvert @n fois'
+                                      : 'Ouvert 1 fois')
+                                  .trParams({'n': '${p.vues}'}),
+                          style: TextStyle(
+                              color: AppColors.textMuted, fontSize: 12)),
                       trailing: TextButton(
                         onPressed: () => _retirer(p),
                         child:  Text('Retirer'.tr,

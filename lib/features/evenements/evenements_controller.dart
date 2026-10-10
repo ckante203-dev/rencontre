@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/evenements/ecran_evenement.dart';
@@ -291,13 +292,14 @@ class EvenementsController extends GetxController {
     required String lieu,
     String? ville,
     String? description,
+    String? lien,
     required DateTime debut,
     DateTime? fin,
   }) async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return false;
     try {
-      await supabase.from('evenements').insert({
+      final ligne = {
         'titre': titre,
         'categorie': categorie,
         'lieu': lieu,
@@ -307,7 +309,16 @@ class EvenementsController extends GetxController {
         'fin': fin?.toUtc().toIso8601String(),
         'statut': 'en_attente',
         'cree_par': uid,
-      });
+      };
+      final l = (lien ?? '').trim();
+      try {
+        await supabase.from('evenements').insert(
+            {...ligne, if (l.startsWith('http')) 'lien': l});
+      } on PostgrestException catch (e) {
+        // Colonne « lien » pas encore créée (SQL 052) : envoi sans le lien
+        if (!e.message.contains('lien')) rethrow;
+        await supabase.from('evenements').insert(ligne);
+      }
       return true;
     } catch (e) {
       final m = e.toString();

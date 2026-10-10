@@ -648,6 +648,7 @@ class ConversationController extends GetxController
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
   final RxBool isOtherRecording = false.obs; // « enregistre un vocal… »
+  final RxBool autreVerifie = false.obs; // badge bleu dans l'en-tête
   // Message épinglé en haut de la conversation (conversations.message_epingle_id)
   final RxnString epingleId = RxnString();
   final RxnString epingleTexte = RxnString();
@@ -994,10 +995,11 @@ class ConversationController extends GetxController
     try {
       final data = await Supabase.instance.client
           .from('profiles')
-          .select('is_online, last_seen')
+          .select('is_online, last_seen, est_verifie')
           .eq('id', otherUserId)
           .maybeSingle();
       if (data != null) {
+        autreVerifie.value = data['est_verifie'] == true;
         isOtherOnline.value = SupabaseService.isReallyOnline(
             data['is_online'], data['last_seen']);
         otherLastSeen.value =

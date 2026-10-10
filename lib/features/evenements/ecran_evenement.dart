@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -28,14 +29,28 @@ class _EcranEvenementState extends State<EcranEvenement> {
   List<ParticipantEvenement>? _participants;
   List<StoryModel> _stories = const [];
   bool _envoi = false;
+  String? _lien; // billetterie / réservation (colonne evenements.lien)
 
   EvenementsController get _ctrl => EvenementsController.to;
+
+  Future<void> _chargerLien() async {
+    try {
+      final r = await Supabase.instance.client
+          .from('evenements')
+          .select('lien')
+          .eq('id', _ev.id)
+          .maybeSingle();
+      final l = r?['lien'] as String?;
+      if (mounted && (l ?? '').startsWith('http')) setState(() => _lien = l);
+    } catch (_) {} // colonne absente (SQL 052 pas encore passé)
+  }
 
   @override
   void initState() {
     super.initState();
     if (_ev.jeParticipe) _chargerParticipants();
     _chargerStories();
+    _chargerLien();
   }
 
   Future<void> _chargerParticipants() async {
@@ -263,6 +278,34 @@ class _EcranEvenementState extends State<EcranEvenement> {
               _titre(termine ? '👋 Ils étaient là aussi'.tr : 'Qui vient'.tr),
               const SizedBox(height: 10),
               _qui(ev, termine),
+
+              if (_lien != null && !termine) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse(_lien!),
+                      mode: LaunchMode.externalApplication),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.accent),
+                    ),
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('🎟️', style: TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Text('Billets / réservation'.tr,
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary)),
+                        ]),
+                  ),
+                ),
+              ],
 
               if ((ev.description ?? '').isNotEmpty) ...[
                 const SizedBox(height: 22),

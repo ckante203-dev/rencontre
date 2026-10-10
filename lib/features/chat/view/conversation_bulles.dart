@@ -1496,15 +1496,7 @@ class _VignetteVideoStory extends StatelessWidget {
 class _AlerteArnaque extends StatelessWidget {
   const _AlerteArnaque();
 
-  static final _motif = RegExp(
-      r'(mobile ?money|orange ?money|\bmomo\b|\bwave\b|moov ?money|mtn ?money|'
-      r'western ?union|moneygram|transf[eé]r|envoie[- ]?moi .*(argent|fcfa|francs|cfa)|'
-      r"(pr[eê]te|donne)[- ]?moi .*(argent|fcfa|francs)|\bcode (de |d')?(v[ée]rification|confirmation|re[cç]u)|"
-      r'\d[\d .]{2,}\s?(fcfa|f cfa|cfa|francs)|https?://|bit\.ly|carte bancaire|crypto|bitcoin)',
-      caseSensitive: false);
-
-  static bool suspect(String? texte) =>
-      texte != null && texte.length > 3 && _motif.hasMatch(texte);
+  static bool suspect(String? texte) => messageSuspect(texte);
 
   @override
   Widget build(BuildContext context) {

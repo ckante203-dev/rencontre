@@ -171,7 +171,10 @@ serve(async (req) => {
     // Réglage « Son des notifications » désactivé → canal silencieux
     const silencieux = recipient.notif_son === false;
 
-    const senderName = sender?.name ?? "Quelqu'un";
+    // Langue choisie dans l'app (profiles.langue : 'fr' par défaut)
+    const en = recipient.langue === "en";
+    const t = (fr: string, anglais: string) => (en ? anglais : fr);
+    const senderName = sender?.name ?? t("Quelqu'un", "Someone");
     // Image : l'app met le genre dans le texte (« 🎨 Sticker », « 🎞️ GIF »,
     // « 🎬 Vidéo », « 🔞 Photo »…). Une photo sensible reste discrète.
     const texte: string = content ?? "";
@@ -179,13 +182,14 @@ serve(async (req) => {
       ? (texte.length > 100 ? texte.substring(0, 97) + "..." : texte)
       : type === "image"
         ? (texte.startsWith("🔞") ? "📷 Photo"
-          : texte.startsWith("🎨") || texte.startsWith("🎞") || texte.startsWith("🎬")
+          : texte.startsWith("🎬") ? t(texte, "🎬 Video")
+          : texte.startsWith("🎨") || texte.startsWith("🎞")
             ? texte
             : "📷 Photo")
-      : type === "audio" ? "🎤 Vocal"
-      : type === "snap" ? "📸 Photo éphémère"
-      : type === "location" ? "📍 Position"
-      : "Nouveau message";
+      : type === "audio" ? t("🎤 Vocal", "🎤 Voice message")
+      : type === "snap" ? t("📸 Photo éphémère", "📸 Disappearing photo")
+      : type === "location" ? t("📍 Position", "📍 Location")
+      : t("Nouveau message", "New message");
 
     const fcmRes = await fetch(
       `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,

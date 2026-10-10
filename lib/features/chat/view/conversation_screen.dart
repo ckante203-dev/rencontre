@@ -7,6 +7,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/shared/widgets/badge_verifie.dart';
+import 'package:rencontre/features/chat/model/detection_arnaque.dart';
 import 'package:rencontre/features/profil/vue/urgence.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/features/album/album_service.dart';
@@ -266,6 +268,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                     ),
+                    // ✓ Profil vérifié (selfie validé)
+                    Obx(() => ctrl.autreVerifie.value
+                        ? const Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: BadgeVerifie(size: 15))
+                        : const SizedBox.shrink()),
                     // 🔥 Série, lue dans la liste (mise à jour en direct)
                     if (Get.isRegistered<ChatListController>())
                       GetBuilder<ChatListController>(builder: (list) {

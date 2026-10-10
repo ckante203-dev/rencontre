@@ -22,7 +22,14 @@ class PersonneAcces {
   final String id;
   final String nom;
   final String? photoUrl;
-  const PersonneAcces({required this.id, required this.nom, this.photoUrl});
+  final int vues; // nombre d'ouvertures de mon album par cette personne
+  final DateTime? derniereVue;
+  const PersonneAcces(
+      {required this.id,
+      required this.nom,
+      this.photoUrl,
+      this.vues = 0,
+      this.derniereVue});
 }
 
 class AlbumService {
@@ -35,6 +42,12 @@ class AlbumService {
 
   /// Photos de l'album de [ownerId] — vide si je n'y ai pas accès.
   static Future<List<PhotoAlbum>> photosDe(String ownerId) async {
+    // Ouverture de l'album de quelqu'un d'autre : comptée pour lui (SQL 052)
+    if (ownerId != _uid) {
+      _sb
+          .rpc('noter_vue_album', params: {'p_owner': ownerId})
+          .then((_) {}, onError: (_) {});
+    }
     final rows = await _sb
         .from('album_photos')
         .select('id, chemin')
@@ -120,12 +133,23 @@ class AlbumService {
   static Future<List<PersonneAcces>> personnesAvecAcces() async {
     final uid = _uid;
     if (uid == null) return [];
-    final acces = await _sb
-        .from('album_acces')
-        .select('viewer_id')
-        .eq('owner_id', uid)
-        .order('created_at', ascending: false);
-    final ids = (acces as List).map((r) => r['viewer_id'] as String).toList();
+    List acces;
+    try {
+      acces = await _sb
+          .from('album_acces')
+          .select('viewer_id, vues, derniere_vue')
+          .eq('owner_id', uid)
+          .order('created_at', ascending: false);
+    } catch (_) {
+      // Colonnes vues / derniere_vue absentes (SQL 052 pas encore passé)
+      acces = await _sb
+          .from('album_acces')
+          .select('viewer_id')
+          .eq('owner_id', uid)
+          .order('created_at', ascending: false);
+    }
+    final infos = {for (final r in acces) r['viewer_id'] as String: r};
+    final ids = acces.map((r) => r['viewer_id'] as String).toList();
     if (ids.isEmpty) return [];
     final profils = await _sb
         .from('profiles')
@@ -138,6 +162,10 @@ class AlbumService {
           id: id,
           nom: (parId[id]?['name'] as String?) ?? 'Utilisateur',
           photoUrl: parId[id]?['photo_url'] as String?,
+          vues: (infos[id]?['vues'] as int?) ?? 0,
+          derniereVue: DateTime.tryParse(
+                  (infos[id]?['derniere_vue'] ?? '').toString())
+              ?.toLocal(),
         ),
     ];
   }

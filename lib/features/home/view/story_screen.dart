@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:rencontre/features/home/widget/barre_reponse_story.dart';
@@ -1696,10 +1697,75 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     Color(0xFF0A0A0F),
   ];
 
+  // Brouillon : story préparée puis abandonnée, proposée à la prochaine
+  // ouverture (gardé sur le téléphone).
+  static const _cleBrouillon = 'brouillon_story';
+  bool _publiee = false;
+
   @override
   void initState() {
     super.initState();
     _textCtrl.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _proposerBrouillon());
+  }
+
+  void _garderBrouillon() {
+    if (_publiee) return;
+    try {
+      final texte = _textCtrl.text.trim();
+      final aMedia = _previewPath != null && File(_previewPath!).existsSync();
+      if (!aMedia && !(_textMode && texte.isNotEmpty)) return;
+      GetStorage().write(_cleBrouillon, {
+        if (aMedia) 'chemin': _previewPath,
+        'video': _isVideo,
+        'miroir': _miroir,
+        'legende': _captionCtrl.text,
+        'stickers': _stickers.map((e) => e.toJson()).toList(),
+        if (!aMedia) 'texte': texte,
+        if (!aMedia) 'fond': _selectedBgColor.toARGB32(),
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _proposerBrouillon() async {
+    Map? b;
+    try {
+      b = GetStorage().read<Map>(_cleBrouillon);
+    } catch (_) {}
+    if (b == null || !mounted) return;
+    GetStorage().remove(_cleBrouillon);
+    final chemin = b['chemin'] as String?;
+    final texte = (b['texte'] as String?) ?? '';
+    if ((chemin == null || !File(chemin).existsSync()) && texte.isEmpty) return;
+    final reprendre = await Get.dialog<bool>(AlertDialog(
+      title: Text('Reprendre ton brouillon ?'.tr),
+      content: Text('Tu avais commencé une story sans la publier.'.tr),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text('Non'.tr)),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text('Reprendre'.tr)),
+      ],
+    ));
+    if (reprendre != true || !mounted) return;
+    if (chemin != null && File(chemin).existsSync()) {
+      _setMedia(chemin, b['video'] == true, b['miroir'] == true);
+      setState(() {
+        _captionCtrl.text = (b!['legende'] as String?) ?? '';
+        final st = StickerStory.listeDepuis(b['stickers']);
+        _stickers.addAll(st);
+        _stickerIds.addAll([for (final _ in st) _prochainStickerId++]);
+      });
+    } else {
+      setState(() {
+        _textMode = true;
+        _textCtrl.text = texte;
+        final fond = b!['fond'];
+        if (fond is int) _selectedBgColor = Color(fond);
+      });
+    }
   }
 
   // Selfie : photo montrée (et publiée) comme dans le miroir de la caméra
@@ -1767,6 +1833,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   Future<void> _publish() async {
     if (_previewPath == null) return;
+    _publiee = true;
 
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) {
@@ -1901,6 +1968,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   Future<void> _publishText() async {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) return;
+    _publiee = true;
 
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) {
@@ -2163,6 +2231,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   @override
   void dispose() {
+    _garderBrouillon();
     _captionCtrl.dispose();
     _cadrage.dispose();
     _textCtrl.dispose();

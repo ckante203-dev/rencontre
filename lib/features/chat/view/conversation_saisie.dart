@@ -370,8 +370,26 @@ class _AttachMenu extends StatelessWidget {
       {required bool camera}) async {
     ctrl.showAttachMenu.value = false;
     final picker = ImagePicker();
+    // Galerie : plusieurs photos d'un coup (10 au maximum)
+    if (!camera) {
+      final photos = await picker.pickMultiImage(
+          maxWidth: 1080, maxHeight: 1920, imageQuality: 85, limit: 10);
+      if (photos.isEmpty) return;
+      final ctx = Get.context;
+      if (ctx == null) return;
+      if (photos.length > 1) {
+        _envoyerPlusieurs(ctx, photos.take(10).map((p) => p.path).toList());
+        return;
+      }
+      showModalBottomSheet(
+          context: ctx,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (_) => _PreviewSheet(ctrl: ctrl, filePath: photos.first.path));
+      return;
+    }
     final picked = await picker.pickImage(
-        source: camera ? ImageSource.camera : ImageSource.gallery,
+        source: ImageSource.camera,
         maxWidth: 1080,
         maxHeight: 1920,
         imageQuality: 85);
@@ -383,6 +401,65 @@ class _AttachMenu extends StatelessWidget {
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
         builder: (_) => _PreviewSheet(ctrl: ctrl, filePath: picked.path));
+  }
+
+  /// Aperçu de plusieurs photos puis envoi l'une après l'autre
+  void _envoyerPlusieurs(BuildContext ctx, List<String> chemins) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                for (final c in chemins)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(File(c), fit: BoxFit.cover, cacheWidth: 300),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.send_rounded, color: AppColors.surAccent),
+                label: Text(
+                    'Envoyer @n photos'.trParams({'n': '${chemins.length}'}),
+                    style: const TextStyle(
+                        color: AppColors.surAccent,
+                        fontWeight: FontWeight.w700)),
+                onPressed: () async {
+                  Get.back();
+                  for (final c in chemins) {
+                    if (!ctrl.peutEnvoyer()) break;
+                    ctrl.envoyerMediaEnFond(chemin: c, video: false);
+                    // identifiants temporaires distincts (horodatage en ms)
+                    await Future.delayed(const Duration(milliseconds: 30));
+                  }
+                },
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 
   void _selectionnerVideo(BuildContext context) async {
