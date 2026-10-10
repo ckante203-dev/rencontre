@@ -446,6 +446,18 @@ class _StoryReplyPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final type = storyReply.storyIsVideo
+        ? '🎬 Vidéo'.tr
+        : storyReply.isTextStory
+            ? '✍️ Texte'.tr
+            : '📸 Photo'.tr;
+    final titre = storyReply.storyOwnerName.isNotEmpty
+        ? 'Story de @storyOwnerName'.trParams(
+            {'storyOwnerName': storyReply.storyOwnerName})
+        : 'Story'.tr;
+    // Grand aperçu façon Snapchat (format vertical 9:16)
+    const largeur = 150.0;
+    const hauteur = 240.0;
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -455,110 +467,102 @@ class _StoryReplyPreview extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.68),
-        margin: const EdgeInsets.only(bottom: 3),
-        decoration: BoxDecoration(
-          color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(
-              left: BorderSide(
-                  color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(9), bottomLeft: Radius.circular(9)),
-            child: SizedBox(
-              // ✅ Cadre agrandi (56x72 au lieu de 40x50)
-              width: 56,
-              height: 72,
-              child: Stack(fit: StackFit.expand, children: [
-                // ✅ Story texte : pas d'image à montrer.
-                if (storyReply.isTextStory)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: storyReply.storyBgColor != null
-                          ? _storyBgColor(storyReply.storyBgColor)
-                          : null,
-                      gradient: storyReply.storyBgColor == null
-                          ? AppColors.gradientPink
-                          : null,
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: Center(
-                        child: Text(storyReply.storyText ?? 'Aa'.tr,
-                            textAlign: TextAlign.center,
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: AppColors.surMedia,
-                                fontSize: storyReply.storyText == null ? 18 : 8,
-                                fontWeight: FontWeight.w800))),
-                  )
-                else if (storyReply.storyIsVideo)
-                  // Vidéo : on montre une image extraite de la vidéo
-                  _VignetteVideoStory(url: storyReply.storyPreviewUrl)
-                else
-                  CachedNetworkImage(
-                      imageUrl: storyReply.storyPreviewUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                          color: AppColors.surface,
-                          child: const Icon(Icons.photo_camera_rounded,
-                              color: Color(0x61FFFFFF), size: 18))),
-                if (storyReply.storyIsVideo)
-                  Container(
-                    color: Colors.black26,
-                    child: const Center(
-                        child: Icon(Icons.play_circle_fill_rounded,
-                            color: AppColors.surMedia, size: 22)),
-                  ),
-              ]),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: Column(
+          crossAxisAlignment:
+              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4, left: 2, right: 2),
+              child: Text('$type · $titre',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted)),
             ),
-          ),
-          Flexible(
-              child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                      storyReply.storyIsVideo
-                          ? '🎬 Vidéo'.tr
-                          : storyReply.isTextStory
-                              ? '✍️ Texte'.tr
-                              : '📸 Photo'.tr,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
-                  const SizedBox(height: 3),
-                  Text(
-                      storyReply.storyOwnerName.isNotEmpty
-                          ? 'Story de @storyOwnerName'.trParams({'storyOwnerName': storyReply.storyOwnerName.toString()})
-                          : 'Story'.tr,
-                      style:
-                          TextStyle(fontSize: 12, color: AppColors.textMuted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.visibility_rounded,
-                        size: 11, color: AppColors.textMuted),
-                    const SizedBox(width: 3),
-                    Text('Voir'.tr,
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+            Container(
+              width: largeur,
+              height: hauteur,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: isMine ? AppColors.accent : AppColors.border,
+                    width: 2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(fit: StackFit.expand, children: [
+                  if (storyReply.isTextStory)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: storyReply.storyBgColor != null
+                            ? _storyBgColor(storyReply.storyBgColor)
+                            : null,
+                        gradient: storyReply.storyBgColor == null
+                            ? AppColors.gradientPink
+                            : null,
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: Center(
+                          child: Text(storyReply.storyText ?? 'Aa'.tr,
+                              textAlign: TextAlign.center,
+                              maxLines: 8,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: AppColors.surMedia,
+                                  fontSize:
+                                      storyReply.storyText == null ? 28 : 15,
+                                  fontWeight: FontWeight.w800))),
+                    )
+                  else if (storyReply.storyIsVideo)
+                    _VignetteVideoStory(url: storyReply.storyPreviewUrl)
+                  else
+                    CachedNetworkImage(
+                        imageUrl: storyReply.storyPreviewUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                            color: AppColors.surface,
+                            child: const Icon(Icons.photo_camera_rounded,
+                                color: Color(0x61FFFFFF), size: 32))),
+                  if (storyReply.storyIsVideo)
+                    const Center(
+                        child: Icon(Icons.play_circle_fill_rounded,
+                            color: AppColors.surMedia, size: 44)),
+                  // Voile bas + « Voir »
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 18, 10, 8),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, AppColors.voileMedia],
+                        ),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.visibility_rounded,
+                            size: 13, color: AppColors.surMedia),
+                        const SizedBox(width: 4),
+                        Text('Voir'.tr,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.surMedia,
+                                fontWeight: FontWeight.w700)),
+                      ]),
+                    ),
+                  ),
                 ]),
-          )),
-        ]),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
