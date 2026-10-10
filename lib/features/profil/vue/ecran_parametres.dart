@@ -9,6 +9,7 @@ import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
+import 'package:rencontre/core/i18n/traductions.dart';
 
 /// « tout le monde » → « Tout le monde » (pas « Tout Le Monde »)
 String _majuscule(String s) =>
@@ -16,6 +17,37 @@ String _majuscule(String s) =>
 
 class EcranParametres extends StatelessWidget {
   const EcranParametres({super.key});
+
+  void _choisirLangue(BuildContext context) {
+    Widget choix(String code, String drapeau, String nom) => ListTile(
+          leading: Text(drapeau, style: const TextStyle(fontSize: 22)),
+          title: Text(nom,
+              style: TextStyle(
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+          trailing: Langue.code == code
+              ? Icon(Icons.check_rounded, color: AppColors.accent)
+              : null,
+          onTap: () {
+            Get.back();
+            Langue.changer(code);
+          },
+        );
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            choix('fr', '🇫🇷', 'Français'),
+            choix('en', '🇬🇧', 'English'),
+          ]),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +332,17 @@ class EcranParametres extends StatelessWidget {
                   selected: ctrl.selectedTheme.value,
                   onSelected: ctrl.setTheme,
                 )),
+            const SizedBox(height: 28),
+
+            // ════ LANGUE ═════════════════════════════════════════
+            _Titre('parametres.langue'.tr),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '🌐',
+              title: 'Langue · Language',
+              subtitle: Langue.code == 'en' ? 'English' : 'Français',
+              onTap: () => _choisirLangue(context),
+            ),
             const SizedBox(height: 28),
 
             // ════ ABONNEMENT ═════════════════════════════════════

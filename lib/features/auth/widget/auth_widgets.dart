@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 
 // ─── INPUT FIELD ────────────────────────────────────────────────
@@ -225,7 +226,7 @@ class AuthDivider extends StatelessWidget {
         Expanded(child: Container(height: 1, color: AppColors.border)),
          Padding(
           padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text('ou', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          child: Text('commun.ou'.tr, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         ),
         Expanded(child: Container(height: 1, color: AppColors.border)),
       ],

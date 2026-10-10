@@ -88,7 +88,7 @@ class _SignupForm extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              Text('Crée ton\ncompte 🚀',
+              Text('inscription.titre'.tr,
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 30,
@@ -96,14 +96,14 @@ class _SignupForm extends StatelessWidget {
                         color: AppColors.textPrimary,
                         height: 1.2)),
               const SizedBox(height: 8),
-              Text('Rejoins des milliers de personnes autour de toi',
+              Text('inscription.sous_titre'.tr,
                   style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
               const SizedBox(height: 32),
 
               // ── Prénom ──────────────────────────────────────
               AuthInputField(
-                label: 'Prénom',
-                hint: 'Ton prénom',
+                label: 'inscription.prenom'.tr,
+                hint: 'inscription.prenom_hint'.tr,
                 icon: '👤',
                 controller: ctrl.nameController,
                 onChanged: (_) => ctrl.clearError(),
@@ -123,8 +123,8 @@ class _SignupForm extends StatelessWidget {
 
               // ── Email ───────────────────────────────────────
               AuthInputField(
-                label: 'Email',
-                hint: 'ton@email.com',
+                label: 'commun.email'.tr,
+                hint: 'commun.email_hint'.tr,
                 icon: '✉️',
                 controller: ctrl.emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -137,8 +137,8 @@ class _SignupForm extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Obx(() => AuthInputField(
-                        label: 'Mot de passe',
-                        hint: 'Min. 8 caractères',
+                        label: 'commun.mot_de_passe'.tr,
+                        hint: 'inscription.mdp_hint'.tr,
                         icon: '🔒',
                         controller: ctrl.passwordController,
                         isPassword: true,
@@ -173,7 +173,7 @@ class _SignupForm extends StatelessWidget {
 
               // Bouton inscription
               Obx(() => AuthPrimaryButton(
-                    label: 'Créer mon compte →',
+                    label: 'inscription.bouton'.tr,
                     onTap: ctrl.signUpWithEmail,
                     isLoading: ctrl.isLoading.value,
                   )),
@@ -183,14 +183,14 @@ class _SignupForm extends StatelessWidget {
               const SizedBox(height: 20),
 
               AuthSocialButton(
-                label: 'Continuer avec Google',
+                label: 'commun.google'.tr,
                 icon: 'G',
                 onTap: ctrl.signInWithGoogle,
               ),
               if (Platform.isIOS) ...[
                 const SizedBox(height: 12),
                 AuthSocialButton(
-                  label: 'Continuer avec Apple',
+                  label: 'commun.apple'.tr,
                   icon: '\uF8FF',
                   onTap: ctrl.signInWithApple,
                 ),
@@ -202,12 +202,12 @@ class _SignupForm extends StatelessWidget {
                   onTap: () => Get.toNamed('/login'),
                   child: RichText(
                     text: TextSpan(
-                      text: 'Déjà un compte ? ',
+                      text: 'inscription.deja_compte'.tr,
                       style:
                           TextStyle(fontSize: 14, color: AppColors.textMuted),
                       children: [
                         TextSpan(
-                          text: 'Se connecter',
+                          text: 'commun.se_connecter'.tr,
                           style: TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700),
@@ -225,7 +225,7 @@ class _SignupForm extends StatelessWidget {
                   alignment: WrapAlignment.center,
                   children: [
                     Text(
-                      'En créant un compte, tu acceptes nos ',
+                      'inscription.accepte'.tr,
                       style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted.withOpacity(0.7),
@@ -234,7 +234,7 @@ class _SignupForm extends StatelessWidget {
                     GestureDetector(
                       onTap: () => _openCgu(context),
                       child: Text(
-                        "Conditions d'utilisation",
+                        'commun.cgu'.tr,
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.textPrimary,
@@ -245,7 +245,7 @@ class _SignupForm extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      ' et notre ',
+                      'inscription.et_notre'.tr,
                       style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted.withOpacity(0.7),
@@ -254,7 +254,7 @@ class _SignupForm extends StatelessWidget {
                     GestureDetector(
                       onTap: () => _openCgu(context),
                       child: Text(
-                        'Politique de confidentialité',
+                        'commun.confidentialite'.tr,
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.textPrimary,
@@ -288,8 +288,8 @@ class _UsernameField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AuthInputField(
-          label: 'Nom d\'utilisateur',
-          hint: 'ex: sarah_ci',
+          label: 'inscription.pseudo'.tr,
+          hint: 'inscription.pseudo_hint'.tr,
           icon: '@',
           controller: ctrl.usernameController,
           onChanged: (v) {
@@ -308,7 +308,7 @@ class _UsernameField extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(top: 6, left: 2),
             child: checking
-                ? Text('Vérification...',
+                ? Text('inscription.verification'.tr,
                     style: TextStyle(fontSize: 11, color: AppColors.textMuted))
                 : Row(children: [
                     Icon(
@@ -320,7 +320,7 @@ class _UsernameField extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      available ? 'Disponible' : 'Déjà pris',
+                      available ? 'inscription.disponible'.tr : 'inscription.deja_pris'.tr,
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -373,8 +373,8 @@ class _ConfirmPasswordFieldState extends State<_ConfirmPasswordField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Obx(() => AuthInputField(
-              label: 'Confirmer le mot de passe',
-              hint: 'Répète ton mot de passe',
+              label: 'inscription.confirmer_mdp'.tr,
+              hint: 'inscription.confirmer_mdp_hint'.tr,
               icon: '🔐',
               controller: widget.ctrl.confirmPasswordController,
               isPassword: true,
@@ -396,8 +396,8 @@ class _ConfirmPasswordFieldState extends State<_ConfirmPasswordField> {
               const SizedBox(width: 6),
               Text(
                 isSuccess
-                    ? 'Les mots de passe correspondent'
-                    : 'Les mots de passe ne correspondent pas',
+                    ? 'inscription.mdp_ok'.tr
+                    : 'inscription.mdp_ko'.tr,
                 style: TextStyle(
                     fontSize: 11,
                     color: isSuccess ? AppColors.online : AppColors.error,
@@ -626,7 +626,7 @@ class _DateField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('DATE DE NAISSANCE',
+        Text('inscription.naissance'.tr,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -658,7 +658,7 @@ class _DateField extends StatelessWidget {
                     color: AppColors.textPrimary,
                     letterSpacing: 1),
                 decoration: InputDecoration(
-                  hintText: 'JJ / MM / AAAA',
+                  hintText: 'inscription.naissance_hint'.tr,
                   hintStyle: TextStyle(color: AppColors.textMuted),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 16),

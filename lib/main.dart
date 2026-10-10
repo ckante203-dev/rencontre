@@ -21,6 +21,7 @@ import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
+import 'package:rencontre/core/i18n/traductions.dart';
 
 // ✅ Base Supabase — zamu-prod (vybe-studio org)
 const String _supabaseUrl = 'https://flixcyjefjcyjwvjdiny.supabase.co';
@@ -312,6 +313,9 @@ class ZamuApp extends StatelessWidget {
         themeMode: ThemeMode.dark,
         initialRoute: initialRoute,
         getPages: AppRoutes.pages,
+        translations: Traductions(),
+        locale: Langue.initiale(),
+        fallbackLocale: Langue.fr,
         defaultTransition: Transition.cupertino,
         transitionDuration: const Duration(milliseconds: 280),
       );

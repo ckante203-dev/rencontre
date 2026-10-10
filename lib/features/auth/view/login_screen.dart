@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Titre ──
                 Text(
-                  'Connexion',
+                  'connexion.titre'.tr,
                   style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 26,
@@ -67,8 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Connecte-toi pour retrouver tes matchs',
+                Text(
+                  'connexion.sous_titre'.tr,
                   style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF9999BB),
@@ -80,8 +80,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Email ou nom d'utilisateur ──
                 AuthInputField(
-                  label: 'Email ou nom d\'utilisateur',
-                  hint: 'ton@email.com ou ton pseudo',
+                  label: 'connexion.identifiant'.tr,
+                  hint: 'connexion.identifiant_hint'.tr,
                   icon: '✉️',
                   controller: ctrl.emailController,
                   onChanged: (_) => ctrl.clearError(),
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Mot de passe ──
                 Obx(() => AuthInputField(
-                      label: 'Mot de passe',
+                      label: 'commun.mot_de_passe'.tr,
                       hint: '••••••••',
                       icon: '🔒',
                       controller: ctrl.passwordController,
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: Text(
-                        'Mot de passe oublié ?',
+                        'connexion.oublie'.tr,
                         style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textPrimary,
@@ -125,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Bouton Se connecter ──
                 Obx(() => AuthPrimaryButton(
-                      label: 'Se connecter →',
+                      label: 'connexion.bouton'.tr,
                       onTap: ctrl.signInWithEmail,
                       isLoading: ctrl.isLoading.value,
                     )),
@@ -137,10 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Expanded(
                         child: Container(height: 1, color: AppColors.border)),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Text(
-                        'ou',
+                        'commun.ou'.tr,
                         style: TextStyle(
                           fontSize: 13,
                           color: Color(0xFF9999BB),
@@ -158,14 +158,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 // ── Continuer avec Google ──
                 _GradientBorderButton(
                   icon: 'G',
-                  label: 'Continuer avec Google',
+                  label: 'commun.google'.tr,
                   onTap: ctrl.signInWithGoogle,
                 ),
                 if (Platform.isIOS) ...[
                   const SizedBox(height: 12),
                   _GradientBorderButton(
                     icon: '\uF8FF',
-                    label: 'Continuer avec Apple',
+                    label: 'commun.apple'.tr,
                     onTap: ctrl.signInWithApple,
                   ),
                 ],
@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Pas de compte : gros bouton rouge, bien visible ──
                 Center(
-                  child: Text('Pas encore de compte ?',
+                  child: Text('connexion.pas_de_compte'.tr,
                       style: TextStyle(
                           fontSize: 14, color: Color(0xFF9999BB))),
                 ),
@@ -195,10 +195,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
-                        'S\'inscrire',
-                        style: TextStyle(
+                        'connexion.inscrire'.tr,
+                        style: const TextStyle(
                           color: AppColors.surAccent,
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       transition: Transition.cupertino,
                     ),
                     child: Text(
-                      "Conditions d'utilisation · Politique de confidentialité",
+                      'connexion.liens_legaux'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,
@@ -269,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Mot de passe oublié ?',
+              'connexion.oublie'.tr,
               style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 20,
@@ -278,21 +278,21 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'On t\'envoie un lien de réinitialisation par email.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF9999BB)),
+            Text(
+              'connexion.oublie_texte'.tr,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF9999BB)),
             ),
             const SizedBox(height: 20),
             AuthInputField(
-              label: 'Email',
-              hint: 'ton@email.com',
+              label: 'commun.email'.tr,
+              hint: 'commun.email_hint'.tr,
               icon: '✉️',
               controller: forgotEmailCtrl,
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
             AuthPrimaryButton(
-              label: 'Envoyer le lien',
+              label: 'connexion.envoyer_lien'.tr,
               onTap: () {
                 ctrl.emailController.text = forgotEmailCtrl.text;
                 ctrl.sendPasswordReset();
