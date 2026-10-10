@@ -311,7 +311,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
               ListTile(
                 leading: const Icon(Icons.block_rounded, color: Colors.red),
                 title: Text(
-                    'Bloquer @p'.trParams({'p': (_membres[m.senderId]?.nom ?? 'cette personne').toString()}),
+                    'Bloquer @p'.trParams({'p': (_membres[m.senderId]?.nom ?? 'cette personne'.tr).toString()}),
                     style: const TextStyle(color: Colors.red)),
                 onTap: () {
                   Get.back();
@@ -432,7 +432,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary)),
                     Text(
-                        '@p membres@p2'.trParams({'p2': (_groupe.estEvenement ? ' · événement' : '').toString(), 'p': (_membres.isEmpty ? _groupe.nbMembres : _membres.length).toString()}),
+                        '@p membres@p2'.trParams({'p2': (_groupe.estEvenement ? ' · événement'.tr : '').toString(), 'p': (_membres.isEmpty ? _groupe.nbMembres : _membres.length).toString()}),
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                   ]),

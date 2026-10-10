@@ -760,8 +760,8 @@ class _FondsChat {
         'aurore': 'Aurore',
         'points': 'Motif',
         'nuit': 'Nuit',
-      }[id] ??
-      'Aucun';
+      }[id]?.tr ??
+      'Aucun'.tr;
 
   static Color _teinte(Color c, double force) =>
       Color.alphaBlend(c.withOpacity(force), AppColors.bg);

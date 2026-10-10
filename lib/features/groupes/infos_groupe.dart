@@ -257,7 +257,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
         ),
         Center(
           child: Text(
-              '@length membres@p'.trParams({'length': membres.length.toString(), 'p': (_g.estEvenement ? ' · groupe de l\'événement' : '').toString()}),
+              '@length membres@p'.trParams({'length': membres.length.toString(), 'p': (_g.estEvenement ? ' · groupe de l\'événement'.tr : '').toString()}),
               style: TextStyle(color: AppColors.textMuted)),
         ),
         const SizedBox(height: 16),

@@ -14,12 +14,12 @@ import 'package:rencontre/shared/widgets/badge_verifie.dart';
 // selfie à ses photos dans le panneau admin, puis le selfie est
 // supprimé. Validé → badge bleu « Profil vérifié ».
 
-const _poses = [
-  ('✌️', 'Fais le signe V avec ta main, à côté de ton visage'),
-  ('👍', 'Lève le pouce à côté de ton visage'),
-  ('☝️', "Lève l'index à côté de ton visage"),
-  ('🖐️', 'Montre ta main ouverte à côté de ton visage'),
-  ('👌', 'Fais le signe OK à côté de ton visage'),
+List<(String, String)> get _poses => [
+  ('✌️', 'Fais le signe V avec ta main, à côté de ton visage'.tr),
+  ('👍', 'Lève le pouce à côté de ton visage'.tr),
+  ('☝️', 'Lève l\'index à côté de ton visage'.tr),
+  ('🖐️', 'Montre ta main ouverte à côté de ton visage'.tr),
+  ('👌', 'Fais le signe OK à côté de ton visage'.tr),
 ];
 
 /// Dernière demande de vérification de l'utilisateur connecté

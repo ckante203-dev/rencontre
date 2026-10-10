@@ -300,9 +300,9 @@ class _BoutonAmiState extends State<BoutonAmi> {
     final ctrl = AmisController.to;
     final (String label, IconData icon, bool plein, VoidCallback? onTap) =
         switch (_statut) {
-      'amis' => ('Amis', Icons.check_rounded, false, _menuAmi),
+      'amis' => ('Amis'.tr, Icons.check_rounded, false, _menuAmi),
       'prive' => (
-          widget.compact ? 'Privé' : 'Compte privé',
+          widget.compact ? 'Privé'.tr : 'Compte privé'.tr,
           Icons.lock_rounded,
           false,
           () => Get.snackbar('🔒 Compte privé'.tr,
@@ -312,7 +312,7 @@ class _BoutonAmiState extends State<BoutonAmi> {
               colorText: AppColors.textPrimary)
         ),
       'envoyee' => (
-          widget.compact ? 'Envoyée' : 'Demande envoyée',
+          widget.compact ? 'Envoyée'.tr : 'Demande envoyée'.tr,
           Icons.schedule_rounded,
           false,
           () => _action(() async {
@@ -321,13 +321,13 @@ class _BoutonAmiState extends State<BoutonAmi> {
               })
         ),
       'recue' => (
-          'Accepter',
+          'Accepter'.tr,
           Icons.person_add_alt_1_rounded,
           true,
           () => _action(() => ctrl.accepter(widget.userId))
         ),
       _ => (
-          widget.compact ? 'Ajouter' : 'Ajouter en ami',
+          widget.compact ? 'Ajouter'.tr : 'Ajouter en ami'.tr,
           Icons.person_add_rounded,
           true,
           () => _action(() => ctrl.demander(widget.userId))

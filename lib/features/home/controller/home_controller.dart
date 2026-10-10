@@ -1391,16 +1391,16 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
       final (titre, message) = switch (result) {
         ModerationResult.rejected => (
-            'Story refusée',
-            'Elle ne respecte pas nos règles (nudité ou contenu explicite).'
+            'Story refusée'.tr,
+            'Elle ne respecte pas nos règles (nudité ou contenu explicite).'.tr
           ),
         ModerationResult.pending => (
-            'Story en vérification',
-            "Elle sera visible par les autres dès qu'elle sera validée."
+            'Story en vérification'.tr,
+            'Elle sera visible par les autres dès qu\'elle sera validée.'.tr
           ),
         _ => (
-            'Story publiée ✓',
-            'Visible pendant ${_formatDurationLabel(durationHours)}'
+            'Story publiée ✓'.tr,
+            'Visible pendant @p'.trParams({'p': (_formatDurationLabel(durationHours)).toString()})
           ),
       };
       Get.snackbar(

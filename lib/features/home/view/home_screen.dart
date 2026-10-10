@@ -1159,21 +1159,21 @@ class _UsersGridScrollable extends GetView<HomeController> {
     final filter = controller.filterMode.value;
     // Un message et une piste utile par filtre (au lieu de « Réessayer »)
     final (String emoji, String titre, String conseil) = switch (filter) {
-      'online' => ('🟢', 'Personne en ligne pour le moment',
-          'Reviens un peu plus tard, le soir surtout.'),
-      'dispo' => ('🙋', "Personne n'est dispo en ce moment",
-          'Sois le premier : indique que tu es dispo depuis ton profil.'),
-      'evenement' => ('📅', 'Personne de ton événement ici',
-          'Inscris-toi à un événement pour voir qui y va.'),
-      'nearby' => ('📍', 'Personne tout près',
-          'Élargis ta recherche avec le filtre « Tous ».'),
-      'new' => ('✨', 'Pas de nouveau membre', 'Reviens demain !'),
-      'verifies' => ('✅', 'Aucun profil vérifié ici',
-          'Fais vérifier le tien depuis Mon profil.'),
-      'favoris' => ('⭐', "Aucun favori pour l'instant",
-          "Ajoute des profils en favori avec l'étoile ⭐."),
-      _ => ('🔍', 'Aucun profil pour le moment',
-          'Tire vers le bas pour actualiser.'),
+      'online' => ('🟢', 'Personne en ligne pour le moment'.tr,
+          'Reviens un peu plus tard, le soir surtout.'.tr),
+      'dispo' => ('🙋', 'Personne n\'est dispo en ce moment'.tr,
+          'Sois le premier : indique que tu es dispo depuis ton profil.'.tr),
+      'evenement' => ('📅', 'Personne de ton événement ici'.tr,
+          'Inscris-toi à un événement pour voir qui y va.'.tr),
+      'nearby' => ('📍', 'Personne tout près'.tr,
+          'Élargis ta recherche avec le filtre « Tous ».'.tr),
+      'new' => ('✨', 'Pas de nouveau membre'.tr, 'Reviens demain !'.tr),
+      'verifies' => ('✅', 'Aucun profil vérifié ici'.tr,
+          'Fais vérifier le tien depuis Mon profil.'.tr),
+      'favoris' => ('⭐', 'Aucun favori pour l\'instant'.tr,
+          'Ajoute des profils en favori avec l\'étoile ⭐.'.tr),
+      _ => ('🔍', 'Aucun profil pour le moment'.tr,
+          'Tire vers le bas pour actualiser.'.tr),
     };
 
     // Défilable : on peut tirer vers le bas pour actualiser

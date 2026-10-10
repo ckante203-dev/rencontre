@@ -2729,11 +2729,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Row(children: [
-      audience('public', Icons.public_rounded, 'Publique'),
+      audience('public', Icons.public_rounded, 'Publique'.tr),
       const SizedBox(width: 6),
-      audience('amis', Icons.group_rounded, 'Amis'),
+      audience('amis', Icons.group_rounded, 'Amis'.tr),
       const SizedBox(width: 6),
-      audience('friends', Icons.star_rounded, 'Proches'),
+      audience('friends', Icons.star_rounded, 'Proches'.tr),
       const SizedBox(width: 6),
       // Durée (et liste Amis proches) : menu détaillé
       GestureDetector(

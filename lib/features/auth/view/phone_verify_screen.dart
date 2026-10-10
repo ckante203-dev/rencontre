@@ -96,7 +96,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length != _selected.digits) {
       setState(() => _formatWarning =
-          '${_selected.name} : ${_selected.digits} chiffres attendus (tu en as ${digits.length})');
+          '@name : @digits chiffres attendus (tu en as @length)'.trParams({'digits': _selected.digits.toString(), 'length': digits.length.toString(), 'name': _selected.name.toString()}));
     } else {
       setState(() => _formatWarning = null);
     }

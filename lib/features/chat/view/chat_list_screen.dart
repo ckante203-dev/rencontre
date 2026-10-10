@@ -606,8 +606,8 @@ class _ConversationTile extends GetView<ChatListController> {
           ),
           Text(
               mine
-                  ? (isOpened ? 'Snap ouvert' : 'Snap envoyé')
-                  : (isOpened ? 'Snap ouvert' : 'Snap reçu'),
+                  ? (isOpened ? 'Snap ouvert'.tr : 'Snap envoyé'.tr)
+                  : (isOpened ? 'Snap ouvert'.tr : 'Snap reçu'.tr),
               style: TextStyle(
                   fontSize: 13,
                   color: isOpened ? AppColors.textMuted : AppColors.textPrimary,

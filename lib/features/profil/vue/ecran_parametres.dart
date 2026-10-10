@@ -153,7 +153,7 @@ class EcranParametres extends StatelessWidget {
                                           ? Colors.transparent
                                           : AppColors.border),
                                 ),
-                                child: Text(_majuscule(genre),
+                                child: Text(_majuscule(genre).tr,
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -213,7 +213,7 @@ class EcranParametres extends StatelessWidget {
                                           ? Colors.transparent
                                           : AppColors.border),
                                 ),
-                                child: Text(_majuscule(opt),
+                                child: Text(_majuscule(opt).tr,
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,

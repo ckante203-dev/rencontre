@@ -176,7 +176,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                 const SizedBox(height: 6),
                 Text(
                     '${_photos.length}/${AlbumService.maxPhotos} photos · '
-                    'appui long pour supprimer',
+                    'appui long pour supprimer'.tr,
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 const SizedBox(height: 24),
                 Text('Qui peut voir mon album'.tr,

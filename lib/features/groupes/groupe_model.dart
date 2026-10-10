@@ -61,9 +61,9 @@ class GroupeResume {
       case 'systeme':
         return dernierContenu ?? '';
       case 'image':
-        return '@p : 📷 Photo'.trParams({'p': (dernierAuteur ?? 'Quelqu\'un').toString()});
+        return '@p : 📷 Photo'.trParams({'p': (dernierAuteur ?? 'Quelqu\'un'.tr).toString()});
       case 'giphy':
-        return '@p : GIF'.trParams({'p': (dernierAuteur ?? 'Quelqu\'un').toString()});
+        return '@p : GIF'.trParams({'p': (dernierAuteur ?? 'Quelqu\'un'.tr).toString()});
       default:
         return '${dernierAuteur ?? 'Quelqu\'un'} : ${dernierContenu ?? ''}';
     }

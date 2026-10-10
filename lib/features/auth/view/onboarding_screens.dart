@@ -269,7 +269,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       // ✅ Extraire uniquement les chiffres puis reparser
       final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
       if (digits.length != 8) {
-        setState(() => _errorText = 'Format invalide — JJ/MM/AAAA');
+        setState(() => _errorText = 'Format invalide — JJ/MM/AAAA'.tr);
         return;
       }
       final day = int.parse(digits.substring(0, 2));
@@ -278,15 +278,15 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       final now = DateTime.now();
 
       if (month < 1 || month > 12) {
-        setState(() => _errorText = 'Mois invalide (01-12)');
+        setState(() => _errorText = 'Mois invalide (01-12)'.tr);
         return;
       }
       if (day < 1 || day > 31) {
-        setState(() => _errorText = 'Jour invalide (01-31)');
+        setState(() => _errorText = 'Jour invalide (01-31)'.tr);
         return;
       }
       if (year < 1900 || year > now.year) {
-        setState(() => _errorText = 'Année invalide');
+        setState(() => _errorText = 'Année invalide'.tr);
         return;
       }
       final birthDate = DateTime(year, month, day);
@@ -297,16 +297,16 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
               ? 1
               : 0);
       if (age < 18) {
-        setState(() => _errorText = 'Tu dois avoir au moins 18 ans');
+        setState(() => _errorText = 'Tu dois avoir au moins 18 ans'.tr);
         return;
       }
       if (age > 100) {
-        setState(() => _errorText = 'Date invalide');
+        setState(() => _errorText = 'Date invalide'.tr);
         return;
       }
       setState(() => _errorText = null);
     } catch (_) {
-      setState(() => _errorText = 'Format invalide — JJ/MM/AAAA');
+      setState(() => _errorText = 'Format invalide — JJ/MM/AAAA'.tr);
     }
   }
 
@@ -890,7 +890,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
           'Les profils avec photo obtiennent 5× plus de matchs. Choisis une belle photo de toi !'.tr,
       buttonLabel: _isUploading
           ? 'Envoi...'.tr
-          : (_photo != null ? 'Continuer →' : 'Choisir une photo'),
+          : (_photo != null ? 'Continuer →'.tr : 'Choisir une photo'.tr),
       nextEnabled: !_isUploading,
       // ✅ Sans photo, le bouton ouvre le sélecteur au lieu de passer à l'étape suivante.
       onNext: _isUploading

@@ -88,7 +88,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
 
   void _partager() {
     SharePlus.instance.share(ShareParams(
-      text: '@emoji @titre\n📅 @dateLongue\n📍 @lieuComplet\n\n@pRetrouve-moi sur Zamu, l\'événement est sur l\'accueil 👇\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'.trParams({'lieuComplet': _ev.lieuComplet.toString(), 'dateLongue': _ev.dateLongue.toString(), 'emoji': _ev.emoji.toString(), 'titre': _ev.titre.toString(), 'p': (_ev.jYVais ? 'J\'y vais ! ' : '').toString()}),
+      text: '@emoji @titre\n📅 @dateLongue\n📍 @lieuComplet\n\n@pRetrouve-moi sur Zamu, l\'événement est sur l\'accueil 👇\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'.trParams({'lieuComplet': _ev.lieuComplet.toString(), 'dateLongue': _ev.dateLongue.toString(), 'emoji': _ev.emoji.toString(), 'titre': _ev.titre.toString(), 'p': (_ev.jYVais ? 'J\'y vais ! '.tr : '').toString()}),
     ));
   }
 
@@ -203,7 +203,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                 const SizedBox(height: 6),
                 Center(
                   child: Text(
-                      '💘 @nbMatchs de tes matchs @p'.trParams({'nbMatchs': ev.nbMatchs.toString(), 'p': (ev.nbMatchs > 1 ? 'y participent' : 'y participe').toString()}),
+                      '💘 @nbMatchs de tes matchs @p'.trParams({'nbMatchs': ev.nbMatchs.toString(), 'p': (ev.nbMatchs > 1 ? 'y participent'.tr : 'y participe'.tr).toString()}),
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,

@@ -121,7 +121,7 @@ class _CameraStoryState extends State<CameraStory>
     try {
       if (_cameras.isEmpty) _cameras = await availableCameras();
       if (_cameras.isEmpty) {
-        setState(() => _erreur = 'Aucun appareil photo disponible');
+        setState(() => _erreur = 'Aucun appareil photo disponible'.tr);
         return;
       }
       final cam = _cameras.firstWhere((c) => c.lensDirection == _sensMemorise,
