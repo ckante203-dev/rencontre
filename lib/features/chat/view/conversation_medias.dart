@@ -81,7 +81,16 @@ class _SnapBubbleState extends State<_SnapBubble> {
     final isMine = widget.isMine;
 
     if (isMine) {
-      return Container(
+      // L'expéditeur peut revoir le snap qu'il a envoyé
+      return GestureDetector(
+        onTap: hasPhoto
+            ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        _PleinEcranMedia(url: msg.mediaUrl!, isVideo: false)))
+            : null,
+        child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
             gradient: AppColors.gradientPink,
@@ -101,8 +110,14 @@ class _SnapBubbleState extends State<_SnapBubble> {
                 Text(msg.isOpened ? 'Ouvert ✓'.tr : 'En attente'.tr,
                     style: TextStyle(
                         fontSize: 10, color: AppColors.surAccent.withValues(alpha: 0.7))),
+                if (hasPhoto)
+                  Text('Appuie pour revoir'.tr,
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.surAccent.withValues(alpha: 0.7))),
               ]),
         ]),
+        ),
       );
     }
 

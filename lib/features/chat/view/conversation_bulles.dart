@@ -105,7 +105,9 @@ class _MessageList extends StatelessWidget {
           Icon(Icons.chat_bubble_outline_rounded,
               size: 44, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          Text('Dis bonjour à @userName !'.trParams({'userName': ctrl.conversation.userName.toString()}),
+          Text(
+              'Dis bonjour à @userName !'.trParams(
+                  {'userName': ctrl.conversation.userName.toString()}),
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 16,
@@ -281,12 +283,19 @@ class _MessageBubble extends StatelessWidget {
                         : CrossAxisAlignment.start,
                     children: [
                       if (msg.storyReply != null)
+                        // Story + réponse collées en un seul bloc (Snapchat)
                         _StoryReplyPreview(
-                            storyReply: msg.storyReply!, isMine: isMine),
-                      if (msg.replyTo != null && msg.storyReply == null)
-                        _ReplyPreview(
-                            replyTo: msg.replyTo!, isMine: isMine, ctrl: ctrl),
-                      _buildContent(isMine, context),
+                            storyReply: msg.storyReply!,
+                            isMine: isMine,
+                            reponse: _buildContent(isMine, context))
+                      else ...[
+                        if (msg.replyTo != null)
+                          _ReplyPreview(
+                              replyTo: msg.replyTo!,
+                              isMine: isMine,
+                              ctrl: ctrl),
+                        _buildContent(isMine, context),
+                      ],
                       if (texteSimple) ...[
                         // « Lu 14:32 » sous mon dernier message lu seulement
                         if (isMine && dernierLu && msg.readAt != null)
@@ -442,7 +451,9 @@ class _ReactionsRow extends StatelessWidget {
 class _StoryReplyPreview extends StatelessWidget {
   final StoryReplyData storyReply;
   final bool isMine;
-  const _StoryReplyPreview({required this.storyReply, required this.isMine});
+  final Widget? reponse;
+  const _StoryReplyPreview(
+      {required this.storyReply, required this.isMine, this.reponse});
 
   @override
   Widget build(BuildContext context) {
@@ -452,117 +463,135 @@ class _StoryReplyPreview extends StatelessWidget {
             ? '✍️ Texte'.tr
             : '📸 Photo'.tr;
     final titre = storyReply.storyOwnerName.isNotEmpty
-        ? 'Story de @storyOwnerName'.trParams(
-            {'storyOwnerName': storyReply.storyOwnerName})
+        ? 'Story de @storyOwnerName'
+            .trParams({'storyOwnerName': storyReply.storyOwnerName})
         : 'Story'.tr;
     // Grand aperçu façon Snapchat (format vertical 9:16)
-    const largeur = 150.0;
-    const hauteur = 240.0;
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => _StoryReplyFullScreen(storyReply: storyReply),
+    const largeur = 170.0;
+    const hauteur = 272.0;
+    final bordure = isMine ? AppColors.accent : AppColors.border;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Column(
+        crossAxisAlignment:
+            isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4, left: 2, right: 2),
+            child: Text('$type · $titre',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted)),
           ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 3),
-        child: Column(
-          crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4, left: 2, right: 2),
-              child: Text('$type · $titre',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted)),
+          Container(
+            width: largeur,
+            decoration: BoxDecoration(
+              color: AppColors.surface2,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: bordure, width: 2),
             ),
-            Container(
-              width: largeur,
-              height: hauteur,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: isMine ? AppColors.accent : AppColors.border,
-                    width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Stack(fit: StackFit.expand, children: [
-                  if (storyReply.isTextStory)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: storyReply.storyBgColor != null
-                            ? _storyBgColor(storyReply.storyBgColor)
-                            : null,
-                        gradient: storyReply.storyBgColor == null
-                            ? AppColors.gradientPink
-                            : null,
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      child: Center(
-                          child: Text(storyReply.storyText ?? 'Aa'.tr,
-                              textAlign: TextAlign.center,
-                              maxLines: 8,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color: AppColors.surMedia,
-                                  fontSize:
-                                      storyReply.storyText == null ? 28 : 15,
-                                  fontWeight: FontWeight.w800))),
-                    )
-                  else if (storyReply.storyIsVideo)
-                    _VignetteVideoStory(url: storyReply.storyPreviewUrl)
-                  else
-                    CachedNetworkImage(
-                        imageUrl: storyReply.storyPreviewUrl,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                            color: AppColors.surface,
-                            child: const Icon(Icons.photo_camera_rounded,
-                                color: Color(0x61FFFFFF), size: 32))),
-                  if (storyReply.storyIsVideo)
-                    const Center(
-                        child: Icon(Icons.play_circle_fill_rounded,
-                            color: AppColors.surMedia, size: 44)),
-                  // Voile bas + « Voir »
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(10, 18, 10, 8),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, AppColors.voileMedia],
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        _StoryReplyFullScreen(storyReply: storyReply),
+                  ),
+                ),
+                child: SizedBox(
+                  height: hauteur,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.vertical(
+                        top: const Radius.circular(16),
+                        bottom: Radius.circular(reponse == null ? 16 : 4)),
+                    child: Stack(fit: StackFit.expand, children: [
+                      if (storyReply.isTextStory)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: storyReply.storyBgColor != null
+                                ? _storyBgColor(storyReply.storyBgColor)
+                                : null,
+                            gradient: storyReply.storyBgColor == null
+                                ? AppColors.gradientPink
+                                : null,
+                          ),
+                          padding: const EdgeInsets.all(10),
+                          child: Center(
+                              child: Text(storyReply.storyText ?? 'Aa'.tr,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 8,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: AppColors.surMedia,
+                                      fontSize: storyReply.storyText == null
+                                          ? 28
+                                          : 15,
+                                      fontWeight: FontWeight.w800))),
+                        )
+                      else if (storyReply.storyIsVideo)
+                        _VignetteVideoStory(url: storyReply.storyPreviewUrl)
+                      else
+                        CachedNetworkImage(
+                            imageUrl: storyReply.storyPreviewUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => Container(
+                                color: AppColors.surface,
+                                child: const Icon(Icons.photo_camera_rounded,
+                                    color: Color(0x61FFFFFF), size: 32))),
+                      if (storyReply.storyIsVideo)
+                        const Center(
+                            child: Icon(Icons.play_circle_fill_rounded,
+                                color: AppColors.surMedia, size: 44)),
+                      // Voile bas + « Voir »
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(10, 18, 10, 8),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                AppColors.voileMedia
+                              ],
+                            ),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.visibility_rounded,
+                                size: 13, color: AppColors.surMedia),
+                            const SizedBox(width: 4),
+                            Text('Voir'.tr,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.surMedia,
+                                    fontWeight: FontWeight.w700)),
+                          ]),
                         ),
                       ),
-                      child: Row(children: [
-                        const Icon(Icons.visibility_rounded,
-                            size: 13, color: AppColors.surMedia),
-                        const SizedBox(width: 4),
-                        Text('Voir'.tr,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.surMedia,
-                                fontWeight: FontWeight.w700)),
-                      ]),
-                    ),
+                    ]),
                   ),
-                ]),
+                ),
               ),
-            ),
-          ],
-        ),
+              // La réponse (texte, ❤️, snap…) collée sous la story
+              if (reponse != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+                  child: Align(
+                      alignment:
+                          isMine ? Alignment.centerRight : Alignment.centerLeft,
+                      child: reponse!),
+                ),
+            ]),
+          ),
+        ],
       ),
     );
   }
@@ -646,8 +675,8 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                       imageUrl: story.storyPreviewUrl,
                       fit: BoxFit.contain,
                       placeholder: (_, __) => const Center(
-                          child:
-                              CircularProgressIndicator(color: AppColors.surMedia)),
+                          child: CircularProgressIndicator(
+                              color: AppColors.surMedia)),
                       errorWidget: (_, __, ___) => const Center(
                           child: Icon(Icons.broken_image_rounded,
                               color: Color(0x61FFFFFF), size: 48)),
@@ -661,7 +690,7 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
           child: Container(
             padding: EdgeInsets.fromLTRB(
                 12, MediaQuery.of(context).padding.top + 8, 12, 24),
-            decoration:  BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -677,7 +706,8 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                   decoration: BoxDecoration(
                       color: Colors.black38,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surMedia.withValues(alpha: 0.24))),
+                      border: Border.all(
+                          color: AppColors.surMedia.withValues(alpha: 0.24))),
                   child: const Icon(Icons.close_rounded,
                       color: AppColors.surMedia, size: 18),
                 ),
@@ -686,7 +716,8 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
               Expanded(
                 child: Text(
                   story.storyOwnerName.isNotEmpty
-                      ? 'Story de @storyOwnerName'.trParams({'storyOwnerName': story.storyOwnerName.toString()})
+                      ? 'Story de @storyOwnerName'.trParams(
+                          {'storyOwnerName': story.storyOwnerName.toString()})
                       : 'Story'.tr,
                   style: const TextStyle(
                       color: AppColors.surMedia,
@@ -734,18 +765,25 @@ class _ReplyPreview extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 3),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.1) : AppColors.surface2,
+        color: isMine && !AppColors.clair
+            ? AppColors.surAccent.withValues(alpha: 0.1)
+            : AppColors.surface2,
         borderRadius: BorderRadius.circular(8),
         border: Border(
             left: BorderSide(
-                color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
+                color: isMine && !AppColors.clair
+                    ? AppColors.surAccent.withValues(alpha: 0.38)
+                    : AppColors.accent,
+                width: 3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(isReplyMine ? 'Vous'.tr : ctrl.conversation.userName,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textPrimary)),
+                color: isMine && !AppColors.clair
+                    ? AppColors.surAccent.withValues(alpha: 0.7)
+                    : AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(_preview,
             maxLines: 1,
@@ -789,7 +827,9 @@ class _TextBubble extends StatelessWidget {
     final h = msg.createdAt.hour.toString().padLeft(2, '0');
     final mn = msg.createdAt.minute.toString().padLeft(2, '0');
     final modifie = msg.modifieLe != null;
-    final couleurMeta = isMine ? AppColors.surAccent.withValues(alpha: 0.7) : AppColors.textMuted;
+    final couleurMeta = isMine
+        ? AppColors.surAccent.withValues(alpha: 0.7)
+        : AppColors.textMuted;
 
     // Heure (+ « modifié ») et coches, en bas à droite de la bulle
     final meta = Row(mainAxisSize: MainAxisSize.min, children: [
@@ -887,7 +927,7 @@ class _FlouSensibleState extends State<_FlouSensible> {
               child: widget.child,
             ),
           ),
-           Column(mainAxisSize: MainAxisSize.min, children: [
+          Column(mainAxisSize: MainAxisSize.min, children: [
             Text('🔞', style: TextStyle(fontSize: 30)),
             SizedBox(height: 6),
             Text('Photo sensible'.tr,
@@ -980,7 +1020,7 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                 Text('Album privé'.tr,
+                Text('Album privé'.tr,
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -988,9 +1028,11 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
                 const SizedBox(height: 2),
                 Text(
                     widget.isMine
-                        ? 'Tu as partagé ton album avec @nom'.trParams({'nom': nom.toString()})
+                        ? 'Tu as partagé ton album avec @nom'
+                            .trParams({'nom': nom.toString()})
                         : 'Touche pour voir les photos'.tr,
-                    style: const TextStyle(fontSize: 12, color: AppColors.surAccent)),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.surAccent)),
               ],
             ),
           ),
@@ -1034,12 +1076,15 @@ class _AnnonceReplyBubble extends StatelessWidget {
           // ── Preview annonce (comme WhatsApp statut) ──
           Container(
             decoration: BoxDecoration(
-              color:
-                  isMine ? AppColors.surAccent.withValues(alpha: 0.12) : AppColors.surface2,
+              color: isMine
+                  ? AppColors.surAccent.withValues(alpha: 0.12)
+                  : AppColors.surface2,
               borderRadius: BorderRadius.circular(14),
               border: Border(
                 left: BorderSide(
-                  color: isMine ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent,
+                  color: isMine
+                      ? AppColors.surAccent.withValues(alpha: 0.38)
+                      : AppColors.accent,
                   width: 3,
                 ),
               ),
@@ -1081,8 +1126,9 @@ class _AnnonceReplyBubble extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color:
-                                isMine ? AppColors.surAccent : AppColors.textPrimary,
+                            color: isMine
+                                ? AppColors.surAccent
+                                : AppColors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1093,8 +1139,9 @@ class _AnnonceReplyBubble extends StatelessWidget {
                             reply!.annonceDescription,
                             style: TextStyle(
                               fontSize: 11,
-                              color:
-                                  isMine ? AppColors.surAccent.withValues(alpha: 0.54) : AppColors.textMuted,
+                              color: isMine
+                                  ? AppColors.surAccent.withValues(alpha: 0.54)
+                                  : AppColors.textMuted,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1252,9 +1299,7 @@ class _AvatarWithStoryRing extends StatelessWidget {
           padding: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: storySeen
-                ? null
-                : AppColors.anneauStory,
+            gradient: storySeen ? null : AppColors.anneauStory,
             color: storySeen ? AppColors.border : null,
           ),
           child: Container(
@@ -1299,7 +1344,8 @@ class _CochesBulle extends StatelessWidget {
         return const Icon(Icons.schedule_rounded,
             size: 12, color: Color(0xB3FFFFFF));
       case MessageStatus.sent:
-        return const Icon(Icons.check_rounded, size: 14, color: Color(0xB3FFFFFF));
+        return const Icon(Icons.check_rounded,
+            size: 14, color: Color(0xB3FFFFFF));
       case MessageStatus.delivered:
         return const Icon(Icons.done_all_rounded,
             size: 14, color: Color(0xB3FFFFFF));

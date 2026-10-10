@@ -1176,4 +1176,5 @@ const Map<String, String> enAuto = {
   'Tu as envoyé @n messages. Attends sa réponse pour continuer.': 'You\'ve sent @n messages. Wait for their reply to continue.',
   '🎉 Soirée': '🎉 Party',
   '📅 Autre': '📅 Other',
+  'Appuie pour revoir': 'Tap to view again',
 };
