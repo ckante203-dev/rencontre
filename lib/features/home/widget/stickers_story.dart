@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -333,7 +334,23 @@ class CorbeilleSticker extends StatelessWidget {
 }
 
 /// Emoji proposés dans l'onglet « Emoji » du panneau.
+/// Sticker « heure » ou « date » : texte du moment de la publication.
+String? texteStickerMoment(String emoji) {
+  final m = DateTime.now();
+  String deux(int n) => n.toString().padLeft(2, '0');
+  if (emoji == '⏰') return '⏰ ${deux(m.hour)}:${deux(m.minute)}';
+  if (emoji == '📆') {
+    const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+    const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
+      'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    return '📆 ${jours[m.weekday - 1].tr} ${m.day} ${mois[m.month - 1].tr}';
+  }
+  return null;
+}
+
+/// ⏰ et 📆 en tête : ils posent l'heure / la date du jour en texte.
 const emojiStory = [
+  '⏰', '📆',
   '😂', '😍', '🥰', '😘', '😎', '🤩', '🥳', '😭', '😱', '🤔',
   '😏', '😴', '🙄', '😇', '🤪', '😅', '🔥', '❤️', '💔', '💯',
   '✨', '⭐', '🌙', '☀️', '🌈', '🎉', '🎂', '🎁', '🎶', '💃',

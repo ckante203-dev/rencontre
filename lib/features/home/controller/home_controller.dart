@@ -876,12 +876,20 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       ..addAll({for (var i = 0; i < triee.length; i++) triee[i].id: i});
   }
 
+  static bool _actifRecemment(UserModel u) =>
+      u.isOnline ||
+      (u.lastSeen != null &&
+          DateTime.now().difference(u.lastSeen!).inHours < 48);
+
   static int _compareProximite(UserModel a, UserModel b) {
     // ⚡ Boost en cours : toujours en tête
     if (a.estBooste != b.estBooste) return a.estBooste ? -1 : 1;
     // Profils sans photo : après ceux qui en ont une
     final pa = (a.photoUrl ?? '').isNotEmpty, pb = (b.photoUrl ?? '').isNotEmpty;
     if (pa != pb) return pa ? -1 : 1;
+    // Actifs dans les dernières 48 h avant les comptes endormis
+    final aa = _actifRecemment(a), ab = _actifRecemment(b);
+    if (aa != ab) return aa ? -1 : 1;
     final da = a.distanceMeters;
     final db = b.distanceMeters;
     if (da == null && db == null) return 0;

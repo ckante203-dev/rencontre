@@ -20,6 +20,11 @@ ALTER TABLE public.profiles ADD CONSTRAINT profiles_questions_taille
   CHECK (jsonb_typeof(questions) = 'array' AND jsonb_array_length(questions) <= 3
          AND octet_length(questions::text) <= 2000);
 
+-- Message épinglé en haut d'une conversation
+ALTER TABLE public.conversations
+  ADD COLUMN IF NOT EXISTS message_epingle_id uuid
+  REFERENCES public.messages(id) ON DELETE SET NULL;
+
 -- « enregistre un vocal… » dans les conversations
 ALTER TABLE public.typing_status ADD COLUMN IF NOT EXISTS activite text;
 

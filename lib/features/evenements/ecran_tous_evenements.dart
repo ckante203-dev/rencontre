@@ -19,6 +19,7 @@ class EcranTousEvenements extends StatefulWidget {
 class _EcranTousEvenementsState extends State<EcranTousEvenements> {
   String? _categorie; // null = toutes
   bool _mesEvenements = false;
+  String? _ville; // filtre par ville (null = toutes)
 
   static const _categories = {
     'sport': '⚽ Sport',
@@ -66,11 +67,34 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
             ],
           ),
         ),
+        // ── Villes (seulement s'il y en a plusieurs) ──
+        Obx(() {
+          final villes = {
+            for (final e in ctrl.evenements)
+              if ((e.ville ?? '').trim().isNotEmpty) e.ville!.trim()
+          }.toList()
+            ..sort();
+          if (villes.length < 2) return const SizedBox.shrink();
+          return SizedBox(
+            height: 42,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              children: [
+                _puce('📍 Toutes les villes'.tr, _ville == null,
+                    () => setState(() => _ville = null)),
+                for (final v in villes)
+                  _puce(v, _ville == v, () => setState(() => _ville = v)),
+              ],
+            ),
+          );
+        }),
         Expanded(
           child: Obx(() {
             final liste = ctrl.evenements
                 .where((e) =>
                     (_categorie == null || e.categorie == _categorie) &&
+                    (_ville == null || e.ville?.trim() == _ville) &&
                     (!_mesEvenements || e.jeParticipe))
                 .toList();
             if (liste.isEmpty) {

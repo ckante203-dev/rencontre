@@ -22,6 +22,7 @@ import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:rencontre/core/i18n/traductions.dart';
+import 'package:rencontre/shared/widgets/bandeau_connexion.dart';
 
 // ✅ Base Supabase — zamu-prod (vybe-studio org)
 const String _supabaseUrl = 'https://flixcyjefjcyjwvjdiny.supabase.co';
@@ -316,6 +317,9 @@ class ZamuApp extends StatelessWidget {
         translations: Traductions(),
         locale: Langue.initiale(),
         fallbackLocale: Langue.fr,
+        // Bandeau « Pas de connexion internet » sur tous les écrans
+        builder: (context, child) =>
+            BandeauConnexion(child: child ?? const SizedBox.shrink()),
         defaultTransition: Transition.cupertino,
         transitionDuration: const Duration(milliseconds: 280),
       );

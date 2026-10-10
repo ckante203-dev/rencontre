@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/carte_partage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/profil/vue/ecran_verification.dart';
 import 'package:rencontre/shared/widgets/badge_verifie.dart';
@@ -8,7 +9,6 @@ import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -531,11 +531,12 @@ class _CartePseudo extends StatelessWidget {
   final ControleurProfil ctrl;
   const _CartePseudo({required this.ctrl});
 
-  void _partager(String pseudo) {
-    SharePlus.instance.share(ShareParams(
-      text: 'Retrouve-moi sur Zamu 💬 : @@pseudo\nCherche mon pseudo dans Messages 🔍\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'.trParams({'pseudo': pseudo.toString()}),
-    ));
-  }
+  // Carte image (photo, @pseudo, QR) partagée avec le lien Play Store
+  void _partager(String pseudo) => partagerCarteProfil(
+        nom: ctrl.nomController.text.trim(),
+        pseudo: pseudo,
+        photoUrl: ctrl.photoUrls.isNotEmpty ? ctrl.photoUrls.first : null,
+      );
 
   @override
   Widget build(BuildContext context) {

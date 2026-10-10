@@ -187,10 +187,44 @@ class ChatListController extends GetxController {
     if (!silent) isLoading.value = true;
     try {
       final uid = _service.currentUserId!;
+      // Hors ligne : on affiche d'abord les conversations gardées en cache
+      if (conversations.isEmpty) {
+        try {
+          final cache = GetStorage().read<List>('cache_conversations_$uid');
+          if (cache != null && cache.isNotEmpty) {
+            conversations.value = _convertir(
+                cache.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+                uid);
+            _sortConversations();
+            if (!silent) isLoading.value = false;
+          }
+        } catch (_) {}
+      }
       final data = await _service.fetchConversations();
       if (_closed) return; // ✅ FIX — contrôleur fermé entre-temps
       unawaited(_chargerSourdines(uid));
-      conversations.value = data.map((row) {
+      try {
+        GetStorage().write('cache_conversations_$uid', data.take(50).toList());
+      } catch (_) {}
+      conversations.value = _convertir(data, uid);
+      _sortConversations();
+      // ✅ FIX Realtime — on marque l'heure de la dernière synchro réussie
+      _lastSyncAt = DateTime.now();
+      _lastFullSyncAt = _lastSyncAt;
+      // ✅ FIX — l'expéditeur doit voir "distribué" dès que la liste
+      // reçoit ses messages (pas seulement à l'ouverture de la conv).
+      _markDeliveredForUnread();
+    } catch (e) {
+      debugPrint('ChatListController error: $e');
+    } finally {
+      if (!silent) isLoading.value = false;
+    }
+    update();
+  }
+
+  /// Lignes de la base (ou du cache) → conversations affichées
+  List<ConversationModel> _convertir(List<Map<String, dynamic>> data, String uid) {
+      return data.map((row) {
         final isUser1 = row['user1_id'] == uid;
         final otherProfile = isUser1
             ? _extractProfile(row, 'user2')
@@ -238,19 +272,6 @@ class ChatListController extends GetxController {
         final dernier = c.lastMessage?.createdAt;
         return dernier != null && dernier.isAfter(avant);
       }).toList();
-      _sortConversations();
-      // ✅ FIX Realtime — on marque l'heure de la dernière synchro réussie
-      _lastSyncAt = DateTime.now();
-      _lastFullSyncAt = _lastSyncAt;
-      // ✅ FIX — l'expéditeur doit voir "distribué" dès que la liste
-      // reçoit ses messages (pas seulement à l'ouverture de la conv).
-      _markDeliveredForUnread();
-    } catch (e) {
-      debugPrint('ChatListController error: $e');
-    } finally {
-      if (!silent) isLoading.value = false;
-    }
-    update();
   }
 
   void _sortConversations() {
@@ -627,6 +648,9 @@ class ConversationController extends GetxController
   final RxBool isOtherOnline = false.obs;
   final RxBool isOtherTyping = false.obs;
   final RxBool isOtherRecording = false.obs; // « enregistre un vocal… »
+  // Message épinglé en haut de la conversation (conversations.message_epingle_id)
+  final RxnString epingleId = RxnString();
+  final RxnString epingleTexte = RxnString();
   Timer? _vocalPing;
   // Dernière activité de l'autre (« vu à 14:32 » dans l'en-tête)
   final Rx<DateTime?> otherLastSeen = Rx<DateTime?>(null);
@@ -730,7 +754,44 @@ class ConversationController extends GetxController
       _fetchOtherOnlineStatus(conv.userId);
       _chargerStatutConversation();
       _chargerSourdine();
+      _chargerEpingle();
     });
+  }
+
+  Future<void> _chargerEpingle() async {
+    try {
+      final c = await Supabase.instance.client
+          .from('conversations')
+          .select('message_epingle_id')
+          .eq('id', conversation.id)
+          .maybeSingle();
+      final id = c?['message_epingle_id'] as String?;
+      if (id == null || _closed) return;
+      final m = await Supabase.instance.client
+          .from('messages')
+          .select('content')
+          .eq('id', id)
+          .maybeSingle();
+      epingleId.value = id;
+      epingleTexte.value = m?['content'] as String?;
+    } catch (_) {} // colonne absente (SQL 051 pas encore passé)
+  }
+
+  /// Épingle (ou désépingle avec null) un message pour les deux personnes
+  Future<void> epingler(MessageModel? msg) async {
+    final ancienId = epingleId.value, ancienTexte = epingleTexte.value;
+    epingleId.value = msg?.id;
+    epingleTexte.value = msg?.text;
+    try {
+      await Supabase.instance.client
+          .from('conversations')
+          .update({'message_epingle_id': msg?.id}).eq('id', conversation.id);
+    } catch (e) {
+      debugPrint('Épinglage impossible : $e');
+      epingleId.value = ancienId;
+      epingleTexte.value = ancienTexte;
+      _snackInfo('Action impossible, réessaie'.tr);
+    }
   }
 
   /// Date jusqu'à laquelle l'historique a été effacé sur cet appareil.
@@ -1844,6 +1905,16 @@ class ConversationController extends GetxController
                 onTap: () {
                   Get.back();
                   copyMessage(msg);
+                }),
+          if (msg.type == MessageType.text && !msg.id.startsWith('temp_'))
+            _MsgOption(
+                icon: Icons.push_pin_outlined,
+                label: epingleId.value == msg.id
+                    ? 'Désépingler'.tr
+                    : 'Épingler'.tr,
+                onTap: () {
+                  Get.back();
+                  epingler(epingleId.value == msg.id ? null : msg);
                 }),
           if (msg.type == MessageType.text)
             _MsgOption(

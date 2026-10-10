@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/urgence.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
@@ -165,6 +166,38 @@ class _ConversationScreenState extends State<ConversationScreen> {
       backgroundColor: AppColors.bg,
       appBar: _buildAppBar(context),
       body: Column(children: [
+        // 📌 Message épinglé
+        Obx(() {
+          final texte = ctrl.epingleTexte.value;
+          if (ctrl.epingleId.value == null || (texte ?? '').isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: Row(children: [
+              Icon(Icons.push_pin_rounded, size: 16, color: AppColors.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(texte!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13, color: AppColors.textPrimary)),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close_rounded,
+                    size: 18, color: AppColors.textMuted),
+                onPressed: () => ctrl.epingler(null),
+              ),
+            ]),
+          );
+        }),
         Expanded(
           child: Stack(children: [
             Positioned.fill(
@@ -419,6 +452,15 @@ class _ConvMenu extends StatelessWidget {
                 if (raison != null) {
                   ControleurProfil.to.signalerProfil(conv.userId, raison);
                 }
+              },
+            ),
+            _MenuItem(
+              icon: Icons.sos_rounded,
+              label: 'Je suis en danger'.tr,
+              color: AppColors.error,
+              onTap: () {
+                Get.back();
+                Urgence.alerter(context);
               },
             ),
             _MenuItem(

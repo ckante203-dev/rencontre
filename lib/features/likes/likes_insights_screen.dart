@@ -193,6 +193,14 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                         ),
                       ]),
                       const SizedBox(height: 16),
+                      // Premium : heures où mon profil est le plus vu
+                      if (premium && _ongletVues && liste.length >= 5) ...[
+                        _HeuresDeVisite(dates: [
+                          for (final p in liste)
+                            if (p.date != null) p.date!.toLocal()
+                        ]),
+                        const SizedBox(height: 16),
+                      ],
                       if (!premium && liste.isNotEmpty) ...[
                         _BanniereDeblocage(
                           count: _ongletVues
@@ -657,6 +665,80 @@ class _Vide extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Graphique des visites par tranche de 3 h (Premium) : quand publier une
+/// story ou lancer un Boost pour être vu.
+class _HeuresDeVisite extends StatelessWidget {
+  final List<DateTime> dates;
+  const _HeuresDeVisite({required this.dates});
+
+  @override
+  Widget build(BuildContext context) {
+    final tranches = List<int>.filled(8, 0);
+    for (final d in dates) {
+      tranches[d.hour ~/ 3]++;
+    }
+    final max = tranches.reduce((a, b) => a > b ? a : b);
+    if (max == 0) return const SizedBox.shrink();
+    final meilleure = tranches.indexOf(max);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('📈 Quand ton profil est le plus vu'.tr,
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        const SizedBox(height: 4),
+        Text(
+            'Surtout entre @debut h et @fin h : le bon moment pour publier une story ou lancer un Boost.'
+                .trParams({
+              'debut': '${meilleure * 3}',
+              'fin': '${meilleure * 3 + 3}'
+            }),
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 70,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var i = 0; i < 8; i++)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            height: 6 + 50 * tranches[i] / max,
+                            decoration: BoxDecoration(
+                              gradient: i == meilleure
+                                  ? AppColors.gradientPink
+                                  : null,
+                              color: i == meilleure ? null : AppColors.surface2,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text('${i * 3}h',
+                              style: TextStyle(
+                                  fontSize: 9, color: AppColors.textMuted)),
+                        ]),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ]),
     );
   }
 }

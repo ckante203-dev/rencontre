@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/profil/vue/urgence.dart';
 
 /// Guide de sécurité : conseils pour rencontrer en confiance.
 class EcranSecurite extends StatelessWidget {
@@ -50,6 +51,71 @@ class EcranSecurite extends StatelessWidget {
               "Zamu, c'est fait pour de belles rencontres. Quelques réflexes pour qu'elles se passent bien :".tr,
               style: TextStyle(
                   fontSize: 14, color: AppColors.textMuted, height: 1.5)),
+          const SizedBox(height: 16),
+          // 🚨 Alerte à un proche, avec la position
+          GestureDetector(
+            onTap: () => Urgence.alerter(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.sos_rounded, color: AppColors.surAccent),
+                const SizedBox(width: 8),
+                Text('Je suis en danger'.tr,
+                    style: const TextStyle(
+                        color: AppColors.surAccent,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 8),
+          StatefulBuilder(
+            builder: (context, setState) {
+              final c = Urgence.contact;
+              return GestureDetector(
+                onTap: () async {
+                  await Urgence.definir(context);
+                  setState(() {});
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(children: [
+                    const Text('📞', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Contact d'urgence".tr,
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary)),
+                            Text(
+                                c == null
+                                    ? 'Ajoute une personne de confiance'.tr
+                                    : '${c['nom']} · ${c['numero']}',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.textMuted)),
+                          ]),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textMuted),
+                  ]),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 18),
           for (final (emoji, titre, texte) in _conseils) ...[
             Container(

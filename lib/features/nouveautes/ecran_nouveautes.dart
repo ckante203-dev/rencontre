@@ -6,8 +6,8 @@ import 'package:rencontre/features/home/controller/home_controller.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 //  « Quoi de neuf » : présenté UNE fois après la mise à jour 1.1.0 aux
-//  membres qui avaient déjà l'app (les nouveaux comptes découvrent déjà
-//  tout pendant l'inscription).
+//  membres qui avaient déjà l'app, et en « Bienvenue » aux nouveaux comptes
+//  (visite guidée du premier jour).
 // ═══════════════════════════════════════════════════════════════════
 
 const _version = '1.1.0';
@@ -28,9 +28,8 @@ Future<void> afficherNouveautesSiBesoin() async {
   final nouveauCompte =
       cree != null && DateTime.now().difference(cree).inDays < 2;
   await box.write(_cle, _version);
-  if (nouveauCompte) return;
-
-  await Get.to(() => const EcranNouveautes(),
+  // Nouveau compte : même visite guidée, présentée comme un accueil
+  await Get.to(() => EcranNouveautes(bienvenue: nouveauCompte),
       fullscreenDialog: true, transition: Transition.downToUp);
 }
 
@@ -74,7 +73,9 @@ List<_Page> get _pages => [
 ];
 
 class EcranNouveautes extends StatefulWidget {
-  const EcranNouveautes({super.key});
+  /// true : premier jour (« Bienvenue sur Zamu ») au lieu de « Quoi de neuf »
+  final bool bienvenue;
+  const EcranNouveautes({super.key, this.bienvenue = false});
   @override
   State<EcranNouveautes> createState() => _EcranNouveautesState();
 }
@@ -112,7 +113,7 @@ class _EcranNouveautesState extends State<EcranNouveautes> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
             child: Row(children: [
-              Text('Quoi de neuf'.tr,
+              Text(widget.bienvenue ? 'Bienvenue sur Zamu 👋'.tr : 'Quoi de neuf'.tr,
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,

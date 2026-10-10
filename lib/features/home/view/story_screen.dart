@@ -2619,7 +2619,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     final c = await choisirSticker(context, emojis: emojiStory);
     if (c == null || !mounted) return;
     final StickerStory s;
-    if (c.emoji != null) {
+    final moment = c.emoji == null ? null : texteStickerMoment(c.emoji!);
+    if (moment != null) {
+      s = StickerStory(type: 'texte', valeur: moment);
+    } else if (c.emoji != null) {
       s = StickerStory(type: 'emoji', valeur: c.emoji!);
     } else if (estUrlGiphy(c.url)) {
       s = StickerStory(type: 'giphy', valeur: c.url);
