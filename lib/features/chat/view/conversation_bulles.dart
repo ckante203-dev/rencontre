@@ -105,14 +105,14 @@ class _MessageList extends StatelessWidget {
           Icon(Icons.chat_bubble_outline_rounded,
               size: 44, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          Text('Dis bonjour à ${ctrl.conversation.userName} !',
+          Text('Dis bonjour à @userName !'.trParams({'userName': ctrl.conversation.userName.toString()}),
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 4),
-          Text('Choisis une phrase pour commencer',
+          Text('Choisis une phrase pour commencer'.tr,
               style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
           const SizedBox(height: 16),
           Wrap(
@@ -180,8 +180,8 @@ class _DateLabel extends StatelessWidget {
     final diff = DateTime(now.year, now.month, now.day)
         .difference(DateTime(date.year, date.month, date.day))
         .inDays;
-    if (diff == 0) return "Aujourd'hui";
-    if (diff == 1) return 'Hier';
+    if (diff == 0) return 'Aujourd\'hui'.tr;
+    if (diff == 1) return 'Hier'.tr;
     const mois = [
       'jan',
       'fév',
@@ -196,7 +196,7 @@ class _DateLabel extends StatelessWidget {
       'nov',
       'déc'
     ];
-    return '${date.day} ${mois[date.month - 1]}';
+    return '${date.day} ${mois[date.month - 1].tr}';
   }
 
   @override
@@ -299,7 +299,7 @@ class _MessageBubble extends StatelessWidget {
                         const SizedBox(height: 2),
                         Row(mainAxisSize: MainAxisSize.min, children: [
                           if (msg.modifieLe != null)
-                            Text('modifié · ',
+                            Text('modifié · '.tr,
                                 style: TextStyle(
                                     fontSize: 10,
                                     fontStyle: FontStyle.italic,
@@ -488,7 +488,7 @@ class _StoryReplyPreview extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.all(4),
                     child: Center(
-                        child: Text(storyReply.storyText ?? 'Aa',
+                        child: Text(storyReply.storyText ?? 'Aa'.tr,
                             textAlign: TextAlign.center,
                             maxLines: 4,
                             overflow: TextOverflow.ellipsis,
@@ -524,10 +524,10 @@ class _StoryReplyPreview extends StatelessWidget {
                 children: [
                   Text(
                       storyReply.storyIsVideo
-                          ? '🎬 Vidéo'
+                          ? '🎬 Vidéo'.tr
                           : storyReply.isTextStory
-                              ? '✍️ Texte'
-                              : '📸 Photo',
+                              ? '✍️ Texte'.tr
+                              : '📸 Photo'.tr,
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -536,8 +536,8 @@ class _StoryReplyPreview extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                       storyReply.storyOwnerName.isNotEmpty
-                          ? 'Story de ${storyReply.storyOwnerName}'
-                          : 'Story',
+                          ? 'Story de @storyOwnerName'.trParams({'storyOwnerName': storyReply.storyOwnerName.toString()})
+                          : 'Story'.tr,
                       style:
                           TextStyle(fontSize: 12, color: AppColors.textMuted),
                       maxLines: 1,
@@ -547,7 +547,7 @@ class _StoryReplyPreview extends StatelessWidget {
                     Icon(Icons.visibility_rounded,
                         size: 11, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text('Voir',
+                    Text('Voir'.tr,
                         style: TextStyle(
                             fontSize: 10,
                             color: AppColors.textMuted,
@@ -625,7 +625,7 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                           : Colors.black,
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(story.storyText ?? '✍️ Story texte',
+                      child: Text(story.storyText ?? '✍️ Story texte'.tr,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               color: story.storyText != null
@@ -654,7 +654,7 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
           child: Container(
             padding: EdgeInsets.fromLTRB(
                 12, MediaQuery.of(context).padding.top + 8, 12, 24),
-            decoration: const BoxDecoration(
+            decoration:  BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -679,8 +679,8 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
               Expanded(
                 child: Text(
                   story.storyOwnerName.isNotEmpty
-                      ? 'Story de ${story.storyOwnerName}'
-                      : 'Story',
+                      ? 'Story de @storyOwnerName'.trParams({'storyOwnerName': story.storyOwnerName.toString()})
+                      : 'Story'.tr,
                   style: const TextStyle(
                       color: AppColors.surMedia,
                       fontSize: 15,
@@ -706,13 +706,13 @@ class _ReplyPreview extends StatelessWidget {
   String get _preview {
     switch (replyTo.type) {
       case MessageType.image:
-        return '📷 Photo';
+        return '📷 Photo'.tr;
       case MessageType.audio:
-        return '🎤 Vocal';
+        return '🎤 Vocal'.tr;
       case MessageType.snap:
-        return '📸 Snap';
+        return '📸 Snap'.tr;
       case MessageType.location:
-        return '📍 Localisation';
+        return '📍 Localisation'.tr;
       default:
         return replyTo.text ?? '';
     }
@@ -734,7 +734,7 @@ class _ReplyPreview extends StatelessWidget {
                 color: isMine && !AppColors.clair ? AppColors.surAccent.withValues(alpha: 0.38) : AppColors.accent, width: 3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(isReplyMine ? 'Vous' : ctrl.conversation.userName,
+        Text(isReplyMine ? 'Vous'.tr : ctrl.conversation.userName,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -787,7 +787,7 @@ class _TextBubble extends StatelessWidget {
     // Heure (+ « modifié ») et coches, en bas à droite de la bulle
     final meta = Row(mainAxisSize: MainAxisSize.min, children: [
       if (modifie)
-        Text('modifié ',
+        Text('modifié '.tr,
             style: TextStyle(
                 fontSize: 10.5,
                 fontStyle: FontStyle.italic,
@@ -880,16 +880,16 @@ class _FlouSensibleState extends State<_FlouSensible> {
               child: widget.child,
             ),
           ),
-          const Column(mainAxisSize: MainAxisSize.min, children: [
+           Column(mainAxisSize: MainAxisSize.min, children: [
             Text('🔞', style: TextStyle(fontSize: 30)),
             SizedBox(height: 6),
-            Text('Photo sensible',
+            Text('Photo sensible'.tr,
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: AppColors.surMedia)),
             SizedBox(height: 2),
-            Text('Touche pour voir',
+            Text('Touche pour voir'.tr,
                 style: TextStyle(fontSize: 12, color: AppColors.surMedia)),
           ]),
         ]),
@@ -922,7 +922,7 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
     try {
       final photos = await AlbumService.photosDe(widget.msg.senderId);
       if (photos.isEmpty) {
-        Get.snackbar('Album privé', "L'accès à cet album a été retiré",
+        Get.snackbar('Album privé'.tr, 'L\'accès à cet album a été retiré'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -931,7 +931,7 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
             nom: widget.ctrl.conversation.userName, photos: photos));
       }
     } catch (_) {
-      Get.snackbar('Album privé', "Impossible d'ouvrir l'album",
+      Get.snackbar('Album privé'.tr, 'Impossible d\'ouvrir l\'album'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -973,7 +973,7 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Album privé',
+                 Text('Album privé'.tr,
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -981,8 +981,8 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
                 const SizedBox(height: 2),
                 Text(
                     widget.isMine
-                        ? 'Tu as partagé ton album avec $nom'
-                        : 'Touche pour voir les photos',
+                        ? 'Tu as partagé ton album avec @nom'.trParams({'nom': nom.toString()})
+                        : 'Touche pour voir les photos'.tr,
                     style: const TextStyle(fontSize: 12, color: AppColors.surAccent)),
               ],
             ),
@@ -1056,7 +1056,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                               style: const TextStyle(fontSize: 12),
                             ),
                             Text(
-                              reply?.annonceAuteur ?? 'Annonce',
+                              reply?.annonceAuteur ?? 'Annonce'.tr,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -1070,7 +1070,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                         const SizedBox(height: 3),
                         // Titre
                         Text(
-                          reply?.annonceTitre ?? 'Annonce',
+                          reply?.annonceTitre ?? 'Annonce'.tr,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,

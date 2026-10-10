@@ -64,8 +64,8 @@ class LikeController extends GetxController {
 
     if (hasMatch(targetUser.id)) {
       Get.snackbar(
-        '💘 Match !',
-        'Vous êtes en match — impossible de retirer le like',
+        '💘 Match !'.tr,
+        'Vous êtes en match — impossible de retirer le like'.tr,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
         colorText: AppColors.textPrimary,

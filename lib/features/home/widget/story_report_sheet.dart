@@ -11,19 +11,19 @@ import 'package:rencontre/shared/models/story_model.dart';
 // est ensuite masquée pour la personne qui l'a signalée.
 // ═══════════════════════════════════════════════════════════════
 
-const _raisons = [
-  {'icon': '🔞', 'label': 'Contenu inapproprié'},
-  {'icon': '💬', 'label': 'Harcèlement ou spam'},
-  {'icon': '⚠️', 'label': 'Violence ou contenu dangereux'},
-  {'icon': '🔗', 'label': 'Escroquerie / Arnaque'},
-  {'icon': '🤖', 'label': 'Faux profil / Bot'},
-  {'icon': '🚩', 'label': 'Autre raison'},
+List<Map<String, String>> get _raisons => [
+  {'icon': '🔞', 'label': 'Contenu inapproprié'.tr},
+  {'icon': '💬', 'label': 'Harcèlement ou spam'.tr},
+  {'icon': '⚠️', 'label': 'Violence ou contenu dangereux'.tr},
+  {'icon': '🔗', 'label': 'Escroquerie / Arnaque'.tr},
+  {'icon': '🤖', 'label': 'Faux profil / Bot'.tr},
+  {'icon': '🚩', 'label': 'Autre raison'.tr},
 ];
 
 /// Ouvre le choix du motif puis envoie le signalement.
 /// Renvoie true si la story a été signalée (et donc masquée).
 Future<bool> showStoryReportSheet(StoryModel story) async {
-  final raison = await choisirMotifSignalement('Pourquoi signaler cette story ?');
+  final raison = await choisirMotifSignalement('Pourquoi signaler cette story ?'.tr);
   if (raison == null) return false;
   return _envoyerSignalement(story, raison);
 }
@@ -117,12 +117,12 @@ Future<bool> _envoyerSignalement(StoryModel story, String raison) async {
     }
   } on PostgrestException catch (e) {
     if (e.code != '23505') {
-      _snack("Impossible d'envoyer le signalement");
+      _snack('Impossible d\'envoyer le signalement'.tr);
       return false;
     }
     dejaSignale = true;
   } catch (_) {
-    _snack("Impossible d'envoyer le signalement");
+    _snack('Impossible d\'envoyer le signalement'.tr);
     return false;
   }
 
@@ -130,13 +130,13 @@ Future<bool> _envoyerSignalement(StoryModel story, String raison) async {
     Get.find<HomeController>().hideStory(story.id);
   }
   _snack(dejaSignale
-      ? 'Déjà signalée. Elle ne te sera plus montrée.'
-      : 'Signalement envoyé. Merci ! Cette story ne te sera plus montrée.');
+      ? 'Déjà signalée. Elle ne te sera plus montrée.'.tr
+      : 'Signalement envoyé. Merci ! Cette story ne te sera plus montrée.'.tr);
   return true;
 }
 
 void _snack(String msg) {
-  Get.snackbar('Signalement', msg,
+  Get.snackbar('Signalement'.tr, msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary,

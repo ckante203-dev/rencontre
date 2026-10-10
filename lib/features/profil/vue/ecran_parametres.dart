@@ -73,7 +73,7 @@ class EcranParametres extends StatelessWidget {
                 size: 16, color: AppColors.textPrimary),
           ),
         ),
-        title: Text('Paramètres',
+        title: Text('Paramètres'.tr,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 17,
@@ -86,27 +86,27 @@ class EcranParametres extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ════ COMPTE ════════════════════════════════════════
-            const _Titre('Compte'),
+             _Titre('Compte'.tr),
             const SizedBox(height: 10),
             Obx(() => _Tuile(
                   icon: '📧',
-                  title: 'Modifier l\'email',
+                  title: 'Modifier l\'email'.tr,
                   subtitle: ctrl.monProfil.value?.id != null
-                      ? 'Modifier mon adresse email'
-                      : 'Email',
+                      ? 'Modifier mon adresse email'.tr
+                      : 'Email'.tr,
                   onTap: () => _dialogEmail(context, ctrl),
                 )),
             const SizedBox(height: 10),
             _Tuile(
               icon: '🔒',
-              title: 'Modifier le mot de passe',
-              subtitle: 'Changer ton mot de passe',
+              title: 'Modifier le mot de passe'.tr,
+              subtitle: 'Changer ton mot de passe'.tr,
               onTap: () => _dialogPassword(context, ctrl),
             ),
             const SizedBox(height: 28),
 
             // ════ IDENTITÉ ══════════════════════════════════════
-            const _Titre('Mon identité'),
+             _Titre('Mon identité'.tr),
             const SizedBox(height: 10),
 
             // ✅ Sélecteur de genre
@@ -122,7 +122,7 @@ class EcranParametres extends StatelessWidget {
                     Row(children: [
                       Text('♂️', style: TextStyle(fontSize: 14)),
                       SizedBox(width: 6),
-                      Text('MON GENRE',
+                      Text('MON GENRE'.tr,
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -181,7 +181,7 @@ class EcranParametres extends StatelessWidget {
                     Row(children: [
                       Text('💞', style: TextStyle(fontSize: 14)),
                       SizedBox(width: 6),
-                      Text('JE RECHERCHE',
+                      Text('JE RECHERCHE'.tr,
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -229,39 +229,39 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ CONFIDENTIALITÉ ════════════════════════════════
-            const _Titre('Confidentialité'),
+             _Titre('Confidentialité'.tr),
             const SizedBox(height: 10),
             // ✅ Chaque interrupteur est enregistré dès qu'on le touche.
             Obx(() => _Toggle(
                 icon: '🎂',
-                title: 'Afficher ma date de naissance',
-                subtitle: 'Visible sur ton profil public',
+                title: 'Afficher ma date de naissance'.tr,
+                subtitle: 'Visible sur ton profil public'.tr,
                 value: ctrl.showBirthdate.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.showBirthdate, 'show_birthdate', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '🔍',
-                title: 'Me trouver par mon nom d\'utilisateur',
-                subtitle: 'Les autres peuvent te chercher par @pseudo dans Messages',
+                title: 'Me trouver par mon nom d\'utilisateur'.tr,
+                subtitle: 'Les autres peuvent te chercher par @pseudo dans Messages'.tr,
                 value: ctrl.trouvableParPseudo.value,
                 onChanged: (v) => ctrl.majReglage(
                     ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '👥',
-                title: "Recevoir des demandes d'ami",
+                title: 'Recevoir des demandes d\'ami'.tr,
                 subtitle: ctrl.accepteDemandesAmi.value
-                    ? "Tout le monde peut t'ajouter en ami"
-                    : "🔒 Compte privé : personne ne peut t'ajouter",
+                    ? 'Tout le monde peut t\'ajouter en ami'.tr
+                    : '🔒 Compte privé : personne ne peut t\'ajouter'.tr,
                 value: ctrl.accepteDemandesAmi.value,
                 onChanged: (v) => ctrl.majReglage(
                     ctrl.accepteDemandesAmi, 'accepte_demandes_ami', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '📍',
-                title: 'Afficher ma distance',
-                subtitle: 'Les autres voient à quelle distance tu es',
+                title: 'Afficher ma distance'.tr,
+                subtitle: 'Les autres voient à quelle distance tu es'.tr,
                 value: ctrl.showDistance.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.showDistance, 'show_distance', v))),
@@ -269,9 +269,9 @@ class EcranParametres extends StatelessWidget {
             StatefulBuilder(
                 builder: (_, setLocal) => _Toggle(
                       icon: '🔞',
-                      title: 'Flouter les photos sensibles',
+                      title: 'Flouter les photos sensibles'.tr,
                       subtitle:
-                          'Les photos marquées 🔞 restent floues jusqu\'à ce que tu touches',
+                          'Les photos marquées 🔞 restent floues jusqu\'à ce que tu touches'.tr,
                       value: ConversationController.flouterSensibles,
                       onChanged: (v) {
                         GetStorage().write(
@@ -283,50 +283,50 @@ class EcranParametres extends StatelessWidget {
             // Qui voit mes stories
             _Tuile(
               icon: '⭐',
-              title: 'Amis proches',
-              subtitle: 'Ceux qui voient tes stories « Amis proches »',
+              title: 'Amis proches'.tr,
+              subtitle: 'Ceux qui voient tes stories « Amis proches »'.tr,
               onTap: () => Get.to(() => const EcranAmisProches()),
             ),
             const SizedBox(height: 10),
             _Tuile(
               icon: '🚫',
-              title: 'Masquer ma story à…',
-              subtitle: 'Ils ne verront aucune de tes stories',
+              title: 'Masquer ma story à…'.tr,
+              subtitle: 'Ils ne verront aucune de tes stories'.tr,
               onTap: () => Get.to(
                   () => const EcranAmisProches(liste: ListeStory.masques)),
             ),
             const SizedBox(height: 28),
 
             // ════ NOTIFICATIONS & SONS ═══════════════════════════
-            const _Titre('Notifications & Sons'),
+             _Titre('Notifications & Sons'.tr),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '💬',
-                title: 'Messages',
-                subtitle: 'Notifier à chaque nouveau message',
+                title: 'Messages'.tr,
+                subtitle: 'Notifier à chaque nouveau message'.tr,
                 value: ctrl.notifMessages.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.notifMessages, 'notif_messages', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '🔔',
-                title: 'Son des notifications',
-                subtitle: 'Jouer un son à chaque notification',
+                title: 'Son des notifications'.tr,
+                subtitle: 'Jouer un son à chaque notification'.tr,
                 value: ctrl.notifSon.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.notifSon, 'notif_son', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '⭐',
-                title: 'Alertes de mes favoris',
-                subtitle: 'En ligne, près de toi ou arrivé dans ta ville',
+                title: 'Alertes de mes favoris'.tr,
+                subtitle: 'En ligne, près de toi ou arrivé dans ta ville'.tr,
                 value: ctrl.notifFavoris.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.notifFavoris, 'notif_favoris', v))),
             const SizedBox(height: 28),
 
             // ════ THÈME ══════════════════════════════════════════
-            const _Titre('Thème de l\'application'),
+             _Titre('Thème de l\'application'.tr),
             const SizedBox(height: 10),
             Obx(() => _SelecteurTheme(
                   selected: ctrl.selectedTheme.value,
@@ -339,21 +339,21 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 10),
             _Tuile(
               icon: '🌐',
-              title: 'Langue · Language',
-              subtitle: Langue.code == 'en' ? 'English' : 'Français',
+              title: 'Langue · Language'.tr,
+              subtitle: Langue.code == 'en' ? 'English'.tr : 'Français'.tr,
               onTap: () => _choisirLangue(context),
             ),
             const SizedBox(height: 28),
 
             // ════ ABONNEMENT ═════════════════════════════════════
-            const _Titre('Abonnement'),
+             _Titre('Abonnement'.tr),
             const SizedBox(height: 10),
             Obx(() => _Tuile(
                   icon: '👑',
-                  title: 'Zamu Premium',
+                  title: 'Zamu Premium'.tr,
                   subtitle: ctrl.isPremium.value
-                      ? 'Actif · gérer mon abonnement'
-                      : 'Découvrir les avantages Premium',
+                      ? 'Actif · gérer mon abonnement'.tr
+                      : 'Découvrir les avantages Premium'.tr,
                   onTap: ctrl.isPremium.value
                       ? ctrl.gererAbonnement
                       : ctrl.ouvrirPaywall,
@@ -361,35 +361,35 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 10),
             _Tuile(
               icon: '🔄',
-              title: 'Restaurer mes achats',
-              subtitle: 'Après un changement de téléphone',
+              title: 'Restaurer mes achats'.tr,
+              subtitle: 'Après un changement de téléphone'.tr,
               onTap: ctrl.restaurerAchats,
             ),
             const SizedBox(height: 28),
 
             // ════ AIDE & INFORMATIONS ════════════════════════════
-            const _Titre('Aide & informations'),
+             _Titre('Aide & informations'.tr),
             const SizedBox(height: 10),
             _Tuile(
               icon: '✨',
-              title: 'Quoi de neuf',
-              subtitle: 'Les nouveautés de Zamu',
+              title: 'Quoi de neuf'.tr,
+              subtitle: 'Les nouveautés de Zamu'.tr,
               onTap: () => Get.to(() => const EcranNouveautes(),
                   fullscreenDialog: true),
             ),
             const SizedBox(height: 10),
             _Tuile(
               icon: '📄',
-              title: 'Conditions d\'utilisation',
-              subtitle: 'Les règles de Zamu',
+              title: 'Conditions d\'utilisation'.tr,
+              subtitle: 'Les règles de Zamu'.tr,
               onTap: () => Get.to(() => const CguScreen()),
             ),
             if (ControleurProfil.urlConfidentialite.isNotEmpty) ...[
               const SizedBox(height: 10),
               _Tuile(
                 icon: '🛡️',
-                title: 'Politique de confidentialité',
-                subtitle: 'Comment tes données sont utilisées',
+                title: 'Politique de confidentialité'.tr,
+                subtitle: 'Comment tes données sont utilisées'.tr,
                 onTap: () => ctrl.ouvrirLien(ControleurProfil.urlConfidentialite),
               ),
             ],
@@ -397,7 +397,7 @@ class EcranParametres extends StatelessWidget {
               const SizedBox(height: 10),
               _Tuile(
                 icon: '✉️',
-                title: 'Nous contacter',
+                title: 'Nous contacter'.tr,
                 subtitle: ControleurProfil.emailContact,
                 onTap: ctrl.contacterSupport,
               ),
@@ -405,7 +405,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ PROFILS BLOQUÉS ════════════════════════════════
-            const _Titre('Profils bloqués'),
+             _Titre('Profils bloqués'.tr),
             const SizedBox(height: 10),
             Obx(() {
               final count = ctrl.blockedProfiles.length;
@@ -435,7 +435,7 @@ class EcranParametres extends StatelessWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Profils bloqués',
+                            Text('Profils bloqués'.tr,
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
@@ -443,8 +443,8 @@ class EcranParametres extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               count == 0
-                                  ? 'Aucun profil bloqué'
-                                  : '$count profil${count > 1 ? 's' : ''} bloqué${count > 1 ? 's' : ''}',
+                                  ? 'Aucun profil bloqué'.tr
+                                  : '@count profil@p bloqué@p2'.trParams({'count': count.toString(), 'p2': (count > 1 ? 's' : '').toString(), 'p': (count > 1 ? 's' : '').toString()}),
                               style: TextStyle(
                                   fontSize: 11, color: AppColors.textMuted),
                             ),
@@ -492,7 +492,7 @@ class EcranParametres extends StatelessWidget {
                         Icon(Icons.logout_rounded,
                             size: 18, color: AppColors.error),
                         SizedBox(width: 8),
-                        Text('Se déconnecter',
+                        Text('Se déconnecter'.tr,
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -509,7 +509,7 @@ class EcranParametres extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Center(
-                  child: Text('Supprimer mon compte',
+                  child: Text('Supprimer mon compte'.tr,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -524,7 +524,7 @@ class EcranParametres extends StatelessWidget {
                     child: Text(
                         ctrl.versionApp.value.isEmpty
                             ? ''
-                            : 'Zamu · version ${ctrl.versionApp.value}',
+                            : 'Zamu · version @value'.trParams({'value': ctrl.versionApp.value.toString()}),
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                   ),
@@ -541,7 +541,7 @@ class EcranParametres extends StatelessWidget {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Modifier l\'email',
+      title: Text('Modifier l\'email'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
@@ -551,12 +551,12 @@ class EcranParametres extends StatelessWidget {
         controller: emailCtrl,
         keyboardType: TextInputType.emailAddress,
         style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-        decoration: _passInputDeco('Nouvel email', false, () {}),
+        decoration: _passInputDeco('Nouvel email'.tr, false, () {}),
       ),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
@@ -570,7 +570,7 @@ class EcranParametres extends StatelessWidget {
                   colors: [AppColors.accent, AppColors.accent2]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Modifier',
+            child:  Text('Modifier'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
@@ -588,7 +588,7 @@ class EcranParametres extends StatelessWidget {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Modifier le mot de passe',
+      title: Text('Modifier le mot de passe'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
@@ -599,7 +599,7 @@ class EcranParametres extends StatelessWidget {
               controller: newPassCtrl,
               obscureText: !showNew.value,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: _passInputDeco('Nouveau mot de passe', showNew.value,
+              decoration: _passInputDeco('Nouveau mot de passe'.tr, showNew.value,
                   () => showNew.value = !showNew.value),
             )),
         const SizedBox(height: 12),
@@ -607,19 +607,19 @@ class EcranParametres extends StatelessWidget {
               controller: confirmCtrl,
               obscureText: !showConfirm.value,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: _passInputDeco('Confirmer', showConfirm.value,
+              decoration: _passInputDeco('Confirmer'.tr, showConfirm.value,
                   () => showConfirm.value = !showConfirm.value),
             )),
       ]),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
             if (newPassCtrl.text != confirmCtrl.text) {
-              Get.snackbar('Erreur', 'Les mots de passe ne correspondent pas',
+              Get.snackbar('Erreur'.tr, 'Les mots de passe ne correspondent pas'.tr,
                   snackPosition: SnackPosition.TOP,
                   backgroundColor: AppColors.surface,
                   colorText: AppColors.textPrimary);
@@ -635,7 +635,7 @@ class EcranParametres extends StatelessWidget {
                   colors: [AppColors.accent, AppColors.accent2]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Modifier',
+            child:  Text('Modifier'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
@@ -734,7 +734,7 @@ class _SelecteurTheme extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(p.label,
+                Text(p.label.tr,
                     style: TextStyle(
                         fontSize: 11,
                         color: selected == p.id

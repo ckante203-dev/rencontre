@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 // ─── DISCUSSIONS DE GROUPE ────────────────────────────────────────
 // Groupes d'amis (50 membres max) ou groupe automatique d'un événement
 // (SQL 036). Messages gardés 7 jours.
@@ -56,13 +57,13 @@ class GroupeResume {
   String get apercu {
     switch (dernierType) {
       case null:
-        return 'Aucun message';
+        return 'Aucun message'.tr;
       case 'systeme':
         return dernierContenu ?? '';
       case 'image':
-        return '${dernierAuteur ?? 'Quelqu\'un'} : 📷 Photo';
+        return '@p : 📷 Photo'.trParams({'p': (dernierAuteur ?? 'Quelqu\'un').toString()});
       case 'giphy':
-        return '${dernierAuteur ?? 'Quelqu\'un'} : GIF';
+        return '@p : GIF'.trParams({'p': (dernierAuteur ?? 'Quelqu\'un').toString()});
       default:
         return '${dernierAuteur ?? 'Quelqu\'un'} : ${dernierContenu ?? ''}';
     }

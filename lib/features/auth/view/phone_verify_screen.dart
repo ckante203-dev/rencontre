@@ -129,7 +129,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                       borderRadius: BorderRadius.circular(2))),
                Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Text('Choisir un pays',
+                child: Text('Choisir un pays'.tr,
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -141,7 +141,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                   controller: search,
                   style:  TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'Rechercher...',
+                    hintText: 'Rechercher...'.tr,
                     hintStyle:  TextStyle(color: AppColors.textMuted),
                     prefixIcon:  Icon(Icons.search_rounded,
                         color: AppColors.textMuted),
@@ -173,7 +173,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                                   : AppColors.textPrimary,
                               fontWeight:
                                   isSel ? FontWeight.w700 : FontWeight.w400)),
-                      trailing: Text('${c.code} · ${c.digits} chiffres',
+                      trailing: Text('@code · @digits chiffres'.trParams({'digits': c.digits.toString(), 'code': c.code.toString()}),
                           style: TextStyle(
                               color: isSel
                                   ? AppColors.textPrimary
@@ -209,21 +209,21 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
       final confirm = await Get.dialog<bool>(AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Format inhabituel',
+        title: Text('Format inhabituel'.tr,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
                 fontSize: 16)),
         content: Text(
-          '$_formatWarning\n\nTu peux quand même continuer si ton numéro est correct.',
+          '@formatWarning\n\nTu peux quand même continuer si ton numéro est correct.'.trParams({'formatWarning': _formatWarning.toString()}),
           style: TextStyle(
               color: AppColors.textMuted, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
               onPressed: () => Get.back(result: false),
-              child: Text('Corriger',
+              child: Text('Corriger'.tr,
                   style: TextStyle(color: AppColors.textMuted))),
           GestureDetector(
             onTap: () => Get.back(result: true),
@@ -234,7 +234,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                     colors: [AppColors.accent, AppColors.accent2]),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text('Continuer quand même',
+              child:  Text('Continuer quand même'.tr,
                   style: TextStyle(
                       color: AppColors.surAccent,
                       fontWeight: FontWeight.w700,
@@ -295,7 +295,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child:  Text('Passer',
+                        child:  Text('Passer'.tr,
                             style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textMuted,
@@ -324,7 +324,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                Text('Ajoute ton\nnuméro 📱',
+                Text('Ajoute ton\nnuméro 📱'.tr,
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 30,
@@ -333,7 +333,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                           height: 1.2)),
                 const SizedBox(height: 8),
                  Text(
-                  'Ton numéro sera sauvegardé pour sécuriser ton compte et faciliter la récupération.',
+                  'Ton numéro sera sauvegardé pour sécuriser ton compte et faciliter la récupération.'.tr,
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.6),
                 ),
@@ -353,7 +353,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Vérification SMS bientôt disponible — ton numéro est sauvegardé sans vérification pour l\'instant.',
+                        'Vérification SMS bientôt disponible — ton numéro est sauvegardé sans vérification pour l\'instant.'.tr,
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.textMuted,
@@ -410,7 +410,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                         style:  TextStyle(
                             fontSize: 15, color: AppColors.textPrimary),
                         decoration: InputDecoration(
-                          hintText: '${_selected.digits} chiffres',
+                          hintText: '@digits chiffres'.trParams({'digits': _selected.digits.toString()}),
                           hintStyle:
                                TextStyle(color: AppColors.textMuted),
                           border: InputBorder.none,
@@ -440,7 +440,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 const SizedBox(height: 24),
 
                 AuthPrimaryButton(
-                  label: 'Enregistrer et continuer →',
+                  label: 'Enregistrer et continuer →'.tr,
                   onTap: _saveAndContinue,
                 ),
                 const SizedBox(height: 16),
@@ -449,7 +449,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                   child: GestureDetector(
                     onTap: ctrl.skipPhoneVerify,
                     child:  Text(
-                      'Je ferai ça plus tard',
+                      'Je ferai ça plus tard'.tr,
                       style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textMuted,

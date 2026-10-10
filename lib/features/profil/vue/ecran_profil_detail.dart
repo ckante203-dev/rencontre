@@ -99,7 +99,7 @@ class _EcranProfilDetailState extends State<EcranProfilDetail> {
         backgroundColor: AppColors.bg,
         body: Center(
           child: Text(
-            'Profil introuvable',
+            'Profil introuvable'.tr,
             style: TextStyle(color: AppColors.textMuted),
           ),
         ),
@@ -263,7 +263,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
       );
       Get.toNamed('/chat/conversation', arguments: conv);
     } catch (_) {
-      Get.snackbar('Erreur', "Impossible d'ouvrir la conversation",
+      Get.snackbar('Erreur'.tr, 'Impossible d\'ouvrir la conversation'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -297,19 +297,19 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                 backgroundColor: AppColors.surface,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
-                title: Text('Bloquer ${user.name} ?',
+                title: Text('Bloquer @name ?'.trParams({'name': user.name.toString()}),
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                         fontSize: 17)),
                 content: Text(
-                    '${user.name} ne pourra plus voir ton profil ni t\'envoyer des messages.',
+                    '@name ne pourra plus voir ton profil ni t\'envoyer des messages.'.trParams({'name': user.name.toString()}),
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 actions: [
                   TextButton(
                       onPressed: () => Get.back(result: false),
-                      child: Text('Annuler',
+                      child: Text('Annuler'.tr,
                           style: TextStyle(color: AppColors.textMuted))),
                   GestureDetector(
                     onTap: () => Get.back(result: true),
@@ -319,7 +319,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                       decoration: BoxDecoration(
                           color: AppColors.error,
                           borderRadius: BorderRadius.circular(12)),
-                      child: const Text('Bloquer',
+                      child:  Text('Bloquer'.tr,
                           style: TextStyle(
                               color: AppColors.surAccent,
                               fontWeight: FontWeight.w700)),
@@ -343,7 +343,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.block_rounded, color: AppColors.error, size: 20),
                 const SizedBox(width: 10),
-                Text('Bloquer ${user.name}',
+                Text('Bloquer @name'.trParams({'name': user.name.toString()}),
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -364,12 +364,12 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                   color: Colors.orange.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.orange.withOpacity(0.25))),
-              child: const Row(
+              child:  Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.flag_rounded, color: Colors.orange, size: 20),
                     SizedBox(width: 10),
-                    Text('Signaler ce profil',
+                    Text('Signaler ce profil'.tr,
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -388,7 +388,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border)),
               child: Center(
-                child: Text('Annuler',
+                child: Text('Annuler'.tr,
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -405,12 +405,12 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
 
   void _showSignalerSheet() {
     final raisons = [
-      {'icon': '🔞', 'label': 'Contenu inapproprié'},
-      {'icon': '🤖', 'label': 'Faux profil / Bot'},
-      {'icon': '💬', 'label': 'Harcèlement ou spam'},
-      {'icon': '⚠️', 'label': 'Comportement dangereux'},
-      {'icon': '🔗', 'label': 'Escroquerie / Arnaque'},
-      {'icon': '🚩', 'label': 'Autre raison'},
+      {'icon': '🔞', 'label': 'Contenu inapproprié'.tr},
+      {'icon': '🤖', 'label': 'Faux profil / Bot'.tr},
+      {'icon': '💬', 'label': 'Harcèlement ou spam'.tr},
+      {'icon': '⚠️', 'label': 'Comportement dangereux'.tr},
+      {'icon': '🔗', 'label': 'Escroquerie / Arnaque'.tr},
+      {'icon': '🚩', 'label': 'Autre raison'.tr},
     ];
 
     Get.bottomSheet(
@@ -430,7 +430,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
-          Text('Pourquoi signaler ce profil ?',
+          Text('Pourquoi signaler ce profil ?'.tr,
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 16,
@@ -638,7 +638,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                   color: Colors.black54,
                                   borderRadius: BorderRadius.circular(8)),
                               child: Text(
-                                _activeStory!.isSeen ? 'Vue' : 'Story',
+                                _activeStory!.isSeen ? 'Vue'.tr : 'Story'.tr,
                                 style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
@@ -697,17 +697,17 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                             children: [
                               if (user.isOnline)
                                 _InfoEntete(
-                                    point: AppColors.online, texte: 'En ligne')
+                                    point: AppColors.online, texte: 'En ligne'.tr)
                               else if (user.lastSeen != null)
                                 _InfoEntete(
-                                    texte: 'Vu ${_ilYa(user.lastSeen!)}'),
+                                    texte: 'Vu @p'.trParams({'p': (_ilYa(user.lastSeen!)).toString()})),
                               if (user.distanceMeters != null &&
                                   user.showDistance)
                                 _InfoEntete(
                                     texte:
                                         '📍 ${HomeController.formatDistance(user.distanceMeters)}'),
                               if (user.isNewMember)
-                                const _InfoEntete(texte: '✨ Nouveau'),
+                                 _InfoEntete(texte: '✨ Nouveau'.tr),
                             ],
                           ),
                         ],
@@ -736,7 +736,7 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                        'Aperçu : voici ton profil tel que les autres le voient',
+                        'Aperçu : voici ton profil tel que les autres le voient'.tr,
                         style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -773,14 +773,14 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                       height: 18,
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2, color: AppColors.surAccent))
-                                  : const Row(
+                                  :  Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
                                           Icon(Icons.chat_bubble_rounded,
                                               size: 17, color: AppColors.surAccent),
                                           SizedBox(width: 8),
-                                          Text('Envoyer un message',
+                                          Text('Envoyer un message'.tr,
                                               style: TextStyle(
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.w700,
@@ -806,9 +806,9 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                                 if (r == null) return;
                                 Get.snackbar(
                                     r
-                                        ? '⭐ Ajouté à tes favoris'
-                                        : 'Retiré de tes favoris',
-                                    r ? '${user.name} ne le saura pas' : '',
+                                        ? '⭐ Ajouté à tes favoris'.tr
+                                        : 'Retiré de tes favoris'.tr,
+                                    r ? '@name ne le saura pas'.trParams({'name': user.name.toString()}) : '',
                                     snackPosition: SnackPosition.TOP,
                                     backgroundColor: AppColors.surface,
                                     colorText: AppColors.textPrimary,
@@ -1008,7 +1008,7 @@ class _CorpsProfil extends StatelessWidget {
           ],
           // ── À propos ──
           if (user.bio != null && user.bio!.isNotEmpty) ...[
-            const _SectionTitle('À propos'),
+             _SectionTitle('À propos'.tr),
             const SizedBox(height: 8),
             Text(user.bio!,
                 style: TextStyle(
@@ -1018,30 +1018,30 @@ class _CorpsProfil extends StatelessWidget {
 
           // ── Infos ──
           if (_aDesInfos(user)) ...[
-            const _SectionTitle('Infos'),
+             _SectionTitle('Infos'.tr),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 if (user.taille != null)
-                  _PhysiqueBadge(icon: '📏', label: '${user.taille} cm'),
+                  _PhysiqueBadge(icon: '📏', label: '@taille cm'.trParams({'taille': user.taille.toString()})),
                 if (user.poids != null)
-                  _PhysiqueBadge(icon: '⚖️', label: '${user.poids} kg'),
+                  _PhysiqueBadge(icon: '⚖️', label: '@poids kg'.trParams({'poids': user.poids.toString()})),
                 if (user.morphologie != null)
-                  _PhysiqueBadge(icon: '💪', label: user.morphologie!),
+                  _PhysiqueBadge(icon: '💪', label: user.morphologie!.tr),
                 if (user.lieuRencontre != null)
                   _PhysiqueBadge(
                       icon: '📍',
                       label:
-                          'Rencontre : ${user.lieuRencontre!.replaceAll('Domicile', 'Chez moi')}'),
+                          'Rencontre : @p'.trParams({'p': user.lieuRencontre!.replaceAll('Domicile', 'Chez moi').split(', ').map((e) => e.tr).join(', ')})),
               ],
             ),
             const SizedBox(height: 20),
           ],
 
           if (user.interests.isNotEmpty) ...[
-            const _SectionTitle('Intérêts'),
+             _SectionTitle('Intérêts'.tr),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -1057,7 +1057,7 @@ class _CorpsProfil extends StatelessWidget {
                             border: Border.all(
                                 color:
                                     AppColors.accent.withValues(alpha: 0.5))),
-                        child: Text(i,
+                        child: Text(i.tr,
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1122,12 +1122,12 @@ class _InfoEntete extends StatelessWidget {
 /// « il y a 5 min », « il y a 3 h », « il y a 2 j »
 String _ilYa(DateTime d) {
   final e = DateTime.now().difference(d);
-  if (e.inMinutes < 1) return "à l'instant";
-  if (e.inMinutes < 60) return 'il y a ${e.inMinutes} min';
-  if (e.inHours < 24) return 'il y a ${e.inHours} h';
-  if (e.inDays < 7) return 'il y a ${e.inDays} j';
+  if (e.inMinutes < 1) return 'à l\'instant'.tr;
+  if (e.inMinutes < 60) return 'il y a @inMinutes min'.trParams({'inMinutes': e.inMinutes.toString()});
+  if (e.inHours < 24) return 'il y a @inHours h'.trParams({'inHours': e.inHours.toString()});
+  if (e.inDays < 7) return 'il y a @inDays j'.trParams({'inDays': e.inDays.toString()});
   // Pas plus précis au-delà (discrétion sur l'activité de chacun)
-  return "il y a plus d'une semaine";
+  return 'il y a plus d\'une semaine'.tr;
 }
 
 // ── Badge physique ────────────────────────────────────────────────

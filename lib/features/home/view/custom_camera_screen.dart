@@ -23,7 +23,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
   // Filtres beauté (ColorFilter matrices)
   final List<Map<String, dynamic>> _filters = [
     {
-      'name': 'Normal',
+      'name': 'Normal'.tr,
       'icon': '✨',
       'matrix': <double>[
         1, 0, 0, 0, 0,
@@ -33,7 +33,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
       ],
     },
     {
-      'name': 'Doux',
+      'name': 'Doux'.tr,
       'icon': '🌸',
       'matrix': <double>[
         1.1, 0, 0, 0, 10,
@@ -43,7 +43,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
       ],
     },
     {
-      'name': 'Glam',
+      'name': 'Glam'.tr,
       'icon': '💜',
       'matrix': <double>[
         1.2, 0, 0, 0, 15,
@@ -53,7 +53,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
       ],
     },
     {
-      'name': 'Soleil',
+      'name': 'Soleil'.tr,
       'icon': '☀️',
       'matrix': <double>[
         1.3, 0, 0, 0, 20,
@@ -63,7 +63,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
       ],
     },
     {
-      'name': 'Nuit',
+      'name': 'Nuit'.tr,
       'icon': '🌙',
       'matrix': <double>[
         0.8, 0, 0, 0, 0,
@@ -73,7 +73,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
       ],
     },
     {
-      'name': 'Rose',
+      'name': 'Rose'.tr,
       'icon': '🌺',
       'matrix': <double>[
         1.2, 0, 0, 0, 20,
@@ -125,7 +125,7 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
       final file = await _ctrl!.takePicture();
       Get.back(result: File(file.path));
     } catch (e) {
-      Get.snackbar('Erreur', 'Photo impossible',
+      Get.snackbar('Erreur'.tr, 'Photo impossible'.tr,
         backgroundColor: Colors.red.shade900,
         colorText: Colors.white);
     } finally {
@@ -176,14 +176,14 @@ class _CustomCameraScreenState extends State<CustomCameraScreen>
         // ── Gradient top ──
         Positioned(top: 0, left: 0, right: 0,
           child: Container(height: 120,
-            decoration: const BoxDecoration(gradient: LinearGradient(
+            decoration:  BoxDecoration(gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
               colors: [Colors.black87, Colors.transparent])))),
 
         // ── Gradient bas ──
         Positioned(bottom: 0, left: 0, right: 0,
           child: Container(height: 280,
-            decoration: const BoxDecoration(gradient: LinearGradient(
+            decoration:  BoxDecoration(gradient: LinearGradient(
               begin: Alignment.bottomCenter, end: Alignment.topCenter,
               colors: [Colors.black, Colors.transparent])))),
 

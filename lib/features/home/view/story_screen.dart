@@ -528,18 +528,18 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     final confirmed = await Get.dialog<bool>(AlertDialog(
       backgroundColor: CouleursMedia.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Supprimer cette story ?',
+      title:  Text('Supprimer cette story ?'.tr,
           style: TextStyle(
               color: Colors.white,
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               fontSize: 17)),
-      content: Text('Cette story sera définitivement supprimée.',
+      content: Text('Cette story sera définitivement supprimée.'.tr,
           style: TextStyle(color: CouleursMedia.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(
                     color: CouleursMedia.textMuted, fontWeight: FontWeight.w600))),
         GestureDetector(
@@ -549,7 +549,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             decoration: BoxDecoration(
                 color: CouleursMedia.error,
                 borderRadius: BorderRadius.circular(12)),
-            child: const Text('Supprimer',
+            child:  Text('Supprimer'.tr,
                 style: TextStyle(
                     color: Colors.white, fontWeight: FontWeight.w700)),
           ),
@@ -570,7 +570,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       }
       if (mounted) {
         Get.back();
-        Get.snackbar('Story supprimée', '',
+        Get.snackbar('Story supprimée'.tr, '',
             snackPosition: SnackPosition.TOP,
             backgroundColor: CouleursMedia.surface,
             colorText: CouleursMedia.textPrimary,
@@ -579,7 +579,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     } catch (e) {
       debugPrint('_deleteStory error: $e');
       if (mounted) {
-        Get.snackbar('Erreur', "Impossible de supprimer la story",
+        Get.snackbar('Erreur'.tr, 'Impossible de supprimer la story'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: CouleursMedia.surface,
             colorText: CouleursMedia.textPrimary);
@@ -622,7 +622,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           _OptionTile(
             icon: Icons.remove_red_eye_rounded,
             label:
-                '${story.viewedBy.length} vue${story.viewedBy.length != 1 ? 's' : ''}',
+                '@length vue@p'.trParams({'length': story.viewedBy.length.toString(), 'p': (story.viewedBy.length != 1 ? 's' : '').toString()}),
             color: Colors.white,
             onTap: () {
               _chainingModal = true; // ✅ pas de reprise entre les 2 feuilles
@@ -639,7 +639,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           const _OptionDivider(),
           _OptionTile(
             icon: Icons.delete_outline_rounded,
-            label: 'Supprimer',
+            label: 'Supprimer'.tr,
             color: Colors.red,
             onTap: () {
               _chainingModal = true; // ✅ pas de reprise avant le dialogue
@@ -673,7 +673,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             const Icon(Icons.photo_library_outlined,
                 color: Colors.white38, size: 48),
             const SizedBox(height: 12),
-            const Text('Aucune story',
+             Text('Aucune story'.tr,
                 style: TextStyle(color: Colors.white54, fontSize: 14)),
             const SizedBox(height: 20),
             GestureDetector(
@@ -684,7 +684,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 decoration: BoxDecoration(
                     color: Colors.white12,
                     borderRadius: BorderRadius.circular(20)),
-                child: const Text('Retour',
+                child:  Text('Retour'.tr,
                     style: TextStyle(color: Colors.white70)),
               ),
             ),
@@ -836,7 +836,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           ),
           // ✅ IgnorePointer : le voile ne doit pas « attraper » les
           // touchers (sinon le PageView ne reçoit plus le balayage).
-          const IgnorePointer(
+           IgnorePointer(
             child: Align(
                 alignment: Alignment.bottomCenter,
                 child: SizedBox(
@@ -950,7 +950,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     color: Colors.white, size: 17),
                 const SizedBox(width: 7),
                 Text(
-                    '${s.viewedBy.length} vue${s.viewedBy.length != 1 ? 's' : ''}',
+                    '@length vue@p'.trParams({'length': s.viewedBy.length.toString(), 'p': (s.viewedBy.length != 1 ? 's' : '').toString()}),
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -983,7 +983,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     return [
       // ✅ IgnorePointer : le dégradé ne doit pas « attraper » les
       // touchers (sinon le PageView ne reçoit plus le balayage).
-      const IgnorePointer(
+       IgnorePointer(
         child: DecoratedBox(
             decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1082,7 +1082,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                   color: const Color(0xFF0A84FF),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Text('👥 Amis',
+                                child:  Text('👥 Amis'.tr,
                                     style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 10,
@@ -1098,13 +1098,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                   color: CouleursMedia.online,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Row(
+                                child:  Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(Icons.star_rounded,
                                           size: 11, color: Colors.white),
                                       SizedBox(width: 2),
-                                      Text('Amis proches',
+                                      Text('Amis proches'.tr,
                                           style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 10,
@@ -1256,7 +1256,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               Icon(Icons.remove_red_eye_outlined,
                   color: CouleursMedia.textMuted, size: 18),
               const SizedBox(width: 8),
-              Text('${viewers.length} vue${viewers.length != 1 ? 's' : ''}',
+              Text('@length vue@p'.trParams({'length': viewers.length.toString(), 'p': (viewers.length != 1 ? 's' : '').toString()}),
                   style: TextStyle(
                       color: CouleursMedia.textPrimary,
                       fontSize: 16,
@@ -1267,7 +1267,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(
-                      child: Text("Personne n'a encore vu cette story",
+                      child: Text('Personne n\'a encore vu cette story'.tr,
                           style: TextStyle(
                               color: CouleursMedia.textMuted, fontSize: 14))))
             else
@@ -1325,13 +1325,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                     color: Colors.white, size: 22)),
                             const SizedBox(height: 10),
                             Text(
-                                '+$lockedCount profil${lockedCount > 1 ? 's' : ''} masqué${lockedCount > 1 ? 's' : ''}',
+                                '+@lockedCount profil@p masqué@p2'.trParams({'lockedCount': lockedCount.toString(), 'p2': (lockedCount > 1 ? 's' : '').toString(), 'p': (lockedCount > 1 ? 's' : '').toString()}),
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14)),
                             const SizedBox(height: 6),
-                            Text('Passe en Premium pour tout voir',
+                            Text('Passe en Premium pour tout voir'.tr,
                                 style: TextStyle(
                                     color: CouleursMedia.textMuted, fontSize: 12)),
                             const SizedBox(height: 14),
@@ -1347,7 +1347,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                         gradient: CouleursMedia.gradientPink,
                                         borderRadius:
                                             BorderRadius.circular(20)),
-                                    child: const Text('Débloquer',
+                                    child:  Text('Débloquer'.tr,
                                         style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w700,
@@ -1366,7 +1366,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     // Court, façon Snapchat : « 5 min », « 23 h », « 2 j »
     if (diff.inDays > 0) return '${diff.inDays} j';
     if (diff.inHours > 0) return '${diff.inHours} h';
-    if (diff.inMinutes > 0) return '${diff.inMinutes} min';
+    if (diff.inMinutes > 0) return '@inMinutes min'.trParams({'inMinutes': diff.inMinutes.toString()});
     return 'maintenant';
   }
 }
@@ -1761,7 +1761,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       if (file == null) return;
       _setMedia(file.path, await _estVideo(file));
     } catch (_) {
-      _snack('Erreur lors de la sélection');
+      _snack('Erreur lors de la sélection'.tr);
     }
   }
 
@@ -1770,13 +1770,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) {
-      _snack('Tu dois être connecté');
+      _snack('Tu dois être connecté'.tr);
       return;
     }
 
     final file = File(_previewPath!);
     if (!await file.exists()) {
-      _snack('Fichier introuvable');
+      _snack('Fichier introuvable'.tr);
       return;
     }
 
@@ -1784,7 +1784,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     const allowedImg = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
     const allowedVid = ['mp4', 'mov', 'avi', 'mkv'];
     if (!(_isVideo ? allowedVid : allowedImg).contains(ext)) {
-      _snack('Format non supporté');
+      _snack('Format non supporté'.tr);
       return;
     }
 
@@ -1904,7 +1904,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) {
-      _snack('Tu dois être connecté');
+      _snack('Tu dois être connecté'.tr);
       return;
     }
 
@@ -1926,7 +1926,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     );
   }
 
-  void _snack(String msg) => Get.snackbar('Erreur', msg,
+  void _snack(String msg) => Get.snackbar('Erreur'.tr, msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: CouleursMedia.surface,
       colorText: CouleursMedia.textPrimary);
@@ -1959,7 +1959,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               borderRadius: BorderRadius.circular(2))),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Durée de la story',
+                     Text('Durée de la story'.tr,
                         style: TextStyle(
                             fontFamily: 'Syne',
                             fontSize: 16,
@@ -1996,7 +1996,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    const Text('Qui peut voir cette story',
+                     Text('Qui peut voir cette story'.tr,
                         style: TextStyle(
                             fontFamily: 'Syne',
                             fontSize: 16,
@@ -2008,7 +2008,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         Expanded(
                           child: _VisibilityChip(
                             icon: Icons.public_rounded,
-                            label: 'Publique',
+                            label: 'Publique'.tr,
                             selected: _visibility == 'public',
                             onTap: () {
                               setSheetState(() => _visibility = 'public');
@@ -2020,7 +2020,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         Expanded(
                           child: _VisibilityChip(
                             icon: Icons.star_rounded,
-                            label: 'Amis proches',
+                            label: 'Amis proches'.tr,
                             selected: _visibility == 'friends',
                             onTap: () {
                               setSheetState(() => _visibility = 'friends');
@@ -2061,10 +2061,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               Expanded(
                                 child: Text(
                                     vide
-                                        ? 'Ta liste est vide : personne ne verra cette story'
+                                        ? 'Ta liste est vide : personne ne verra cette story'.tr
                                         : n == null
-                                            ? 'Ma liste Amis proches'
-                                            : 'Ma liste Amis proches ($n)',
+                                            ? 'Ma liste Amis proches'.tr
+                                            : 'Ma liste Amis proches (@n)'.trParams({'n': n.toString()}),
                                     style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -2072,7 +2072,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                             ? CouleursMedia.error
                                             : CouleursMedia.textPrimary)),
                               ),
-                              Text('Gérer',
+                              Text('Gérer'.tr,
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
@@ -2109,15 +2109,15 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                   nombreDansListe(ListeStory.masques),
                               builder: (_, snap) => Text(
                                   snap.data == null || snap.data == 0
-                                      ? 'Masquer ma story à…'
-                                      : 'Masquée à ${snap.data} personne${snap.data! > 1 ? 's' : ''}',
+                                      ? 'Masquer ma story à…'.tr
+                                      : 'Masquée à @data personne@p'.trParams({'data': snap.data.toString(), 'p': (snap.data! > 1 ? 's' : '').toString()}),
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: CouleursMedia.textPrimary)),
                             ),
                           ),
-                          Text('Gérer',
+                          Text('Gérer'.tr,
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -2154,7 +2154,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   }
 
   String _formatDuration(double hours) {
-    if (hours < 1) return '${(hours * 60).round()} min';
+    if (hours < 1) return '@p min'.trParams({'p': ((hours * 60).round()).toString()});
     if (hours < 24) return '${hours.round()}h';
     final days = hours / 24;
     if (days == days.roundToDouble()) return '${days.round()}j';
@@ -2187,7 +2187,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Nouvelle story',
+        title:  Text('Nouvelle story'.tr,
             style: TextStyle(
                 color: Colors.white,
                 fontFamily: 'Syne',
@@ -2220,7 +2220,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             height: 16,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Text('Publier',
+                        :  Text('Publier'.tr,
                             style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -2291,8 +2291,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               required isFocused,
                               maxLength}) =>
                           null,
-                      decoration: const InputDecoration(
-                        hintText: 'Tape ton texte...',
+                      decoration:  InputDecoration(
+                        hintText: 'Tape ton texte...'.tr,
                         hintStyle: TextStyle(color: Colors.white70),
                         border: InputBorder.none,
                       ),
@@ -2331,7 +2331,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             color: Colors.white,
                             size: 16),
                         const SizedBox(width: 6),
-                        Text(_visibility == 'public' ? 'Publique' : 'Amis proches',
+                        Text(_visibility == 'public' ? 'Publique'.tr : 'Amis proches'.tr,
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
@@ -2432,8 +2432,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w700),
-                  decoration: const InputDecoration(
-                    hintText: 'Écris ta légende…',
+                  decoration:  InputDecoration(
+                    hintText: 'Écris ta légende…'.tr,
                     hintStyle: TextStyle(color: Colors.white54),
                     border: InputBorder.none,
                     counterStyle: TextStyle(color: Colors.white38),
@@ -2497,8 +2497,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               child: IgnorePointer(
                 child: Text(
                     _isVideo
-                        ? 'Choisis le passage à garder en bas'
-                        : 'Pince pour zoomer · glisse pour cadrer',
+                        ? 'Choisis le passage à garder en bas'.tr
+                        : 'Pince pour zoomer · glisse pour cadrer'.tr,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         color: Colors.white70,
@@ -2537,14 +2537,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               child: Row(children: [
                               _BoutonEditeur(
                                 icon: Icons.text_fields_rounded,
-                                label: 'Texte',
+                                label: 'Texte'.tr,
                                 actif: _stickers.any((s) => s.estTexte),
                                 onTap: _ouvrirTexte,
                               ),
                               const SizedBox(width: 8),
                               _BoutonEditeur(
                                 icon: Icons.emoji_emotions_rounded,
-                                label: 'Stickers',
+                                label: 'Stickers'.tr,
                                 actif: _stickers.isNotEmpty,
                                 onTap: _ajouterSticker,
                               ),
@@ -2553,7 +2553,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                 const SizedBox(width: 8),
                                 _BoutonEditeur(
                                   icon: Icons.crop_free_rounded,
-                                  label: 'Recadrer',
+                                  label: 'Recadrer'.tr,
                                   onTap: () => setState(() =>
                                       _cadrage.value = Matrix4.identity()),
                                 ),
@@ -2561,7 +2561,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               const SizedBox(width: 8),
                               _BoutonEditeur(
                                 icon: Icons.refresh_rounded,
-                                label: 'Reprendre',
+                                label: 'Reprendre'.tr,
                                 onTap: () =>
                                     setState(() => _previewPath = null),
                               ),
@@ -2613,7 +2613,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   Future<void> _ajouterSticker() async {
     if (_stickers.length >= 20) {
-      _snack('20 stickers maximum par story');
+      _snack('20 stickers maximum par story'.tr);
       return;
     }
     final c = await choisirSticker(context, emojis: emojiStory);
@@ -2655,7 +2655,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 color: Colors.white),
             const SizedBox(width: 6),
             Flexible(
-              child: Text('${ev.emoji} Ajouter à « ${ev.titre} »',
+              child: Text('@emoji Ajouter à « @titre »'.trParams({'emoji': ev.emoji.toString(), 'titre': ev.titre.toString()}),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -2678,8 +2678,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           if (valeur != 'friends') return;
           final n = await (_nbAmisProches ??= nombreAmisProches());
           if (n == 0 && mounted) {
-            Get.snackbar('Ta liste Amis proches est vide',
-                'Ajoute des personnes, sinon personne ne verra cette story',
+            Get.snackbar('Ta liste Amis proches est vide'.tr,
+                'Ajoute des personnes, sinon personne ne verra cette story'.tr,
                 snackPosition: SnackPosition.TOP,
                 backgroundColor: CouleursMedia.surface,
                 colorText: CouleursMedia.textPrimary,
@@ -2688,7 +2688,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     await Get.to(() => const EcranAmisProches());
                     _nbAmisProches = nombreAmisProches();
                   },
-                  child: Text('Gérer',
+                  child: Text('Gérer'.tr,
                       style: TextStyle(color: CouleursMedia.accent)),
                 ));
           }
@@ -2774,8 +2774,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     height: 18,
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white))
-                : const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('Publier',
+                :  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('Publier'.tr,
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,

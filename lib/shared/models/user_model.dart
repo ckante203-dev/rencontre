@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 // lib/shared/models/user_model.dart
 
 class UserModel {
@@ -154,7 +155,7 @@ class UserModel {
   String get distanceLabel {
     if (distanceMeters == null) return '';
     // Sécurité : pas de distance précise de près (voir formatDistance)
-    if (distanceMeters! < 2000) return '< 2 km';
-    return '${(distanceMeters! / 1000).round()} km';
+    if (distanceMeters! < 2000) return '< 2 km'.tr;
+    return '@p km'.trParams({'p': ((distanceMeters! / 1000).round()).toString()});
   }
 }

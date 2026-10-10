@@ -37,11 +37,11 @@ extension SnapDurationExt on SnapDuration {
   String get label {
     switch (this) {
       case SnapDuration.s10:
-        return '10 secondes';
+        return '10 secondes'.tr;
       case SnapDuration.s30:
-        return '30 secondes';
+        return '30 secondes'.tr;
       case SnapDuration.none:
-        return 'Ne pas supprimer';
+        return 'Ne pas supprimer'.tr;
     }
   }
 
@@ -226,7 +226,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   ]),
                   Obx(() {
                     if (ctrl.isOtherTyping.value) {
-                      return Text('en train d\'écrire...',
+                      return Text('en train d\'écrire...'.tr,
                           style: TextStyle(
                               // ✅ Fix 2 : taille réduite
                               fontSize: 11,
@@ -236,7 +236,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     }
                     return Text(
                       ctrl.isOtherOnline.value
-                          ? 'en ligne'
+                          ? 'en ligne'.tr
                           : _vuLe(ctrl.otherLastSeen.value),
                       style: TextStyle(
                           // ✅ Fix 3 : taille et poids réduits
@@ -265,18 +265,18 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   /// « vu aujourd'hui à 14:32 », « vu hier à 21:05 », « vu le 3 oct. »
   static String _vuLe(DateTime? d) {
-    if (d == null) return 'hors ligne';
+    if (d == null) return 'hors ligne'.tr;
     final now = DateTime.now();
     final jours = DateTime(now.year, now.month, now.day)
         .difference(DateTime(d.year, d.month, d.day))
         .inDays;
     final h =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    if (jours <= 0) return "vu aujourd'hui à $h";
-    if (jours == 1) return 'vu hier à $h';
-    if (jours < 7) return 'vu il y a $jours jours';
+    if (jours <= 0) return 'vu aujourd\'hui à @h'.trParams({'h': h.toString()});
+    if (jours == 1) return 'vu hier à @h'.trParams({'h': h.toString()});
+    if (jours < 7) return 'vu il y a @jours jours'.trParams({'jours': jours.toString()});
     // Pas plus précis au-delà (discrétion sur l'activité de chacun)
-    return "vu il y a plus d'une semaine";
+    return 'vu il y a plus d\'une semaine'.tr;
   }
 
   // Profil complet (taille, « Cherche », lieux, distance…) — avant, la
@@ -344,9 +344,9 @@ class _ConvMenu extends StatelessWidget {
                   icon: ctrl.sourdine.value
                       ? Icons.notifications_off_outlined
                       : Icons.notifications_outlined,
-                  label: 'Couper les notifications',
+                  label: 'Couper les notifications'.tr,
                   sousTitre: ctrl.sourdine.value
-                      ? 'Tu ne reçois plus d\'alerte pour cette conversation'
+                      ? 'Tu ne reçois plus d\'alerte pour cette conversation'.tr
                       : null,
                   onTap: ctrl.basculerSourdine,
                   trailing: Switch.adaptive(
@@ -358,7 +358,7 @@ class _ConvMenu extends StatelessWidget {
             _ItemAlbum(ctrl: ctrl),
             Obx(() => _MenuItem(
                   icon: Icons.wallpaper_rounded,
-                  label: 'Fond d\'écran',
+                  label: 'Fond d\'écran'.tr,
                   onTap: () {
                     Get.back();
                     _choisirFond(context);
@@ -376,12 +376,12 @@ class _ConvMenu extends StatelessWidget {
           _GroupeMenu(children: [
             _MenuItem(
               icon: Icons.flag_outlined,
-              label: 'Signaler $prenom',
+              label: 'Signaler @prenom'.trParams({'prenom': prenom.toString()}),
               color: AppColors.yellow,
               onTap: () async {
                 Get.back();
                 final raison = await choisirMotifSignalement(
-                    'Pourquoi signaler $prenom ?');
+                    'Pourquoi signaler @prenom ?'.trParams({'prenom': prenom.toString()}));
                 if (raison != null) {
                   ControleurProfil.to.signalerProfil(conv.userId, raison);
                 }
@@ -389,7 +389,7 @@ class _ConvMenu extends StatelessWidget {
             ),
             _MenuItem(
               icon: Icons.block_rounded,
-              label: 'Bloquer $prenom',
+              label: 'Bloquer @prenom'.trParams({'prenom': prenom.toString()}),
               color: AppColors.error,
               onTap: () {
                 Get.back();
@@ -401,7 +401,7 @@ class _ConvMenu extends StatelessWidget {
           _GroupeMenu(children: [
             _MenuItem(
               icon: Icons.cleaning_services_outlined,
-              label: 'Effacer l\'historique',
+              label: 'Effacer l\'historique'.tr,
               onTap: () {
                 Get.back();
                 _confirmerEffacer(context);
@@ -409,7 +409,7 @@ class _ConvMenu extends StatelessWidget {
             ),
             _MenuItem(
               icon: Icons.delete_outline_rounded,
-              label: 'Supprimer l\'échange',
+              label: 'Supprimer l\'échange'.tr,
               color: AppColors.error,
               onTap: () {
                 Get.back();
@@ -449,7 +449,7 @@ class _ConvMenu extends StatelessWidget {
               actions: [
                 TextButton(
                     onPressed: () => Get.back(result: false),
-                    child: Text('Annuler',
+                    child: Text('Annuler'.tr,
                         style: TextStyle(color: AppColors.textMuted))),
                 TextButton(
                   onPressed: () => Get.back(result: true),
@@ -463,29 +463,25 @@ class _ConvMenu extends StatelessWidget {
 
   Future<void> _confirmerBloquer(BuildContext context) async {
     final ok = await _confirmer(context,
-        titre: 'Bloquer ${conv.userName} ?',
-        texte: '${conv.userName} ne pourra plus te voir ni t\'écrire, et '
-            'cette conversation disparaîtra. Tu pourras annuler depuis '
-            'Paramètres > Profils bloqués.',
-        action: 'Bloquer');
+        titre: 'Bloquer @userName ?'.trParams({'userName': conv.userName.toString()}),
+        texte: '@userName ne pourra plus te voir ni t\'écrire, et cette conversation disparaîtra. Tu pourras annuler depuis Paramètres > Profils bloqués.'.trParams({'userName': conv.userName.toString()}),
+        action: 'Bloquer'.tr);
     if (ok == true) await ControleurProfil.to.bloquerProfil(conv.userId);
   }
 
   Future<void> _confirmerEffacer(BuildContext context) async {
     final ok = await _confirmer(context,
-        titre: 'Effacer l\'historique ?',
-        texte: 'Les messages seront effacés sur ton téléphone uniquement. '
-            '${conv.userName} les verra toujours.',
-        action: 'Effacer');
+        titre: 'Effacer l\'historique ?'.tr,
+        texte: 'Les messages seront effacés sur ton téléphone uniquement. @userName les verra toujours.'.trParams({'userName': conv.userName.toString()}),
+        action: 'Effacer'.tr);
     if (ok == true) ctrl.effacerHistorique();
   }
 
   Future<void> _confirmerSupprimer(BuildContext context) async {
     final ok = await _confirmer(context,
-        titre: 'Supprimer l\'échange ?',
-        texte: 'Cette conversation sera supprimée définitivement, '
-            'pour toi et pour ${conv.userName}.',
-        action: 'Supprimer');
+        titre: 'Supprimer l\'échange ?'.tr,
+        texte: 'Cette conversation sera supprimée définitivement, pour toi et pour @userName.'.trParams({'userName': conv.userName.toString()}),
+        action: 'Supprimer'.tr);
     if (ok != true) return;
     try {
       await Supabase.instance.client
@@ -554,11 +550,11 @@ class _EnTeteMenu extends StatelessWidget {
                                   : AppColors.textMuted),
                         ),
                         const SizedBox(width: 6),
-                        Text(enLigne ? 'En ligne' : 'Hors ligne',
+                        Text(enLigne ? 'En ligne'.tr : 'Hors ligne'.tr,
                             style: TextStyle(
                                 fontSize: 12, color: AppColors.textMuted)),
                         Flexible(
-                          child: Text('  ·  Voir le profil',
+                          child: Text('  ·  Voir le profil'.tr,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -608,7 +604,7 @@ class _MenuItem extends StatelessWidget {
   final Color? color;
   final Widget? trailing;
   final bool desactive;
-  const _MenuItem(
+   _MenuItem(
       {required this.icon,
       required this.label,
       this.sousTitre,
@@ -699,8 +695,8 @@ class _ItemAlbumState extends State<_ItemAlbum> {
         final ok = await widget.ctrl.partagerAlbum();
         if (ok == null) return; // échec : message déjà affiché
         if (!ok) {
-          Get.snackbar('Ton album privé est vide',
-              'Ajoute des photos depuis ton profil, puis partage-le',
+          Get.snackbar('Ton album privé est vide'.tr,
+              'Ajoute des photos depuis ton profil, puis partage-le'.tr,
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
               colorText: AppColors.textPrimary);
@@ -711,7 +707,7 @@ class _ItemAlbumState extends State<_ItemAlbum> {
       }
       if (mounted) setState(() => _partage = partager);
     } catch (_) {
-      Get.snackbar('Album privé', 'Action impossible, réessaie',
+      Get.snackbar('Album privé'.tr, 'Action impossible, réessaie'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -725,8 +721,8 @@ class _ItemAlbumState extends State<_ItemAlbum> {
     final prenom = widget.ctrl.conversation.userName;
     return _MenuItem(
       icon: _partage == true ? Icons.lock_open_rounded : Icons.lock_rounded,
-      label: 'Partager mon album privé',
-      sousTitre: _partage == true ? '$prenom peut voir ton album' : null,
+      label: 'Partager mon album privé'.tr,
+      sousTitre: _partage == true ? '@prenom peut voir ton album'.trParams({'prenom': prenom.toString()}) : null,
       onTap: _basculer,
       trailing: _partage == null || _enCours
           ? SizedBox(
@@ -860,13 +856,13 @@ class _ChoixFond extends StatelessWidget {
             decoration: BoxDecoration(
                 color: AppColors.border,
                 borderRadius: BorderRadius.circular(2))),
-        Text('Fond d\'écran',
+        Text('Fond d\'écran'.tr,
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary)),
         const SizedBox(height: 4),
-        Text('Visible uniquement par toi',
+        Text('Visible uniquement par toi'.tr,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         const SizedBox(height: 18),
         Obx(() => GridView.count(
@@ -1020,7 +1016,7 @@ class _EphemeralBanner extends StatelessWidget {
             Icon(Icons.timer_outlined, size: 13, color: AppColors.textMuted),
             const SizedBox(width: 6),
             Flexible(
-              child: Text('Les messages disparaissent 24 h après avoir été vus',
+              child: Text('Les messages disparaissent 24 h après avoir été vus'.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
             ),

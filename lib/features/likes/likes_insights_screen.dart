@@ -24,8 +24,8 @@ import 'package:rencontre/shared/models/user_model.dart';
 void _ouvrirPaywall() {
   if (!Get.isRegistered<RevenueCatService>()) {
     Get.snackbar(
-      '🔒 Bientôt disponible',
-      'L\'abonnement premium arrive très bientôt — reviens vite !',
+      '🔒 Bientôt disponible'.tr,
+      'L\'abonnement premium arrive très bientôt — reviens vite !'.tr,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary,
@@ -40,13 +40,13 @@ void _ouvrirPaywall() {
 String _ilYa(DateTime? date) {
   if (date == null) return '';
   final d = DateTime.now().toUtc().difference(date.toUtc());
-  if (d.inMinutes < 1) return 'à l\'instant';
-  if (d.inMinutes < 60) return 'il y a ${d.inMinutes} min';
-  if (d.inHours < 24) return 'il y a ${d.inHours} h';
+  if (d.inMinutes < 1) return 'à l\'instant'.tr;
+  if (d.inMinutes < 60) return 'il y a @inMinutes min'.trParams({'inMinutes': d.inMinutes.toString()});
+  if (d.inHours < 24) return 'il y a @inHours h'.trParams({'inHours': d.inHours.toString()});
   if (d.inDays == 1) return 'hier';
-  if (d.inDays < 7) return 'il y a ${d.inDays} j';
-  if (d.inDays < 30) return 'il y a ${d.inDays ~/ 7} sem.';
-  return 'il y a ${d.inDays ~/ 30} mois';
+  if (d.inDays < 7) return 'il y a @inDays j'.trParams({'inDays': d.inDays.toString()});
+  if (d.inDays < 30) return 'il y a @p sem.'.trParams({'p': (d.inDays ~/ 7).toString()});
+  return 'il y a @p mois'.trParams({'p': (d.inDays ~/ 30).toString()});
 }
 
 class LikesInsightsScreen extends StatefulWidget {
@@ -99,8 +99,8 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
       ];
       final index = profils.indexWhere((u) => u.id == p.id);
       if (index < 0) {
-        Get.snackbar('Profil indisponible',
-            'Ce profil n\'existe plus ou n\'est pas disponible',
+        Get.snackbar('Profil indisponible'.tr,
+            'Ce profil n\'existe plus ou n\'est pas disponible'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -160,7 +160,7 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       Text(
-                        'Likes',
+                        'Likes'.tr,
                         style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
@@ -173,7 +173,7 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                         Expanded(
                           child: _Onglet(
                             icon: Icons.favorite_rounded,
-                            label: 'M\'ont liké',
+                            label: 'M\'ont liké'.tr,
                             count: ctrl.likersCount.value,
                             nouveaux: nouveauxLikes,
                             actif: !_ongletVues,
@@ -184,7 +184,7 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                         Expanded(
                           child: _Onglet(
                             icon: Icons.remove_red_eye_rounded,
-                            label: 'M\'ont vu',
+                            label: 'M\'ont vu'.tr,
                             count: ctrl.viewersCount.value,
                             nouveaux: nouvellesVues,
                             actif: _ongletVues,
@@ -344,9 +344,9 @@ class _BanniereDeblocage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final qui = count > 1 ? '$count personnes' : 'Quelqu\'un';
+    final qui = count > 1 ? '@count personnes'.trParams({'count': count.toString()}) : 'Quelqu\'un'.tr;
     final texte = vues
-        ? '$qui ${count > 1 ? 'ont' : 'a'} regardé ton profil'
+        ? '@qui @p regardé ton profil'.trParams({'qui': qui.toString(), 'p': (count > 1 ? 'ont' : 'a').toString()})
         : '$qui ${count > 1 ? 't\'ont' : 't\'a'} liké';
 
     return GestureDetector(
@@ -373,8 +373,8 @@ class _BanniereDeblocage extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                     vues
-                        ? 'Passe en Premium pour voir qui c\'est'
-                        : 'Passe en Premium et matche en un geste',
+                        ? 'Passe en Premium pour voir qui c\'est'.tr
+                        : 'Passe en Premium et matche en un geste'.tr,
                     style: const TextStyle(fontSize: 12, color: AppColors.surAccent)),
               ],
             ),
@@ -385,7 +385,7 @@ class _BanniereDeblocage extends StatelessWidget {
               color: AppColors.surAccent,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text('Voir',
+            child: Text('Voir'.tr,
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -481,7 +481,7 @@ class _CartePersonne extends StatelessWidget {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text('Nouveau',
+                child:  Text('Nouveau'.tr,
                     style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -620,15 +620,15 @@ class _Vide extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             vues
-                ? 'Personne n\'a encore vu ton profil'
-                : 'Personne ne t\'a encore liké',
+                ? 'Personne n\'a encore vu ton profil'.tr
+                : 'Personne ne t\'a encore liké'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 6),
           Text(
-            'Ajoute de belles photos et publie une story pour te faire remarquer.',
+            'Ajoute de belles photos et publie une story pour te faire remarquer.'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
@@ -644,10 +644,10 @@ class _Vide extends StatelessWidget {
                 gradient: const LinearGradient(
                     colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
               ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              child:  Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.bolt_rounded, color: AppColors.surAccent, size: 20),
                 SizedBox(width: 6),
-                Text('Booster mon profil',
+                Text('Booster mon profil'.tr,
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,

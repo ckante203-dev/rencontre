@@ -463,7 +463,7 @@ class _EmailOtpScreen extends StatelessWidget {
                     child: Text('📧', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 28),
-              Text('Vérifie\nton email',
+              Text('Vérifie\nton email'.tr,
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 34,
@@ -472,7 +472,7 @@ class _EmailOtpScreen extends StatelessWidget {
                         height: 1.1)),
               const SizedBox(height: 12),
               Text(
-                'On a envoyé un code à 8 chiffres à\n${ctrl.emailController.text.trim()}',
+                'On a envoyé un code à 8 chiffres à\n@p'.trParams({'p': (ctrl.emailController.text.trim()).toString()}),
                 style: TextStyle(
                     fontSize: 14, color: AppColors.textMuted, height: 1.6),
               ),
@@ -490,7 +490,7 @@ class _EmailOtpScreen extends StatelessWidget {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Tu pourras valider ton email plus tard depuis ton profil.',
+                      'Tu pourras valider ton email plus tard depuis ton profil.'.tr,
                       style: TextStyle(
                           fontSize: 11, color: AppColors.textPrimary, height: 1.4),
                     ),
@@ -503,7 +503,7 @@ class _EmailOtpScreen extends StatelessWidget {
               Obx(() => AuthErrorMessage(message: ctrl.errorMessage.value)),
               const SizedBox(height: 24),
               Obx(() => AuthPrimaryButton(
-                    label: 'Confirmer mon email →',
+                    label: 'Confirmer mon email →'.tr,
                     onTap: ctrl.verifyEmailOtp,
                     isLoading: ctrl.isLoading.value,
                   )),
@@ -513,12 +513,12 @@ class _EmailOtpScreen extends StatelessWidget {
                   onTap: ctrl.resendEmailOtp,
                   child: RichText(
                     text: TextSpan(
-                      text: 'Pas reçu le code ? ',
+                      text: 'Pas reçu le code ? '.tr,
                       style:
                           TextStyle(fontSize: 14, color: AppColors.textMuted),
                       children: [
                         TextSpan(
-                          text: 'Renvoyer',
+                          text: 'Renvoyer'.tr,
                           style: TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
@@ -531,7 +531,7 @@ class _EmailOtpScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Center(
-                child: Text('Vérifie aussi tes spams 🗂️',
+                child: Text('Vérifie aussi tes spams 🗂️'.tr,
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
               ),
               const SizedBox(height: 32),

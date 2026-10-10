@@ -88,11 +88,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
 
   void _partager() {
     SharePlus.instance.share(ShareParams(
-      text: '${_ev.emoji} ${_ev.titre}\n'
-          '📅 ${_ev.dateLongue}\n📍 ${_ev.lieuComplet}\n\n'
-          '${_ev.jYVais ? 'J\'y vais ! ' : ''}Retrouve-moi sur Zamu, '
-          'l\'événement est sur l\'accueil 👇\n'
-          'https://play.google.com/store/apps/details?id=com.vybestyle.zamu',
+      text: '@emoji @titre\n📅 @dateLongue\n📍 @lieuComplet\n\n@pRetrouve-moi sur Zamu, l\'événement est sur l\'accueil 👇\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'.trParams({'lieuComplet': _ev.lieuComplet.toString(), 'dateLongue': _ev.dateLongue.toString(), 'emoji': _ev.emoji.toString(), 'titre': _ev.titre.toString(), 'p': (_ev.jYVais ? 'J\'y vais ! ' : '').toString()}),
     ));
   }
 
@@ -129,7 +125,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: IconButton(
-                tooltip: 'Partager',
+                tooltip: 'Partager'.tr,
                 onPressed: _partager,
                 style: IconButton.styleFrom(backgroundColor: Colors.black38),
                 icon: const Icon(Icons.share_rounded,
@@ -148,7 +144,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                       child:
                           Text(ev.emoji, style: const TextStyle(fontSize: 80))),
                 ),
-              const DecoratedBox(
+               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -165,14 +161,14 @@ class _EcranEvenementState extends State<EcranEvenement> {
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               if (ev.annule)
-                const _Bandeau(
-                    couleur: Colors.red, texte: '❌ Cet événement est annulé'),
+                 _Bandeau(
+                    couleur: Colors.red, texte: '❌ Cet événement est annulé'.tr),
               if (ev.enCours)
                 _Bandeau(
                     couleur: AppColors.online,
                     texte: ev.nbSurPlace > 0
-                        ? '🔴 En ce moment — ${ev.nbSurPlace} sur place'
-                        : '🔴 En ce moment'),
+                        ? '🔴 En ce moment — @nbSurPlace sur place'.trParams({'nbSurPlace': ev.nbSurPlace.toString()})
+                        : '🔴 En ce moment'.tr),
               Text('${ev.emoji} ${ev.libelleCategorie}'.toUpperCase(),
                   style: TextStyle(
                       fontSize: 11,
@@ -194,7 +190,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                 texte: ev.distanceKm == null
                     ? ev.lieuComplet
                     : '${ev.lieuComplet}  ·  ${_distance(ev.distanceKm!)}',
-                action: 'Itinéraire',
+                action: 'Itinéraire'.tr,
                 onAction: _itineraire,
               ),
               const SizedBox(height: 18),
@@ -207,7 +203,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                 const SizedBox(height: 6),
                 Center(
                   child: Text(
-                      '💘 ${ev.nbMatchs} de tes matchs ${ev.nbMatchs > 1 ? 'y participent' : 'y participe'}',
+                      '💘 @nbMatchs de tes matchs @p'.trParams({'nbMatchs': ev.nbMatchs.toString(), 'p': (ev.nbMatchs > 1 ? 'y participent' : 'y participe').toString()}),
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -235,7 +231,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                           Icon(Icons.forum_rounded,
                               color: AppColors.accent, size: 20),
                           const SizedBox(width: 8),
-                          Text('Discussion du groupe',
+                          Text('Discussion du groupe'.tr,
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -248,7 +244,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
               // ── Stories de l'événement ──
               if (_stories.isNotEmpty) ...[
                 const SizedBox(height: 22),
-                _titre('📸 Stories de l\'événement'),
+                _titre('📸 Stories de l\'événement'.tr),
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 86,
@@ -264,13 +260,13 @@ class _EcranEvenementState extends State<EcranEvenement> {
 
               // ── Qui vient ──
               const SizedBox(height: 22),
-              _titre(termine ? '👋 Ils étaient là aussi' : 'Qui vient'),
+              _titre(termine ? '👋 Ils étaient là aussi'.tr : 'Qui vient'.tr),
               const SizedBox(height: 10),
               _qui(ev, termine),
 
               if ((ev.description ?? '').isNotEmpty) ...[
                 const SizedBox(height: 22),
-                _titre('À propos'),
+                _titre('À propos'.tr),
                 const SizedBox(height: 8),
                 Text(ev.description!,
                     style: TextStyle(
@@ -288,10 +284,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
-                    '🛡️ Rencontre-toi dans un endroit public et fréquenté, '
-                    'préviens un proche, et ne pars pas seul(e) avec quelqu\'un '
-                    'que tu viens de rencontrer. Un comportement suspect ? '
-                    'Signale le profil.',
+                    '🛡️ Rencontre-toi dans un endroit public et fréquenté, préviens un proche, et ne pars pas seul(e) avec quelqu\'un que tu viens de rencontrer. Un comportement suspect ? Signale le profil.'.tr,
                     style: TextStyle(
                         fontSize: 12, height: 1.5, color: AppColors.textMuted)),
               ),
@@ -319,7 +312,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
         '${ev.nbInteresses} intéressé${ev.nbInteresses > 1 ? 's' : ''}',
       if (ev.nbSurPlace > 0) '${ev.nbSurPlace} sur place',
     ];
-    return Text(parts.isEmpty ? 'Sois le premier à y aller 🎉' : parts.join('  ·  '),
+    return Text(parts.isEmpty ? 'Sois le premier à y aller 🎉'.tr : parts.join('  ·  '),
         style: TextStyle(fontSize: 13, color: AppColors.textMuted));
   }
 
@@ -361,12 +354,12 @@ class _EcranEvenementState extends State<EcranEvenement> {
 
     return Column(children: [
       Row(children: [
-        bouton(ev.jYVais ? '✓ J\'y vais' : '✋ J\'y vais', ev.jYVais,
+        bouton(ev.jYVais ? '✓ J\'y vais'.tr : '✋ J\'y vais'.tr, ev.jYVais,
             () => _participer(ev.jYVais ? null : 'y_va'),
             principal: true),
         const SizedBox(width: 10),
         bouton(
-            ev.maParticipation == 'interesse' ? '✓ Intéressé' : '⭐ Intéressé',
+            ev.maParticipation == 'interesse' ? '✓ Intéressé'.tr : '⭐ Intéressé'.tr,
             ev.maParticipation == 'interesse',
             () => _participer(
                 ev.maParticipation == 'interesse' ? null : 'interesse')),
@@ -394,8 +387,8 @@ class _EcranEvenementState extends State<EcranEvenement> {
                           strokeWidth: 2, color: AppColors.surAccent))
                   : Text(
                       ev.jeSuisSurPlace
-                          ? '📍 Tu es sur place'
-                          : '📍 Je suis sur place',
+                          ? '📍 Tu es sur place'.tr
+                          : '📍 Je suis sur place'.tr,
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -408,7 +401,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
       ],
       if (ev.jeParticipe) ...[
         const SizedBox(height: 6),
-        Text('Touche à nouveau pour ne plus participer',
+        Text('Touche à nouveau pour ne plus participer'.tr,
             style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
       ],
     ]);
@@ -416,7 +409,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
 
   Widget _qui(EvenementModel ev, bool termine) {
     if (!ev.jeParticipe && termine) {
-      return Text('Cet événement est terminé.',
+      return Text('Cet événement est terminé.'.tr,
           style: TextStyle(fontSize: 13, color: AppColors.textMuted));
     }
     if (!ev.jeParticipe) {
@@ -432,8 +425,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-                'Indique « J\'y vais » ou « Intéressé » pour voir qui vient '
-                'et leur écrire avant de te retrouver sur place.',
+                'Indique « J\'y vais » ou « Intéressé » pour voir qui vient et leur écrire avant de te retrouver sur place.'.tr,
                 style: TextStyle(
                     fontSize: 13, height: 1.4, color: AppColors.textPrimary)),
           ),
@@ -449,14 +441,14 @@ class _EcranEvenementState extends State<EcranEvenement> {
     if (liste.isEmpty) {
       return Text(
           termine
-              ? "Personne d'autre n'était inscrit cette fois."
-              : 'Personne d\'autre pour l\'instant. Partage l\'événement à tes amis !',
+              ? 'Personne d\'autre n\'était inscrit cette fois.'.tr
+              : 'Personne d\'autre pour l\'instant. Partage l\'événement à tes amis !'.tr,
           style: TextStyle(fontSize: 13, color: AppColors.textMuted));
     }
     // Après l'événement : tout le monde ensemble, pour se dire bonjour
     if (termine) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sousTitre('Tu les as peut-être croisés : dis-leur bonjour 👋'),
+        _sousTitre('Tu les as peut-être croisés : dis-leur bonjour 👋'.tr),
         _grille(liste),
       ]);
     }
@@ -464,13 +456,13 @@ class _EcranEvenementState extends State<EcranEvenement> {
     final autres = liste.where((p) => !p.surPlace).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (surPlace.isNotEmpty) ...[
-        _sousTitre('📍 Sur place maintenant (${surPlace.length})'),
+        _sousTitre('📍 Sur place maintenant (@length)'.trParams({'length': surPlace.length.toString()})),
         _grille(surPlace),
         const SizedBox(height: 14),
       ],
       if (autres.isNotEmpty) ...[
         if (surPlace.isNotEmpty)
-          _sousTitre('Prévoient de venir (${autres.length})'),
+          _sousTitre('Prévoient de venir (@length)'.trParams({'length': autres.length.toString()})),
         _grille(autres),
       ],
     ]);
@@ -568,7 +560,7 @@ class _Participant extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
         if (p.interesse)
-          Text('intéressé',
+          Text('intéressé'.tr,
               style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
       ]),
     );

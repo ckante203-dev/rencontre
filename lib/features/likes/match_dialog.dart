@@ -98,7 +98,7 @@ class _MatchDialogState extends State<MatchDialog>
 
               // Titre
               Text(
-                  "C'est un Match !",
+                  'C\'est un Match !'.tr,
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
@@ -120,7 +120,7 @@ class _MatchDialogState extends State<MatchDialog>
                   )),
               SizedBox(height: 6),
               Text(
-                'Vous vous êtes likés mutuellement 💫',
+                'Vous vous êtes likés mutuellement 💫'.tr,
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textMuted,
@@ -159,12 +159,12 @@ class _MatchDialogState extends State<MatchDialog>
                       Get.back();
                       _ouvrirChat(user);
                     },
-                    child: const Row(
+                    child:  Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.send_rounded, color: AppColors.surAccent, size: 18),
                         SizedBox(width: 9),
-                        Text('Envoyer un message',
+                        Text('Envoyer un message'.tr,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -180,7 +180,7 @@ class _MatchDialogState extends State<MatchDialog>
               TextButton(
                 onPressed: () => Get.back(),
                 child: Text(
-                  'Continuer à explorer',
+                  'Continuer à explorer'.tr,
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textMuted,

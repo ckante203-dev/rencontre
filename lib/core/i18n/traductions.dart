@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rencontre/core/i18n/en_auto.dart';
 
 /// Langues de l'application. Un texte sans clé traduite reste en français
 /// (fallbackLocale) : on traduit l'app écran par écran.
@@ -41,7 +42,7 @@ class Traductions extends Translations {
   @override
   Map<String, Map<String, String>> get keys => {
         'fr_FR': _fr,
-        'en_US': _en,
+        'en_US': {...enAuto, ..._en},
       };
 }
 

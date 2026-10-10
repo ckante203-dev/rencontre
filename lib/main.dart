@@ -79,7 +79,7 @@ void main() async {
   final selecteur = ImagePickerPlatform.instance;
   if (selecteur is ImagePickerAndroid) selecteur.useAndroidPhotoPicker = true;
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+  SystemChrome.setSystemUIOverlayStyle( SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));

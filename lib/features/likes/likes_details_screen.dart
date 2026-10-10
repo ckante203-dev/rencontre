@@ -180,7 +180,7 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
         backgroundColor: AppColors.bg,
         elevation: 0,
         title: Text(
-          _isViewers ? 'Qui m\'a vu' : 'Qui m\'a liké',
+          _isViewers ? 'Qui m\'a vu'.tr : 'Qui m\'a liké'.tr,
           style: TextStyle(
             fontFamily: 'Syne',
             fontWeight: FontWeight.w800,
@@ -205,8 +205,8 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _isViewers
-                            ? 'Personne n\'a encore vu ton profil'
-                            : 'Personne n\'a encore liké ton profil',
+                            ? 'Personne n\'a encore vu ton profil'.tr
+                            : 'Personne n\'a encore liké ton profil'.tr,
                         style:
                             TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
@@ -271,7 +271,7 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary)),
-                        subtitle: Text(isOnline ? 'En ligne' : 'Hors ligne',
+                        subtitle: Text(isOnline ? 'En ligne'.tr : 'Hors ligne'.tr,
                             style: TextStyle(
                                 fontSize: 12,
                                 color: isOnline

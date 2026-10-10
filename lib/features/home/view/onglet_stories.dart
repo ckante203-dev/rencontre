@@ -62,7 +62,7 @@ class OngletStories extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
                       child: Row(children: [
-                        Text('Stories',
+                        Text('Stories'.tr,
                             style: TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 26,
@@ -78,7 +78,7 @@ class OngletStories extends StatelessWidget {
                   ),
 
                   // ── Amis (Ma story en premier) ──
-                  _titre('Amis'),
+                  _titre('Amis'.tr),
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: 128,
@@ -119,7 +119,7 @@ class OngletStories extends StatelessWidget {
 
                   // ── ⭐ Favoris ──
                   if (favoris.isNotEmpty) ...[
-                    _titre('⭐ Favoris'),
+                    _titre('⭐ Favoris'.tr),
                     SliverToBoxAdapter(
                       child: SizedBox(
                         height: 200,
@@ -144,7 +144,7 @@ class OngletStories extends StatelessWidget {
                   ],
 
                   // ── Découvrir ──
-                  _titre('Découvrir'),
+                  _titre('Découvrir'.tr),
                   if (autres.isEmpty)
                     SliverFillRemaining(hasScrollBody: false, child: _Vide())
                   else
@@ -245,9 +245,9 @@ Widget _apercu(StoryModel s, {double texte = 13}) {
 String _ilYa(DateTime d) {
   final e = DateTime.now().difference(d);
   if (e.inMinutes < 1) return 'maintenant';
-  if (e.inMinutes < 60) return '${e.inMinutes} min';
+  if (e.inMinutes < 60) return '@inMinutes min'.trParams({'inMinutes': e.inMinutes.toString()});
   if (e.inHours < 24) return '${e.inHours} h';
-  return 'Hier';
+  return 'Hier'.tr;
 }
 
 // ─── GRAND ROND (section Amis) ────────────────────────────────────
@@ -375,7 +375,7 @@ class _CarteStory extends StatelessWidget {
             ),
           // Déjà vue : assombrie, comme Snapchat
           if (!aVoir) Container(color: Colors.black.withValues(alpha: 0.35)),
-          const Positioned.fill(
+           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -479,12 +479,12 @@ class _Vide extends StatelessWidget {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         const Text('📸', style: TextStyle(fontSize: 48)),
         const SizedBox(height: 12),
-        Text('Pas encore de story à découvrir',
+        Text('Pas encore de story à découvrir'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         const SizedBox(height: 6),
-        Text('Publie la tienne avec le « + » de Ma story : sois le premier !',
+        Text('Publie la tienne avec le « + » de Ma story : sois le premier !'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ]),

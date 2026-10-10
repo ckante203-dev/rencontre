@@ -50,7 +50,7 @@ class ChatListScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
       child: Row(
         children: [
-          Text('Messages',
+          Text('Messages'.tr,
                 style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 24,
@@ -60,7 +60,7 @@ class ChatListScreen extends StatelessWidget {
           // 🔔 Activité : likes, matchs, demandes d'amis…
           const BoutonCloche(taille: 38),
           IconButton(
-            tooltip: 'Nouveau groupe',
+            tooltip: 'Nouveau groupe'.tr,
             onPressed: ouvrirNouveauGroupe,
             icon: Icon(Icons.group_add_rounded, color: AppColors.textPrimary),
           ),
@@ -133,7 +133,7 @@ class _SearchBar extends GetView<ChatListController> {
                     style:
                         TextStyle(fontSize: 14, color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'Conversation ou @pseudo…',
+                      hintText: 'Conversation ou @pseudo…'.tr,
                       hintStyle:
                           TextStyle(color: AppColors.textMuted, fontSize: 14),
                       prefixIcon: Icon(Icons.search_rounded,
@@ -166,13 +166,13 @@ class _FilterBar extends GetView<ChatListController> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
               _FilterChip(
-                label: 'Tous',
+                label: 'Tous'.tr,
                 icon: Icons.chat_bubble_outline_rounded,
                 active: controller.activeFilter.value == ChatFilter.all,
                 onTap: () => controller.setFilter(ChatFilter.all),
               ),
               _FilterChip(
-                label: 'Non lus',
+                label: 'Non lus'.tr,
                 icon: Icons.mark_chat_unread_outlined,
                 active: controller.activeFilter.value == ChatFilter.unread,
                 onTap: () => controller.setFilter(ChatFilter.unread),
@@ -183,14 +183,14 @@ class _FilterBar extends GetView<ChatListController> {
                     : null,
               ),
               _FilterChip(
-                label: 'En ligne',
+                label: 'En ligne'.tr,
                 icon: Icons.circle,
                 iconColor: AppColors.online,
                 active: controller.activeFilter.value == ChatFilter.online,
                 onTap: () => controller.setFilter(ChatFilter.online),
               ),
               _FilterChip(
-                label: 'Groupes',
+                label: 'Groupes'.tr,
                 icon: Icons.groups_rounded,
                 active: controller.activeFilter.value == ChatFilter.groupes,
                 onTap: () => controller.setFilter(ChatFilter.groupes),
@@ -200,7 +200,7 @@ class _FilterBar extends GetView<ChatListController> {
                     : null,
               ),
               _FilterChip(
-                label: 'Favoris',
+                label: 'Favoris'.tr,
                 icon: Icons.star_rounded,
                 iconColor: const Color(0xFFFFD54F),
                 active: controller.activeFilter.value == ChatFilter.favoris,
@@ -308,7 +308,7 @@ class _ConversationList extends GetView<ChatListController> {
                       size: 48, color: AppColors.textMuted),
                   const SizedBox(height: 12),
                   Text(
-                    'Aucun résultat pour "${ctrl.searchQuery.value}"',
+                    'Aucun résultat pour "@value"'.trParams({'value': ctrl.searchQuery.value.toString()}),
                     style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
@@ -380,9 +380,9 @@ class _ConversationList extends GetView<ChatListController> {
   Widget _buildEmpty() {
     final filter = controller.activeFilter.value;
     final msgs = {
-      ChatFilter.unread: 'Aucun message non lu',
-      ChatFilter.online: 'Personne en ligne pour le moment',
-      ChatFilter.favoris: 'Aucune conversation avec tes favoris ⭐',
+      ChatFilter.unread: 'Aucun message non lu'.tr,
+      ChatFilter.online: 'Personne en ligne pour le moment'.tr,
+      ChatFilter.favoris: 'Aucune conversation avec tes favoris ⭐'.tr,
     };
     return Center(
       child: Column(
@@ -391,7 +391,7 @@ class _ConversationList extends GetView<ChatListController> {
           Icon(Icons.chat_bubble_outline_rounded,
               size: 48, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          Text(msgs[filter] ?? 'Aucune conversation pour le moment',
+          Text(msgs[filter] ?? 'Aucune conversation pour le moment'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: AppColors.textPrimary,
@@ -400,7 +400,7 @@ class _ConversationList extends GetView<ChatListController> {
           // Aucune discussion du tout : une piste pour commencer
           if (!msgs.containsKey(filter)) ...[
             const SizedBox(height: 6),
-            Text("Écris à quelqu'un qui te plaît, ou réponds à une story.",
+            Text('Écris à quelqu\'un qui te plaît, ou réponds à une story.'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: 18),
@@ -418,7 +418,7 @@ class _ConversationList extends GetView<ChatListController> {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: const Text('Découvrir des profils',
+                child:  Text('Découvrir des profils'.tr,
                     style: TextStyle(
                         color: AppColors.surAccent,
                         fontSize: 14,
@@ -519,7 +519,7 @@ class _ConversationTile extends GetView<ChatListController> {
                       Expanded(
                           child: Obx(() =>
                               controller.convsQuiEcrivent.contains(conv.id)
-                                  ? Text("en train d'écrire…",
+                                  ? Text('en train d\'écrire…'.tr,
                                       maxLines: 1,
                                       style: TextStyle(
                                           fontSize: 13,
@@ -563,10 +563,10 @@ class _ConversationTile extends GetView<ChatListController> {
       final m = dt.minute.toString().padLeft(2, '0');
       return '$h:$m';
     }
-    if (diff == 1) return 'Hier';
+    if (diff == 1) return 'Hier'.tr;
     if (diff < 7) {
       const j = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-      return j[dt.weekday - 1];
+      return j[dt.weekday - 1].tr;
     }
     return '${dt.day}/${dt.month}';
   }
@@ -583,7 +583,7 @@ class _ConversationTile extends GetView<ChatListController> {
     // ✅ Tous les messages ont expiré (règle éphémère) : la conversation
     // reste, avec un aperçu neutre.
     if (msg == null) {
-      return Text('Aucun nouveau message',
+      return Text('Aucun nouveau message'.tr,
           style: TextStyle(fontSize: 13, color: AppColors.textMuted));
     }
 
@@ -620,7 +620,7 @@ class _ConversationTile extends GetView<ChatListController> {
       return Row(children: [
         Icon(Icons.mic_rounded, size: 14, color: AppColors.textMuted),
         SizedBox(width: 4),
-        Text('Message vocal',
+        Text('Message vocal'.tr,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ]);
     }
@@ -645,12 +645,12 @@ class _ConversationTile extends GetView<ChatListController> {
         SizedBox(width: 4),
         Text(
             video
-                ? 'Vidéo'
+                ? 'Vidéo'.tr
                 : sticker
-                    ? 'Sticker'
+                    ? 'Sticker'.tr
                     : gif
                         ? 'GIF'
-                        : 'Photo',
+                        : 'Photo'.tr,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ]);
     }
@@ -659,13 +659,13 @@ class _ConversationTile extends GetView<ChatListController> {
       return Row(children: [
         Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
         SizedBox(width: 4),
-        Text('Localisation',
+        Text('Localisation'.tr,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ]);
     }
 
     final texte = Text(
-      mine ? 'Toi : ${msg.text ?? ''}' : (msg.text ?? ''),
+      mine ? 'Toi : @p'.trParams({'p': (msg.text ?? '').toString()}) : (msg.text ?? ''),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
@@ -725,7 +725,7 @@ class _ConversationOptions extends GetView<ChatListController> {
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary)),
-                  Text(conv.isOnline ? 'En ligne' : 'Hors ligne',
+                  Text(conv.isOnline ? 'En ligne'.tr : 'Hors ligne'.tr,
                       style: TextStyle(
                           fontSize: 12,
                           color: conv.isOnline
@@ -741,8 +741,8 @@ class _ConversationOptions extends GetView<ChatListController> {
           _Option(
             icon: Icons.mark_chat_read_outlined,
             label: conv.unreadCount > 0
-                ? 'Marquer comme lu'
-                : 'Marquer comme non lu',
+                ? 'Marquer comme lu'.tr
+                : 'Marquer comme non lu'.tr,
             onTap: () {
               Get.back();
               controller.toggleReadStatus(conv);
@@ -750,7 +750,7 @@ class _ConversationOptions extends GetView<ChatListController> {
           ),
           _Option(
             icon: conv.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-            label: conv.isPinned ? 'Désépingler' : 'Épingler en haut',
+            label: conv.isPinned ? 'Désépingler'.tr : 'Épingler en haut'.tr,
             onTap: () {
               Get.back();
               controller.togglePin(conv);
@@ -761,8 +761,8 @@ class _ConversationOptions extends GetView<ChatListController> {
                 ? Icons.notifications_active_outlined
                 : Icons.notifications_off_outlined,
             label: controller.sourdineIds.contains(conv.id)
-                ? 'Réactiver les notifications'
-                : 'Couper les notifications',
+                ? 'Réactiver les notifications'.tr
+                : 'Couper les notifications'.tr,
             onTap: () {
               Get.back();
               controller.basculerSourdine(conv);
@@ -770,7 +770,7 @@ class _ConversationOptions extends GetView<ChatListController> {
           ),
           _Option(
             icon: Icons.delete_outline_rounded,
-            label: 'Supprimer la conversation',
+            label: 'Supprimer la conversation'.tr,
             color: const Color(0xFFFF3B30),
             onTap: () {
               Get.back();
@@ -788,26 +788,25 @@ class _ConversationOptions extends GetView<ChatListController> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Supprimer la conversation',
+        title: Text('Supprimer la conversation'.tr,
             style: TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w800,
                 fontSize: 16)),
         content: Text(
-            'La conversation avec ${conv.userName} sera supprimée de ton '
-            'téléphone. ${conv.userName} la garde de son côté.',
+            'La conversation avec @userName sera supprimée de ton téléphone. @userName2 la garde de son côté.'.trParams({'userName2': conv.userName.toString(), 'userName': conv.userName.toString()}),
             style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
         actions: [
           TextButton(
               onPressed: () => Get.back(),
-              child: Text('Annuler',
+              child: Text('Annuler'.tr,
                   style: TextStyle(color: AppColors.textMuted))),
           TextButton(
               onPressed: () {
                 Get.back();
                 controller.deleteConversation(conv.id);
               },
-              child: const Text('Supprimer',
+              child:  Text('Supprimer'.tr,
                   style: TextStyle(
                       color: Color(0xFFFF3B30), fontWeight: FontWeight.w700))),
         ],
@@ -1039,8 +1038,8 @@ class _ResultatsRecherche extends GetView<ChatListController> {
               const SizedBox(height: 12),
               Text(
                 chercheProfils
-                    ? 'Aucun résultat pour "${controller.searchQuery.value}"'
-                    : 'Tape au moins 3 lettres d\'un @pseudo\npour chercher un profil',
+                    ? 'Aucun résultat pour "@value"'.trParams({'value': controller.searchQuery.value.toString()})
+                    : 'Tape au moins 3 lettres d\'un @pseudo\npour chercher un profil'.tr,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
@@ -1052,11 +1051,11 @@ class _ResultatsRecherche extends GetView<ChatListController> {
         physics: const BouncingScrollPhysics(),
         children: [
           if (conversations.isNotEmpty) ...[
-            _titre('Mes conversations'),
+            _titre('Mes conversations'.tr),
             for (final c in conversations) _ConversationTile(conv: c),
           ],
           if (chercheProfils) ...[
-            _titre('Profils Zamu'),
+            _titre('Profils Zamu'.tr),
             if (enCours && profils.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -1110,7 +1109,7 @@ class _ResultatsRecherche extends GetView<ChatListController> {
             if (!enCours && profils.isEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                child: Text('Aucun profil avec ce pseudo',
+                child: Text('Aucun profil avec ce pseudo'.tr,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
               ),
           ],

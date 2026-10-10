@@ -251,7 +251,7 @@ class AuthController extends GetxController {
         });
         if (available == false) {
           usernameAvailable.value = false;
-          errorMessage.value = 'Ce nom d\'utilisateur est déjà pris';
+          errorMessage.value = 'Ce nom d\'utilisateur est déjà pris'.tr;
           return;
         }
       } catch (_) {}
@@ -275,12 +275,12 @@ class AuthController extends GetxController {
         // ✅ La navigation vers l'onboarding se déclenche automatiquement
         // via _handleAuthChange dès que la session est active.
       } else {
-        errorMessage.value = 'Impossible de créer le compte. Réessaie.';
+        errorMessage.value = 'Impossible de créer le compte. Réessaie.'.tr;
       }
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
     } catch (_) {
-      errorMessage.value = 'Une erreur est survenue. Réessaie.';
+      errorMessage.value = 'Une erreur est survenue. Réessaie.'.tr;
     } finally {
       _setLoading(false);
     }
@@ -291,7 +291,7 @@ class AuthController extends GetxController {
   Future<void> verifyEmailOtp() async {
     final code = emailOtpController.text.trim();
     if (code.length != 8) {
-      errorMessage.value = 'Entre le code à 8 chiffres';
+      errorMessage.value = 'Entre le code à 8 chiffres'.tr;
       return;
     }
     _setLoading(true);
@@ -313,7 +313,7 @@ class AuthController extends GetxController {
           ? 'Code expiré. Renvoie un nouveau code.'
           : 'Code incorrect. Vérifie ton email.';
     } catch (_) {
-      errorMessage.value = 'Erreur de vérification. Réessaie.';
+      errorMessage.value = 'Erreur de vérification. Réessaie.'.tr;
     } finally {
       _setLoading(false);
     }
@@ -329,12 +329,12 @@ class AuthController extends GetxController {
         email: emailController.text.trim(),
       );
       errorMessage.value = '';
-      Get.snackbar('Code renvoyé', 'Vérifie ta boîte mail 📧',
+      Get.snackbar('Code renvoyé'.tr, 'Vérifie ta boîte mail 📧'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
     } catch (_) {
-      errorMessage.value = 'Impossible de renvoyer. Réessaie.';
+      errorMessage.value = 'Impossible de renvoyer. Réessaie.'.tr;
     } finally {
       _setLoading(false);
     }
@@ -359,7 +359,7 @@ class AuthController extends GetxController {
 
         final foundEmail = match?['email'] as String?;
         if (foundEmail == null || foundEmail.isEmpty) {
-          errorMessage.value = 'Aucun compte trouvé avec ce nom d\'utilisateur';
+          errorMessage.value = 'Aucun compte trouvé avec ce nom d\'utilisateur'.tr;
           _setLoading(false);
           return;
         }
@@ -375,7 +375,7 @@ class AuthController extends GetxController {
     } on AuthException catch (e) {
       errorMessage.value = _errorMsg(e.message);
     } catch (_) {
-      errorMessage.value = 'Une erreur est survenue. Réessaie.';
+      errorMessage.value = 'Une erreur est survenue. Réessaie.'.tr;
     } finally {
       _setLoading(false);
     }
@@ -383,13 +383,13 @@ class AuthController extends GetxController {
 
   Future<void> sendPasswordReset() async {
     if (emailController.text.trim().isEmpty) {
-      errorMessage.value = 'Entre ton adresse email';
+      errorMessage.value = 'Entre ton adresse email'.tr;
       return;
     }
     _setLoading(true);
     try {
       await supabase.auth.resetPasswordForEmail(emailController.text.trim());
-      Get.snackbar('Email envoyé 📧', 'Vérifie ta boîte mail',
+      Get.snackbar('Email envoyé 📧'.tr, 'Vérifie ta boîte mail'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -425,7 +425,7 @@ class AuthController extends GetxController {
       final googleAuth = await googleUser.authentication;
       if (googleAuth.idToken == null) {
         errorMessage.value =
-            'Connexion Google échouée (aucun jeton d\'identité ID Token)';
+            'Connexion Google échouée (aucun jeton d\'identité ID Token)'.tr;
         _setLoading(false);
         return;
       }
@@ -467,7 +467,7 @@ class AuthController extends GetxController {
       errorMessage.value = '';
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
-      errorMessage.value = 'Connexion Google échouée. Réessaie.';
+      errorMessage.value = 'Connexion Google échouée. Réessaie.'.tr;
     } finally {
       _setLoading(false);
     }
@@ -494,7 +494,7 @@ class AuthController extends GetxController {
 
       final idToken = credential.identityToken;
       if (idToken == null) {
-        errorMessage.value = 'Connexion Apple échouée. Réessaie.';
+        errorMessage.value = 'Connexion Apple échouée. Réessaie.'.tr;
         return;
       }
 
@@ -521,11 +521,11 @@ class AuthController extends GetxController {
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code != AuthorizationErrorCode.canceled) {
         debugPrint('Apple Sign-In error: $e');
-        errorMessage.value = 'Connexion Apple échouée. Réessaie.';
+        errorMessage.value = 'Connexion Apple échouée. Réessaie.'.tr;
       }
     } catch (e) {
       debugPrint('Apple Sign-In error: $e');
-      errorMessage.value = 'Connexion Apple échouée. Réessaie.';
+      errorMessage.value = 'Connexion Apple échouée. Réessaie.'.tr;
     } finally {
       _setLoading(false);
     }
@@ -724,13 +724,13 @@ class AuthController extends GetxController {
   String get strengthLabel {
     switch (passwordStrength.value) {
       case 1:
-        return 'Faible';
+        return 'Faible'.tr;
       case 2:
-        return 'Moyen';
+        return 'Moyen'.tr;
       case 3:
-        return 'Bon';
+        return 'Bon'.tr;
       case 4:
-        return 'Excellent ✓';
+        return 'Excellent ✓'.tr;
       default:
         return '';
     }
@@ -753,32 +753,32 @@ class AuthController extends GetxController {
 
   bool _validateSignUp() {
     if (nameController.text.trim().isEmpty) {
-      errorMessage.value = 'Entre ton prénom';
+      errorMessage.value = 'Entre ton prénom'.tr;
       return false;
     }
 
     final username = usernameController.text.trim().toLowerCase();
     if (username.isEmpty) {
-      errorMessage.value = 'Choisis un nom d\'utilisateur';
+      errorMessage.value = 'Choisis un nom d\'utilisateur'.tr;
       return false;
     }
     if (!RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(username)) {
       errorMessage.value =
-          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)';
+          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)'.tr;
       return false;
     }
     if (!usernameAvailable.value) {
-      errorMessage.value = 'Ce nom d\'utilisateur est déjà pris';
+      errorMessage.value = 'Ce nom d\'utilisateur est déjà pris'.tr;
       return false;
     }
 
     final dateText = birthdateController.text.trim();
     if (dateText.isEmpty) {
-      errorMessage.value = 'Entre ta date de naissance';
+      errorMessage.value = 'Entre ta date de naissance'.tr;
       return false;
     }
     if (dateText.length != 10) {
-      errorMessage.value = 'Date invalide — format JJ/MM/AAAA';
+      errorMessage.value = 'Date invalide — format JJ/MM/AAAA'.tr;
       return false;
     }
     try {
@@ -788,17 +788,17 @@ class AuthController extends GetxController {
       final year = int.parse(parts[2]);
       final now = DateTime.now();
       if (month < 1 || month > 12) {
-        errorMessage.value = 'Mois invalide (01-12)';
+        errorMessage.value = 'Mois invalide (01-12)'.tr;
         return false;
       }
       // ✅ Refuse aussi les dates inexistantes (31/02, 31/04…) que
       // Postgres rejetait à la création du profil.
       if (day < 1 || day > 31 || DateTime(year, month, day).day != day) {
-        errorMessage.value = 'Jour invalide (01-31)';
+        errorMessage.value = 'Jour invalide (01-31)'.tr;
         return false;
       }
       if (year < 1900 || year > now.year) {
-        errorMessage.value = 'Année invalide';
+        errorMessage.value = 'Année invalide'.tr;
         return false;
       }
       final birthDate = DateTime(year, month, day);
@@ -809,27 +809,27 @@ class AuthController extends GetxController {
               ? 1
               : 0);
       if (age < 18) {
-        errorMessage.value = 'Tu dois avoir au moins 18 ans';
+        errorMessage.value = 'Tu dois avoir au moins 18 ans'.tr;
         return false;
       }
       if (age > 100) {
-        errorMessage.value = 'Date de naissance invalide';
+        errorMessage.value = 'Date de naissance invalide'.tr;
         return false;
       }
     } catch (_) {
-      errorMessage.value = 'Date invalide — format JJ/MM/AAAA';
+      errorMessage.value = 'Date invalide — format JJ/MM/AAAA'.tr;
       return false;
     }
     if (!emailController.text.contains('@')) {
-      errorMessage.value = 'Adresse email invalide';
+      errorMessage.value = 'Adresse email invalide'.tr;
       return false;
     }
     if (passwordController.text.length < 8) {
-      errorMessage.value = 'Mot de passe trop court (min. 8 caractères)';
+      errorMessage.value = 'Mot de passe trop court (min. 8 caractères)'.tr;
       return false;
     }
     if (confirmPasswordController.text != passwordController.text) {
-      errorMessage.value = 'Les mots de passe ne correspondent pas';
+      errorMessage.value = 'Les mots de passe ne correspondent pas'.tr;
       return false;
     }
     return true;
@@ -837,27 +837,27 @@ class AuthController extends GetxController {
 
   bool _validateLogin() {
     if (emailController.text.trim().isEmpty) {
-      errorMessage.value = 'Entre ton email ou ton nom d\'utilisateur';
+      errorMessage.value = 'Entre ton email ou ton nom d\'utilisateur'.tr;
       return false;
     }
     if (passwordController.text.isEmpty) {
-      errorMessage.value = 'Entre ton mot de passe';
+      errorMessage.value = 'Entre ton mot de passe'.tr;
       return false;
     }
     return true;
   }
 
   String _errorMsg(String msg) {
-    if (msg.contains('already registered')) return 'Cet email est déjà utilisé';
-    if (msg.contains('Invalid login')) return 'Email ou mot de passe incorrect';
+    if (msg.contains('already registered')) return 'Cet email est déjà utilisé'.tr;
+    if (msg.contains('Invalid login')) return 'Email ou mot de passe incorrect'.tr;
     if (msg.contains('Email not confirmed'))
-      return 'Confirme ton email avant de te connecter';
+      return 'Confirme ton email avant de te connecter'.tr;
     if (msg.contains('Password should be'))
-      return 'Mot de passe trop court (min. 6 caractères)';
+      return 'Mot de passe trop court (min. 6 caractères)'.tr;
     if (msg.contains('network') || msg.contains('Network'))
-      return 'Pas de connexion internet';
+      return 'Pas de connexion internet'.tr;
     if (msg.contains('rate limit'))
-      return 'Trop de tentatives. Réessaie plus tard';
+      return 'Trop de tentatives. Réessaie plus tard'.tr;
     return msg;
   }
 

@@ -111,9 +111,9 @@ class RevenueCatService extends GetxService {
       case 'P4W':
         return 'mois';
       case 'P3M':
-        return '3 mois';
+        return '3 mois'.tr;
       case 'P6M':
-        return '6 mois';
+        return '6 mois'.tr;
       case 'P1Y':
       case 'P12M':
         return 'an';

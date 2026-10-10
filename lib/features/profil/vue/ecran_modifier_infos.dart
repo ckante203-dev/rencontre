@@ -32,7 +32,7 @@ class EcranModifierInfos extends StatelessWidget {
                 size: 16, color: AppColors.textPrimary),
           ),
         ),
-        title: Text('Modifier mes infos',
+        title: Text('Modifier mes infos'.tr,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 17,
@@ -46,32 +46,32 @@ class EcranModifierInfos extends StatelessWidget {
           children: [
             // ✅ NOUVEAU — Galerie de photos (défilable sur le profil public)
             Row(children: [
-              const _SectionLabel(icon: '🖼️', title: 'Mes photos'),
+               _SectionLabel(icon: '🖼️', title: 'Mes photos'.tr),
               const Spacer(),
               Obx(() => Text(
                   '${ctrl.photoUrls.length}/${ControleurProfil.maxPhotos}',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted))),
             ]),
             const SizedBox(height: 4),
-            Text('Maintiens et glisse pour réordonner',
+            Text('Maintiens et glisse pour réordonner'.tr,
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
             const SizedBox(height: 12),
             const _PhotosGridEditor(),
             const SizedBox(height: 24),
 
             // ── Prénom ────────────────────────────────────────
-            const _SectionLabel(icon: '👤', title: 'Prénom *'),
+             _SectionLabel(icon: '👤', title: 'Prénom *'.tr),
             const SizedBox(height: 8),
             TextField(
               controller: ctrl.nomController,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
               textCapitalization: TextCapitalization.words,
-              decoration: _inputDeco('Ton prénom'),
+              decoration: _inputDeco('Ton prénom'.tr),
             ),
             const SizedBox(height: 20),
 
             // ── Nom d'utilisateur ─────────────────────────────
-            const _SectionLabel(icon: '🔗', title: 'Nom d\'utilisateur'),
+             _SectionLabel(icon: '🔗', title: 'Nom d\'utilisateur'.tr),
             const SizedBox(height: 8),
             Obx(() {
               final dispo = ctrl.usernameDispo.value;
@@ -102,7 +102,7 @@ class EcranModifierInfos extends StatelessWidget {
                     : '3 à 20 caractères : lettres, chiffres, . ou _';
                 aideCouleur = AppColors.error;
               } else if (!inchange && dispo == true) {
-                aide = 'Disponible';
+                aide = 'Disponible'.tr;
                 aideCouleur = AppColors.online;
               }
               return Column(
@@ -143,7 +143,7 @@ class EcranModifierInfos extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Date de naissance ──────────────────────────────
-            const _SectionLabel(icon: '🎂', title: 'Date de naissance'),
+             _SectionLabel(icon: '🎂', title: 'Date de naissance'.tr),
             const SizedBox(height: 8),
             Obx(() => GestureDetector(
                   onTap: () => ctrl.choisirDateNaissance(context),
@@ -181,7 +181,7 @@ class EcranModifierInfos extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _SectionLabel(icon: '📏', title: 'Taille (cm)'),
+                       _SectionLabel(icon: '📏', title: 'Taille (cm)'.tr),
                       const SizedBox(height: 8),
                       TextField(
                         controller: ctrl.tailleController,
@@ -192,7 +192,7 @@ class EcranModifierInfos extends StatelessWidget {
                         ],
                         style: TextStyle(
                             color: AppColors.textPrimary, fontSize: 15),
-                        decoration: _inputDeco('ex: 175'),
+                        decoration: _inputDeco('ex: 175'.tr),
                       ),
                     ]),
               ),
@@ -201,7 +201,7 @@ class EcranModifierInfos extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _SectionLabel(icon: '⚖️', title: 'Poids (kg)'),
+                       _SectionLabel(icon: '⚖️', title: 'Poids (kg)'.tr),
                       const SizedBox(height: 8),
                       TextField(
                         controller: ctrl.poidsController,
@@ -212,7 +212,7 @@ class EcranModifierInfos extends StatelessWidget {
                         ],
                         style: TextStyle(
                             color: AppColors.textPrimary, fontSize: 15),
-                        decoration: _inputDeco('ex: 70'),
+                        decoration: _inputDeco('ex: 70'.tr),
                       ),
                     ]),
               ),
@@ -220,7 +220,7 @@ class EcranModifierInfos extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Morphologie ────────────────────────────────────
-            const _SectionLabel(icon: '🧍', title: 'Morphologie'),
+             _SectionLabel(icon: '🧍', title: 'Morphologie'.tr),
             const SizedBox(height: 8),
             Obx(() => _ChipRow(
                   options: ControleurProfil.morphologies,
@@ -230,7 +230,7 @@ class EcranModifierInfos extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Je recherche ───────────────────────────────────
-            const _SectionLabel(icon: '💞', title: 'Je recherche'),
+             _SectionLabel(icon: '💞', title: 'Je recherche'.tr),
             const SizedBox(height: 8),
             Obx(() => _ChipRow(
                   options: ControleurProfil.lookingForOptions,
@@ -240,9 +240,9 @@ class EcranModifierInfos extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Lieu de rencontre ──────────────────────────────
-            const _SectionLabel(icon: '📍', title: 'Où se rencontrer'),
+             _SectionLabel(icon: '📍', title: 'Où se rencontrer'.tr),
             const SizedBox(height: 4),
-            Text('Choisis jusqu\'à 3 lieux',
+            Text('Choisis jusqu\'à 3 lieux'.tr,
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
             const SizedBox(height: 10),
             Obx(() => Wrap(
@@ -265,7 +265,7 @@ class EcranModifierInfos extends StatelessWidget {
                                   ? Colors.transparent
                                   : AppColors.border),
                         ),
-                        child: Text(lieu,
+                        child: Text(lieu.tr,
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -279,26 +279,26 @@ class EcranModifierInfos extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Bio ────────────────────────────────────────────
-            const _SectionLabel(icon: '✍️', title: 'Ma bio'),
+             _SectionLabel(icon: '✍️', title: 'Ma bio'.tr),
             const SizedBox(height: 8),
             TextField(
               controller: ctrl.bioController,
               maxLines: 4,
               maxLength: 150,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: _inputDeco('Dis quelque chose sur toi...'),
+              decoration: _inputDeco('Dis quelque chose sur toi...'.tr),
             ),
             const SizedBox(height: 20),
 
             // ── Intérêts ───────────────────────────────────────
             Row(children: [
-              const _SectionLabel(icon: '🎯', title: 'Mes intérêts'),
+               _SectionLabel(icon: '🎯', title: 'Mes intérêts'.tr),
               const Spacer(),
               Obx(() => Text('${ctrl.selectedInterests.length}/3',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted))),
             ]),
             const SizedBox(height: 4),
-            Text('Choisis jusqu\'à 3 intérêts',
+            Text('Choisis jusqu\'à 3 intérêts'.tr,
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
             const SizedBox(height: 12),
             Obx(() => Wrap(
@@ -327,7 +327,7 @@ class EcranModifierInfos extends StatelessWidget {
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Text(emoji, style: const TextStyle(fontSize: 14)),
                           const SizedBox(width: 6),
-                          Text(label,
+                          Text(label.tr,
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -369,7 +369,7 @@ class EcranModifierInfos extends StatelessWidget {
                               height: 20,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: AppColors.surAccent))
-                          : const Text('Sauvegarder',
+                          :  Text('Sauvegarder'.tr,
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -452,7 +452,7 @@ class _ChipRow extends StatelessWidget {
               border: Border.all(
                   color: isSelected ? Colors.transparent : AppColors.border),
             ),
-            child: Text(opt.capitalize!,
+            child: Text(opt.capitalize!.tr,
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -529,7 +529,7 @@ class _PhotoSlot extends StatelessWidget {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Principale',
+                child:  Text('Principale'.tr,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,

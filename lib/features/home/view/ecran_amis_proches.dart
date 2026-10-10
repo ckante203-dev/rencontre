@@ -141,7 +141,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
       debugPrint('${_l.table} basculer : $e');
       if (!mounted) return;
       setState(() => ajouter ? _liste.remove(p.id) : _liste.add(p.id));
-      Get.snackbar('Oups', 'Modification non enregistrée, vérifie ta connexion',
+      Get.snackbar('Oups'.tr, 'Modification non enregistrée, vérifie ta connexion'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -191,8 +191,8 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         elevation: 0,
         title: Text(
             _masques
-                ? '🚫 Masquer ma story à (${_liste.length})'
-                : '⭐ Amis proches (${_liste.length})',
+                ? '🚫 Masquer ma story à (@length)'.trParams({'length': _liste.length.toString()})
+                : '⭐ Amis proches (@length)'.trParams({'length': _liste.length.toString()}),
             style: const TextStyle(
                 fontFamily: 'Syne', fontWeight: FontWeight.w800)),
       ),
@@ -201,10 +201,8 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
               _masques
-                  ? 'Ces personnes ne verront AUCUNE de tes stories, même '
-                      'publiques. Elles ne sont pas prévenues.'
-                  : 'Seules ces personnes verront tes stories « Amis proches ». '
-                      'Elles ne savent pas qu\'elles sont dans ta liste.',
+                  ? 'Ces personnes ne verront AUCUNE de tes stories, même publiques. Elles ne sont pas prévenues.'.tr
+                  : 'Seules ces personnes verront tes stories « Amis proches ». Elles ne savent pas qu\'elles sont dans ta liste.'.tr,
               style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
         ),
         Padding(
@@ -213,7 +211,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
             onChanged: _chercher,
             style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Rechercher un nom ou un @pseudo…',
+              hintText: 'Rechercher un nom ou un @pseudo…'.tr,
               hintStyle: TextStyle(color: AppColors.textMuted),
               prefixIcon:
                   Icon(Icons.search_rounded, color: AppColors.textMuted),
@@ -236,8 +234,8 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
                         padding: const EdgeInsets.all(32),
                         child: Text(
                             q.isEmpty
-                                ? 'Discute avec des gens ou cherche un @pseudo pour les ajouter'
-                                : 'Personne trouvé',
+                                ? 'Discute avec des gens ou cherche un @pseudo pour les ajouter'.tr
+                                : 'Personne trouvé'.tr,
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppColors.textMuted)),
                       ),
@@ -247,7 +245,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
                       if (autres.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                          child: Text('PROFILS ZAMU',
+                          child: Text('PROFILS ZAMU'.tr,
                               style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,

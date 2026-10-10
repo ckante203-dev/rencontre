@@ -212,7 +212,7 @@ class _TopBar extends GetView<HomeController> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                        'Localisation désactivée : active-la pour voir les distances',
+                        'Localisation désactivée : active-la pour voir les distances'.tr,
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textPrimary)),
                   ),
@@ -283,15 +283,15 @@ class _FilterItem {
       {required this.mode, required this.label, required this.icon});
 }
 
-const _filterItems = [
-  _FilterItem(mode: 'all', label: 'Tous', icon: '⚡'),
-  _FilterItem(mode: 'online', label: 'En ligne', icon: '🟢'),
-  _FilterItem(mode: 'dispo', label: 'Dispo', icon: '🙋'),
-  _FilterItem(mode: 'evenement', label: 'Même événement', icon: '📅'),
-  _FilterItem(mode: 'nearby', label: 'Proches', icon: '📍'),
-  _FilterItem(mode: 'verifies', label: 'Vérifiés', icon: '✅'),
-  _FilterItem(mode: 'new', label: 'Nouveaux', icon: '✨'),
-  _FilterItem(mode: 'favoris', label: 'Favoris', icon: '⭐'),
+List<_FilterItem> get _filterItems => [
+  _FilterItem(mode: 'all', label: 'Tous'.tr, icon: '⚡'),
+  _FilterItem(mode: 'online', label: 'En ligne'.tr, icon: '🟢'),
+  _FilterItem(mode: 'dispo', label: 'Dispo'.tr, icon: '🙋'),
+  _FilterItem(mode: 'evenement', label: 'Même événement'.tr, icon: '📅'),
+  _FilterItem(mode: 'nearby', label: 'Proches'.tr, icon: '📍'),
+  _FilterItem(mode: 'verifies', label: 'Vérifiés'.tr, icon: '✅'),
+  _FilterItem(mode: 'new', label: 'Nouveaux'.tr, icon: '✨'),
+  _FilterItem(mode: 'favoris', label: 'Favoris'.tr, icon: '⭐'),
 ];
 
 class _FilterChips extends StatefulWidget {
@@ -452,7 +452,7 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
                       ? AppColors.accent
                       : AppColors.textMuted),
               const SizedBox(width: 6),
-              Text(ville != null ? '✈️ $ville' : 'Filtres',
+              Text(ville != null ? '✈️ $ville' : 'Filtres'.tr,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -484,10 +484,10 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
   VilleVoyage? _ville; // ✈️ null = ma position
   late RangeValues _age;
 
-  static const _genders = [
-    {'value': 'tous', 'label': 'Tous', 'icon': '👥'},
-    {'value': 'homme', 'label': 'Hommes', 'icon': '👨'},
-    {'value': 'femme', 'label': 'Femmes', 'icon': '👩'},
+  static List<Map<String, String>> get _genders => [
+    {'value': 'tous', 'label': 'Tous'.tr, 'icon': '👥'},
+    {'value': 'homme', 'label': 'Hommes'.tr, 'icon': '👨'},
+    {'value': 'femme', 'label': 'Femmes'.tr, 'icon': '👩'},
   ];
 
   @override
@@ -520,7 +520,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
       if (Get.isRegistered<RevenueCatService>()) {
         Get.toNamed(AppRoutes.paywall);
       } else {
-        Get.snackbar('✈️ Mode voyage', 'Réservé aux membres Premium',
+        Get.snackbar('✈️ Mode voyage'.tr, 'Réservé aux membres Premium'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -582,7 +582,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Filtres avancés',
+                  'Filtres avancés'.tr,
                   style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 18,
@@ -593,7 +593,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                 TextButton(
                   onPressed: _reset,
                   child: Text(
-                    'Réinitialiser',
+                    'Réinitialiser'.tr,
                     style:
                         TextStyle(color: AppColors.textPrimary, fontSize: 13),
                   ),
@@ -602,7 +602,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
             ),
             const SizedBox(height: 20),
             Text(
-              'JE VEUX VOIR',
+              'JE VEUX VOIR'.tr,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -657,7 +657,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'DISTANCE MAXIMALE',
+                  'DISTANCE MAXIMALE'.tr,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -666,7 +666,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   ),
                 ),
                 Text(
-                  _distance >= 50 ? '50+ km' : '${_distance.round()} km',
+                  _distance >= 50 ? '50+ km'.tr : '@p km'.trParams({'p': (_distance.round()).toString()}),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -696,7 +696,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'ÂGE',
+                  'ÂGE'.tr,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -705,7 +705,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   ),
                 ),
                 Text(
-                  '${_age.start.round()} – ${_age.end >= HomeController.ageMax ? '70+' : _age.end.round()} ans',
+                  '@p – @p2 ans'.trParams({'p2': (_age.end >= HomeController.ageMax ? '70+' : _age.end.round()).toString(), 'p': (_age.start.round()).toString()}),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -733,7 +733,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
             const SizedBox(height: 12),
             Row(children: [
               Text(
-                '✈️ MODE VOYAGE',
+                '✈️ MODE VOYAGE'.tr,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -748,7 +748,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Premium',
+                child:  Text('Premium'.tr,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
@@ -756,7 +756,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               ),
             ]),
             const SizedBox(height: 4),
-            Text('Découvre les profils d\'une autre ville avant d\'y aller',
+            Text('Découvre les profils d\'une autre ville avant d\'y aller'.tr,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             const SizedBox(height: 10),
             Wrap(
@@ -764,13 +764,13 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
               runSpacing: 8,
               children: [
                 _ChipVille(
-                  label: '📍 Ma position',
+                  label: '📍 Ma position'.tr,
                   actif: _ville == null,
                   onTap: () => _choisirVille(null),
                 ),
                 _ChipVille(
                   label: _ville == null
-                      ? '✈️ Choisir une ville…'
+                      ? '✈️ Choisir une ville…'.tr
                       : '✈️ ${_ville!.drapeau} ${_ville!.nom}',
                   actif: _ville != null,
                   onTap: _ouvrirVilles,
@@ -794,9 +794,9 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                     ),
                   ],
                 ),
-                child: const Center(
+                child:  Center(
                   child: Text(
-                    'Appliquer les filtres',
+                    'Appliquer les filtres'.tr,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -873,7 +873,7 @@ class _ChoixVilleSheetState extends State<_ChoixVilleSheet> {
             onChanged: (v) => setState(() => _q = _sansAccent(v.trim())),
             style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Rechercher une ville ou un pays',
+              hintText: 'Rechercher une ville ou un pays'.tr,
               hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
               prefixIcon:
                   Icon(Icons.search_rounded, color: AppColors.textMuted),
@@ -904,15 +904,15 @@ class _ChoixVilleSheetState extends State<_ChoixVilleSheet> {
               children: [
                 if (_q.isEmpty)
                   _LigneVille(
-                    titre: '📍 Ma position',
-                    sousTitre: 'Les profils autour de moi',
+                    titre: '📍 Ma position'.tr,
+                    sousTitre: 'Les profils autour de moi'.tr,
                     actif: widget.actuelle == null,
                     onTap: () => Get.back(result: const _ChoixVille(null)),
                   ),
                 if (parPays.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text('Aucune ville trouvée',
+                    child: Text('Aucune ville trouvée'.tr,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppColors.textMuted)),
                   ),
@@ -932,8 +932,8 @@ class _ChoixVilleSheetState extends State<_ChoixVilleSheet> {
                       sousTitre: v.nbProfils == null
                           ? null
                           : v.nbProfils == 0
-                              ? 'Pas encore de profils'
-                              : '${v.nbProfils} profil${v.nbProfils! > 1 ? 's' : ''}',
+                              ? 'Pas encore de profils'.tr
+                              : '@nbProfils profil@p'.trParams({'nbProfils': v.nbProfils.toString(), 'p': (v.nbProfils! > 1 ? 's' : '').toString()}),
                       actif: widget.actuelle?.libelle == v.libelle,
                       onTap: () => Get.back(result: _ChoixVille(v)),
                     ),
@@ -1216,7 +1216,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
                           gradient: AppColors.gradientPink,
                           borderRadius: BorderRadius.circular(22),
                         ),
-                        child: const Text('Voir tout le monde',
+                        child:  Text('Voir tout le monde'.tr,
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -1271,7 +1271,7 @@ class _PremiumUnlockBannerState extends State<_PremiumUnlockBanner>
   @override
   Widget build(BuildContext context) {
     final title = widget.hiddenCount == 1
-        ? '${widget.sampleName} t\'attend'
+        ? '@sampleName t\'attend'.trParams({'sampleName': widget.sampleName.toString()})
         : '${widget.sampleName} et ${widget.hiddenCount - 1} autre${widget.hiddenCount - 1 > 1 ? 's' : ''} à découvrir';
 
     return Padding(
@@ -1316,7 +1316,7 @@ class _PremiumUnlockBannerState extends State<_PremiumUnlockBanner>
                             color: AppColors.surAccent,
                             fontWeight: FontWeight.w800,
                             fontSize: 14)),
-                    const Text('Passe Premium pour tous les débloquer',
+                     Text('Passe Premium pour tous les débloquer'.tr,
                         style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 11)),
                   ],
                 ),
@@ -1347,10 +1347,10 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
   const _ProfileLimitPaywallSheet();
 
   String _formatCountdown(Duration d) {
-    if (d.isNegative) return '0h 00min';
+    if (d.isNegative) return '0h 00min'.tr;
     final h = d.inHours;
     final m = d.inMinutes % 60;
-    return '${h}h ${m.toString().padLeft(2, '0')}min';
+    return '@hh @pmin'.trParams({'h': h.toString(), 'p': (m.toString().padLeft(2, '0')).toString()});
   }
 
   @override
@@ -1386,14 +1386,14 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                   color: AppColors.surAccent, size: 30),
             ),
             const SizedBox(height: 16),
-            Text('Débloque tous les profils',
+            Text('Débloque tous les profils'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 17,
                     fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            Text('Passe Premium pour voir jusqu\'à 600 profils au lieu de ${HomeController.limiteGratuite}.',
+            Text('Passe Premium pour voir jusqu\'à 600 profils au lieu de @limiteGratuite.'.trParams({'limiteGratuite': HomeController.limiteGratuite.toString()}),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
 
@@ -1415,7 +1415,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                         size: 14, color: Colors.orange),
                     const SizedBox(width: 6),
                     Text(
-                        'Offre de lancement — encore ${_formatCountdown(remaining)}',
+                        'Offre de lancement — encore @p'.trParams({'p': (_formatCountdown(remaining)).toString()}),
                         style: const TextStyle(
                             color: Colors.orange,
                             fontSize: 11,
@@ -1435,8 +1435,8 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                   if (context.mounted) {
                     Get.back();
                     Get.snackbar(
-                      '🎉 Essai activé',
-                      'Tu profites de Premium gratuitement pendant 30 minutes',
+                      '🎉 Essai activé'.tr,
+                      'Tu profites de Premium gratuitement pendant 30 minutes'.tr,
                       snackPosition: SnackPosition.TOP,
                       backgroundColor: AppColors.surface,
                       colorText: AppColors.textPrimary,
@@ -1450,16 +1450,16 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                       gradient: AppColors.gradientPink,
                       borderRadius: BorderRadius.circular(16)),
-                  child: const Column(
+                  child:  Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('Essayer gratuitement 30 minutes',
+                      Text('Essayer gratuitement 30 minutes'.tr,
                           style: TextStyle(
                               color: AppColors.surAccent,
                               fontWeight: FontWeight.w700,
                               fontSize: 15)),
                       SizedBox(height: 2),
-                      Text('Sans engagement, une seule fois',
+                      Text('Sans engagement, une seule fois'.tr,
                           style:
                               TextStyle(color: Color(0xB3FFFFFF), fontSize: 12)),
                     ],
@@ -1486,7 +1486,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Passer Premium',
+                    Text('Passer Premium'.tr,
                         style: TextStyle(
                             color:
                                 canTrial ? AppColors.textPrimary : AppColors.surAccent,
@@ -1498,7 +1498,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
                                 ? Get.find<RevenueCatService>()
                                     .libellePrixCourant
                                 : null) ??
-                            'Voir les offres',
+                            'Voir les offres'.tr,
                         style: TextStyle(
                             color: canTrial
                                 ? AppColors.textMuted
@@ -1511,7 +1511,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
             const SizedBox(height: 10),
             GestureDetector(
               onTap: () => Get.back(),
-              child: Text('Plus tard',
+              child: Text('Plus tard'.tr,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             ),
           ],
@@ -1706,9 +1706,9 @@ class _UserCard extends StatelessWidget {
                     gradient: const LinearGradient(
                         colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
                   ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  child:  Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.bolt_rounded, size: 12, color: AppColors.surAccent),
-                    Text('Boost',
+                    Text('Boost'.tr,
                         style: TextStyle(
                             color: AppColors.surAccent,
                             fontSize: 10,
@@ -1760,7 +1760,7 @@ class _UserCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text('Premium',
+                     Text('Premium'.tr,
                         style: TextStyle(
                             color: AppColors.surMedia,
                             fontSize: 11,

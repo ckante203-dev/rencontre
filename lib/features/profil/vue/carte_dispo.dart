@@ -28,11 +28,11 @@ const _durees = [
 /// « encore 2 h 15 », « encore 40 min »
 String dureeRestanteDispo(DateTime fin) {
   final r = fin.difference(DateTime.now());
-  if (r.inMinutes < 1) return 'bientôt fini';
-  if (r.inHours == 0) return 'encore ${r.inMinutes} min';
+  if (r.inMinutes < 1) return 'bientôt fini'.tr;
+  if (r.inHours == 0) return 'encore @inMinutes min'.trParams({'inMinutes': r.inMinutes.toString()});
   final m = r.inMinutes % 60;
   return m == 0
-      ? 'encore ${r.inHours} h'
+      ? 'encore @inHours h'.trParams({'inHours': r.inHours.toString()})
       : 'encore ${r.inHours} h ${m.toString().padLeft(2, '0')}';
 }
 
@@ -84,7 +84,7 @@ class CarteDispo extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(actif ? ctrl.dispoTexte.value! : 'Dispo maintenant ?',
+                    Text(actif ? ctrl.dispoTexte.value! : 'Dispo maintenant ?'.tr,
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -92,8 +92,8 @@ class CarteDispo extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                         actif
-                            ? '${dureeRestanteDispo(ctrl.dispoJusqua.value!)} · visible sur l\'accueil'
-                            : 'Dis aux autres ce que tu as envie de faire',
+                            ? '@p · visible sur l\'accueil'.trParams({'p': (dureeRestanteDispo(ctrl.dispoJusqua.value!)).toString()})
+                            : 'Dis aux autres ce que tu as envie de faire'.tr,
                         style:
                             TextStyle(
                             fontSize: 12,
@@ -105,7 +105,7 @@ class CarteDispo extends StatelessWidget {
               ),
               if (actif)
                 IconButton(
-                  tooltip: 'Arrêter',
+                  tooltip: 'Arrêter'.tr,
                   onPressed: () => ctrl.definirDispo(null, Duration.zero),
                   icon: Icon(Icons.close_rounded, color: AppColors.textMuted),
                 )
@@ -215,7 +215,7 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('🙋 Dispo maintenant',
+              Text('🙋 Dispo maintenant'.tr,
                   style: TextStyle(
                       fontFamily: 'Syne',
                       fontSize: 18,
@@ -223,8 +223,7 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
                       color: AppColors.textPrimary)),
               const SizedBox(height: 4),
               Text(
-                  'Ton statut s\'affiche sur ta carte dans l\'accueil, '
-                  'puis disparaît tout seul.',
+                  'Ton statut s\'affiche sur ta carte dans l\'accueil, puis disparaît tout seul.'.tr,
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
               const SizedBox(height: 14),
               Wrap(
@@ -247,7 +246,7 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
                 onChanged: (_) => setState(() {}),
                 style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'Ou écris le tien…',
+                  hintText: 'Ou écris le tien…'.tr,
                   hintStyle: TextStyle(color: AppColors.textMuted),
                   filled: true,
                   fillColor: AppColors.surface2,
@@ -258,7 +257,7 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text('Pendant',
+              Text('Pendant'.tr,
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -310,7 +309,7 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
                             height: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: AppColors.surAccent))
-                        : const Text('Publier mon statut',
+                        :  Text('Publier mon statut'.tr,
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,

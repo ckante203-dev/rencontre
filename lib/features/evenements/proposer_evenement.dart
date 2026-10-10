@@ -29,7 +29,7 @@ void ouvrirProposition() {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('👑', style: TextStyle(fontSize: 40)),
           const SizedBox(height: 10),
-          Text('Réservé aux membres Premium',
+          Text('Réservé aux membres Premium'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontFamily: 'Syne',
@@ -38,8 +38,7 @@ void ouvrirProposition() {
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
           Text(
-              'Passe Premium pour proposer tes événements (match, concert, '
-              'soirée…) à toute la communauté Zamu.',
+              'Passe Premium pour proposer tes événements (match, concert, soirée…) à toute la communauté Zamu.'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
           const SizedBox(height: 20),
@@ -54,8 +53,8 @@ void ouvrirProposition() {
                 gradient: AppColors.gradientPink,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Center(
-                child: Text('Découvrir Premium',
+              child:  Center(
+                child: Text('Découvrir Premium'.tr,
                     style: TextStyle(
                         color: AppColors.surAccent,
                         fontSize: 15,
@@ -126,14 +125,14 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
   Future<void> _envoyer() async {
     final titre = _titre.text.trim(), lieu = _lieu.text.trim();
     String? erreur;
-    if (titre.length < 3) erreur = 'Donne un titre (3 caractères minimum)';
-    if (lieu.length < 2) erreur ??= 'Indique le lieu';
-    if (_debut == null) erreur ??= 'Choisis la date et l\'heure';
+    if (titre.length < 3) erreur = 'Donne un titre (3 caractères minimum)'.tr;
+    if (lieu.length < 2) erreur ??= 'Indique le lieu'.tr;
+    if (_debut == null) erreur ??= 'Choisis la date et l\'heure'.tr;
     if (_debut != null && _debut!.isBefore(DateTime.now())) {
-      erreur ??= 'La date doit être dans le futur';
+      erreur ??= 'La date doit être dans le futur'.tr;
     }
     if (erreur != null) {
-      Get.snackbar('Il manque quelque chose', erreur,
+      Get.snackbar('Il manque quelque chose'.tr, erreur,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -152,8 +151,8 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
     setState(() => _envoi = false);
     if (ok) {
       Get.back();
-      Get.snackbar('Proposition envoyée 🎉',
-          'Zamu la vérifie et la publie si elle est validée',
+      Get.snackbar('Proposition envoyée 🎉'.tr,
+          'Zamu la vérifie et la publie si elle est validée'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary,
@@ -186,7 +185,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
   Widget build(BuildContext context) {
     final style = TextStyle(color: AppColors.textPrimary);
     final date = _debut == null
-        ? 'Choisir la date et l\'heure'
+        ? 'Choisir la date et l\'heure'.tr
         : EvenementModel(id: '', titre: '', lieu: '', debut: _debut!)
             .dateLongue;
     return Scaffold(
@@ -195,23 +194,22 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
         backgroundColor: AppColors.bg,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: const Text('Proposer un événement',
+        title:  Text('Proposer un événement'.tr,
             style: TextStyle(fontFamily: 'Syne', fontWeight: FontWeight.w800)),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
           Text(
-              'Un match, un concert, une soirée… Zamu vérifie ta proposition '
-              'avant de la publier pour tout le monde.',
+              'Un match, un concert, une soirée… Zamu vérifie ta proposition avant de la publier pour tout le monde.'.tr,
               style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          _label('Titre'),
+          _label('Titre'.tr),
           TextField(
               controller: _titre,
               maxLength: 80,
               style: style,
-              decoration: _deco('ex : ASEC – Africa')),
-          _label('Catégorie'),
+              decoration: _deco('ex : ASEC – Africa'.tr)),
+          _label('Catégorie'.tr),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final c in _categories.entries)
               ChoiceChip(
@@ -226,7 +224,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
                         : AppColors.textPrimary),
               ),
           ]),
-          _label('Date et heure'),
+          _label('Date et heure'.tr),
           GestureDetector(
             onTap: _choisirDate,
             child: Container(
@@ -247,25 +245,25 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
               ]),
             ),
           ),
-          _label('Lieu (public)'),
+          _label('Lieu (public)'.tr),
           TextField(
               controller: _lieu,
               maxLength: 120,
               style: style,
-              decoration: _deco('ex : Stade Félix Houphouët-Boigny')),
-          _label('Ville'),
+              decoration: _deco('ex : Stade Félix Houphouët-Boigny'.tr)),
+          _label('Ville'.tr),
           TextField(
               controller: _ville,
               maxLength: 60,
               style: style,
-              decoration: _deco('ex : Abidjan')),
-          _label('Description (facultatif)'),
+              decoration: _deco('ex : Abidjan'.tr)),
+          _label('Description (facultatif)'.tr),
           TextField(
               controller: _description,
               maxLength: 1000,
               maxLines: 4,
               style: style,
-              decoration: _deco('Infos pratiques, ambiance…')),
+              decoration: _deco('Infos pratiques, ambiance…'.tr)),
           const SizedBox(height: 24),
           GestureDetector(
             onTap: _envoi ? null : _envoyer,
@@ -282,7 +280,7 @@ class _ProposerEvenementState extends State<ProposerEvenement> {
                         height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: AppColors.surAccent))
-                    : const Text('Envoyer la proposition',
+                    :  Text('Envoyer la proposition'.tr,
                         style: TextStyle(
                             color: AppColors.surAccent,
                             fontSize: 15,

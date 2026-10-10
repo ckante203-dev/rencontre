@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -159,13 +160,13 @@ class _StickerSheetState extends State<_StickerSheet> {
             child: Row(children: [
               if (widget.emojis != null) ...[
                 _Onglet(
-                    label: 'Emoji',
+                    label: 'Emoji'.tr,
                     actif: _emoji,
                     onTap: () => setState(() => _emoji = true)),
                 const SizedBox(width: 8),
               ],
               _Onglet(
-                  label: 'Stickers',
+                  label: 'Stickers'.tr,
                   actif: !_gif && !_emoji,
                   onTap: () => _changerOnglet(false)),
               const SizedBox(width: 8),
@@ -185,8 +186,8 @@ class _StickerSheetState extends State<_StickerSheet> {
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: _gif
-                    ? 'Rechercher un GIF (bisou, lol, bonjour…)'
-                    : 'Rechercher un sticker (cœur, merci, bonne nuit…)',
+                    ? 'Rechercher un GIF (bisou, lol, bonjour…)'.tr
+                    : 'Rechercher un sticker (cœur, merci, bonne nuit…)'.tr,
                 hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 prefixIcon:
                     Icon(Icons.search_rounded, color: AppColors.textMuted),
@@ -204,7 +205,7 @@ class _StickerSheetState extends State<_StickerSheet> {
           Expanded(child: _contenu()),
           Padding(
             padding: const EdgeInsets.only(bottom: 8, top: 4),
-            child: Text('Propulsé par GIPHY',
+            child: Text('Propulsé par GIPHY'.tr,
                 style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
           ),
         ]),
@@ -228,7 +229,7 @@ class _StickerSheetState extends State<_StickerSheet> {
       );
     }
     if (cleGiphy.isEmpty) {
-      return _Message('Les stickers arrivent très bientôt 🎨');
+      return _Message('Les stickers arrivent très bientôt 🎨'.tr);
     }
     if (_chargement && _resultats.isEmpty) {
       return Center(
@@ -236,10 +237,10 @@ class _StickerSheetState extends State<_StickerSheet> {
               color: AppColors.accent, strokeWidth: 2));
     }
     if (_erreur) {
-      return _Message('Impossible de charger. Vérifie ta connexion.');
+      return _Message('Impossible de charger. Vérifie ta connexion.'.tr);
     }
     if (_resultats.isEmpty) {
-      return _Message('Aucun résultat');
+      return _Message('Aucun résultat'.tr);
     }
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

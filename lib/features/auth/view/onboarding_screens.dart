@@ -321,7 +321,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       debugPrint('📅 Digits bruts: "$digits" (length: ${digits.length})');
 
       if (digits.length != 8) {
-        Get.snackbar('Erreur', 'Date invalide. Entre JJ/MM/AAAA.',
+        Get.snackbar('Erreur'.tr, 'Date invalide. Entre JJ/MM/AAAA.'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -345,7 +345,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       debugPrint('🎂 Age: $age');
 
       if (age < 18 || age > 100) {
-        Get.snackbar('Erreur', 'Âge invalide ($age ans).',
+        Get.snackbar('Erreur'.tr, 'Âge invalide (@age ans).'.trParams({'age': age.toString()}),
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -363,7 +363,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       final uid = user?.id;
 
       if (uid == null) {
-        Get.snackbar('Erreur', 'Session expirée. Reconnecte-toi.',
+        Get.snackbar('Erreur'.tr, 'Session expirée. Reconnecte-toi.'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -416,7 +416,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
     } catch (e) {
       debugPrint('❌ Birthdate error: $e');
       Get.snackbar(
-          'Erreur',
+          'Erreur'.tr,
           e.toString().length > 100
               ? e.toString().substring(0, 100)
               : e.toString(),
@@ -490,7 +490,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.textPrimary),
                                   decoration: InputDecoration(
-                                    hintText: 'Ton prénom',
+                                    hintText: 'Ton prénom'.tr,
                                     hintStyle:
                                         TextStyle(color: AppColors.textMuted),
                                     border: UnderlineInputBorder(
@@ -536,7 +536,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                               Icon(Icons.check_circle_rounded,
                                   size: 11, color: AppColors.online),
                               SizedBox(width: 4),
-                              Text('Importé depuis Google',
+                              Text('Importé depuis Google'.tr,
                                   style: TextStyle(
                                       fontSize: 10,
                                       color: AppColors.online,
@@ -580,7 +580,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
                     child: Text(
-                      'Appuie sur ✏️ pour modifier ton prénom',
+                      'Appuie sur ✏️ pour modifier ton prénom'.tr,
                       style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted.withOpacity(0.6)),
@@ -591,7 +591,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
 
                 const Text('🎂', style: TextStyle(fontSize: 40)),
                 const SizedBox(height: 16),
-                Text('Ta date de\nnaissance',
+                Text('Ta date de\nnaissance'.tr,
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
@@ -600,7 +600,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                           height: 1.2)),
                 const SizedBox(height: 8),
                 Text(
-                  'Nous avons besoin de ta date de naissance pour vérifier que tu as au moins 18 ans.',
+                  'Nous avons besoin de ta date de naissance pour vérifier que tu as au moins 18 ans.'.tr,
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.6),
                 ),
@@ -639,7 +639,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                             letterSpacing: 2,
                             fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
-                          hintText: 'JJ / MM / AAAA',
+                          hintText: 'JJ / MM / AAAA'.tr,
                           hintStyle: TextStyle(
                               color: AppColors.textMuted,
                               letterSpacing: 1,
@@ -710,8 +710,8 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                                   strokeWidth: 2, color: AppColors.surAccent))
                           : Text(
                               _isValid
-                                  ? 'Continuer →'
-                                  : 'Entre ta date de naissance',
+                                  ? 'Continuer →'.tr
+                                  : 'Entre ta date de naissance'.tr,
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -746,7 +746,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
   final _picker = ImagePicker();
 
   void _snack(String msg) {
-    Get.snackbar('Photo', msg,
+    Get.snackbar('Photo'.tr, msg,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
         colorText: AppColors.textPrimary,
@@ -796,7 +796,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                         borderRadius: BorderRadius.circular(12)),
                     child: const Icon(Icons.camera_alt_rounded,
                         color: AppColors.surAccent, size: 22)),
-                title: Text('Prendre une photo',
+                title: Text('Prendre une photo'.tr,
                     style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600)),
@@ -815,7 +815,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                         border: Border.all(color: AppColors.border)),
                     child: Icon(Icons.photo_library_rounded,
                         color: AppColors.textPrimary, size: 22)),
-                title: Text('Choisir depuis la galerie',
+                title: Text('Choisir depuis la galerie'.tr,
                     style: TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600)),
@@ -854,7 +854,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
           return; // on reste sur l'écran pour choisir une autre photo
         }
         if (result == ModerationResult.error) {
-          _snack('Impossible de vérifier la photo. Réessaie.');
+          _snack('Impossible de vérifier la photo. Réessaie.'.tr);
           return;
         }
         if (result == ModerationResult.pending) {
@@ -883,13 +883,13 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
       emoji: '📸',
       tagColor: AppColors.accent,
       tagBg: AppColors.accent.withValues(alpha: 0.1),
-      tag: '✨ Étape 1 / 5',
-      title: 'Ajoute ta ',
+      tag: '✨ Étape 1 / 5'.tr,
+      title: 'Ajoute ta '.tr,
       titleHighlight: 'photo',
       description:
-          'Les profils avec photo obtiennent 5× plus de matchs. Choisis une belle photo de toi !',
+          'Les profils avec photo obtiennent 5× plus de matchs. Choisis une belle photo de toi !'.tr,
       buttonLabel: _isUploading
-          ? 'Envoi...'
+          ? 'Envoi...'.tr
           : (_photo != null ? 'Continuer →' : 'Choisir une photo'),
       nextEnabled: !_isUploading,
       // ✅ Sans photo, le bouton ouvre le sélecteur au lieu de passer à l'étape suivante.
@@ -984,7 +984,7 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                 SizedBox(width: 8),
                 Expanded(
                     child: Text(
-                        'Ta photo Google a été importée ✅ Tu peux en choisir une autre ou continuer.',
+                        'Ta photo Google a été importée ✅ Tu peux en choisir une autre ou continuer.'.tr,
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.online,
@@ -1012,14 +1012,14 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
   String? _lookingFor;
   bool get _canContinue => _gender != null && _lookingFor != null;
 
-  static const _genders = [
-    {'value': 'homme', 'emoji': '👨', 'label': 'Homme'},
-    {'value': 'femme', 'emoji': '👩', 'label': 'Femme'},
+  static List<Map<String, String>> get _genders => [
+    {'value': 'homme', 'emoji': '👨', 'label': 'Homme'.tr},
+    {'value': 'femme', 'emoji': '👩', 'label': 'Femme'.tr},
   ];
-  static const _lookingForOptions = [
-    {'value': 'hommes', 'emoji': '👨', 'label': 'Des hommes'},
-    {'value': 'femmes', 'emoji': '👩', 'label': 'Des femmes'},
-    {'value': 'tout le monde', 'emoji': '💑', 'label': 'Tout le monde'},
+  static List<Map<String, String>> get _lookingForOptions => [
+    {'value': 'hommes', 'emoji': '👨', 'label': 'Des hommes'.tr},
+    {'value': 'femmes', 'emoji': '👩', 'label': 'Des femmes'.tr},
+    {'value': 'tout le monde', 'emoji': '💑', 'label': 'Tout le monde'.tr},
   ];
 
   Future<void> _continuer() async {
@@ -1038,17 +1038,17 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
       emoji: '💫',
       tagColor: AppColors.accent,
       tagBg: AppColors.accent.withValues(alpha: 0.1),
-      tag: '💫 Étape 2 / 5',
-      title: 'Qui ',
-      titleHighlight: 'es-tu ?',
+      tag: '💫 Étape 2 / 5'.tr,
+      title: 'Qui '.tr,
+      titleHighlight: 'es-tu ?'.tr,
       description:
-          'Ces infos permettent de te montrer les bons profils et d\'éviter les mauvaises rencontres.',
-      buttonLabel: _canContinue ? 'Continuer →' : 'Choisis tes préférences',
+          'Ces infos permettent de te montrer les bons profils et d\'éviter les mauvaises rencontres.'.tr,
+      buttonLabel: _canContinue ? 'Continuer →'.tr : 'Choisis tes préférences'.tr,
       nextEnabled: _canContinue,
       onNext: _continuer,
       onBack: () => Get.offNamed('/onboarding/photo'),
       content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('JE SUIS',
+        Text('JE SUIS'.tr,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1099,7 +1099,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
           ));
         }).toList()),
         const SizedBox(height: 24),
-        Text('JE RECHERCHE',
+        Text('JE RECHERCHE'.tr,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1165,7 +1165,7 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
             SizedBox(width: 8),
             Expanded(
                 child: Text(
-                    'Tu ne verras que les profils compatibles avec tes préférences.',
+                    'Tu ne verras que les profils compatibles avec tes préférences.'.tr,
                     style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -1218,14 +1218,14 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
       emoji: '🎯',
       tagColor: AppColors.accent3,
       tagBg: const Color(0x1A00F5D4),
-      tag: '🎯 Étape 3 / 5',
-      title: 'Tes ',
+      tag: '🎯 Étape 3 / 5'.tr,
+      title: 'Tes '.tr,
       titleHighlight: 'passions',
       description:
-          'Choisis jusqu\'à 3 centres d\'intérêt pour trouver des personnes compatibles.',
+          'Choisis jusqu\'à 3 centres d\'intérêt pour trouver des personnes compatibles.'.tr,
       buttonLabel: enoughSelected
-          ? 'Continuer (${_selected.length}/3) →'
-          : 'Choisis au moins 1',
+          ? 'Continuer (@length/3) →'.trParams({'length': _selected.length.toString()})
+          : 'Choisis au moins 1'.tr,
       nextEnabled: enoughSelected,
       onNext: () async {
         await ctrl.saveOnboardingData(interests: _selected.toList());
@@ -1267,7 +1267,7 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
                         ]
                       : null,
                 ),
-                child: Text(interest,
+                child: Text(interest.tr,
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -1303,37 +1303,37 @@ class OnboardingPermissionsScreen extends StatelessWidget {
       emoji: '📍',
       tagColor: AppColors.accent2,
       tagBg: AppColors.accent2.withValues(alpha: 0.1),
-      tag: '📍 Étape 4 / 4',
-      title: 'Active ta ',
+      tag: '📍 Étape 4 / 4'.tr,
+      title: 'Active ta '.tr,
       titleHighlight: 'position',
       description:
-          'Pour voir les personnes autour de toi en temps réel, on a besoin de quelques autorisations.',
-      buttonLabel: 'Terminer →',
+          'Pour voir les personnes autour de toi en temps réel, on a besoin de quelques autorisations.'.tr,
+      buttonLabel: 'Terminer →'.tr,
       onNext: _finish,
       onBack: () => Get.offNamed('/onboarding/interests'),
-      skipLabel: 'Pas maintenant',
+      skipLabel: 'Pas maintenant'.tr,
       onSkip: _finish,
       content: Column(children: [
         _PermissionCard(
             icon: '📍',
             color: AppColors.accent,
-            title: 'Localisation',
+            title: 'Localisation'.tr,
             description:
-                'Voir les profils à proximité et apparaître sur la carte.',
+                'Voir les profils à proximité et apparaître sur la carte.'.tr,
             isRequired: true),
         const SizedBox(height: 10),
         _PermissionCard(
             icon: '🔔',
             color: AppColors.accent2,
-            title: 'Notifications',
-            description: 'Reçois les matchs, messages et snaps instantanément.',
+            title: 'Notifications'.tr,
+            description: 'Reçois les matchs, messages et snaps instantanément.'.tr,
             isRequired: false),
         const SizedBox(height: 10),
         _PermissionCard(
             icon: '📷',
             color: AppColors.accent3,
-            title: 'Caméra & Photos',
-            description: 'Pour prendre et envoyer des snaps éphémères.',
+            title: 'Caméra & Photos'.tr,
+            description: 'Pour prendre et envoyer des snaps éphémères.'.tr,
             isRequired: false),
       ]),
     );
@@ -1385,7 +1385,7 @@ class _PermissionCard extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: AppColors.accent.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(6)),
-                  child: Text('Requis',
+                  child: Text('Requis'.tr,
                       style: TextStyle(
                           fontSize: 9,
                           color: AppColors.textPrimary,

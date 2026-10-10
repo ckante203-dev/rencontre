@@ -37,12 +37,12 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
         backgroundColor: AppColors.bg,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: const Text('📅 Événements',
+        title:  Text('📅 Événements'.tr,
             style: TextStyle(fontFamily: 'Syne', fontWeight: FontWeight.w800)),
         actions: [
           if (propositionsOuvertes)
             IconButton(
-              tooltip: 'Proposer un événement',
+              tooltip: 'Proposer un événement'.tr,
               onPressed: () => ouvrirProposition(),
               icon: const Icon(Icons.add_circle_outline_rounded),
             ),
@@ -56,9 +56,9 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             children: [
-              _puce('✓ Mes événements', _mesEvenements,
+              _puce('✓ Mes événements'.tr, _mesEvenements,
                   () => setState(() => _mesEvenements = !_mesEvenements)),
-              _puce('Toutes', _categorie == null,
+              _puce('Toutes'.tr, _categorie == null,
                   () => setState(() => _categorie = null)),
               for (final c in _categories.entries)
                 _puce(c.value, _categorie == c.key,
@@ -79,8 +79,8 @@ class _EcranTousEvenementsState extends State<EcranTousEvenements> {
                   padding: const EdgeInsets.all(32),
                   child: Text(
                       _mesEvenements
-                          ? 'Tu ne participes à aucun événement pour l\'instant'
-                          : 'Aucun événement à venir dans cette catégorie',
+                          ? 'Tu ne participes à aucun événement pour l\'instant'.tr
+                          : 'Aucun événement à venir dans cette catégorie'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textMuted)),
                 ),
@@ -206,7 +206,7 @@ class _LigneEvenement extends StatelessWidget {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(ev.annule ? 'Annulé' : ev.dateCourte,
+                  Text(ev.annule ? 'Annulé'.tr : ev.dateCourte,
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,

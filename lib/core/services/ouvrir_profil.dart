@@ -31,7 +31,7 @@ Future<void> ouvrirProfilParId(String id) async {
       return;
     }
     if (id == supabase.auth.currentUser?.id) {
-      Get.snackbar('C\'est toi 😄', 'Ce code est ton propre profil',
+      Get.snackbar('C\'est toi 😄'.tr, 'Ce code est ton propre profil'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -45,7 +45,7 @@ Future<void> ouvrirProfilParId(String id) async {
 }
 
 void _introuvable() => Get.snackbar(
-    'Profil introuvable', 'Ce profil n\'existe plus ou n\'est pas disponible',
+    'Profil introuvable'.tr, 'Ce profil n\'existe plus ou n\'est pas disponible'.tr,
     snackPosition: SnackPosition.TOP,
     backgroundColor: AppColors.surface,
     colorText: AppColors.textPrimary);

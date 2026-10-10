@@ -182,7 +182,7 @@ class ControleurProfil extends GetxController {
     try {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (_) {
-      _snackError('Impossible d\'ouvrir le lien');
+      _snackError('Impossible d\'ouvrir le lien'.tr);
     }
   }
 
@@ -193,7 +193,7 @@ class ControleurProfil extends GetxController {
       if (!ok) throw Exception();
     } catch (_) {
       await Clipboard.setData(const ClipboardData(text: emailContact));
-      _snackSuccess('Adresse copiée : $emailContact');
+      _snackSuccess('Adresse copiée : @emailContact'.trParams({'emailContact': emailContact.toString()}));
     }
   }
 
@@ -205,7 +205,7 @@ class ControleurProfil extends GetxController {
     // RevenueCat pas encore configuré → pas de paywall (évite un crash
     // sur Get.find<RevenueCatService>() dans l'écran paywall).
     if (!Get.isRegistered<RevenueCatService>()) {
-      _snackError('Premium sera bientôt disponible');
+      _snackError('Premium sera bientôt disponible'.tr);
       return;
     }
     Get.toNamed(AppRoutes.paywall);
@@ -213,15 +213,15 @@ class ControleurProfil extends GetxController {
 
   Future<void> restaurerAchats() async {
     if (!Get.isRegistered<RevenueCatService>()) {
-      _snackError('Service d\'achat indisponible pour le moment');
+      _snackError('Service d\'achat indisponible pour le moment'.tr);
       return;
     }
     final premium = await Get.find<RevenueCatService>().restorePurchases();
     if (premium) {
       isPremium.value = true;
-      _snackSuccess('Abonnement Premium restauré');
+      _snackSuccess('Abonnement Premium restauré'.tr);
     } else {
-      _snackError('Aucun abonnement actif trouvé sur ce compte Google');
+      _snackError('Aucun abonnement actif trouvé sur ce compte Google'.tr);
     }
   }
 
@@ -402,7 +402,7 @@ class ControleurProfil extends GetxController {
       monProfil.value = await _service.fetchMyProfile();
       switch (result) {
         case ModerationResult.approved:
-          _snackSuccess('Photo mise à jour');
+          _snackSuccess('Photo mise à jour'.tr);
           break;
         case ModerationResult.pending:
           _snackSuccess(ModerationService.messageAttente);
@@ -412,12 +412,12 @@ class ControleurProfil extends GetxController {
           break;
         case ModerationResult.full:
         case ModerationResult.error:
-          _snackError('Impossible de vérifier la photo. Réessaie.');
+          _snackError('Impossible de vérifier la photo. Réessaie.'.tr);
           break;
       }
     } catch (e) {
       debugPrint('changerPhoto error: $e');
-      _snackError('Impossible de changer la photo : $e');
+      _snackError('Impossible de changer la photo : @e'.trParams({'e': e.toString()}));
     } finally {
       isUploadingPhoto.value = false;
     }
@@ -427,21 +427,21 @@ class ControleurProfil extends GetxController {
     final confirm = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Supprimer la photo ?',
+      title: Text('Supprimer la photo ?'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary)),
-      content: Text('Ta photo de profil sera supprimée définitivement.',
+      content: Text('Ta photo de profil sera supprimée définitivement.'.tr,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child: Text('Supprimer',
+            child: Text('Supprimer'.tr,
                 style: TextStyle(
                     color: AppColors.textPrimary, fontWeight: FontWeight.w700))),
       ],
@@ -456,9 +456,9 @@ class ControleurProfil extends GetxController {
       if (monProfil.value != null) {
         monProfil.value = monProfil.value!.copyWith(clearPhoto: true);
       }
-      _snackSuccess('Photo supprimée');
+      _snackSuccess('Photo supprimée'.tr);
     } catch (e) {
-      _snackError('Impossible de supprimer la photo : $e');
+      _snackError('Impossible de supprimer la photo : @e'.trParams({'e': e.toString()}));
     }
   }
 
@@ -478,7 +478,7 @@ class ControleurProfil extends GetxController {
                   color: AppColors.surface2,
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          Text('Photo de profil',
+          Text('Photo de profil'.tr,
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 18,
@@ -487,17 +487,17 @@ class ControleurProfil extends GetxController {
           const SizedBox(height: 20),
           _SheetBtn(
               icon: '📷',
-              label: 'Prendre une photo',
+              label: 'Prendre une photo'.tr,
               onTap: () => Get.back(result: ImageSource.camera)),
           const SizedBox(height: 10),
           _SheetBtn(
               icon: '🖼️',
-              label: 'Choisir dans la galerie',
+              label: 'Choisir dans la galerie'.tr,
               onTap: () => Get.back(result: ImageSource.gallery)),
           const SizedBox(height: 10),
           _SheetBtn(
               icon: '❌',
-              label: 'Annuler',
+              label: 'Annuler'.tr,
               onTap: () => Get.back(),
               isCancel: true),
         ]),
@@ -509,7 +509,7 @@ class ControleurProfil extends GetxController {
 
   Future<void> ajouterPhotoProfil() async {
     if (photoUrls.length >= maxPhotos) {
-      _snackError('Maximum $maxPhotos photos');
+      _snackError('Maximum @maxPhotos photos'.trParams({'maxPhotos': maxPhotos.toString()}));
       return;
     }
     final source = await _choisirSource();
@@ -536,7 +536,7 @@ class ControleurProfil extends GetxController {
       await _rechargerPhotoUrls();
       switch (result) {
         case ModerationResult.approved:
-          _snackSuccess('Photo ajoutée');
+          _snackSuccess('Photo ajoutée'.tr);
           break;
         case ModerationResult.pending:
           _snackSuccess(ModerationService.messageAttente);
@@ -545,16 +545,15 @@ class ControleurProfil extends GetxController {
           _snackError(ModerationService.messageRefus);
           break;
         case ModerationResult.full:
-          _snackError('Maximum $maxPhotos photos (en comptant celles en '
-              'cours de vérification)');
+          _snackError('Maximum @maxPhotos photos (en comptant celles en cours de vérification)'.trParams({'maxPhotos': maxPhotos.toString()}));
           break;
         case ModerationResult.error:
-          _snackError('Impossible de vérifier la photo. Réessaie.');
+          _snackError('Impossible de vérifier la photo. Réessaie.'.tr);
           break;
       }
     } catch (e) {
       debugPrint('ajouterPhotoProfil error: $e');
-      _snackError('Impossible d\'ajouter la photo : $e');
+      _snackError('Impossible d\'ajouter la photo : @e'.trParams({'e': e.toString()}));
     } finally {
       isUploadingPhoto.value = false;
     }
@@ -578,7 +577,7 @@ class ControleurProfil extends GetxController {
     }
     photoUrls.removeAt(index);
     await _sauvegarderPhotoUrls();
-    _snackSuccess('Photo supprimée');
+    _snackSuccess('Photo supprimée'.tr);
   }
 
   void reordonnerPhotos(int oldIndex, int newIndex) {
@@ -617,7 +616,7 @@ class ControleurProfil extends GetxController {
       }).eq('id', uid);
     } catch (e) {
       debugPrint('_sauvegarderPhotoUrls error: $e');
-      _snackError('Erreur de synchronisation : $e');
+      _snackError('Erreur de synchronisation : @e'.trParams({'e': e.toString()}));
     }
   }
 
@@ -628,7 +627,7 @@ class ControleurProfil extends GetxController {
       selectedInterests.remove(label);
     } else {
       if (selectedInterests.length >= 3) {
-        _snackError('3 intérêts maximum : retires-en un pour en choisir un autre');
+        _snackError('3 intérêts maximum : retires-en un pour en choisir un autre'.tr);
         return;
       }
       selectedInterests.add(label);
@@ -643,7 +642,7 @@ class ControleurProfil extends GetxController {
       lieux.remove(v);
     } else {
       if (lieux.length >= 3) {
-        _snackError('3 lieux maximum : retires-en un pour en choisir un autre');
+        _snackError('3 lieux maximum : retires-en un pour en choisir un autre'.tr);
         return;
       }
       lieux.add(v);
@@ -695,7 +694,7 @@ class ControleurProfil extends GetxController {
 
   String get birthdateLabel {
     final d = birthdate.value;
-    if (d == null) return 'Non renseignée';
+    if (d == null) return 'Non renseignée'.tr;
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 
@@ -768,11 +767,11 @@ class ControleurProfil extends GetxController {
     if (u == monUsername.value) return true;
     if (!_usernameRegex.hasMatch(u)) {
       _snackError(
-          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)');
+          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)'.tr);
       return false;
     }
     if (usernameDispo.value == false) {
-      _snackError('Ce nom d\'utilisateur est déjà pris');
+      _snackError('Ce nom d\'utilisateur est déjà pris'.tr);
       return false;
     }
     try {
@@ -783,16 +782,16 @@ class ControleurProfil extends GetxController {
       monUsername.value = u;
       usernameController.text = u;
       usernameText.value = u;
-      _snackSuccess('Ton pseudo est maintenant @$u');
+      _snackSuccess('Ton pseudo est maintenant @@u'.trParams({'u': u.toString()}));
       return true;
     } on PostgrestException catch (e) {
       // 23505 : quelqu'un l'a pris entre-temps (contrainte unique)
       _snackError(e.code == '23505'
-          ? 'Ce nom d\'utilisateur est déjà pris'
-          : 'Impossible d\'enregistrer le pseudo');
+          ? 'Ce nom d\'utilisateur est déjà pris'.tr
+          : 'Impossible d\'enregistrer le pseudo'.tr);
       return false;
     } catch (_) {
-      _snackError('Impossible d\'enregistrer le pseudo');
+      _snackError('Impossible d\'enregistrer le pseudo'.tr);
       return false;
     }
   }
@@ -800,11 +799,11 @@ class ControleurProfil extends GetxController {
   Future<void> sauvegarderInfos() async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) {
-      _snackError('Utilisateur non connecté');
+      _snackError('Utilisateur non connecté'.tr);
       return;
     }
     if (nomController.text.trim().isEmpty) {
-      _snackError('Le prénom est obligatoire');
+      _snackError('Le prénom est obligatoire'.tr);
       return;
     }
     final username = usernameController.text.trim().toLowerCase();
@@ -812,11 +811,11 @@ class ControleurProfil extends GetxController {
     if (usernameChange) {
       if (!_usernameRegex.hasMatch(username)) {
         _snackError(
-            'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)');
+            'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)'.tr);
         return;
       }
       if (usernameDispo.value == false) {
-        _snackError('Ce nom d\'utilisateur est déjà pris');
+        _snackError('Ce nom d\'utilisateur est déjà pris'.tr);
         return;
       }
     }
@@ -843,7 +842,7 @@ class ControleurProfil extends GetxController {
       if (tailleStr.isNotEmpty) {
         final t = int.tryParse(tailleStr);
         if (t == null || t < 100 || t > 250) {
-          _snackError('Taille invalide (100–250 cm)');
+          _snackError('Taille invalide (100–250 cm)'.tr);
           isSaving.value = false;
           return;
         }
@@ -855,7 +854,7 @@ class ControleurProfil extends GetxController {
       if (poidsStr.isNotEmpty) {
         final p = int.tryParse(poidsStr);
         if (p == null || p < 30 || p > 300) {
-          _snackError('Poids invalide (30–300 kg)');
+          _snackError('Poids invalide (30–300 kg)'.tr);
           isSaving.value = false;
           return;
         }
@@ -873,19 +872,19 @@ class ControleurProfil extends GetxController {
       // confirmation AVANT la navigation (le snackbar GetX vit dans un
       // overlay indépendant de la pile de navigation, il survit au
       // changement de route).
-      _snackSuccess('Informations mises à jour');
+      _snackSuccess('Informations mises à jour'.tr);
       Get.until((route) => route.settings.name == AppRoutes.main); // ✅
     } on PostgrestException catch (e) {
       // 23505 = contrainte unique : nom pris entre la vérification et l'enregistrement
       if (e.code == '23505') {
         usernameDispo.value = false;
-        _snackError('Ce nom d\'utilisateur est déjà pris');
+        _snackError('Ce nom d\'utilisateur est déjà pris'.tr);
       } else {
-        _snackError('Erreur : ${e.message}');
+        _snackError('Erreur : @message'.trParams({'message': e.message.toString()}));
       }
     } catch (e) {
       _snackError(
-          'Erreur : ${e.toString().substring(0, e.toString().length.clamp(0, 120))}');
+          'Erreur : @p'.trParams({'p': (e.toString().substring(0, e.toString().length.clamp(0, 120))).toString()}));
     } finally {
       isSaving.value = false;
     }
@@ -938,7 +937,7 @@ class ControleurProfil extends GetxController {
       return true;
     } catch (e) {
       debugPrint('definirDispo : $e'); // script SQL 028 absent ?
-      _snackError('Statut non enregistré, vérifie ta connexion');
+      _snackError('Statut non enregistré, vérifie ta connexion'.tr);
       return false;
     }
   }
@@ -955,7 +954,7 @@ class ControleurProfil extends GetxController {
     } catch (e) {
       debugPrint('_enregistrerReglage($colonne) error: $e');
       annuler?.call();
-      _snackError('Réglage non enregistré, vérifie ta connexion');
+      _snackError('Réglage non enregistré, vérifie ta connexion'.tr);
     }
   }
 
@@ -963,17 +962,17 @@ class ControleurProfil extends GetxController {
 
   Future<void> modifierEmail(String newEmail) async {
     if (newEmail.trim().isEmpty || !GetUtils.isEmail(newEmail.trim())) {
-      _snackError('Email invalide');
+      _snackError('Email invalide'.tr);
       return;
     }
     isSaving.value = true;
     try {
       await supabase.auth.updateUser(UserAttributes(email: newEmail.trim()));
-      _snackSuccess('Email mis à jour — vérifie ta boîte mail pour confirmer');
+      _snackSuccess('Email mis à jour — vérifie ta boîte mail pour confirmer'.tr);
       // ✅ Le dialog est déjà fermé par la vue : un 2e Get.back() fermait
       // l'écran Paramètres.
     } catch (e) {
-      _snackError('Impossible de modifier l\'email : $e');
+      _snackError('Impossible de modifier l\'email : @e'.trParams({'e': e.toString()}));
     } finally {
       isSaving.value = false;
     }
@@ -981,15 +980,15 @@ class ControleurProfil extends GetxController {
 
   Future<void> modifierMotDePasse(String newPassword) async {
     if (newPassword.length < 6) {
-      _snackError('Minimum 6 caractères requis');
+      _snackError('Minimum 6 caractères requis'.tr);
       return;
     }
     isSaving.value = true;
     try {
       await supabase.auth.updateUser(UserAttributes(password: newPassword));
-      _snackSuccess('Mot de passe mis à jour');
+      _snackSuccess('Mot de passe mis à jour'.tr);
     } catch (e) {
-      _snackError('Impossible de modifier le mot de passe : $e');
+      _snackError('Impossible de modifier le mot de passe : @e'.trParams({'e': e.toString()}));
     } finally {
       isSaving.value = false;
     }
@@ -1023,10 +1022,10 @@ class ControleurProfil extends GetxController {
         Get.find<HomeController>().removeUser(targetId);
       }
       await chargerProfilsBloques();
-      _snackSuccess('Profil bloqué');
+      _snackSuccess('Profil bloqué'.tr);
       Get.until((route) => route.settings.name == '/main');
     } catch (e) {
-      _snackError('Impossible de bloquer ce profil');
+      _snackError('Impossible de bloquer ce profil'.tr);
     }
   }
 
@@ -1040,15 +1039,15 @@ class ControleurProfil extends GetxController {
         'reason': reason,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-      _snackSuccess('Signalement envoyé. Merci !');
+      _snackSuccess('Signalement envoyé. Merci !'.tr);
     } on PostgrestException catch (e) {
       if (e.code == '23505') {
-        _snackError('Tu as déjà signalé ce profil');
+        _snackError('Tu as déjà signalé ce profil'.tr);
       } else {
-        _snackError('Impossible d\'envoyer le signalement');
+        _snackError('Impossible d\'envoyer le signalement'.tr);
       }
     } catch (e) {
-      _snackError('Impossible d\'envoyer le signalement');
+      _snackError('Impossible d\'envoyer le signalement'.tr);
     }
   }
 
@@ -1097,9 +1096,9 @@ class ControleurProfil extends GetxController {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       blockedProfiles.removeWhere((p) => p['id'] == blockedId);
-      _snackSuccess('Utilisateur débloqué');
+      _snackSuccess('Utilisateur débloqué'.tr);
     } catch (e) {
-      _snackError('Impossible de débloquer : $e');
+      _snackError('Impossible de débloquer : @e'.trParams({'e': e.toString()}));
     }
   }
 
@@ -1109,17 +1108,17 @@ class ControleurProfil extends GetxController {
     final confirmed = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Tout débloquer ?',
+      title: Text('Tout débloquer ?'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary)),
-      content: Text('Tous les profils bloqués seront débloqués.',
+      content: Text('Tous les profils bloqués seront débloqués.'.tr,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
             onTap: () => Get.back(result: true),
@@ -1129,7 +1128,7 @@ class ControleurProfil extends GetxController {
                   gradient: LinearGradient(
                       colors: [AppColors.accent, AppColors.accent2]),
                   borderRadius: BorderRadius.circular(12)),
-              child: const Text('Débloquer tout',
+              child:  Text('Débloquer tout'.tr,
                   style: TextStyle(
                       color: AppColors.surAccent, fontWeight: FontWeight.w700)),
             )),
@@ -1142,9 +1141,9 @@ class ControleurProfil extends GetxController {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
       blockedProfiles.clear();
-      _snackSuccess('Tous les profils débloqués');
+      _snackSuccess('Tous les profils débloqués'.tr);
     } catch (e) {
-      _snackError('Impossible de débloquer');
+      _snackError('Impossible de débloquer'.tr);
     }
   }
 
@@ -1152,7 +1151,7 @@ class ControleurProfil extends GetxController {
 
   void copierNumero(String numero) {
     Clipboard.setData(ClipboardData(text: numero));
-    _snackSuccess('Numéro copié : $numero');
+    _snackSuccess('Numéro copié : @numero'.trParams({'numero': numero.toString()}));
   }
 
   Future<void> ouvrirWhatsApp() async {
@@ -1163,7 +1162,7 @@ class ControleurProfil extends GetxController {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      _snackError('WhatsApp non disponible');
+      _snackError('WhatsApp non disponible'.tr);
     }
   }
 
@@ -1173,18 +1172,18 @@ class ControleurProfil extends GetxController {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Se déconnecter ?',
+      title: Text('Se déconnecter ?'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               fontSize: 18)),
-      content: Text('Tu devras te reconnecter pour accéder à ton compte.',
+      content: Text('Tu devras te reconnecter pour accéder à ton compte.'.tr,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
@@ -1197,7 +1196,7 @@ class ControleurProfil extends GetxController {
                 gradient: LinearGradient(
                     colors: [AppColors.accent, AppColors.accent2]),
                 borderRadius: BorderRadius.circular(12)),
-            child: const Text('Déconnexion',
+            child:  Text('Déconnexion'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
@@ -1210,19 +1209,19 @@ class ControleurProfil extends GetxController {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Supprimer ton compte ?',
+      title: Text('Supprimer ton compte ?'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               fontSize: 18)),
       content: Text(
-          'Cette action est irréversible. Toutes tes données (profil, photos, messages, matchs) seront définitivement supprimées.',
+          'Cette action est irréversible. Toutes tes données (profil, photos, messages, matchs) seront définitivement supprimées.'.tr,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () async {
@@ -1233,7 +1232,7 @@ class ControleurProfil extends GetxController {
               await AuthController.to.signOut();
               Get.offAllNamed('/login');
             } catch (e) {
-              _snackError('Impossible de supprimer le compte : $e');
+              _snackError('Impossible de supprimer le compte : @e'.trParams({'e': e.toString()}));
             } finally {
               isSaving.value = false;
             }
@@ -1243,7 +1242,7 @@ class ControleurProfil extends GetxController {
             decoration: BoxDecoration(
                 color: AppColors.error,
                 borderRadius: BorderRadius.circular(12)),
-            child: const Text('Supprimer définitivement',
+            child:  Text('Supprimer définitivement'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
@@ -1260,7 +1259,7 @@ class ControleurProfil extends GetxController {
       colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 2));
 
-  void _snackError(String msg) => Get.snackbar('Erreur', msg,
+  void _snackError(String msg) => Get.snackbar('Erreur'.tr, msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary,

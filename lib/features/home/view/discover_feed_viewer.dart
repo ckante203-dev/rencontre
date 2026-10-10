@@ -243,10 +243,10 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Text('📸', style: TextStyle(fontSize: 56)),
             const SizedBox(height: 12),
-            const Text('Rien à découvrir pour le moment',
+             Text('Rien à découvrir pour le moment'.tr,
                 style: TextStyle(color: Colors.white54, fontSize: 14)),
             const SizedBox(height: 6),
-            const Text('Sois le premier à partager un moment !',
+             Text('Sois le premier à partager un moment !'.tr,
                 style: TextStyle(color: Colors.white38, fontSize: 12)),
             const SizedBox(height: 22),
             GestureDetector(
@@ -258,10 +258,10 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
                   gradient: CouleursMedia.gradientPink,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                child:  Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.add_rounded, color: Colors.white, size: 18),
                   SizedBox(width: 6),
-                  Text('Publier ma story',
+                  Text('Publier ma story'.tr,
                       style: TextStyle(
                           color: Colors.white, fontWeight: FontWeight.w700)),
                 ]),
@@ -277,7 +277,7 @@ class _DiscoverFeedViewerScreenState extends State<DiscoverFeedViewerScreen> {
                   decoration: BoxDecoration(
                       color: Colors.white12,
                       borderRadius: BorderRadius.circular(20)),
-                  child: const Text('Actualiser',
+                  child:  Text('Actualiser'.tr,
                       style: TextStyle(color: Colors.white70)),
                 ),
               ),
@@ -589,10 +589,10 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
 
   String _ago(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inDays > 0) return 'il y a ${diff.inDays}j';
-    if (diff.inHours > 0) return 'il y a ${diff.inHours}h';
-    if (diff.inMinutes > 0) return 'il y a ${diff.inMinutes}min';
-    return "à l'instant";
+    if (diff.inDays > 0) return 'il y a @inDaysj'.trParams({'inDays': diff.inDays.toString()});
+    if (diff.inHours > 0) return 'il y a @inHoursh'.trParams({'inHours': diff.inHours.toString()});
+    if (diff.inMinutes > 0) return 'il y a @inMinutesmin'.trParams({'inMinutes': diff.inMinutes.toString()});
+    return 'à l\'instant'.tr;
   }
 
   // "il y a 2h · 3.4 km" — distance masquée si l'auteur l'a désactivée.
@@ -660,7 +660,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                       size: 48),
                 ),
         ),
-        const DecoratedBox(
+         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -669,7 +669,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
             ),
           ),
         ),
-        const Align(
+         Align(
           alignment: Alignment.bottomCenter,
           child: SizedBox(
             height: 160,
@@ -874,7 +874,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                         size: 15),
                     const SizedBox(width: 4),
                     Text(
-                      _muted ? 'Muet' : 'Son',
+                      _muted ? 'Muet'.tr : 'Son'.tr,
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,

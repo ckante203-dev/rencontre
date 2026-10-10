@@ -105,18 +105,18 @@ class _EcranVerificationState extends State<EcranVerification> {
     } catch (e) {
       final msg = e.toString();
       _snack(msg.contains('deja_en_attente')
-          ? 'Une demande est déjà en cours de vérification'
+          ? 'Une demande est déjà en cours de vérification'.tr
           : msg.contains('trop_de_demandes')
-              ? 'Trop de demandes aujourd\'hui, réessaie demain'
+              ? 'Trop de demandes aujourd\'hui, réessaie demain'.tr
               : msg.contains('deja_verifie')
-                  ? 'Ton profil est déjà vérifié'
-                  : 'Envoi impossible, vérifie ta connexion');
+                  ? 'Ton profil est déjà vérifié'.tr
+                  : 'Envoi impossible, vérifie ta connexion'.tr);
     } finally {
       if (mounted) setState(() => _envoi = false);
     }
   }
 
-  void _snack(String texte) => Get.snackbar('Vérification', texte,
+  void _snack(String texte) => Get.snackbar('Vérification'.tr, texte,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary);
@@ -129,7 +129,7 @@ class _EcranVerificationState extends State<EcranVerification> {
         backgroundColor: AppColors.bg,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
-        title: Text('Vérifier mon profil',
+        title: Text('Vérifier mon profil'.tr,
             style: TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -150,9 +150,8 @@ class _EcranVerificationState extends State<EcranVerification> {
         const SizedBox(height: 40),
         const Center(child: BadgeVerifie(size: 72)),
         const SizedBox(height: 16),
-        _titre('Ton profil est vérifié'),
-        _texte('Le badge bleu apparaît à côté de ton nom : les autres '
-            'savent que tu es bien la personne de tes photos.'),
+        _titre('Ton profil est vérifié'.tr),
+        _texte('Le badge bleu apparaît à côté de ton nom : les autres savent que tu es bien la personne de tes photos.'.tr),
       ];
     }
     final statut = _demande?['statut'];
@@ -163,9 +162,8 @@ class _EcranVerificationState extends State<EcranVerification> {
             child: Icon(Icons.hourglass_top_rounded,
                 size: 64, color: AppColors.textMuted)),
         const SizedBox(height: 16),
-        _titre('Vérification en cours'),
-        _texte("L'équipe Zamu compare ton selfie à tes photos, en général "
-            'sous 24 h. Tu recevras une notification.'),
+        _titre('Vérification en cours'.tr),
+        _texte('L\'équipe Zamu compare ton selfie à tes photos, en général sous 24 h. Tu recevras une notification.'.tr),
       ];
     }
     return [
@@ -177,18 +175,15 @@ class _EcranVerificationState extends State<EcranVerification> {
             borderRadius: BorderRadius.circular(14),
           ),
           child: Text(
-              'Ta dernière demande a été refusée'
-              '${(_demande?['motif'] ?? '').toString().isNotEmpty ? ' : ${_demande!['motif']}' : '.'}'
-              ' Tu peux réessayer.',
+              'Ta dernière demande a été refusée@p Tu peux réessayer.'.trParams({'p': ((_demande?['motif'] ?? '').toString().isNotEmpty ? ' : ${_demande!['motif']}' : '.').toString()}),
               style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
         ),
         const SizedBox(height: 16),
       ],
       const Center(child: BadgeVerifie(size: 48)),
       const SizedBox(height: 12),
-      _titre('Obtiens le badge « Profil vérifié »'),
-      _texte('Prouve que tu es bien la personne de tes photos. Les profils '
-          'vérifiés inspirent confiance et reçoivent plus de messages.'),
+      _titre('Obtiens le badge « Profil vérifié »'.tr),
+      _texte('Prouve que tu es bien la personne de tes photos. Les profils vérifiés inspirent confiance et reçoivent plus de messages.'.tr),
       const SizedBox(height: 20),
       Container(
         padding: const EdgeInsets.all(16),
@@ -204,7 +199,7 @@ class _EcranVerificationState extends State<EcranVerification> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ta pose',
+                  Text('Ta pose'.tr,
                       style: TextStyle(
                           fontSize: 12, color: AppColors.textMuted)),
                   const SizedBox(height: 2),
@@ -227,20 +222,19 @@ class _EcranVerificationState extends State<EcranVerification> {
         ),
         const SizedBox(height: 16),
         _bouton(
-            _envoi ? 'Envoi…' : 'Envoyer pour vérification',
+            _envoi ? 'Envoi…'.tr : 'Envoyer pour vérification'.tr,
             Icons.send_rounded,
             _envoi ? null : _envoyer,
             plein: true),
         const SizedBox(height: 10),
-        _bouton('Reprendre la photo', Icons.refresh_rounded,
+        _bouton('Reprendre la photo'.tr, Icons.refresh_rounded,
             _envoi ? null : _prendreSelfie),
       ] else
-        _bouton('Prendre mon selfie', Icons.camera_alt_rounded,
+        _bouton('Prendre mon selfie'.tr, Icons.camera_alt_rounded,
             _prendreSelfie,
             plein: true),
       const SizedBox(height: 16),
-      _texte('Ton selfie est vu uniquement par l\'équipe Zamu, jamais '
-          'affiché sur ton profil, et supprimé après la vérification.',
+      _texte('Ton selfie est vu uniquement par l\'équipe Zamu, jamais affiché sur ton profil, et supprimé après la vérification.'.tr,
           petit: true),
     ];
   }

@@ -40,33 +40,33 @@ class _Page {
   const _Page(this.emoji, this.titre, this.texte, this.points);
 }
 
-const _pages = [
-  _Page('📸', 'Des stories façon Snapchat',
-      'Un onglet rien que pour elles : tes proches en haut, le reste à découvrir.', [
+List<_Page> get _pages => [
+  _Page('📸', 'Des stories façon Snapchat'.tr,
+      'Un onglet rien que pour elles : tes proches en haut, le reste à découvrir.'.tr, [
     'Caméra Zamu : stickers, emojis, GIF et textes',
     'Glisse vers le haut pour répondre, vers le bas pour fermer',
     'Réponds avec ❤️ ou 👍 en un appui',
   ]),
-  _Page('📅', 'Les événements',
-      'Sorties, soirées et rencontres près de chez toi, choisies par Zamu.', [
+  _Page('📅', 'Les événements'.tr,
+      'Sorties, soirées et rencontres près de chez toi, choisies par Zamu.'.tr, [
     '« J\'y vais » : vois qui vient',
     '« Je suis sur place » le jour J',
     'Le lendemain : « Tu as croisé… » 👋',
   ]),
-  _Page('👥', 'Amis et groupes',
-      'Garde le lien avec ceux qui comptent.', [
+  _Page('👥', 'Amis et groupes'.tr,
+      'Garde le lien avec ceux qui comptent.'.tr, [
     'Demandes d\'ami et liste d\'amis',
     'Discussions de groupe',
     'Stories réservées à tes amis proches',
   ]),
-  _Page('⚡', 'Le Boost',
-      'Ton profil passe en tête chez les gens autour de toi.', [
+  _Page('⚡', 'Le Boost'.tr,
+      'Ton profil passe en tête chez les gens autour de toi.'.tr, [
     'Badge ⚡ et contour qui attirent les regards',
     'Tes stories passent en premier',
     'Le bilan de tes vues et likes à la fin',
   ]),
-  _Page('💬', 'Un chat plus pro',
-      'Plus rapide, plus clair, à ton style.', [
+  _Page('💬', 'Un chat plus pro'.tr,
+      'Plus rapide, plus clair, à ton style.'.tr, [
     'Glisse un message pour y répondre',
     'Coches de lecture et « vu à 14:32 »',
     'Thèmes de couleur dans ton profil',
@@ -112,7 +112,7 @@ class _EcranNouveautesState extends State<EcranNouveautes> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
             child: Row(children: [
-              Text('Quoi de neuf',
+              Text('Quoi de neuf'.tr,
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -122,7 +122,7 @@ class _EcranNouveautesState extends State<EcranNouveautes> {
               if (!_derniere)
                 TextButton(
                   onPressed: Get.back,
-                  child: Text('Passer',
+                  child: Text('Passer'.tr,
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -168,7 +168,7 @@ class _EcranNouveautesState extends State<EcranNouveautes> {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Text(_derniere ? 'C\'est parti 🚀' : 'Suivant',
+                child: Text(_derniere ? 'C\'est parti 🚀'.tr : 'Suivant'.tr,
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,

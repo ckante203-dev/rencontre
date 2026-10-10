@@ -57,7 +57,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
 
   Future<void> _ajouter() async {
     if (_photos.length >= AlbumService.maxPhotos) {
-      _snack('Ton album est plein (${AlbumService.maxPhotos} photos)');
+      _snack('Ton album est plein (@maxPhotos photos)'.trParams({'maxPhotos': AlbumService.maxPhotos.toString()}));
       return;
     }
     final choix = await ImagePicker().pickImage(
@@ -72,7 +72,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
       await _charger();
     } catch (e) {
       debugPrint('Album : ajout impossible : $e');
-      _snack("Impossible d'ajouter la photo");
+      _snack('Impossible d\'ajouter la photo'.tr);
     } finally {
       if (mounted) setState(() => _envoi = false);
     }
@@ -81,15 +81,15 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
   Future<void> _supprimer(PhotoAlbum photo) async {
     final ok = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
-      title: Text('Supprimer cette photo ?',
+      title: Text('Supprimer cette photo ?'.tr,
           style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: Text('Annuler', style: TextStyle(color: AppColors.textMuted))),
+            child: Text('Annuler'.tr, style: TextStyle(color: AppColors.textMuted))),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child: const Text('Supprimer',
+            child:  Text('Supprimer'.tr,
                 style: TextStyle(color: Color(0xFFFF3B30)))),
       ],
     ));
@@ -98,7 +98,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
       await AlbumService.supprimer(photo);
       setState(() => _photos.removeWhere((p) => p.id == photo.id));
     } catch (_) {
-      _snack('Impossible de supprimer la photo');
+      _snack('Impossible de supprimer la photo'.tr);
     }
   }
 
@@ -106,9 +106,9 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
     try {
       await AlbumService.retirer(p.id);
       setState(() => _acces.removeWhere((a) => a.id == p.id));
-      _snack('${p.nom} ne voit plus ton album');
+      _snack('@nom ne voit plus ton album'.trParams({'nom': p.nom.toString()}));
     } catch (_) {
-      _snack("Impossible de retirer l'accès");
+      _snack('Impossible de retirer l\'accès'.tr);
     }
   }
 
@@ -118,7 +118,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: Text('🔒 Mon album privé',
+        title: Text('🔒 Mon album privé'.tr,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
@@ -131,9 +131,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
                 Text(
-                  'Personne ne voit ces photos. Tu choisis à qui tu les '
-                  'montres, depuis une conversation (menu ⋮ → Partager mon '
-                  'album privé). Les captures d\'écran sont bloquées.',
+                  'Personne ne voit ces photos. Tu choisis à qui tu les montres, depuis une conversation (menu ⋮ → Partager mon album privé). Les captures d\'écran sont bloquées.'.tr,
                   style: TextStyle(
                       fontSize: 13, color: AppColors.textMuted, height: 1.5),
                 ),
@@ -181,14 +179,14 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                     'appui long pour supprimer',
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 const SizedBox(height: 24),
-                Text('Qui peut voir mon album',
+                Text('Qui peut voir mon album'.tr,
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
                 if (_acces.isEmpty)
-                  Text('Personne pour le moment',
+                  Text('Personne pour le moment'.tr,
                       style: TextStyle(fontSize: 13, color: AppColors.textMuted))
                 else
                   for (final p in _acces)
@@ -208,7 +206,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                           style: TextStyle(color: AppColors.textPrimary)),
                       trailing: TextButton(
                         onPressed: () => _retirer(p),
-                        child: const Text('Retirer',
+                        child:  Text('Retirer'.tr,
                             style: TextStyle(color: Color(0xFFFF3B30))),
                       ),
                     ),
@@ -233,7 +231,7 @@ class EcranAlbumDe extends StatelessWidget {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (ownerId == null || uid == null) return;
     final raison =
-        await choisirMotifSignalement('Pourquoi signaler cet album ?');
+        await choisirMotifSignalement('Pourquoi signaler cet album ?'.tr);
     if (raison == null) return;
     try {
       await Supabase.instance.client.from('reports').insert({
@@ -242,9 +240,9 @@ class EcranAlbumDe extends StatelessWidget {
         'reason': 'Album privé : $raison',
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-      _snack("Signalement envoyé. Merci, notre équipe va l'examiner.");
+      _snack('Signalement envoyé. Merci, notre équipe va l\'examiner.'.tr);
     } catch (_) {
-      _snack("Impossible d'envoyer le signalement");
+      _snack('Impossible d\'envoyer le signalement'.tr);
     }
   }
 
@@ -254,7 +252,7 @@ class EcranAlbumDe extends StatelessWidget {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: Text('🔓 Album de $nom',
+        title: Text('🔓 Album de @nom'.trParams({'nom': nom.toString()}),
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
@@ -262,7 +260,7 @@ class EcranAlbumDe extends StatelessWidget {
                 color: AppColors.textPrimary)),
         actions: [
           IconButton(
-            tooltip: 'Signaler',
+            tooltip: 'Signaler'.tr,
             icon: const Icon(Icons.flag_outlined, color: Color(0xFFFF9500)),
             onPressed: _signaler,
           ),
@@ -350,8 +348,7 @@ class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                      '$nom t\'a ouvert son album privé · '
-                      '${photos.length} photo${photos.length > 1 ? 's' : ''}',
+                      '@nom t\'a ouvert son album privé · @length photo@p'.trParams({'length': photos.length.toString(), 'nom': nom.toString(), 'p': (photos.length > 1 ? 's' : '').toString()}),
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,

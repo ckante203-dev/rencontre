@@ -278,12 +278,12 @@ class ChatListController extends GetxController {
         await db.delete().eq('user_id', uid).eq('conversation_id', conv.id);
       }
       _snackInfo(activer
-          ? 'Notifications coupées pour ${conv.userName}'
-          : 'Notifications réactivées pour ${conv.userName}');
+          ? 'Notifications coupées pour @userName'.trParams({'userName': conv.userName.toString()})
+          : 'Notifications réactivées pour @userName'.trParams({'userName': conv.userName.toString()}));
     } catch (e) {
       debugPrint('basculerSourdine error: $e');
       activer ? sourdineIds.remove(conv.id) : sourdineIds.add(conv.id);
-      _snackInfo('Impossible de modifier les notifications');
+      _snackInfo('Impossible de modifier les notifications'.tr);
     }
   }
 
@@ -753,12 +753,12 @@ class ConversationController extends GetxController
         activer ? ids.add(conversation.id) : ids.remove(conversation.id);
       }
       _snackInfo(activer
-          ? 'Notifications coupées pour cette conversation'
-          : 'Notifications réactivées');
+          ? 'Notifications coupées pour cette conversation'.tr
+          : 'Notifications réactivées'.tr);
     } catch (e) {
       debugPrint('basculerSourdine error: $e');
       sourdine.value = !activer;
-      _snackInfo('Impossible de modifier les notifications');
+      _snackInfo('Impossible de modifier les notifications'.tr);
     } finally {
       sourdineEnCours.value = false;
     }
@@ -779,7 +779,7 @@ class ConversationController extends GetxController
     effaceAvant.value = maintenant;
     _box.write(_cleEfface, maintenant.toIso8601String());
     cancelReply();
-    _snackInfo('Historique effacé sur cet appareil');
+    _snackInfo('Historique effacé sur cet appareil'.tr);
   }
 
   /// Signale un message reçu : motif, puis enregistrement dans `reports`
@@ -787,7 +787,7 @@ class ConversationController extends GetxController
   Future<void> signalerMessage(MessageModel msg) async {
     final uid = _service.currentUserId;
     if (uid == null || msg.senderId == uid) return;
-    final raison = await choisirMotifSignalement('Pourquoi signaler ce message ?');
+    final raison = await choisirMotifSignalement('Pourquoi signaler ce message ?'.tr);
     if (raison == null) return;
     final db = Supabase.instance.client.from('reports');
     final base = {
@@ -810,13 +810,13 @@ class ConversationController extends GetxController
         // signalement enregistré sur le profil.
         await db.insert({...base, 'reason': 'Message : $raison (${msg.id})'});
       }
-      _snackInfo("Signalement envoyé. Merci, notre équipe va l'examiner.");
+      _snackInfo('Signalement envoyé. Merci, notre équipe va l\'examiner.'.tr);
     } on PostgrestException catch (e) {
       _snackInfo(e.code == '23505'
-          ? 'Tu as déjà signalé ce message'
-          : "Impossible d'envoyer le signalement");
+          ? 'Tu as déjà signalé ce message'.tr
+          : 'Impossible d\'envoyer le signalement'.tr);
     } catch (_) {
-      _snackInfo("Impossible d'envoyer le signalement");
+      _snackInfo('Impossible d\'envoyer le signalement'.tr);
     }
   }
 
@@ -870,11 +870,11 @@ class ConversationController extends GetxController
   /// À appeler avant chaque envoi : prévient au lieu d'envoyer pour rien.
   bool peutEnvoyer() {
     if (bloque.value) {
-      _snackRefus('Tu ne peux plus écrire à cette personne');
+      _snackRefus('Tu ne peux plus écrire à cette personne'.tr);
       return false;
     }
     if (limiteAtteinte.value) {
-      _snackRefus('Attends sa réponse pour envoyer d\x27autres messages');
+      _snackRefus('Attends sa réponse pour envoyer d\'autres messages'.tr);
       return false;
     }
     return true;
@@ -885,18 +885,18 @@ class ConversationController extends GetxController
     final t = e.toString();
     if (t.contains('limite_sans_reponse')) {
       limiteAtteinte.value = true;
-      _snackRefus('Attends sa réponse pour envoyer d\x27autres messages');
+      _snackRefus('Attends sa réponse pour envoyer d\'autres messages'.tr);
       return true;
     }
     if (t.contains('bloque')) {
       bloque.value = true;
-      _snackRefus('Tu ne peux plus écrire à cette personne');
+      _snackRefus('Tu ne peux plus écrire à cette personne'.tr);
       return true;
     }
     return false;
   }
 
-  void _snackRefus(String texte) => Get.snackbar('Message non envoyé', texte,
+  void _snackRefus(String texte) => Get.snackbar('Message non envoyé'.tr, texte,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary);
@@ -1421,7 +1421,7 @@ class ConversationController extends GetxController
     } catch (_) {
       final i = messages.indexWhere((m) => m.id == msg.id);
       if (i != -1) messages[i] = msg;
-      _snackInfo('Impossible de modifier le message');
+      _snackInfo('Impossible de modifier le message'.tr);
     }
   }
 
@@ -1465,7 +1465,7 @@ class ConversationController extends GetxController
         inputText.value = text;
       }
       if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur', 'Message non envoyé',
+      Get.snackbar('Erreur'.tr, 'Message non envoyé'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -1581,7 +1581,7 @@ class ConversationController extends GetxController
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Supprimer le message ?',
+      title: Text('Supprimer le message ?'.tr,
           style: TextStyle(
               color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
       actionsAlignment: MainAxisAlignment.end,
@@ -1594,7 +1594,7 @@ class ConversationController extends GetxController
                 Get.back();
                 deleteMessage(msg);
               },
-              child: const Text('Supprimer pour tout le monde',
+              child:  Text('Supprimer pour tout le monde'.tr,
                   style: TextStyle(
                       color: Color(0xFFFF3B30), fontWeight: FontWeight.w700))),
         TextButton(
@@ -1602,12 +1602,12 @@ class ConversationController extends GetxController
               Get.back();
               supprimerPourMoi(msg);
             },
-            child: const Text('Supprimer pour moi',
+            child:  Text('Supprimer pour moi'.tr,
                 style: TextStyle(
                     color: Color(0xFFFF3B30), fontWeight: FontWeight.w600))),
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
       ],
     ));
@@ -1625,14 +1625,14 @@ class ConversationController extends GetxController
       if (position >= 0 && !messages.any((m) => m.id == msg.id)) {
         messages.insert(position.clamp(0, messages.length), msg);
       }
-      _snackInfo('Impossible de supprimer le message');
+      _snackInfo('Impossible de supprimer le message'.tr);
     }
   }
 
   void copyMessage(MessageModel msg) {
     if (msg.text != null && msg.text!.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: msg.text!));
-      Get.snackbar('Copié', 'Message copié',
+      Get.snackbar('Copié'.tr, 'Message copié'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary,
@@ -1708,7 +1708,7 @@ class ConversationController extends GetxController
             ),
           _MsgOption(
               icon: Icons.reply_rounded,
-              label: 'Répondre',
+              label: 'Répondre'.tr,
               onTap: () {
                 Get.back();
                 setReplyTo(msg);
@@ -1716,7 +1716,7 @@ class ConversationController extends GetxController
           if (isMine && msg.modifiable)
             _MsgOption(
                 icon: Icons.edit_rounded,
-                label: 'Modifier',
+                label: 'Modifier'.tr,
                 onTap: () {
                   Get.back();
                   commencerModification(msg);
@@ -1724,14 +1724,14 @@ class ConversationController extends GetxController
           if (msg.type == MessageType.text)
             _MsgOption(
                 icon: Icons.copy_rounded,
-                label: 'Copier',
+                label: 'Copier'.tr,
                 onTap: () {
                   Get.back();
                   copyMessage(msg);
                 }),
           _MsgOption(
               icon: Icons.delete_outline_rounded,
-              label: 'Supprimer',
+              label: 'Supprimer'.tr,
               color: const Color(0xFFFF3B30),
               onTap: () {
                 Get.back();
@@ -1740,7 +1740,7 @@ class ConversationController extends GetxController
           if (!isMine)
             _MsgOption(
                 icon: Icons.flag_outlined,
-                label: 'Signaler',
+                label: 'Signaler'.tr,
                 color: const Color(0xFFFF9500),
                 onTap: () {
                   Get.back();
@@ -1808,7 +1808,7 @@ class ConversationController extends GetxController
       );
     } catch (e) {
       if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur', "Impossible d'envoyer le snap",
+      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer le snap'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -1846,7 +1846,7 @@ class ConversationController extends GetxController
       );
     } catch (e) {
       if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur', "Impossible d'envoyer la photo",
+      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer la photo'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -1902,7 +1902,7 @@ class ConversationController extends GetxController
     int? dureeSec;
     try {
       if (video) {
-        etatsEnvoi[tempId] = 'Préparation…';
+        etatsEnvoi[tempId] = 'Préparation…'.tr;
         try {
           vignette = await VideoCompress.getFileThumbnail(chemin,
               quality: 60, position: -1);
@@ -1912,7 +1912,7 @@ class ConversationController extends GetxController
               vignetteUrl: vignette?.path, audioDurationSec: dureeSec));
           // Compression 720p si la vidéo dépasse ~6 Mo
           if ((info.filesize ?? 0) > 6 * 1024 * 1024) {
-            etatsEnvoi[tempId] = 'Compression…';
+            etatsEnvoi[tempId] = 'Compression…'.tr;
             final c = await VideoCompress.compressVideo(chemin,
                 quality: VideoQuality.Res1280x720Quality,
                 deleteOrigin: false,
@@ -1923,7 +1923,7 @@ class ConversationController extends GetxController
           debugPrint('compression vidéo : $e'); // on envoie l'original
         }
       }
-      etatsEnvoi[tempId] = 'Envoi…';
+      etatsEnvoi[tempId] = 'Envoi…'.tr;
       final dossier = ephemere && !video ? 'snaps' : 'photos';
       final base = '$dossier/$uid/${video ? 'video' : 'photo'}_$ts';
       final cheminMedia = '$base.${video ? 'mp4' : 'jpg'}';
@@ -1980,8 +1980,8 @@ class ConversationController extends GetxController
       messages.removeWhere((m) => m.id == tempId);
       if (gererRefusServeur(e)) return;
       Get.snackbar(
-          video ? 'Vidéo non envoyée' : 'Photo non envoyée',
-          'Vérifie ta connexion et réessaie',
+          video ? 'Vidéo non envoyée'.tr : 'Photo non envoyée'.tr,
+          'Vérifie ta connexion et réessaie'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary,
@@ -1993,7 +1993,7 @@ class ConversationController extends GetxController
                 ephemere: ephemere,
                 snapSecondes: snapSecondes,
                 sensible: sensible),
-            child: Text('Réessayer',
+            child: Text('Réessayer'.tr,
                 style: TextStyle(color: AppColors.lien)),
           ));
     } finally {
@@ -2031,7 +2031,7 @@ class ConversationController extends GetxController
     } catch (e) {
       // ✅ Avant : exception non gérée (bouton ➕ Album)
       debugPrint('partagerAlbum error: $e');
-      _snackInfo("Impossible de partager l'album");
+      _snackInfo('Impossible de partager l\'album'.tr);
       return null;
     }
     try {
@@ -2041,7 +2041,7 @@ class ConversationController extends GetxController
         type: 'text',
       );
     } catch (e) {
-      if (!gererRefusServeur(e)) _snackInfo("Impossible d'envoyer le message");
+      if (!gererRefusServeur(e)) _snackInfo('Impossible d\'envoyer le message'.tr);
     }
     return true;
   }
@@ -2071,7 +2071,7 @@ class ConversationController extends GetxController
     } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
       if (gererRefusServeur(e)) return;
-      _snackInfo("Impossible d'envoyer le sticker");
+      _snackInfo('Impossible d\'envoyer le sticker'.tr);
     }
   }
 
@@ -2080,13 +2080,13 @@ class ConversationController extends GetxController
     final micStatus = await Permission.microphone.request();
     if (!micStatus.isGranted) {
       Get.snackbar(
-          'Permission refusée', 'Active le microphone dans les paramètres',
+          'Permission refusée'.tr, 'Active le microphone dans les paramètres'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary,
           mainButton: TextButton(
               onPressed: () => openAppSettings(),
-              child: Text('Paramètres',
+              child: Text('Paramètres'.tr,
                   style: TextStyle(color: AppColors.textPrimary))));
       return;
     }
@@ -2103,7 +2103,7 @@ class ConversationController extends GetxController
       if (!codecFound) {
         await _recorder.closeRecorder();
         _recorderOpen = false;
-        Get.snackbar('Erreur', 'Enregistrement non supporté sur cet appareil',
+        Get.snackbar('Erreur'.tr, 'Enregistrement non supporté sur cet appareil'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -2179,7 +2179,7 @@ class ConversationController extends GetxController
     messages.add(MessageModel(
       id: tempId,
       senderId: uid,
-      text: '🎤 Message vocal',
+      text: '🎤 Message vocal'.tr,
       type: MessageType.audio,
       status: MessageStatus.sending,
       createdAt: DateTime.now(),
@@ -2207,7 +2207,7 @@ class ConversationController extends GetxController
     } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
       if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur', "Impossible d'envoyer le vocal",
+      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer le vocal'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -2258,7 +2258,7 @@ class ConversationController extends GetxController
       );
     } catch (e) {
       if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur', "Impossible d'envoyer la photo",
+      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer la photo'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -2271,7 +2271,7 @@ class ConversationController extends GetxController
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        Get.snackbar('GPS désactivé', 'Active la localisation',
+        Get.snackbar('GPS désactivé'.tr, 'Active la localisation'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -2282,7 +2282,7 @@ class ConversationController extends GetxController
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) return;
       }
-      Get.snackbar('📍', 'Récupération en cours...',
+      Get.snackbar('📍', 'Récupération en cours...'.tr,
           snackPosition: SnackPosition.TOP,
           duration: const Duration(seconds: 1),
           backgroundColor: AppColors.surface2,
@@ -2296,7 +2296,7 @@ class ConversationController extends GetxController
         type: 'location',
       );
     } catch (e) {
-      Get.snackbar('Erreur', 'Impossible de récupérer la position',
+      Get.snackbar('Erreur'.tr, 'Impossible de récupérer la position'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);

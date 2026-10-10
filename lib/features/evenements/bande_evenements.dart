@@ -32,9 +32,9 @@ class BandeEvenements extends StatelessWidget {
             child: Row(children: [
               const Text('📅', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 6),
-              Text('Un événement à venir ? ',
+              Text('Un événement à venir ? '.tr,
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-              Text('Propose-le',
+              Text('Propose-le'.tr,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -53,7 +53,7 @@ class BandeEvenements extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 2, 4, 4),
               child: Row(children: [
-                Text('📅 Événements',
+                Text('📅 Événements'.tr,
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 15,
@@ -64,8 +64,8 @@ class BandeEvenements extends StatelessWidget {
                   onPressed: () => Get.to(() => const EcranTousEvenements()),
                   child: Text(
                       liste.length > _maxBande
-                          ? 'Voir tout (${liste.length}) ›'
-                          : 'Voir tout ›',
+                          ? 'Voir tout (@length) ›'.trParams({'length': liste.length.toString()})
+                          : 'Voir tout ›'.tr,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -121,7 +121,7 @@ class _CarteEvenement extends StatelessWidget {
             Center(
                 child: Text(ev.emoji, style: const TextStyle(fontSize: 54))),
           // Dégradé pour lire le texte
-          const DecoratedBox(
+           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -145,7 +145,7 @@ class _CarteEvenement extends StatelessWidget {
                         : Colors.black54,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(ev.annule ? 'Annulé' : ev.dateCourte,
+              child: Text(ev.annule ? 'Annulé'.tr : ev.dateCourte,
                   style: const TextStyle(
                       color: AppColors.surMedia,
                       fontSize: 10,
@@ -220,7 +220,7 @@ class _CarteProposer extends StatelessWidget {
           Icon(Icons.add_circle_outline_rounded,
               color: AppColors.accent, size: 34),
           const SizedBox(height: 8),
-          Text('Proposer un\névénement 👑',
+          Text('Proposer un\névénement 👑'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 12,

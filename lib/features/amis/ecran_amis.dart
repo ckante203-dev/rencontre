@@ -74,11 +74,11 @@ class _EcranAmisState extends State<EcranAmis> {
           backgroundColor: AppColors.bg,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
-          title: const Text('👥 Amis',
+          title:  Text('👥 Amis'.tr,
               style: TextStyle(fontFamily: 'Syne', fontWeight: FontWeight.w800)),
           actions: [
             IconButton(
-              tooltip: 'Scanner un QR code',
+              tooltip: 'Scanner un QR code'.tr,
               onPressed: () => Get.to(() => const EcranScanQr()),
               icon: const Icon(Icons.qr_code_scanner_rounded),
             ),
@@ -88,11 +88,11 @@ class _EcranAmisState extends State<EcranAmis> {
             labelColor: AppColors.textPrimary,
             unselectedLabelColor: AppColors.textMuted,
             tabs: [
-              Obx(() => Tab(text: 'Mes amis (${_ctrl.amis.length})')),
+              Obx(() => Tab(text: 'Mes amis (@length)'.trParams({'length': _ctrl.amis.length.toString()}))),
               Obx(() => Tab(
                   text: _ctrl.nbDemandes > 0
-                      ? 'Demandes (${_ctrl.nbDemandes})'
-                      : 'Demandes')),
+                      ? 'Demandes (@nbDemandes)'.trParams({'nbDemandes': _ctrl.nbDemandes.toString()})
+                      : 'Demandes'.tr)),
             ],
           ),
         ),
@@ -116,7 +116,7 @@ class _EcranAmisState extends State<EcranAmis> {
             onChanged: _chercher,
             style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Ajouter un ami par son @pseudo…',
+              hintText: 'Ajouter un ami par son @pseudo…'.tr,
               hintStyle: TextStyle(color: AppColors.textMuted),
               prefixIcon:
                   Icon(Icons.person_add_rounded, color: AppColors.textMuted),
@@ -130,7 +130,7 @@ class _EcranAmisState extends State<EcranAmis> {
           ),
         ),
         if (_trouves.isNotEmpty) ...[
-          _titre('RÉSULTATS'),
+          _titre('RÉSULTATS'.tr),
           for (final a in _trouves) _ligne(a, recherche: true),
           const Divider(),
         ],
@@ -138,8 +138,7 @@ class _EcranAmisState extends State<EcranAmis> {
           Padding(
             padding: const EdgeInsets.all(32),
             child: Text(
-                'Ajoute tes amis avec leur @pseudo ou en scannant leur QR '
-                'code (📷 en haut à droite).',
+                'Ajoute tes amis avec leur @pseudo ou en scannant leur QR code (📷 en haut à droite).'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textMuted, height: 1.5)),
           ),
@@ -155,17 +154,17 @@ class _EcranAmisState extends State<EcranAmis> {
       final envoyees = _ctrl.demandesEnvoyees;
       if (recues.isEmpty && envoyees.isEmpty) {
         return Center(
-          child: Text('Aucune demande en attente',
+          child: Text('Aucune demande en attente'.tr,
               style: TextStyle(color: AppColors.textMuted)),
         );
       }
       return ListView(padding: const EdgeInsets.only(bottom: 30), children: [
         if (recues.isNotEmpty) ...[
-          _titre('REÇUES'),
+          _titre('REÇUES'.tr),
           for (final a in recues) _ligne(a),
         ],
         if (envoyees.isNotEmpty) ...[
-          _titre('ENVOYÉES'),
+          _titre('ENVOYÉES'.tr),
           for (final a in envoyees) _ligne(a),
         ],
       ]);
@@ -280,7 +279,7 @@ class _BoutonAmiState extends State<BoutonAmi> {
             color: AppColors.surface, borderRadius: BorderRadius.circular(16)),
         child: ListTile(
           leading: const Icon(Icons.person_remove_rounded, color: Colors.red),
-          title: const Text('Retirer de mes amis',
+          title:  Text('Retirer de mes amis'.tr,
               style: TextStyle(color: Colors.red)),
           onTap: () async {
             Get.back();
@@ -306,8 +305,8 @@ class _BoutonAmiState extends State<BoutonAmi> {
           widget.compact ? 'Privé' : 'Compte privé',
           Icons.lock_rounded,
           false,
-          () => Get.snackbar('🔒 Compte privé',
-              "Cette personne n'accepte pas les demandes d'ami",
+          () => Get.snackbar('🔒 Compte privé'.tr,
+              'Cette personne n\'accepte pas les demandes d\'ami'.tr,
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
               colorText: AppColors.textPrimary)
@@ -373,7 +372,7 @@ class _BoutonAmiState extends State<BoutonAmi> {
       return Row(mainAxisSize: MainAxisSize.min, children: [
         bouton,
         IconButton(
-          tooltip: 'Refuser',
+          tooltip: 'Refuser'.tr,
           onPressed: () async {
             await ctrl.retirer(widget.userId);
             if (mounted) setState(() => _statut = 'aucun');

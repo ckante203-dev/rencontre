@@ -32,7 +32,7 @@ class EcranProfilsBloques extends StatelessWidget {
                 size: 16, color: AppColors.textPrimary),
           ),
         ),
-        title:  Text('Profils bloqués',
+        title:  Text('Profils bloqués'.tr,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontSize: 17,
@@ -52,7 +52,7 @@ class EcranProfilsBloques extends StatelessWidget {
                       border:
                           Border.all(color: AppColors.error.withOpacity(0.3)),
                     ),
-                    child:  Text('Tout débloquer',
+                    child:  Text('Tout débloquer'.tr,
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -87,13 +87,13 @@ class EcranProfilsBloques extends StatelessWidget {
                       size: 36, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 16),
-                 Text('Aucun profil bloqué',
+                 Text('Aucun profil bloqué'.tr,
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
-                 Text('Les profils que tu bloques\napparaîtront ici',
+                 Text('Les profils que tu bloques\napparaîtront ici'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               ],
@@ -107,7 +107,7 @@ class EcranProfilsBloques extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (_, i) {
             final p = ctrl.blockedProfiles[i];
-            final name = p['name'] ?? 'Utilisateur';
+            final name = p['name'] ?? 'Utilisateur'.tr;
             final photo = p['photo_url'] as String?;
             final id = p['id'] as String;
 
@@ -144,7 +144,7 @@ class EcranProfilsBloques extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 2),
-                       Text('Bloqué',
+                       Text('Bloqué'.tr,
                           style:
                               TextStyle(fontSize: 11, color: AppColors.error)),
                     ],
@@ -162,7 +162,7 @@ class EcranProfilsBloques extends StatelessWidget {
                       border:
                           Border.all(color: AppColors.online.withOpacity(0.3)),
                     ),
-                    child:  Text('Débloquer',
+                    child:  Text('Débloquer'.tr,
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -181,19 +181,19 @@ class EcranProfilsBloques extends StatelessWidget {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Débloquer $name ?',
+      title: Text('Débloquer @name ?'.trParams({'name': name.toString()}),
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               fontSize: 17)),
       content: Text(
-          '$name pourra à nouveau voir ton profil et t\'envoyer des messages.',
+          '@name pourra à nouveau voir ton profil et t\'envoyer des messages.'.trParams({'name': name.toString()}),
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Annuler',
+            child: Text('Annuler'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
@@ -205,7 +205,7 @@ class EcranProfilsBloques extends StatelessWidget {
             decoration: BoxDecoration(
                 color: AppColors.online,
                 borderRadius: BorderRadius.circular(12)),
-            child: const Text('Débloquer',
+            child:  Text('Débloquer'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),

@@ -92,8 +92,8 @@ class _ChoixMembresState extends State<ChoixMembres> {
     setState(() {
       if (_choisis.remove(c.id) == null) {
         if (_choisis.length >= widget.maximum) {
-          Get.snackbar('Groupe complet',
-              '${widget.maximum + 1} membres maximum dans un groupe',
+          Get.snackbar('Groupe complet'.tr,
+              '@p membres maximum dans un groupe'.trParams({'p': (widget.maximum + 1).toString()}),
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
               colorText: AppColors.textPrimary);
@@ -144,7 +144,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         title: Text(
-            widget.nouveauGroupe ? 'Nouveau groupe' : 'Ajouter des membres',
+            widget.nouveauGroupe ? 'Nouveau groupe'.tr : 'Ajouter des membres'.tr,
             style: const TextStyle(
                 fontFamily: 'Syne', fontWeight: FontWeight.w800)),
       ),
@@ -161,8 +161,8 @@ class _ChoixMembresState extends State<ChoixMembres> {
                   : const Icon(Icons.check_rounded, color: AppColors.surAccent),
               label: Text(
                   widget.nouveauGroupe
-                      ? 'Créer (${_choisis.length + 1})'
-                      : 'Ajouter (${_choisis.length})',
+                      ? 'Créer (@p)'.trParams({'p': (_choisis.length + 1).toString()})
+                      : 'Ajouter (@length)'.trParams({'length': _choisis.length.toString()}),
                   style: const TextStyle(
                       color: AppColors.surAccent, fontWeight: FontWeight.w700)),
             )
@@ -177,7 +177,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
               textCapitalization: TextCapitalization.sentences,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
               decoration: InputDecoration(
-                hintText: 'Nom du groupe (ex : Les amis de Cocody)',
+                hintText: 'Nom du groupe (ex : Les amis de Cocody)'.tr,
                 hintStyle: TextStyle(color: AppColors.textMuted),
                 counterText: '',
                 prefixIcon: Icon(Icons.group_rounded, color: AppColors.textMuted),
@@ -239,7 +239,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
             onChanged: _chercher,
             style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Rechercher un nom ou un @pseudo…',
+              hintText: 'Rechercher un nom ou un @pseudo…'.tr,
               hintStyle: TextStyle(color: AppColors.textMuted),
               prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted),
               filled: true,
@@ -257,7 +257,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Text(
-                        'Cherche tes amis par leur @pseudo pour les ajouter',
+                        'Cherche tes amis par leur @pseudo pour les ajouter'.tr,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppColors.textMuted)),
                   ),
@@ -267,7 +267,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
                   if (autres.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                      child: Text('PROFILS ZAMU',
+                      child: Text('PROFILS ZAMU'.tr,
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,

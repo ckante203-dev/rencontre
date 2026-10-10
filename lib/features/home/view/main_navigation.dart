@@ -209,7 +209,7 @@ class _BarreNavigation extends StatelessWidget {
         child: Row(children: [
           _NavItem(
             icon: Icons.grid_view_rounded,
-            label: 'Accueil',
+            label: 'Accueil'.tr,
             index: 0,
             currentIndex: currentIndex,
             onTap: onTap,
@@ -221,7 +221,7 @@ class _BarreNavigation extends StatelessWidget {
           ),
           _NavItem(
             icon: Icons.favorite_rounded,
-            label: 'Likes',
+            label: 'Likes'.tr,
             index: 2,
             currentIndex: currentIndex,
             onTap: onTap,

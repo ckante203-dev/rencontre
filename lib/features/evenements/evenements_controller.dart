@@ -160,7 +160,7 @@ class EvenementsController extends GetxController {
     } catch (e) {
       debugPrint('participation : $e');
       _remplacer(ev);
-      _snack('Oups', 'Impossible d\'enregistrer, vérifie ta connexion');
+      _snack('Oups'.tr, 'Impossible d\'enregistrer, vérifie ta connexion'.tr);
       return ev;
     }
   }
@@ -175,8 +175,8 @@ class EvenementsController extends GetxController {
       }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
-        _snack('Position nécessaire',
-            'Autorise la localisation pour confirmer que tu es sur place');
+        _snack('Position nécessaire'.tr,
+            'Autorise la localisation pour confirmer que tu es sur place'.tr);
         return ev;
       }
       pos = await Geolocator.getCurrentPosition(
@@ -206,21 +206,21 @@ class EvenementsController extends GetxController {
           );
           _remplacer(maj);
           _chargerMemeEvenement();
-          _snack('📍 Tu es sur place !',
-              'Les autres participants le voient maintenant');
+          _snack('📍 Tu es sur place !'.tr,
+              'Les autres participants le voient maintenant'.tr);
           return maj;
         case 'trop_loin':
-          _snack('Pas encore sur place',
-              'Il faut être à moins de 1,5 km du lieu de l\'événement');
+          _snack('Pas encore sur place'.tr,
+              'Il faut être à moins de 1,5 km du lieu de l\'événement'.tr);
         case 'pas_en_cours':
-          _snack('Pas encore commencé',
-              'Possible à partir d\'1 h avant le début');
+          _snack('Pas encore commencé'.tr,
+              'Possible à partir d\'1 h avant le début'.tr);
         default:
-          _snack('Oups', 'Événement introuvable');
+          _snack('Oups'.tr, 'Événement introuvable'.tr);
       }
     } catch (e) {
       debugPrint('marquer_sur_place : $e');
-      _snack('Oups', 'Impossible de confirmer, vérifie ta connexion');
+      _snack('Oups'.tr, 'Impossible de confirmer, vérifie ta connexion'.tr);
     }
     return ev;
   }
@@ -272,7 +272,7 @@ class EvenementsController extends GetxController {
       }
     }
     if (ev == null) {
-      _snack('Événement terminé', 'Cet événement n\'est plus disponible');
+      _snack('Événement terminé'.tr, 'Cet événement n\'est plus disponible'.tr);
       return;
     }
     final aOuvrir = ev;
@@ -312,14 +312,14 @@ class EvenementsController extends GetxController {
     } catch (e) {
       final m = e.toString();
       _snack(
-          'Proposition non envoyée',
+          'Proposition non envoyée'.tr,
           m.contains('premium_requis')
-              ? 'Proposer un événement est réservé aux membres Premium 👑'
+              ? 'Proposer un événement est réservé aux membres Premium 👑'.tr
               : m.contains('trop_de_propositions')
-              ? 'Tu as déjà 3 propositions en attente de validation'
+              ? 'Tu as déjà 3 propositions en attente de validation'.tr
               : m.contains('date_passee')
-                  ? 'La date doit être dans le futur'
-                  : 'Vérifie ta connexion et réessaie');
+                  ? 'La date doit être dans le futur'.tr
+                  : 'Vérifie ta connexion et réessaie'.tr);
       return false;
     }
   }

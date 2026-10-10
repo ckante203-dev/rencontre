@@ -37,18 +37,17 @@ class ListeGroupes extends StatelessWidget {
                 child:
                     const Icon(Icons.group_add_rounded, color: AppColors.surAccent),
               ),
-              title: Text('Nouveau groupe',
+              title: Text('Nouveau groupe'.tr,
                   style: TextStyle(
                       fontWeight: FontWeight.w700, color: AppColors.lien)),
-              subtitle: Text('Discute avec plusieurs amis à la fois',
+              subtitle: Text('Discute avec plusieurs amis à la fois'.tr,
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             ),
             if (liste.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                    'Aucun groupe pour l\'instant.\nCrée-en un, ou dis « J\'y vais » '
-                    'à un événement pour rejoindre sa discussion.',
+                    'Aucun groupe pour l\'instant.\nCrée-en un, ou dis « J\'y vais » à un événement pour rejoindre sa discussion.'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.textMuted, height: 1.5)),
               ),
@@ -80,7 +79,7 @@ class _TuileGroupe extends StatelessWidget {
     if (ecart == 0) {
       return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     }
-    if (ecart == 1) return 'Hier';
+    if (ecart == 1) return 'Hier'.tr;
     if (ecart < 7) return const ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][d.weekday - 1];
     return '${d.day}/${d.month}';
   }

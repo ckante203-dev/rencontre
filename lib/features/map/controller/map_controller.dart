@@ -79,7 +79,7 @@ class MapController extends GetxController {
     final until = mapInvisibleUntil.value;
     if (until == null) return '';
     final diff = until.difference(DateTime.now());
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min';
+    if (diff.inMinutes < 60) return '@inMinutes min'.trParams({'inMinutes': diff.inMinutes.toString()});
     return '${diff.inHours}h';
   }
 
@@ -197,11 +197,11 @@ class MapController extends GetxController {
       mapVisible.value = visible;
       mapInvisibleUntil.value = until;
       _snackSuccess(duree == null
-          ? 'Tu es invisible sur la carte'
-          : 'Invisible pendant ${_formatDuree(duree)}');
+          ? 'Tu es invisible sur la carte'.tr
+          : 'Invisible pendant @p'.trParams({'p': (_formatDuree(duree)).toString()}));
     } catch (e) {
       debugPrint('setInvisible error: $e');
-      _snackError('Impossible de modifier la visibilité');
+      _snackError('Impossible de modifier la visibilité'.tr);
     } finally {
       isSavingPrefs.value = false;
     }
@@ -219,10 +219,10 @@ class MapController extends GetxController {
       }).eq('id', uid);
       mapVisible.value = true;
       mapInvisibleUntil.value = null;
-      _snackSuccess('Tu es visible sur la carte');
+      _snackSuccess('Tu es visible sur la carte'.tr);
     } catch (e) {
       debugPrint('setVisible error: $e');
-      _snackError('Impossible de modifier la visibilité');
+      _snackError('Impossible de modifier la visibilité'.tr);
     } finally {
       isSavingPrefs.value = false;
     }
@@ -248,10 +248,10 @@ class MapController extends GetxController {
       isGhost.value = newGhost;
       ghostUntil.value = until;
       _snackSuccess(
-          newGhost ? '👻 Mode fantôme activé' : '👻 Mode fantôme désactivé');
+          newGhost ? '👻 Mode fantôme activé'.tr : '👻 Mode fantôme désactivé'.tr);
     } catch (e) {
       debugPrint('toggleGhost error: $e');
-      _snackError('Impossible de modifier le mode fantôme');
+      _snackError('Impossible de modifier le mode fantôme'.tr);
     } finally {
       isSavingPrefs.value = false;
     }
@@ -267,10 +267,10 @@ class MapController extends GetxController {
         'updated_at': DateTime.now().toUtc().toIso8601String(), // ✅ UTC
       }).eq('id', uid);
       positionPrecision.value = precision;
-      _snackSuccess('Précision mise à jour');
+      _snackSuccess('Précision mise à jour'.tr);
     } catch (e) {
       debugPrint('setPrecision error: $e');
-      _snackError('Impossible de modifier la précision');
+      _snackError('Impossible de modifier la précision'.tr);
     } finally {
       isSavingPrefs.value = false;
     }
@@ -280,20 +280,20 @@ class MapController extends GetxController {
     Get.dialog(AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Mode Fantôme 👻',
+      title: Text('Mode Fantôme 👻'.tr,
           style: TextStyle(
               fontFamily: 'Syne',
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               fontSize: 18)),
       content: Text(
-          'Le mode fantôme est une fonctionnalité Premium.\n\nTu peux voir tous les profils sur la carte sans que personne ne te voit.',
+          'Le mode fantôme est une fonctionnalité Premium.\n\nTu peux voir tous les profils sur la carte sans que personne ne te voit.'.tr,
           style:
               TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.5)),
       actions: [
         TextButton(
             onPressed: () => Get.back(),
-            child: Text('Fermer',
+            child: Text('Fermer'.tr,
                 style: TextStyle(color: AppColors.textMuted))),
         GestureDetector(
           onTap: () {
@@ -307,7 +307,7 @@ class MapController extends GetxController {
                   colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Passer Premium 👑',
+            child:  Text('Passer Premium 👑'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
@@ -564,9 +564,9 @@ class MapController extends GetxController {
   void setFilterStatus(String status) => filterStatus.value = status;
 
   String _formatDuree(Duration d) {
-    if (d.inHours >= 24) return '${d.inDays} jour${d.inDays > 1 ? 's' : ''}';
+    if (d.inHours >= 24) return '@inDays jour@p'.trParams({'inDays': d.inDays.toString(), 'p': (d.inDays > 1 ? 's' : '').toString()});
     if (d.inMinutes >= 60) return '${d.inHours}h';
-    return '${d.inMinutes} min';
+    return '@inMinutes min'.trParams({'inMinutes': d.inMinutes.toString()});
   }
 
   void _snackSuccess(String msg) => Get.snackbar('✅ $msg', '',
@@ -575,7 +575,7 @@ class MapController extends GetxController {
       colorText: AppColors.textPrimary,
       duration: const Duration(seconds: 2));
 
-  void _snackError(String msg) => Get.snackbar('Erreur', msg,
+  void _snackError(String msg) => Get.snackbar('Erreur'.tr, msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary,

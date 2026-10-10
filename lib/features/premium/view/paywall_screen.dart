@@ -115,10 +115,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         icone: Icons.workspace_premium_rounded,
                       ),
                     ),
-                    Text('Zamu Premium',
+                    Text('Zamu Premium'.tr,
                         textAlign: TextAlign.center, style: _T.titre()),
                     const SizedBox(height: 4),
-                    Text('Débloque tout le potentiel de Zamu',
+                    Text('Débloque tout le potentiel de Zamu'.tr,
                         textAlign: TextAlign.center, style: _T.sousTitre()),
                     const SizedBox(height: 24),
 
@@ -126,43 +126,43 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     _BenefitTile(
                       icon: Icons.remove_red_eye_rounded,
                       iconColor: _icone(const Color(0xFF1D8FE1), AppColors.accent),
-                      title: 'Vois qui t\'a vu',
+                      title: 'Vois qui t\'a vu'.tr,
                       subtitle:
-                          'Découvre l\'identité de toutes les personnes qui ont consulté ton profil',
+                          'Découvre l\'identité de toutes les personnes qui ont consulté ton profil'.tr,
                     ),
                     _BenefitTile(
                       icon: Icons.favorite_rounded,
                       iconColor: _icone(const Color(0xFFE8508E), AppColors.accent),
-                      title: 'Vois qui t\'a liké',
+                      title: 'Vois qui t\'a liké'.tr,
                       subtitle:
-                          'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi',
+                          'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi'.tr,
                     ),
                     _BenefitTile(
                       icon: Icons.people_alt_rounded,
                       iconColor: _icone(const Color(0xFF22A55B), AppColors.accent2),
-                      title: 'Beaucoup plus de profils',
+                      title: 'Beaucoup plus de profils'.tr,
                       subtitle:
-                          'Accède à un nombre de profils bien plus large que la version gratuite',
+                          'Accède à un nombre de profils bien plus large que la version gratuite'.tr,
                     ),
                     _BenefitTile(
                       icon: Icons.location_city_rounded,
                       iconColor: _icone(const Color(0xFF8B5CF6), AppColors.accent2),
-                      title: 'Explore une autre ville',
+                      title: 'Explore une autre ville'.tr,
                       subtitle:
-                          'Découvre les profils d\'Abidjan, Bouaké ou ailleurs avant d\'y aller',
+                          'Découvre les profils d\'Abidjan, Bouaké ou ailleurs avant d\'y aller'.tr,
                     ),
                     _BenefitTile(
                       icon: Icons.bolt_rounded,
                       iconColor: const Color(0xFFFFA500),
-                      title: '1 Boost offert chaque mois',
+                      title: '1 Boost offert chaque mois'.tr,
                       subtitle:
-                          'Ton profil passe en tête de l\'Accueil pendant 1 heure',
+                          'Ton profil passe en tête de l\'Accueil pendant 1 heure'.tr,
                     ),
                     _BenefitTile(
                       icon: Icons.visibility_off_rounded,
                       iconColor: _icone(const Color(0xFF64748B), AppColors.accent),
-                      title: 'Mode fantôme sur la carte',
-                      subtitle: 'Vois les autres sans apparaître toi-même',
+                      title: 'Mode fantôme sur la carte'.tr,
+                      subtitle: 'Vois les autres sans apparaître toi-même'.tr,
                     ),
                     // Seulement si les propositions sont ouvertes (sinon on
                     // promettrait un avantage qui n'existe pas)
@@ -170,15 +170,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       _BenefitTile(
                         icon: Icons.event_rounded,
                         iconColor: _icone(const Color(0xFF0EA5A4), AppColors.accent2),
-                        title: 'Propose tes événements',
+                        title: 'Propose tes événements'.tr,
                         subtitle:
-                            'Soirées, sorties, rencontres : crée ton événement',
+                            'Soirées, sorties, rencontres : crée ton événement'.tr,
                       ),
 
                     const SizedBox(height: 20),
 
                     // ─── Formules ────────────────────────────────
-                    Text('CHOISIS TA FORMULE', style: _T.section()),
+                    Text('CHOISIS TA FORMULE'.tr, style: _T.section()),
                     const SizedBox(height: 12),
                     ...packages.map((pkg) => _FormuleTile(
                           package: pkg,
@@ -200,7 +200,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                 }
                               },
                         child: Text(
-                          'Restaurer mes achats',
+                          'Restaurer mes achats'.tr,
                           style:
                               _T.detail().copyWith(fontWeight: FontWeight.w600),
                         ),
@@ -261,14 +261,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2.5, color: AppColors.surAccent))
                         : Text(
-                            'Continuer · ${RevenueCatService.libellePrix(choisie.storeProduct)}',
+                            'Continuer · @p'.trParams({'p': (RevenueCatService.libellePrix(choisie.storeProduct)).toString()}),
                             style: _T.ligne().copyWith(color: AppColors.surAccent),
                           ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Renouvellement automatique. Résiliable à tout moment dans Google Play.',
+                  'Renouvellement automatique. Résiliable à tout moment dans Google Play.'.tr,
                   textAlign: TextAlign.center,
                   style: _T.detail().copyWith(fontSize: 11),
                 ),
@@ -309,19 +309,19 @@ class _FormuleTile extends StatelessWidget {
     switch (iso) {
       case 'P1W':
       case 'P7D':
-        return '1 semaine';
+        return '1 semaine'.tr;
       case 'P1M':
       case 'P4W':
-        return '1 mois';
+        return '1 mois'.tr;
       case 'P3M':
-        return '3 mois';
+        return '3 mois'.tr;
       case 'P6M':
-        return '6 mois';
+        return '6 mois'.tr;
       case 'P1Y':
       case 'P12M':
-        return '12 mois';
+        return '12 mois'.tr;
       default:
-        return 'Premium';
+        return 'Premium'.tr;
     }
   }
 
@@ -331,7 +331,7 @@ class _FormuleTile extends StatelessWidget {
         .round()
         .toString()
         .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ' ');
-    return devise == 'XOF' ? '$n FCFA' : '$n $devise';
+    return devise == 'XOF' ? '@n FCFA'.trParams({'n': n.toString()}) : '$n $devise';
   }
 
   @override
@@ -402,7 +402,7 @@ class _FormuleTile extends StatelessWidget {
                   if (parSemaine != null && jours > 7) ...[
                     const SizedBox(height: 3),
                     Text(
-                      'soit ${_montant(parSemaine, p.currencyCode)} / semaine',
+                      'soit @p / semaine'.trParams({'p': (_montant(parSemaine, p.currencyCode)).toString()}),
                       style: _T.detail(),
                     ),
                   ],

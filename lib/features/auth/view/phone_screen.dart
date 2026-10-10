@@ -97,7 +97,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                       borderRadius: BorderRadius.circular(2))),
                Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Text('Choisir un pays',
+                child: Text('Choisir un pays'.tr,
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -110,7 +110,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                   controller: search,
                   style:  TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'Rechercher...',
+                    hintText: 'Rechercher...'.tr,
                     hintStyle:  TextStyle(color: AppColors.textMuted),
                     prefixIcon:  Icon(Icons.search_rounded,
                         color: AppColors.textMuted),
@@ -196,7 +196,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 const Text('📱', style: TextStyle(fontSize: 48)),
                 const SizedBox(height: 16),
 
-                Text('Connexion par\ntéléphone',
+                Text('Connexion par\ntéléphone'.tr,
                       style: TextStyle(
                           fontFamily: 'Syne',
                           fontSize: 28,
@@ -205,7 +205,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           height: 1.2)),
                 const SizedBox(height: 8),
                  Text(
-                  'Connecte-toi avec ton numéro de téléphone via SMS.',
+                  'Connecte-toi avec ton numéro de téléphone via SMS.'.tr,
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.5),
                 ),
@@ -250,7 +250,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           style:  TextStyle(
                               fontSize: 15, color: AppColors.textPrimary),
                           decoration:  InputDecoration(
-                            hintText: 'Numéro de téléphone',
+                            hintText: 'Numéro de téléphone'.tr,
                             hintStyle: TextStyle(color: AppColors.textMuted),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(
@@ -289,7 +289,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Connexion SMS bientôt disponible',
+                            'Connexion SMS bientôt disponible'.tr,
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -297,7 +297,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Cette fonctionnalité arrive prochainement. Utilise Email ou Google pour te connecter.',
+                            'Cette fonctionnalité arrive prochainement. Utilise Email ou Google pour te connecter.'.tr,
                             style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
@@ -313,7 +313,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 // Bouton Email
                 _ActionButton(
                   icon: Icons.email_outlined,
-                  label: 'Continuer avec Email',
+                  label: 'Continuer avec Email'.tr,
                   onTap: () => Get.toNamed('/login'),
                 ),
                 const SizedBox(height: 12),
@@ -321,7 +321,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 // Bouton Inscription
                 _ActionButton(
                   icon: Icons.person_add_outlined,
-                  label: 'Créer un compte',
+                  label: 'Créer un compte'.tr,
                   onTap: () => Get.toNamed('/signup'),
                   isPrimary: true,
                 ),

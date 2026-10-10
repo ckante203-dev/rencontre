@@ -41,7 +41,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         elevation: 0,
-        title: Text('Notifications',
+        title: Text('Notifications'.tr,
             style: TextStyle(
                 fontFamily: 'Syne',
                 fontWeight: FontWeight.w800,
@@ -50,7 +50,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Obx(() => ctrl.unreadCount.value > 0
               ? TextButton(
                   onPressed: ctrl.markAllAsRead,
-                  child: Text('Tout marquer lu',
+                  child: Text('Tout marquer lu'.tr,
                       style: TextStyle(color: AppColors.textPrimary, fontSize: 13)))
               : const SizedBox.shrink()),
         ],
@@ -68,10 +68,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Icon(Icons.notifications_none_rounded,
                     size: 56, color: AppColors.textMuted),
                 const SizedBox(height: 12),
-                Text('Aucune notification pour le moment',
+                Text('Aucune notification pour le moment'.tr,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 const SizedBox(height: 4),
-                Text('Likes, matchs, amis et stories de tes favoris',
+                Text('Likes, matchs, amis et stories de tes favoris'.tr,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
               ],
             ),
@@ -258,12 +258,12 @@ class _NotifTile extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
                   children: [
                     TextSpan(
-                        text: _anonyme ? 'Quelqu\'un ' : '${notif.actorName} ',
+                        text: _anonyme ? 'Quelqu\'un '.tr : '${notif.actorName} ',
                         style: const TextStyle(fontWeight: FontWeight.w700)),
                     TextSpan(text: notif.message),
                     if (_anonyme)
                       TextSpan(
-                          text: ' · Découvre qui avec Premium',
+                          text: ' · Découvre qui avec Premium'.tr,
                           style: TextStyle(color: AppColors.textMuted)),
                   ],
                 ),

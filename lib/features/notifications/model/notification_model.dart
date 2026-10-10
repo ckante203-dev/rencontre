@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 class NotificationModel {
   final String id;
   final String userId;
@@ -26,27 +27,27 @@ class NotificationModel {
   String get message {
     switch (type) {
       case 'like':
-        return 't\'a liké ❤️';
+        return 't\'a liké ❤️'.tr;
       case 'match':
-        return 'et toi, c\'est un match 💘';
+        return 'et toi, c\'est un match 💘'.tr;
       case 'favori_story':
-        return 'a publié une story ⭐';
+        return 'a publié une story ⭐'.tr;
       case 'album':
-        return 't\'a ouvert son album privé 🔓';
+        return 't\'a ouvert son album privé 🔓'.tr;
       case 'ami_demande':
-        return 'veut être ton ami 👥';
+        return 'veut être ton ami 👥'.tr;
       case 'ami_accepte':
-        return 'a accepté ta demande d\'ami 👥';
+        return 'a accepté ta demande d\'ami 👥'.tr;
       case 'new_story':
-        return 'a publié une nouvelle story';
+        return 'a publié une nouvelle story'.tr;
       case 'like_story':
-        return 'a aimé ta story';
+        return 'a aimé ta story'.tr;
       case 'new_annonce':
-        return 'a publié une nouvelle annonce';
+        return 'a publié une nouvelle annonce'.tr;
       case 'annonce_reaction':
         return preview != null
-            ? 'a réagi $preview à ton annonce'
-            : 'a réagi à ton annonce';
+            ? 'a réagi @preview à ton annonce'.trParams({'preview': preview.toString()})
+            : 'a réagi à ton annonce'.tr;
       default:
         return '';
     }

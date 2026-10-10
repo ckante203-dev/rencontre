@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── HEADER : Nom ──
                 Text(
-                    'Zamu',
+                    'Zamu'.tr,
                     style: TextStyle(
                       fontFamily: 'Syne',
                       fontSize: 28,

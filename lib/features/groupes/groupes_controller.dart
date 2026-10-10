@@ -95,7 +95,7 @@ class GroupesController extends GetxController {
       return id;
     } catch (e) {
       debugPrint('creer_groupe : $e');
-      Get.snackbar('Groupe non créé', 'Vérifie ta connexion et réessaie',
+      Get.snackbar('Groupe non créé'.tr, 'Vérifie ta connexion et réessaie'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -111,8 +111,8 @@ class GroupesController extends GetxController {
       g = groupes.firstWhereOrNull((x) => x.id == id);
     }
     if (g == null) {
-      Get.snackbar('Groupe introuvable',
-          'Ce groupe n\'existe plus ou tu n\'en fais plus partie',
+      Get.snackbar('Groupe introuvable'.tr,
+          'Ce groupe n\'existe plus ou tu n\'en fais plus partie'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -127,8 +127,8 @@ class GroupesController extends GetxController {
       final id = await supabase.rpc('groupe_evenement',
           params: {'p_ev': evenementId}) as String?;
       if (id == null) {
-        Get.snackbar('Discussion indisponible',
-            'Indique « J\'y vais » ou « Intéressé » pour rejoindre la discussion',
+        Get.snackbar('Discussion indisponible'.tr,
+            'Indique « J\'y vais » ou « Intéressé » pour rejoindre la discussion'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);

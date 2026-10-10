@@ -216,7 +216,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
     } catch (e) {
       debugPrint('envoi groupe : $e');
       _saisie.text = texte;
-      _erreur('Message non envoyé, vérifie ta connexion');
+      _erreur('Message non envoyé, vérifie ta connexion'.tr);
     } finally {
       if (mounted) setState(() => _envoi = false);
     }
@@ -245,7 +245,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
       }
     } catch (e) {
       debugPrint('photo groupe : $e');
-      _erreur('Photo non envoyée, vérifie ta connexion');
+      _erreur('Photo non envoyée, vérifie ta connexion'.tr);
     } finally {
       if (mounted) setState(() => _envoi = false);
     }
@@ -258,11 +258,11 @@ class _EcranGroupeState extends State<EcranGroupe> {
       await _inserer({'type': 'giphy', 'contenu': c.url});
     } catch (e) {
       debugPrint('gif groupe : $e');
-      _erreur('GIF non envoyé, vérifie ta connexion');
+      _erreur('GIF non envoyé, vérifie ta connexion'.tr);
     }
   }
 
-  void _erreur(String msg) => Get.snackbar('Oups', msg,
+  void _erreur(String msg) => Get.snackbar('Oups'.tr, msg,
       snackPosition: SnackPosition.TOP,
       backgroundColor: AppColors.surface,
       colorText: AppColors.textPrimary);
@@ -281,7 +281,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
             if (m.type == 'texte')
               ListTile(
                 leading: Icon(Icons.copy_rounded, color: AppColors.textPrimary),
-                title: Text('Copier',
+                title: Text('Copier'.tr,
                     style: TextStyle(color: AppColors.textPrimary)),
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: m.contenu ?? ''));
@@ -291,7 +291,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
             if (m.senderId != null && !moi)
               ListTile(
                 leading: Icon(Icons.person_rounded, color: AppColors.textPrimary),
-                title: Text('Voir le profil',
+                title: Text('Voir le profil'.tr,
                     style: TextStyle(color: AppColors.textPrimary)),
                 onTap: () {
                   Get.back();
@@ -301,7 +301,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
             if (m.senderId != null && !moi) ...[
               ListTile(
                 leading: Icon(Icons.flag_rounded, color: AppColors.textPrimary),
-                title: Text('Signaler ce message',
+                title: Text('Signaler ce message'.tr,
                     style: TextStyle(color: AppColors.textPrimary)),
                 onTap: () {
                   Get.back();
@@ -311,7 +311,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
               ListTile(
                 leading: const Icon(Icons.block_rounded, color: Colors.red),
                 title: Text(
-                    'Bloquer ${_membres[m.senderId]?.nom ?? 'cette personne'}',
+                    'Bloquer @p'.trParams({'p': (_membres[m.senderId]?.nom ?? 'cette personne').toString()}),
                     style: const TextStyle(color: Colors.red)),
                 onTap: () {
                   Get.back();
@@ -322,7 +322,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
             if (moi || admin)
               ListTile(
                 leading: const Icon(Icons.delete_rounded, color: Colors.red),
-                title: const Text('Supprimer pour tout le monde',
+                title:  Text('Supprimer pour tout le monde'.tr,
                     style: TextStyle(color: Colors.red)),
                 onTap: () async {
                   Get.back();
@@ -335,7 +335,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                       setState(() => _messages.removeWhere((x) => x.id == m.id));
                     }
                   } catch (_) {
-                    _erreur('Suppression impossible');
+                    _erreur('Suppression impossible'.tr);
                   }
                 },
               ),
@@ -347,7 +347,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
 
   Future<void> _signaler(MessageGroupe m) async {
     final raison =
-        await choisirMotifSignalement('Pourquoi signaler ce message ?');
+        await choisirMotifSignalement('Pourquoi signaler ce message ?'.tr);
     if (raison == null) return;
     final contenu = m.type == 'image'
         ? '[photo] ${m.mediaPath ?? ''}'
@@ -360,13 +360,13 @@ class _EcranGroupeState extends State<EcranGroupe> {
             '${contenu.length > 300 ? contenu.substring(0, 300) : contenu}',
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-      Get.snackbar('Signalement envoyé',
-          "Merci, notre équipe va l'examiner.",
+      Get.snackbar('Signalement envoyé'.tr,
+          'Merci, notre équipe va l\'examiner.'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
     } catch (_) {
-      _erreur("Impossible d'envoyer le signalement");
+      _erreur('Impossible d\'envoyer le signalement'.tr);
     }
   }
 
@@ -374,19 +374,18 @@ class _EcranGroupeState extends State<EcranGroupe> {
     final nom = _membres[userId]?.nom ?? 'cette personne';
     final ok = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
-      title: Text('Bloquer $nom ?',
+      title: Text('Bloquer @nom ?'.trParams({'nom': nom.toString()}),
           style: TextStyle(color: AppColors.textPrimary)),
       content: Text(
-          "Tu ne verras plus ses messages ni son profil, et vous ne pourrez "
-          "plus vous écrire. Cette personne n'est pas prévenue.",
+          'Tu ne verras plus ses messages ni son profil, et vous ne pourrez plus vous écrire. Cette personne n\'est pas prévenue.'.tr,
           style: TextStyle(color: AppColors.textMuted)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Annuler')),
+            child:  Text('Annuler'.tr)),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child: const Text('Bloquer', style: TextStyle(color: Colors.red))),
+            child:  Text('Bloquer'.tr, style: TextStyle(color: Colors.red))),
       ],
     ));
     if (ok != true) return;
@@ -433,8 +432,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary)),
                     Text(
-                        '${_membres.isEmpty ? _groupe.nbMembres : _membres.length} membres'
-                        '${_groupe.estEvenement ? ' · événement' : ''}',
+                        '@p membres@p2'.trParams({'p2': (_groupe.estEvenement ? ' · événement' : '').toString(), 'p': (_membres.isEmpty ? _groupe.nbMembres : _membres.length).toString()}),
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                   ]),
@@ -457,7 +455,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                   ? Center(
                       child: Padding(
                         padding: const EdgeInsets.all(32),
-                        child: Text('Dis bonjour au groupe 👋',
+                        child: Text('Dis bonjour au groupe 👋'.tr,
                             style: TextStyle(color: AppColors.textMuted)),
                       ),
                     )
@@ -526,10 +524,10 @@ class _EcranGroupeState extends State<EcranGroupe> {
     final n = DateTime.now();
     final aujourdhui = DateTime(n.year, n.month, n.day);
     final ecart = aujourdhui.difference(DateTime(d.year, d.month, d.day)).inDays;
-    if (ecart == 0) return 'Aujourd\'hui';
-    if (ecart == 1) return 'Hier';
+    if (ecart == 0) return 'Aujourd\'hui'.tr;
+    if (ecart == 1) return 'Hier'.tr;
     const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    if (ecart < 7) return jours[d.weekday - 1];
+    if (ecart < 7) return jours[d.weekday - 1].tr;
     return '${d.day}/${d.month}/${d.year}';
   }
 
@@ -583,7 +581,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                 if (!moi && debutSerie)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(auteur?.nom ?? 'Ancien membre',
+                    child: Text(auteur?.nom ?? 'Ancien membre'.tr,
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -627,7 +625,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                   if (!moi && debutSerie && m.type != 'texte')
                     Padding(
                       padding: const EdgeInsets.only(bottom: 2, left: 4),
-                      child: Text(auteur?.nom ?? 'Ancien membre',
+                      child: Text(auteur?.nom ?? 'Ancien membre'.tr,
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -703,7 +701,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
               textCapitalization: TextCapitalization.sentences,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
               decoration: InputDecoration(
-                hintText: 'Message au groupe…',
+                hintText: 'Message au groupe…'.tr,
                 hintStyle: TextStyle(color: AppColors.textMuted),
                 counterText: '',
                 filled: true,

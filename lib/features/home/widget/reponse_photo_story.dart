@@ -46,7 +46,7 @@ class _BoutonReponsePhotoState extends State<BoutonReponsePhoto> {
     final uid = sb.auth.currentUser?.id;
     if (uid == null || _envoi) return;
     if (uid == story.userId) {
-      _snack('Oups', 'Tu ne peux pas répondre à ta propre story');
+      _snack('Oups'.tr, 'Tu ne peux pas répondre à ta propre story'.tr);
       return;
     }
 
@@ -112,17 +112,17 @@ class _BoutonReponsePhotoState extends State<BoutonReponsePhoto> {
         'updated_at': DateTime.now().toUtc().toIso8601String()
       }).eq('id', convId);
       await SupabaseService().maybePromoteMessageRequest(convId);
-      _snack('Photo envoyée ✓', 'Elle disparaît après avoir été vue');
+      _snack('Photo envoyée ✓'.tr, 'Elle disparaît après avoir été vue'.tr);
     } catch (e) {
       final t = e.toString();
       if (t.contains('limite_sans_reponse')) {
-        _snack('Message non envoyé',
-            'Attends sa réponse pour envoyer d\'autres messages');
+        _snack('Message non envoyé'.tr,
+            'Attends sa réponse pour envoyer d\'autres messages'.tr);
       } else if (t.contains('bloque')) {
-        _snack('Message non envoyé', 'Tu ne peux plus écrire à cette personne');
+        _snack('Message non envoyé'.tr, 'Tu ne peux plus écrire à cette personne'.tr);
       } else {
         debugPrint('Réponse photo à la story : $e');
-        _snack('Erreur', "Impossible d'envoyer la photo");
+        _snack('Erreur'.tr, 'Impossible d\'envoyer la photo'.tr);
       }
     } finally {
       if (mounted) setState(() => _envoi = false);

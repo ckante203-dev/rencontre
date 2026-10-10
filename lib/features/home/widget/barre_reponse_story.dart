@@ -43,7 +43,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
 
   String get _prenom {
     final n = widget.story.userName.trim();
-    return n.isEmpty ? 'la story' : n.split(' ').first;
+    return n.isEmpty ? 'la story'.tr : n.split(' ').first;
   }
 
   @override
@@ -88,7 +88,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
     if (uid == widget.story.userId) {
-      Get.snackbar('Oups', 'Tu ne peux pas répondre à ta propre story',
+      Get.snackbar('Oups'.tr, 'Tu ne peux pas répondre à ta propre story'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: CouleursMedia.surface,
           colorText: CouleursMedia.textPrimary);
@@ -136,11 +136,11 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
       _focus.unfocus();
       widget.onFocusChanged(false);
       HapticFeedback.lightImpact();
-      if (mounted) _confirmer('Envoyé à ${_prenom} ✓');
+      if (mounted) _confirmer('Envoyé à @prenom ✓'.trParams({'prenom': _prenom.toString()}));
     } catch (e) {
       debugPrint('replyStory error: $e');
       if (mounted) {
-        Get.snackbar('Erreur', "Impossible d'envoyer le message",
+        Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer le message'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: CouleursMedia.surface,
             colorText: CouleursMedia.textPrimary);
@@ -207,7 +207,7 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
                       null,
                   textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
-                    hintText: 'Répondre à $_prenom…',
+                    hintText: 'Répondre à @prenom…'.trParams({'prenom': _prenom.toString()}),
                     hintStyle:
                         const TextStyle(color: Colors.white54, fontSize: 14),
                     border: InputBorder.none,

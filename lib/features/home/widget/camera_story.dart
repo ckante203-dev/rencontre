@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -280,8 +281,8 @@ class _CameraStoryState extends State<CameraStory>
   Widget _apercu(Size ecran) {
     final c = _ctrl;
     if (_refus) {
-      return _message('Autorise l\'appareil photo pour prendre une story',
-          bouton: 'Ouvrir les réglages', action: openAppSettings);
+      return _message('Autorise l\'appareil photo pour prendre une story'.tr,
+          bouton: 'Ouvrir les réglages'.tr, action: openAppSettings);
     }
     if (_erreur != null) return _message(_erreur!);
     if (c == null || !_pret) {
@@ -418,9 +419,9 @@ class _CameraStoryState extends State<CameraStory>
                 AnimatedOpacity(
                   opacity: _aideVue || !_pret ? 0 : 1,
                   duration: const Duration(milliseconds: 300),
-                  child: const Padding(
+                  child:  Padding(
                     padding: EdgeInsets.only(bottom: 14),
-                    child: Text('Touche pour une photo · maintiens pour filmer',
+                    child: Text('Touche pour une photo · maintiens pour filmer'.tr,
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,

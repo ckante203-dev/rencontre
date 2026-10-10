@@ -64,7 +64,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
       GroupesController.to.charger();
     } catch (_) {
       setState(() => _sourdine = !v);
-      _snack('Oups', 'Réglage non enregistré');
+      _snack('Oups'.tr, 'Réglage non enregistré'.tr);
     }
   }
 
@@ -72,7 +72,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
     final champ = TextEditingController(text: _g.nom);
     final nom = await Get.dialog<String>(AlertDialog(
       backgroundColor: AppColors.surface,
-      title: Text('Nom du groupe',
+      title: Text('Nom du groupe'.tr,
           style: TextStyle(color: AppColors.textPrimary)),
       content: TextField(
         controller: champ,
@@ -81,10 +81,10 @@ class _InfosGroupeState extends State<InfosGroupe> {
         style: TextStyle(color: AppColors.textPrimary),
       ),
       actions: [
-        TextButton(onPressed: Get.back, child: const Text('Annuler')),
+        TextButton(onPressed: Get.back, child:  Text('Annuler'.tr)),
         TextButton(
             onPressed: () => Get.back(result: champ.text.trim()),
-            child: const Text('Enregistrer')),
+            child:  Text('Enregistrer'.tr)),
       ],
     ));
     if (nom == null || nom.isEmpty || nom == _g.nom) return;
@@ -102,7 +102,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
           ));
       GroupesController.to.charger();
     } catch (_) {
-      _snack('Oups', 'Nom non modifié');
+      _snack('Oups'.tr, 'Nom non modifié'.tr);
     }
   }
 
@@ -117,9 +117,9 @@ class _InfosGroupeState extends State<InfosGroupe> {
       final n = await supabase.rpc('ajouter_membres_groupe',
           params: {'p_groupe': _g.id, 'p_membres': ids}) as int;
       await _rechargerMembres();
-      _snack('Membres ajoutés', '$n personne${n > 1 ? 's' : ''} ajoutée${n > 1 ? 's' : ''}');
+      _snack('Membres ajoutés'.tr, '@n personne@p ajoutée@p2'.trParams({'p2': (n > 1 ? 's' : '').toString(), 'n': n.toString(), 'p': (n > 1 ? 's' : '').toString()}));
     } catch (_) {
-      _snack('Oups', 'Ajout impossible');
+      _snack('Oups'.tr, 'Ajout impossible'.tr);
     }
   }
 
@@ -133,7 +133,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(
             leading: Icon(Icons.person_rounded, color: AppColors.textPrimary),
-            title: Text('Voir le profil de ${m.nom}',
+            title: Text('Voir le profil de @nom'.trParams({'nom': m.nom.toString()}),
                 style: TextStyle(color: AppColors.textPrimary)),
             onTap: () {
               Get.back();
@@ -144,7 +144,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
             ListTile(
               leading:
                   Icon(Icons.verified_user_rounded, color: AppColors.textPrimary),
-              title: Text('Nommer admin',
+              title: Text('Nommer admin'.tr,
                   style: TextStyle(color: AppColors.textPrimary)),
               onTap: () async {
                 Get.back();
@@ -153,14 +153,14 @@ class _InfosGroupeState extends State<InfosGroupe> {
                       params: {'p_groupe': _g.id, 'p_user': m.id});
                   _rechargerMembres();
                 } catch (_) {
-                  _snack('Oups', 'Impossible');
+                  _snack('Oups'.tr, 'Impossible'.tr);
                 }
               },
             ),
           if (_gere)
             ListTile(
               leading: const Icon(Icons.person_remove_rounded, color: Colors.red),
-              title: Text('Retirer ${m.nom} du groupe',
+              title: Text('Retirer @nom du groupe'.trParams({'nom': m.nom.toString()}),
                   style: const TextStyle(color: Colors.red)),
               onTap: () async {
                 Get.back();
@@ -172,7 +172,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
                       .eq('user_id', m.id);
                   _rechargerMembres();
                 } catch (_) {
-                  _snack('Oups', 'Impossible de retirer ce membre');
+                  _snack('Oups'.tr, 'Impossible de retirer ce membre'.tr);
                 }
               },
             ),
@@ -184,21 +184,20 @@ class _InfosGroupeState extends State<InfosGroupe> {
   Future<void> _quitter() async {
     final ok = await Get.dialog<bool>(AlertDialog(
       backgroundColor: AppColors.surface,
-      title: Text('Quitter « ${_g.nom} » ?',
+      title: Text('Quitter « @nom » ?'.trParams({'nom': _g.nom.toString()}),
           style: TextStyle(color: AppColors.textPrimary)),
       content: Text(
           _g.estEvenement
-              ? 'Tu ne recevras plus les messages de cet événement. Tu restes '
-                  'inscrit à l\'événement.'
-              : 'Tu ne recevras plus les messages de ce groupe.',
+              ? 'Tu ne recevras plus les messages de cet événement. Tu restes inscrit à l\'événement.'.tr
+              : 'Tu ne recevras plus les messages de ce groupe.'.tr,
           style: TextStyle(color: AppColors.textMuted)),
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Annuler')),
+            child:  Text('Annuler'.tr)),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child: const Text('Quitter', style: TextStyle(color: Colors.red))),
+            child:  Text('Quitter'.tr, style: TextStyle(color: Colors.red))),
       ],
     ));
     if (ok != true) return;
@@ -212,7 +211,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
       Get.back(); // infos
       Get.back(); // discussion
     } catch (_) {
-      _snack('Oups', 'Impossible de quitter le groupe');
+      _snack('Oups'.tr, 'Impossible de quitter le groupe'.tr);
     }
   }
 
@@ -258,7 +257,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
         ),
         Center(
           child: Text(
-              '${membres.length} membres${_g.estEvenement ? ' · groupe de l\'événement' : ''}',
+              '@length membres@p'.trParams({'length': membres.length.toString(), 'p': (_g.estEvenement ? ' · groupe de l\'événement' : '').toString()}),
               style: TextStyle(color: AppColors.textMuted)),
         ),
         const SizedBox(height: 16),
@@ -268,9 +267,9 @@ class _InfosGroupeState extends State<InfosGroupe> {
           activeColor: AppColors.accent,
           secondary: Icon(Icons.notifications_off_rounded,
               color: AppColors.textMuted),
-          title: Text('Mettre en sourdine',
+          title: Text('Mettre en sourdine'.tr,
               style: TextStyle(color: AppColors.textPrimary)),
-          subtitle: Text('Plus de notifications pour ce groupe',
+          subtitle: Text('Plus de notifications pour ce groupe'.tr,
               style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
         ),
         const Divider(),
@@ -281,7 +280,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
               backgroundColor: AppColors.accent,
               child: const Icon(Icons.person_add_rounded, color: AppColors.surAccent),
             ),
-            title: Text('Ajouter des membres',
+            title: Text('Ajouter des membres'.tr,
                 style: TextStyle(
                     color: AppColors.lien, fontWeight: FontWeight.w700)),
           ),
@@ -300,7 +299,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
                       style: TextStyle(color: AppColors.textPrimary))
                   : null,
             ),
-            title: Text(m.id == _moi ? 'Toi' : m.nom,
+            title: Text(m.id == _moi ? 'Toi'.tr : m.nom,
                 style: TextStyle(color: AppColors.textPrimary)),
             trailing: m.admin
                 ? Container(
@@ -310,7 +309,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
                       color: AppColors.accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('Admin',
+                    child: Text('Admin'.tr,
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -322,7 +321,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
         ListTile(
           onTap: _quitter,
           leading: const Icon(Icons.logout_rounded, color: Colors.red),
-          title: const Text('Quitter le groupe',
+          title:  Text('Quitter le groupe'.tr,
               style: TextStyle(color: Colors.red)),
         ),
       ]),

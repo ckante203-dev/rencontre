@@ -93,12 +93,12 @@ class _SnapBubbleState extends State<_SnapBubble> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Snap envoyé',
+                 Text('Snap envoyé'.tr,
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.surAccent)),
-                Text(msg.isOpened ? 'Ouvert ✓' : 'En attente',
+                Text(msg.isOpened ? 'Ouvert ✓'.tr : 'En attente'.tr,
                     style: TextStyle(
                         fontSize: 10, color: AppColors.surAccent.withValues(alpha: 0.7))),
               ]),
@@ -173,17 +173,17 @@ class _SnapBubbleState extends State<_SnapBubble> {
           decoration: BoxDecoration(
               gradient: AppColors.gradientPink,
               borderRadius: BorderRadius.circular(16)),
-          child: const Column(
+          child:  Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.photo_camera_rounded, size: 26, color: AppColors.surAccent),
                 SizedBox(height: 6),
-                Text('Appuie pour voir',
+                Text('Appuie pour voir'.tr,
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.surAccent)),
-                Text('Disparaît après ouverture',
+                Text('Disparaît après ouverture'.tr,
                     style: TextStyle(fontSize: 10, color: Color(0xB3FFFFFF))),
               ]),
         ),
@@ -205,12 +205,12 @@ class _SnapBubbleState extends State<_SnapBubble> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(msg.isOpened ? 'Snap ouvert' : 'Snap expiré',
+              Text(msg.isOpened ? 'Snap ouvert'.tr : 'Snap expiré'.tr,
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary)),
-              Text(msg.isOpened ? 'Photo éphémère vue ✓' : 'Non ouvert à temps',
+              Text(msg.isOpened ? 'Photo éphémère vue ✓'.tr : 'Non ouvert à temps'.tr,
                   style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
             ]),
       ]),
@@ -443,7 +443,7 @@ class _MediaBubble extends StatelessWidget {
             child: Center(
               child: Obx(() {
                 final etat =
-                    ConversationController.etatsEnvoi[msg.id] ?? 'Envoi…';
+                    ConversationController.etatsEnvoi[msg.id] ?? 'Envoi…'.tr;
                 return Column(mainAxisSize: MainAxisSize.min, children: [
                   const SizedBox(
                       width: 34,
@@ -739,7 +739,7 @@ class _StatusIcon extends StatelessWidget {
         if (readAt != null) {
           final h = readAt!.hour.toString().padLeft(2, '0');
           final m = readAt!.minute.toString().padLeft(2, '0');
-          return Text('Lu $h:$m',
+          return Text('Lu @h:@m'.trParams({'h': h.toString(), 'm': m.toString()}),
                   style: TextStyle(
                       fontSize: 10,
                       color: AppColors.textPrimary,
@@ -893,7 +893,7 @@ class _LocationBubble extends StatelessWidget {
                               Icon(Icons.my_location_rounded,
                                   size: 10, color: AppColors.surAccent),
                               const SizedBox(width: 4),
-                              Text('Position',
+                              Text('Position'.tr,
                                   style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
@@ -933,7 +933,7 @@ class _LocationBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Position partagée',
+                  Text('Position partagée'.tr,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -961,7 +961,7 @@ class _LocationBubble extends StatelessWidget {
                     const Icon(Icons.directions_rounded,
                         size: 13, color: AppColors.surAccent),
                     const SizedBox(width: 4),
-                    const Text('Itinéraire',
+                     Text('Itinéraire'.tr,
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,

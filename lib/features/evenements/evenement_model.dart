@@ -1,3 +1,4 @@
+import 'package:get/get.dart';
 // ─── ÉVÉNEMENTS (match, concert, festival…) ───────────────────────
 // Créés par Zamu depuis le panneau d'admin. Les utilisateurs indiquent
 // « J'y vais » ; seuls les participants voient qui vient (SQL 034).
@@ -61,7 +62,7 @@ class EvenementModel {
 
   factory EvenementModel.fromJson(Map<String, dynamic> j) => EvenementModel(
         id: j['id'] as String,
-        titre: (j['titre'] as String?) ?? 'Événement',
+        titre: (j['titre'] as String?) ?? 'Événement'.tr,
         description: j['description'] as String?,
         categorie: (j['categorie'] as String?) ?? 'autre',
         lieu: (j['lieu'] as String?) ?? '',
@@ -135,11 +136,11 @@ class EvenementModel {
       };
 
   String get libelleCategorie => switch (categorie) {
-        'sport' => 'Sport',
-        'concert' => 'Concert',
-        'soiree' => 'Soirée',
-        'festival' => 'Festival',
-        _ => 'Événement',
+        'sport' => 'Sport'.tr,
+        'concert' => 'Concert'.tr,
+        'soiree' => 'Soirée'.tr,
+        'festival' => 'Festival'.tr,
+        _ => 'Événement'.tr,
       };
 
   String get lieuComplet =>
@@ -156,14 +157,14 @@ class EvenementModel {
 
   /// « Aujourd'hui · 20h00 », « Demain · 16h00 », « sam. 12 oct. · 20h00 »
   String get dateCourte {
-    if (enCours) return 'En ce moment';
+    if (enCours) return 'En ce moment'.tr;
     final n = DateTime.now();
     final aujourdhui = DateTime(n.year, n.month, n.day);
     final jour = DateTime(debut.year, debut.month, debut.day);
     final ecart = jour.difference(aujourdhui).inDays;
     final h = heure(debut);
-    if (ecart == 0) return 'Aujourd\'hui · $h';
-    if (ecart == 1) return 'Demain · $h';
+    if (ecart == 0) return 'Aujourd\'hui · @h'.trParams({'h': h.toString()});
+    if (ecart == 1) return 'Demain · @h'.trParams({'h': h.toString()});
     return '${_jours[debut.weekday - 1]} ${debut.day} ${_mois[debut.month - 1]} · $h';
   }
 
@@ -175,7 +176,7 @@ class EvenementModel {
       'août', 'septembre', 'octobre', 'novembre', 'décembre',
     ];
     final base =
-        '${jours[debut.weekday - 1]} ${debut.day} ${mois[debut.month - 1]}, ${heure(debut)}';
+        '${jours[debut.weekday - 1].tr} ${debut.day} ${mois[debut.month - 1].tr}, ${heure(debut)}';
     return fin == null ? base : '$base – ${heure(fin!)}';
   }
 }

@@ -98,7 +98,7 @@ class UpdateService {
               SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'Mise à jour disponible',
+                  'Mise à jour disponible'.tr,
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 18,
@@ -113,13 +113,13 @@ class UpdateService {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Version $latestVersion disponible',
+                'Version @latestVersion disponible'.trParams({'latestVersion': latestVersion.toString()}),
                 style: TextStyle(
                     color: AppColors.textPrimary, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
-                'Installée : $currentVersion',
+                'Installée : @currentVersion'.trParams({'currentVersion': currentVersion.toString()}),
                 style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
               ),
               if (releaseNotes.isNotEmpty) ...[
@@ -133,7 +133,7 @@ class UpdateService {
               if (forceUpdate) ...[
                 const SizedBox(height: 12),
                 Text(
-                  '⚠️ Cette mise à jour est obligatoire.',
+                  '⚠️ Cette mise à jour est obligatoire.'.tr,
                   style: TextStyle(color: AppColors.error, fontSize: 13),
                 ),
               ],
@@ -143,7 +143,7 @@ class UpdateService {
             if (!forceUpdate)
               TextButton(
                 onPressed: () => Get.back(),
-                child: const Text('Plus tard',
+                child:  Text('Plus tard'.tr,
                     style: TextStyle(color: Color(0xFF666666))),
               ),
             ElevatedButton(
@@ -153,8 +153,8 @@ class UpdateService {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text(
-                'Télécharger',
+              child:  Text(
+                'Télécharger'.tr,
                 style:
                     TextStyle(color: AppColors.surAccent, fontWeight: FontWeight.bold),
               ),
@@ -179,8 +179,8 @@ class UpdateService {
     } catch (e) {
       debugPrint('Download error: $e');
       Get.snackbar(
-        'Erreur',
-        "Impossible d'ouvrir le lien de téléchargement",
+        'Erreur'.tr,
+        'Impossible d\'ouvrir le lien de téléchargement'.tr,
         backgroundColor: const Color(0xFFFF3B30),
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,

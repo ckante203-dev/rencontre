@@ -83,7 +83,7 @@ class FeuilleQrZamu extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 4),
-            Text('Fais scanner ce code à tes amis pour qu\'ils te trouvent',
+            Text('Fais scanner ce code à tes amis pour qu\'ils te trouvent'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
             const SizedBox(height: 20),
@@ -99,13 +99,13 @@ class FeuilleQrZamu extends StatelessWidget {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Row(
+                child:  Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.qr_code_scanner_rounded,
                         color: AppColors.surAccent, size: 20),
                     SizedBox(width: 8),
-                    Text('Scanner le code d\'un ami',
+                    Text('Scanner le code d\'un ami'.tr,
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -152,7 +152,7 @@ class _EcranScanQrState extends State<EcranScanQr> {
       if (id == null) {
         if (_dernierRefus != brut) {
           _dernierRefus = brut;
-          Get.snackbar('Pas un code Zamu', 'Scanne le QR code Zamu d\'un ami',
+          Get.snackbar('Pas un code Zamu'.tr, 'Scanne le QR code Zamu d\'un ami'.tr,
               snackPosition: SnackPosition.TOP,
               backgroundColor: AppColors.surface,
               colorText: AppColors.textPrimary);
@@ -180,8 +180,8 @@ class _EcranScanQrState extends State<EcranScanQr> {
               padding: const EdgeInsets.all(32),
               child: Text(
                 error.errorCode == MobileScannerErrorCode.permissionDenied
-                    ? 'Autorise l\'appareil photo pour scanner un code'
-                    : 'Appareil photo indisponible',
+                    ? 'Autorise l\'appareil photo pour scanner un code'.tr
+                    : 'Appareil photo indisponible'.tr,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 15),
               ),
@@ -217,11 +217,11 @@ class _EcranScanQrState extends State<EcranScanQr> {
             ]),
           ),
         ),
-        const Positioned(
+         Positioned(
           left: 0,
           right: 0,
           bottom: 80,
-          child: Text('Vise le QR code Zamu de ton ami',
+          child: Text('Vise le QR code Zamu de ton ami'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: AppColors.surMedia,

@@ -132,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 28),
                           Text(
-                              'Zamu',
+                              'Zamu'.tr,
                               style: TextStyle(
                                 fontFamily: 'Syne',
                                 fontSize: 40,
@@ -143,7 +143,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           const SizedBox(height: 10),
                            Text(
-                            'Rencontre. Connecte. Vis.',
+                            'Rencontre. Connecte. Vis.'.tr,
                             style: TextStyle(
                               fontSize: 15,
                               color: AppColors.textMuted,
@@ -175,8 +175,8 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Text('Créer un compte',
+                            child:  Center(
+                              child: Text('Créer un compte'.tr,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -199,7 +199,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   color: AppColors.border, width: 1.5),
                             ),
                             child:  Center(
-                              child: Text('Se connecter',
+                              child: Text('Se connecter'.tr,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -213,7 +213,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 24),
                     Text(
-                      'En continuant, tu acceptes nos Conditions d\'utilisation\net notre Politique de confidentialité',
+                      'En continuant, tu acceptes nos Conditions d\'utilisation\net notre Politique de confidentialité'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,

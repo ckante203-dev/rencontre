@@ -347,7 +347,7 @@ class _Completion extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Text('Profil complété à $pct %',
+                  Text('Profil complété à @pct %'.trParams({'pct': pct.toString()}),
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -372,7 +372,7 @@ class _Completion extends StatelessWidget {
                   ]),
                 ),
                 const SizedBox(height: 8),
-                Text('$conseil pour recevoir plus de likes',
+                Text('@conseil pour recevoir plus de likes'.trParams({'conseil': conseil.tr}),
                     style: TextStyle(fontSize: 12, color: AppColors.surCarteDiscret)),
               ],
             ),
@@ -410,18 +410,18 @@ class _Stats extends StatelessWidget {
               Expanded(
                   child: _StatItem(
                       value: '${insights.matchesCount.value}',
-                      label: 'Matchs')),
+                      label: 'Matchs'.tr)),
               _Separateur(),
               Expanded(
                   child: _StatItem(
                       value: '${insights.likersCount.value}',
-                      label: 'Likes reçus',
+                      label: 'Likes reçus'.tr,
                       onTap: ouvrirLikes)),
               _Separateur(),
               Expanded(
                   child: _StatItem(
                       value: '${insights.viewersCount.value}',
-                      label: 'Vues du profil',
+                      label: 'Vues du profil'.tr,
                       onTap: ouvrirLikes)),
             ]),
           ),
@@ -492,7 +492,7 @@ class _CartePremium extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                        premium ? 'Zamu Premium actif' : 'Passe à Zamu Premium',
+                        premium ? 'Zamu Premium actif'.tr : 'Passe à Zamu Premium'.tr,
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -502,8 +502,8 @@ class _CartePremium extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                         premium
-                            ? 'Gérer mon abonnement'
-                            : 'Vois qui t\'a liké et qui a visité ton profil',
+                            ? 'Gérer mon abonnement'.tr
+                            : 'Vois qui t\'a liké et qui a visité ton profil'.tr,
                         style: TextStyle(
                             fontSize: 12,
                             color: premium
@@ -533,9 +533,7 @@ class _CartePseudo extends StatelessWidget {
 
   void _partager(String pseudo) {
     SharePlus.instance.share(ShareParams(
-      text: 'Retrouve-moi sur Zamu 💬 : @$pseudo\n'
-          'Cherche mon pseudo dans Messages 🔍\n'
-          'https://play.google.com/store/apps/details?id=com.vybestyle.zamu',
+      text: 'Retrouve-moi sur Zamu 💬 : @@pseudo\nCherche mon pseudo dans Messages 🔍\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'.trParams({'pseudo': pseudo.toString()}),
     ));
   }
 
@@ -577,7 +575,7 @@ class _CartePseudo extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(aucun ? 'Choisis ton pseudo' : '@$pseudo',
+                      Text(aucun ? 'Choisis ton pseudo'.tr : '@$pseudo',
                           style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
@@ -585,15 +583,15 @@ class _CartePseudo extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                           aucun
-                              ? 'Tes amis pourront te retrouver avec'
-                              : 'Donne-le à tes amis pour qu\'ils te retrouvent',
+                              ? 'Tes amis pourront te retrouver avec'.tr
+                              : 'Donne-le à tes amis pour qu\'ils te retrouvent'.tr,
                           style: TextStyle(
                               fontSize: 12, color: AppColors.surCarteDiscret)),
                     ],
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Mon QR code',
+                  tooltip: 'Mon QR code'.tr,
                   onPressed: () => Get.bottomSheet(
                     FeuilleQrZamu(ctrl: ctrl),
                     isScrollControlled: true,
@@ -608,7 +606,7 @@ class _CartePseudo extends StatelessWidget {
                 Expanded(
                   child: _BoutonCarte(
                     icon: Icons.edit_rounded,
-                    label: aucun ? 'Choisir' : 'Modifier',
+                    label: aucun ? 'Choisir'.tr : 'Modifier'.tr,
                     onTap: () => Get.bottomSheet(
                       FeuillePseudo(ctrl: ctrl),
                       isScrollControlled: true,
@@ -621,10 +619,10 @@ class _CartePseudo extends StatelessWidget {
                   Expanded(
                     child: _BoutonCarte(
                       icon: Icons.copy_rounded,
-                      label: 'Copier',
+                      label: 'Copier'.tr,
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: '@$pseudo'));
-                        Get.snackbar('Copié', '@$pseudo',
+                        Get.snackbar('Copié'.tr, '@$pseudo',
                             snackPosition: SnackPosition.TOP,
                             backgroundColor: AppColors.surface,
                             colorText: AppColors.textPrimary,
@@ -636,7 +634,7 @@ class _CartePseudo extends StatelessWidget {
                   Expanded(
                     child: _BoutonCarte(
                       icon: Icons.share_rounded,
-                      label: 'Partager',
+                      label: 'Partager'.tr,
                       degrade: true,
                       onTap: () => _partager(pseudo),
                     ),
@@ -646,7 +644,7 @@ class _CartePseudo extends StatelessWidget {
               const SizedBox(height: 6),
               Row(children: [
                 Expanded(
-                  child: Text('Les autres peuvent me trouver avec ce pseudo',
+                  child: Text('Les autres peuvent me trouver avec ce pseudo'.tr,
                       style: TextStyle(
                           fontSize: 13, color: AppColors.surCarte)),
                 ),
@@ -782,7 +780,7 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(widget.premiereFois ? 'Choisis ton @pseudo 👋' : 'Ton @pseudo',
+            Text(widget.premiereFois ? 'Choisis ton @pseudo 👋'.tr : 'Ton @pseudo'.tr,
                 style: TextStyle(
                     fontFamily: 'Syne',
                     fontSize: 18,
@@ -791,9 +789,8 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
             const SizedBox(height: 4),
             Text(
                 widget.premiereFois
-                    ? 'Tes amis pourront te retrouver sur Zamu avec ce pseudo.\n'
-                        '3 à 20 caractères : lettres, chiffres, . ou _'
-                    : '3 à 20 caractères : lettres, chiffres, . ou _',
+                    ? 'Tes amis pourront te retrouver sur Zamu avec ce pseudo.\n3 à 20 caractères : lettres, chiffres, . ou _'.tr
+                    : '3 à 20 caractères : lettres, chiffres, . ou _'.tr,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             const SizedBox(height: 14),
             Obx(() {
@@ -842,9 +839,9 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
                   hintStyle: TextStyle(color: AppColors.textMuted),
                   suffixIcon: suffix,
                   helperText: !inchange && dispo == true
-                      ? 'Disponible'
+                      ? 'Disponible'.tr
                       : !inchange && dispo == false
-                          ? 'Déjà pris ou invalide'
+                          ? 'Déjà pris ou invalide'.tr
                           : null,
                   helperStyle: TextStyle(
                       color:
@@ -875,7 +872,7 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
                           height: 18,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: AppColors.surAccent))
-                      : const Text('Enregistrer',
+                      :  Text('Enregistrer'.tr,
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -930,7 +927,7 @@ class _CarteAmis extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(n == 0 ? 'Mes amis' : 'Mes amis ($n)',
+                      Text(n == 0 ? 'Mes amis'.tr : 'Mes amis (@n)'.trParams({'n': n.toString()}),
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -938,8 +935,8 @@ class _CarteAmis extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                           demandes > 0
-                              ? '$demandes demande${demandes > 1 ? 's' : ''} d\'ami en attente'
-                              : 'Ajoute tes amis par @pseudo ou QR code',
+                              ? '@demandes demande@p d\'ami en attente'.trParams({'demandes': demandes.toString(), 'p': (demandes > 1 ? 's' : '').toString()})
+                              : 'Ajoute tes amis par @pseudo ou QR code'.tr,
                           style: TextStyle(
                               fontSize: 12,
                               color: demandes > 0
@@ -1035,7 +1032,7 @@ class _CarteVerificationState extends State<_CarteVerification> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(attente ? 'Vérification en cours' : 'Fais vérifier ton profil',
+                    Text(attente ? 'Vérification en cours'.tr : 'Fais vérifier ton profil'.tr,
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -1043,8 +1040,8 @@ class _CarteVerificationState extends State<_CarteVerification> {
                     const SizedBox(height: 2),
                     Text(
                         attente
-                            ? 'L\'équipe compare ton selfie à tes photos'
-                            : 'Un selfie et tu as le badge bleu ✓',
+                            ? 'L\'équipe compare ton selfie à tes photos'.tr
+                            : 'Un selfie et tu as le badge bleu ✓'.tr,
                         style: TextStyle(
                             fontSize: 12, color: AppColors.surCarteDiscret)),
                   ],
@@ -1094,13 +1091,13 @@ class _CarteAlbum extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Mon album privé',
+                  Text('Mon album privé'.tr,
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppColors.surCarte)),
                   const SizedBox(height: 2),
-                  Text('Des photos visibles seulement par qui tu choisis',
+                  Text('Des photos visibles seulement par qui tu choisis'.tr,
                       style:
                           TextStyle(fontSize: 12, color: AppColors.surCarteDiscret)),
                 ],
@@ -1174,14 +1171,14 @@ class _BoutonsLigne extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: [
-        _bouton(Icons.edit_rounded, 'Modifier',
+        _bouton(Icons.edit_rounded, 'Modifier'.tr,
             () => Get.toNamed(AppRoutes.profilEdit),
             principal: true),
         const SizedBox(width: 10),
-        _bouton(Icons.visibility_rounded, 'Aperçu', _apercu,
+        _bouton(Icons.visibility_rounded, 'Aperçu'.tr, _apercu,
             principal: true),
         const SizedBox(width: 10),
-        _bouton(Icons.settings_rounded, 'Paramètres',
+        _bouton(Icons.settings_rounded, 'Paramètres'.tr,
             () => Get.toNamed(AppRoutes.profilSettings),
             principal: true),
       ]),

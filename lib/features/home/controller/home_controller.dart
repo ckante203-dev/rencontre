@@ -980,8 +980,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     // Sécurité : jamais de distance précise de près (on ne doit pas
     // pouvoir localiser quelqu'un) → « < 2 km », puis le km entier.
     // Les positions sont aussi arrondies à ~500 m en base (SQL 047).
-    if (meters < 2000) return '< 2 km';
-    return '${(meters / 1000).round()} km';
+    if (meters < 2000) return '< 2 km'.tr;
+    return '@p km'.trParams({'p': ((meters / 1000).round()).toString()});
   }
 
   // ✅ Ouvre le profil dans un carrousel (swipe pour passer
@@ -1415,8 +1415,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('publishStory error: $e');
       Get.snackbar(
-        'Erreur',
-        "Impossible de publier la story",
+        'Erreur'.tr,
+        'Impossible de publier la story'.tr,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
         colorText: AppColors.textPrimary,
@@ -1459,8 +1459,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       await loadStories();
 
       Get.snackbar(
-        'Story publiée ✓',
-        'Visible pendant ${_formatDurationLabel(durationHours)}',
+        'Story publiée ✓'.tr,
+        'Visible pendant @p'.trParams({'p': (_formatDurationLabel(durationHours)).toString()}),
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
         colorText: AppColors.textPrimary,
@@ -1469,8 +1469,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('publishTextStory error: $e');
       Get.snackbar(
-        'Erreur',
-        "Impossible de publier la story",
+        'Erreur'.tr,
+        'Impossible de publier la story'.tr,
         snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.surface,
         colorText: AppColors.textPrimary,
@@ -1481,7 +1481,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   }
 
   String _formatDurationLabel(double hours) {
-    if (hours < 1) return '${(hours * 60).round()} min';
+    if (hours < 1) return '@p min'.trParams({'p': ((hours * 60).round()).toString()});
     if (hours < 24) return '${hours.round()}h';
     final days = hours / 24;
     if (days == days.roundToDouble()) return '${days.round()}j';

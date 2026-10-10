@@ -148,7 +148,7 @@ class _MyStoryItem extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                hasStory ? 'Ma story' : 'Ajouter',
+                hasStory ? 'Ma story'.tr : 'Ajouter'.tr,
                 style: TextStyle(
                   color: hasStory ? AppColors.textPrimary : AppColors.textMuted,
                   fontSize: 11,

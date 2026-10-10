@@ -277,7 +277,7 @@ class _MapScreenState extends State<MapScreen>
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${_ctrl.filteredProfiles.length} personne${_ctrl.filteredProfiles.length > 1 ? 's' : ''} à proximité',
+                            '@length personne@p à proximité'.trParams({'length': _ctrl.filteredProfiles.length.toString(), 'p': (_ctrl.filteredProfiles.length > 1 ? 's' : '').toString()}),
                             style:  TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -317,13 +317,13 @@ class _MapScreenState extends State<MapScreen>
                             color: AppColors.error, size: 18),
                         const SizedBox(width: 8),
                          Expanded(
-                          child: Text('Localisation non disponible',
+                          child: Text('Localisation non disponible'.tr,
                               style: TextStyle(
                                   fontSize: 12, color: AppColors.error)),
                         ),
                         GestureDetector(
                           onTap: () => Geolocator.openLocationSettings(),
-                          child:  Text('Activer',
+                          child:  Text('Activer'.tr,
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -400,7 +400,7 @@ class _Header extends StatelessWidget {
         ),
       ),
       child: Row(children: [
-        Text('Carte',
+        Text('Carte'.tr,
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 26,
@@ -410,7 +410,7 @@ class _Header extends StatelessWidget {
 
         // ✅ Bouton Vue liste/carte avec tooltip
         Obx(() => Tooltip(
-              message: ctrl.showList.value ? 'Voir la carte' : 'Voir la liste',
+              message: ctrl.showList.value ? 'Voir la carte'.tr : 'Voir la liste'.tr,
               child: GestureDetector(
                 onTap: ctrl.toggleView,
                 child: AnimatedContainer(
@@ -442,7 +442,7 @@ class _Header extends StatelessWidget {
 
         // Bouton recherche
         Obx(() => Tooltip(
-              message: 'Rechercher une ville',
+              message: 'Rechercher une ville'.tr,
               child: GestureDetector(
                 onTap: ctrl.toggleSearch,
                 child: AnimatedContainer(
@@ -593,7 +593,7 @@ class _BarreRecherche extends StatelessWidget {
               style:
                    TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration:  InputDecoration(
-                hintText: 'Rechercher une ville...',
+                hintText: 'Rechercher une ville...'.tr,
                 hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 14),
@@ -753,13 +753,13 @@ class _VueListe extends StatelessWidget {
                         size: 36, color: AppColors.textMuted.withOpacity(0.5)),
                   ),
                   const SizedBox(height: 16),
-                   Text('Personne à proximité',
+                   Text('Personne à proximité'.tr,
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                   Text('Augmente la distance\npour voir plus de profils',
+                   Text('Augmente la distance\npour voir plus de profils'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 13,
@@ -850,7 +850,7 @@ class _CarteProfilListe extends StatelessWidget {
                       border:
                           Border.all(color: AppColors.online.withOpacity(0.3)),
                     ),
-                    child:  Text('En ligne',
+                    child:  Text('En ligne'.tr,
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
@@ -866,14 +866,14 @@ class _CarteProfilListe extends StatelessWidget {
                 Text(
                   user.distanceMeters != null && user.showDistance
                       ? user.distanceLabel
-                      : 'Distance inconnue',
+                      : 'Distance inconnue'.tr,
                   style:
                        TextStyle(fontSize: 12, color: AppColors.textMuted),
                 ),
                 if (user.gender != null) ...[
                    Text(' · ',
                       style: TextStyle(color: AppColors.textMuted)),
-                  Text(user.gender!.capitalize!,
+                  Text(user.gender!.capitalize!.tr,
                       style:  TextStyle(
                           fontSize: 12, color: AppColors.textMuted)),
                 ],
@@ -906,7 +906,7 @@ class _CarteProfilListe extends StatelessWidget {
                               border: Border.all(
                                   color: AppColors.accent.withOpacity(0.2)),
                             ),
-                            child: Text(interest,
+                            child: Text(interest.tr,
                                 style:  TextStyle(
                                     fontSize: 10,
                                     color: AppColors.textPrimary,
@@ -1058,19 +1058,19 @@ class _PanelParametresCarte extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 16),
-          Text('Paramètres de la carte',
+          Text('Paramètres de la carte'.tr,
               style: TextStyle(
                   fontFamily: 'Syne',
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 20),
-          _SectionTitre('👁️ Visibilité sur la carte'),
+          _SectionTitre('👁️ Visibilité sur la carte'.tr),
           const SizedBox(height: 10),
           Obx(() => ctrl.estInvisible
               ? Column(children: [
                   _BoutonAction(
-                    label: 'Redevenir visible',
+                    label: 'Redevenir visible'.tr,
                     icon: Icons.visibility_rounded,
                     color: AppColors.online,
                     onTap: () {
@@ -1093,8 +1093,8 @@ class _PanelParametresCarte extends StatelessWidget {
                       Expanded(
                         child: Text(
                           ctrl.mapInvisibleUntil.value != null
-                              ? 'Invisible encore ${ctrl.invisibleDepuis}'
-                              : 'Tu es invisible indéfiniment',
+                              ? 'Invisible encore @invisibleDepuis'.trParams({'invisibleDepuis': ctrl.invisibleDepuis.toString()})
+                              : 'Tu es invisible indéfiniment'.tr,
                           style: const TextStyle(
                               fontSize: 12, color: Colors.orange),
                         ),
@@ -1103,14 +1103,14 @@ class _PanelParametresCarte extends StatelessWidget {
                   ),
                 ])
               : Column(children: [
-                   Text('Se cacher pendant :',
+                   Text('Se cacher pendant :'.tr,
                       style:
                           TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   const SizedBox(height: 8),
                   Row(children: [
                     Expanded(
                         child: _BoutonDuree(
-                            label: '1 heure',
+                            label: '1 heure'.tr,
                             onTap: () {
                               Get.back();
                               ctrl.setInvisible(const Duration(hours: 1));
@@ -1118,7 +1118,7 @@ class _PanelParametresCarte extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                         child: _BoutonDuree(
-                            label: '24 heures',
+                            label: '24 heures'.tr,
                             onTap: () {
                               Get.back();
                               ctrl.setInvisible(const Duration(hours: 24));
@@ -1126,7 +1126,7 @@ class _PanelParametresCarte extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                         child: _BoutonDuree(
-                            label: 'Toujours',
+                            label: 'Toujours'.tr,
                             onTap: () {
                               Get.back();
                               ctrl.setInvisible(null);
@@ -1134,7 +1134,7 @@ class _PanelParametresCarte extends StatelessWidget {
                   ]),
                 ])),
           const SizedBox(height: 20),
-          _SectionTitre('👻 Mode Fantôme'),
+          _SectionTitre('👻 Mode Fantôme'.tr),
           const SizedBox(height: 10),
           Obx(() => Container(
                 padding: const EdgeInsets.all(14),
@@ -1167,7 +1167,7 @@ class _PanelParametresCarte extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(children: [
-                             Text('Mode Fantôme',
+                             Text('Mode Fantôme'.tr,
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -1183,7 +1183,7 @@ class _PanelParametresCarte extends StatelessWidget {
                                 ]),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text('👑 Premium',
+                              child:  Text('👑 Premium'.tr,
                                   style: TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w800,
@@ -1193,8 +1193,8 @@ class _PanelParametresCarte extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             ctrl.estFantome
-                                ? 'Actif — tu vois sans apparaître'
-                                : 'Vois les autres sans apparaître',
+                                ? 'Actif — tu vois sans apparaître'.tr
+                                : 'Vois les autres sans apparaître'.tr,
                             style:  TextStyle(
                                 fontSize: 11, color: AppColors.textMuted),
                           ),
@@ -1214,28 +1214,28 @@ class _PanelParametresCarte extends StatelessWidget {
                 ]),
               )),
           const SizedBox(height: 20),
-          _SectionTitre('📍 Précision de ma position'),
+          _SectionTitre('📍 Précision de ma position'.tr),
           const SizedBox(height: 10),
           Obx(() => Column(children: [
                 _OptionPrecision(
-                    label: 'Position exacte',
-                    sublabel: 'Ta position réelle est affichée',
+                    label: 'Position exacte'.tr,
+                    sublabel: 'Ta position réelle est affichée'.tr,
                     icon: '🎯',
                     value: 'exact',
                     selected: ctrl.positionPrecision.value,
                     onTap: () => ctrl.setPrecision('exact')),
                 const SizedBox(height: 6),
                 _OptionPrecision(
-                    label: 'Floutée (±300m)',
-                    sublabel: 'Recommandé — position approximative',
+                    label: 'Floutée (±300m)'.tr,
+                    sublabel: 'Recommandé — position approximative'.tr,
                     icon: '🔵',
                     value: 'flouted',
                     selected: ctrl.positionPrecision.value,
                     onTap: () => ctrl.setPrecision('flouted')),
                 const SizedBox(height: 6),
                 _OptionPrecision(
-                    label: 'Très floutée (±1km)',
-                    sublabel: 'Maximum de confidentialité',
+                    label: 'Très floutée (±1km)'.tr,
+                    sublabel: 'Maximum de confidentialité'.tr,
                     icon: '🌫️',
                     value: 'very_flouted',
                     selected: ctrl.positionPrecision.value,
@@ -1272,7 +1272,7 @@ class _BanniereInvisible extends StatelessWidget {
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Tu es invisible sur la carte',
+             Text('Tu es invisible sur la carte'.tr,
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -1280,8 +1280,8 @@ class _BanniereInvisible extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               ctrl.mapInvisibleUntil.value != null
-                  ? 'Encore ${ctrl.invisibleDepuis} — tu ne vois pas les autres'
-                  : 'Tu ne vois pas les autres profils',
+                  ? 'Encore @invisibleDepuis — tu ne vois pas les autres'.trParams({'invisibleDepuis': ctrl.invisibleDepuis.toString()})
+                  : 'Tu ne vois pas les autres profils'.tr,
               style: const TextStyle(fontSize: 11, color: Colors.orange),
             ),
           ]),
@@ -1295,7 +1295,7 @@ class _BanniereInvisible extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.orange.withOpacity(0.5)),
             ),
-            child: const Text('Visible',
+            child:  Text('Visible'.tr,
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -1323,19 +1323,19 @@ class _BanniereFantome extends StatelessWidget {
           BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12)
         ],
       ),
-      child: const Row(children: [
+      child:  Row(children: [
         Text('👻', style: TextStyle(fontSize: 22)),
         SizedBox(width: 12),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Mode Fantôme actif',
+            Text('Mode Fantôme actif'.tr,
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Colors.purple)),
             SizedBox(height: 2),
-            Text('Tu vois les autres — personne ne te voit 👑',
+            Text('Tu vois les autres — personne ne te voit 👑'.tr,
                 style: TextStyle(fontSize: 11, color: Colors.purple)),
           ]),
         ),
@@ -1388,7 +1388,7 @@ class _FiltresBar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text('En ligne',
+                Text('En ligne'.tr,
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1415,7 +1415,7 @@ class _FiltresBar extends StatelessWidget {
                  Icon(Icons.social_distance_rounded,
                     size: 14, color: AppColors.accent),
                 const SizedBox(width: 6),
-                Text('${ctrl.filterDistance.value.toInt()} km',
+                Text('@p km'.trParams({'p': (ctrl.filterDistance.value.toInt()).toString()}),
                     style:  TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1717,7 +1717,7 @@ class _ProfilCard extends StatelessWidget {
                             border: Border.all(
                                 color: AppColors.online.withOpacity(0.4)),
                           ),
-                          child:  Text('En ligne',
+                          child:  Text('En ligne'.tr,
                               style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -1782,7 +1782,7 @@ class _ProfilCard extends StatelessWidget {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Text(user.interests[i],
+                child: Text(user.interests[i].tr,
                     style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1813,14 +1813,14 @@ class _ProfilCard extends StatelessWidget {
                           offset: const Offset(0, 4))
                     ],
                   ),
-                  child: const Center(
+                  child:  Center(
                     child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.person_rounded,
                               color: AppColors.surAccent, size: 17),
                           SizedBox(width: 8),
-                          Text('Voir le profil',
+                          Text('Voir le profil'.tr,
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -1869,7 +1869,7 @@ class _ProfilCard extends StatelessWidget {
             unreadCount: 0,
           ));
     } catch (e) {
-      Get.snackbar('Erreur', "Impossible d'ouvrir la conversation",
+      Get.snackbar('Erreur'.tr, 'Impossible d\'ouvrir la conversation'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);

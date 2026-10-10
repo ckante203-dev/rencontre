@@ -70,7 +70,7 @@ class _InputBar extends StatelessWidget {
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => ctrl.sendText(),
                   decoration: InputDecoration(
-                      hintText: 'Message...',
+                      hintText: 'Message...'.tr,
                       hintStyle:
                           TextStyle(color: AppColors.textMuted, fontSize: 15),
                       border: InputBorder.none,
@@ -141,7 +141,7 @@ class _BandeauModification extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Modifier le message',
+              Text('Modifier le message'.tr,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -179,7 +179,7 @@ class _ReplyBar extends StatelessWidget {
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(msg.senderId == ctrl.myId ? 'Vous' : ctrl.conversation.userName,
+          Text(msg.senderId == ctrl.myId ? 'Vous'.tr : ctrl.conversation.userName,
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -201,13 +201,13 @@ class _ReplyBar extends StatelessWidget {
   String _preview(MessageModel msg) {
     switch (msg.type) {
       case MessageType.image:
-        return '📷 Photo';
+        return '📷 Photo'.tr;
       case MessageType.audio:
-        return '🎤 Vocal';
+        return '🎤 Vocal'.tr;
       case MessageType.snap:
-        return '📸 Snap';
+        return '📸 Snap'.tr;
       case MessageType.location:
-        return '📍 Position';
+        return '📍 Position'.tr;
       default:
         return msg.text ?? '';
     }
@@ -274,7 +274,7 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
                           borderRadius: BorderRadius.circular(2)))));
         }),
         const SizedBox(width: 8),
-        Text('Enregistrement...',
+        Text('Enregistrement...'.tr,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         const Spacer(),
         Obx(() {
@@ -315,45 +315,45 @@ class _AttachMenu extends StatelessWidget {
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
         _AttachItem(
             icon: Icons.camera_alt_rounded,
-            label: 'Caméra',
+            label: 'Caméra'.tr,
             color: AppColors.accent,
             onTap: () => _selectionnerEtEnvoyer(context, camera: true)),
         _AttachItem(
             icon: Icons.photo_library_rounded,
-            label: 'Galerie',
+            label: 'Galerie'.tr,
             color: AppColors.accent2,
             onTap: () => _selectionnerEtEnvoyer(context, camera: false)),
         _AttachItem(
             icon: Icons.videocam_rounded,
-            label: 'Vidéo',
+            label: 'Vidéo'.tr,
             color: const Color(0xFF00B4DB),
             onTap: () => _selectionnerVideo(context)),
         _AttachItem(
             icon: Icons.location_on_rounded,
-            label: 'Position',
+            label: 'Position'.tr,
             color: const Color(0xFFFFD93D),
             onTap: ctrl.envoyerLocalisation),
         _AttachItem(
             icon: Icons.lock_rounded,
-            label: 'Album',
+            label: 'Album'.tr,
             color: const Color(0xFFFF8FB1),
             onTap: () async {
               final ok = await ctrl.partagerAlbum();
               if (ok == false) {
-                Get.snackbar('Ton album privé est vide',
-                    'Ajoute des photos, puis partage-le',
+                Get.snackbar('Ton album privé est vide'.tr,
+                    'Ajoute des photos, puis partage-le'.tr,
                     snackPosition: SnackPosition.TOP,
                     backgroundColor: AppColors.surface,
                     colorText: AppColors.textPrimary,
                     mainButton: TextButton(
                         onPressed: () => Get.to(() => const EcranMonAlbum()),
-                        child: Text('Ajouter',
+                        child: Text('Ajouter'.tr,
                             style: TextStyle(color: AppColors.textPrimary))));
               }
             }),
         _AttachItem(
             icon: Icons.emoji_emotions_rounded,
-            label: 'Sticker',
+            label: 'Sticker'.tr,
             color: const Color(0xFF7CFFB2),
             onTap: () async {
               ctrl.showAttachMenu.value = false;
@@ -485,7 +485,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Padding(
                       padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
-                      child: Text('Durée d\'affichage après ouverture',
+                      child: Text('Durée d\'affichage après ouverture'.tr,
                           style: TextStyle(
                               fontSize: 13, color: AppColors.textMuted),
                           textAlign: TextAlign.center)),
@@ -545,7 +545,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                               ? AppColors.accent
                               : AppColors.textMuted),
                       const SizedBox(width: 5),
-                      Text(_modeEphemere ? _duree.label : 'Éphémère',
+                      Text(_modeEphemere ? _duree.label : 'Éphémère'.tr,
                           style: TextStyle(
                               fontSize: 12,
                               color: _modeEphemere
@@ -583,7 +583,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                             ? AppColors.error.withOpacity(0.6)
                             : AppColors.border),
                   ),
-                  child: Text(_sensible ? '🔞 Sensible' : '🔞',
+                  child: Text(_sensible ? '🔞 Sensible'.tr : '🔞',
                       style: TextStyle(
                           fontSize: 12,
                           color: _sensible
@@ -612,11 +612,11 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: AppColors.surAccent))
-                      : Row(mainAxisSize: MainAxisSize.min, children: const [
+                      : Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(Icons.send_rounded,
                               color: AppColors.surAccent, size: 18),
                           SizedBox(width: 6),
-                          Text('Envoyer',
+                          Text('Envoyer'.tr,
                               style: TextStyle(
                                   color: AppColors.surAccent,
                                   fontWeight: FontWeight.w700,

@@ -79,13 +79,13 @@ class _BoostSheetState extends State<_BoostSheet> {
   static String _duree(String productId) {
     switch (productId.split(':').first) {
       case 'boost_1h':
-        return '1 heure';
+        return '1 heure'.tr;
       case 'boost_2h':
-        return '2 heures';
+        return '2 heures'.tr;
       case 'boost_24h':
-        return '24 heures';
+        return '24 heures'.tr;
       default:
-        return 'Boost';
+        return 'Boost'.tr;
     }
   }
 
@@ -93,7 +93,7 @@ class _BoostSheetState extends State<_BoostSheet> {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '${h}h $m min' : '$m:$s';
+    return h > 0 ? '@hh @m min'.trParams({'h': h.toString(), 'm': m.toString()}) : '$m:$s';
   }
 
   /// Boost offert du mois (RPC boost_offert_etat, migration 042).
@@ -116,16 +116,16 @@ class _BoostSheetState extends State<_BoostSheet> {
       await Supabase.instance.client.rpc('utiliser_boost_offert');
       await _home.rafraichirMonProfil();
       await Future.wait([_chargerOffert(), _chargerBilan()]);
-      _snack('Boost offert activé ⚡ Ton profil est en tête pendant 1 heure !');
+      _snack('Boost offert activé ⚡ Ton profil est en tête pendant 1 heure !'.tr);
     } on PostgrestException catch (e) {
       _snack(e.message.contains('deja_utilise')
-          ? 'Ton Boost offert de ce mois est déjà utilisé.'
+          ? 'Ton Boost offert de ce mois est déjà utilisé.'.tr
           : e.message.contains('premium_requis')
-              ? 'Le Boost offert est réservé aux membres Premium.'
-              : "Impossible d'activer le Boost. Réessaie.");
+              ? 'Le Boost offert est réservé aux membres Premium.'.tr
+              : 'Impossible d\'activer le Boost. Réessaie.'.tr);
       _chargerOffert();
     } catch (_) {
-      _snack("Impossible d'activer le Boost. Réessaie.");
+      _snack('Impossible d\'activer le Boost. Réessaie.'.tr);
     } finally {
       if (mounted) setState(() => _activationOffert = false);
     }
@@ -156,7 +156,7 @@ class _BoostSheetState extends State<_BoostSheet> {
             TextSpan(children: [
               const TextSpan(text: '👑 '),
               TextSpan(
-                  text: "Avec Premium : 1 Boost d'1 h offert chaque mois",
+                  text: 'Avec Premium : 1 Boost d\'1 h offert chaque mois'.tr,
                   style: TextStyle(color: AppColors.textPrimary)),
               const TextSpan(
                   text: '  ›',
@@ -176,9 +176,8 @@ class _BoostSheetState extends State<_BoostSheet> {
         padding: const EdgeInsets.only(bottom: 14),
         child: Text(
           p == null
-              ? '🎁 Boost offert du mois utilisé'
-              : '🎁 Boost offert du mois utilisé · le prochain le '
-                  '${p.day == 1 ? '1er' : p.day} ${_mois[p.month - 1]}',
+              ? '🎁 Boost offert du mois utilisé'.tr
+              : '🎁 Boost offert du mois utilisé · le prochain le @p @p2'.trParams({'p2': _mois[p.month - 1].tr, 'p': (p.day == 1 ? '1er'.tr : p.day).toString()}),
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
@@ -202,13 +201,13 @@ class _BoostSheetState extends State<_BoostSheet> {
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ton Boost offert du mois',
+                Text('Ton Boost offert du mois'.tr,
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 2),
-                Text('1 heure · inclus avec Premium',
+                Text('1 heure · inclus avec Premium'.tr,
                     style:
                         TextStyle(fontSize: 11, color: AppColors.textMuted)),
               ]),
@@ -228,7 +227,7 @@ class _BoostSheetState extends State<_BoostSheet> {
                     height: 16,
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: AppColors.surAccent))
-                : const Text('Activer',
+                :  Text('Activer'.tr,
                     style: TextStyle(
                         color: AppColors.surAccent,
                         fontSize: 13,
@@ -260,8 +259,8 @@ class _BoostSheetState extends State<_BoostSheet> {
     setState(() => _activation = false);
     _chargerBilan();
     _snack(_fin != null
-        ? 'Boost activé ⚡ Ton profil est en tête !'
-        : 'Paiement reçu. Ton Boost s\'activera dans un instant.');
+        ? 'Boost activé ⚡ Ton profil est en tête !'.tr
+        : 'Paiement reçu. Ton Boost s\'activera dans un instant.'.tr);
   }
 
   void _snack(String texte) => Get.snackbar(texte, '',
@@ -299,7 +298,7 @@ class _BoostSheetState extends State<_BoostSheet> {
         AvatarRayonnant(
             photoUrl: _home.myProfile?.photoUrl, actif: fin != null),
         const SizedBox(height: 4),
-        Text(fin != null ? 'Ton profil rayonne ⚡' : 'Booste ton profil',
+        Text(fin != null ? 'Ton profil rayonne ⚡'.tr : 'Booste ton profil'.tr,
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
@@ -327,8 +326,8 @@ class _BoostSheetState extends State<_BoostSheet> {
               Expanded(
                 child: Text(
                   _activation && fin == null
-                      ? 'Activation de ton Boost…'
-                      : 'Boost actif · encore ${_restant(fin!.difference(DateTime.now()))}',
+                      ? 'Activation de ton Boost…'.tr
+                      : 'Boost actif · encore @p'.trParams({'p': (_restant(fin!.difference(DateTime.now()))).toString()}),
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -359,7 +358,7 @@ class _BoostSheetState extends State<_BoostSheet> {
   Widget _choix(bool actif) {
     final rc = _rc;
     if (rc == null) {
-      return _info('Les Boosts ne sont pas encore disponibles ici.');
+      return _info('Les Boosts ne sont pas encore disponibles ici.'.tr);
     }
     return Obx(() {
       final pkgs = rc.boosts;
@@ -374,7 +373,7 @@ class _BoostSheetState extends State<_BoostSheet> {
         if (actif)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text('Un nouvel achat prolonge ton Boost en cours.',
+            child: Text('Un nouvel achat prolonge ton Boost en cours.'.tr,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ),
         ...pkgs.asMap().entries.map((e) {
@@ -412,13 +411,13 @@ class _BoostSheetState extends State<_BoostSheet> {
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Boost ${_duree(pkg.storeProduct.identifier)}',
+                          Text('Boost @p'.trParams({'p': (_duree(pkg.storeProduct.identifier)).toString()}),
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary)),
                           if (meilleur)
-                            Text('⭐ Recommandé',
+                            Text('⭐ Recommandé'.tr,
                                 style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -439,7 +438,7 @@ class _BoostSheetState extends State<_BoostSheet> {
           );
         }),
         const SizedBox(height: 4),
-        Text('Paiement unique, sans abonnement.',
+        Text('Paiement unique, sans abonnement.'.tr,
             style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
       ]);
     });
@@ -480,18 +479,18 @@ class _BoostSheetState extends State<_BoostSheet> {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(children: [
-        Text(actif ? 'Pendant ce Boost' : 'Ton dernier Boost',
+        Text(actif ? 'Pendant ce Boost'.tr : 'Ton dernier Boost'.tr,
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textMuted)),
         const SizedBox(height: 10),
         Row(children: [
-          chiffre('$vues', vues > 1 ? 'vues du profil' : 'vue du profil'),
-          chiffre('$likes', likes > 1 ? 'likes reçus' : 'like reçu'),
+          chiffre('$vues', vues > 1 ? 'vues du profil'.tr : 'vue du profil'.tr),
+          chiffre('$likes', likes > 1 ? 'likes reçus'.tr : 'like reçu'.tr),
           if (x != null && x > 1)
             chiffre('×${x.toStringAsFixed(1).replaceAll('.0', '').replaceAll('.', ',')}',
-                "que d'habitude"),
+                'que d\'habitude'.tr),
         ]),
       ]),
     );

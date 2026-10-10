@@ -84,10 +84,10 @@ class AmisController extends GetxController {
       return r;
     } catch (e) {
       _snack(
-          'Demande non envoyée',
+          'Demande non envoyée'.tr,
           e.toString().contains('trop_de_demandes')
-              ? 'Trop de demandes en attente, attends qu\'on te réponde'
-              : 'Vérifie ta connexion et réessaie');
+              ? 'Trop de demandes en attente, attends qu\'on te réponde'.tr
+              : 'Vérifie ta connexion et réessaie'.tr);
       return statutDe(userId);
     }
   }
@@ -99,7 +99,7 @@ class AmisController extends GetxController {
       await charger();
       return r;
     } catch (_) {
-      _snack('Oups', 'Impossible d\'accepter, vérifie ta connexion');
+      _snack('Oups'.tr, 'Impossible d\'accepter, vérifie ta connexion'.tr);
       return statutDe(userId);
     }
   }
@@ -112,7 +112,7 @@ class AmisController extends GetxController {
       await supabase.rpc('retirer_ami', params: {'p_user': userId});
     } catch (_) {
       liens.assignAll(avant);
-      _snack('Oups', 'Impossible, vérifie ta connexion');
+      _snack('Oups'.tr, 'Impossible, vérifie ta connexion'.tr);
     }
   }
 

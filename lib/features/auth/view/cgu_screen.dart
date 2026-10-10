@@ -27,7 +27,7 @@ class _CguScreenState extends State<CguScreen> {
       final uri = Uri.parse(_cguUrl);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
-      Get.snackbar('Erreur', 'Impossible d\'ouvrir le lien',
+      Get.snackbar('Erreur'.tr, 'Impossible d\'ouvrir le lien'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
           colorText: AppColors.textPrimary);
@@ -46,7 +46,7 @@ class _CguScreenState extends State<CguScreen> {
               color: AppColors.textPrimary, size: 20),
           onPressed: () => Get.back(result: false),
         ),
-        title: Text("Conditions d'utilisation",
+        title: Text('Conditions d\'utilisation'.tr,
             style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -59,7 +59,7 @@ class _CguScreenState extends State<CguScreen> {
             icon: Icon(Icons.open_in_new_rounded,
                 color: AppColors.accent, size: 20),
             onPressed: _openOnline,
-            tooltip: 'Voir en ligne',
+            tooltip: 'Voir en ligne'.tr,
           ),
         ],
       ),
@@ -81,14 +81,14 @@ class _CguScreenState extends State<CguScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(children: [
-                    const Text('Zamu',
+                     Text('Zamu'.tr,
                         style: TextStyle(
                             color: AppColors.surAccent,
                             fontFamily: 'Syne',
                             fontSize: 22,
                             fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
-                    const Text("Conditions Générales d'Utilisation",
+                     Text('Conditions Générales d\'Utilisation'.tr,
                         style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 13),
                         textAlign: TextAlign.center),
                     SizedBox(height: 8),
@@ -98,41 +98,41 @@ class _CguScreenState extends State<CguScreen> {
                       decoration: BoxDecoration(
                           color: AppColors.surAccent.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Dernière mise à jour : Mars 2026',
+                      child:  Text('Dernière mise à jour : Mars 2026'.tr,
                           style: TextStyle(color: AppColors.surAccent, fontSize: 11)),
                     ),
                   ]),
                 ),
 
-                _buildSection('1. Présentation',
-                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'),
+                _buildSection('1. Présentation'.tr,
+                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'.tr),
 
-                _buildSection('2. Conditions d\'accès',
-                    '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'),
+                _buildSection('2. Conditions d\'accès'.tr,
+                    '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'.tr),
 
-                _buildSection('3. Règles de comportement',
-                    'Il est strictement interdit de :\n\n• Publier des contenus pornographiques ou impliquant des mineurs\n• Harceler, menacer ou insulter d\'autres utilisateurs\n• Publier des contenus haineux ou discriminatoires\n• Usurper l\'identité d\'une autre personne\n• Diffuser de fausses informations ou des escroqueries\n• Partager des informations personnelles sans consentement\n\nTout contenu inapproprié sera supprimé sans préavis.'),
+                _buildSection('3. Règles de comportement'.tr,
+                    'Il est strictement interdit de :\n\n• Publier des contenus pornographiques ou impliquant des mineurs\n• Harceler, menacer ou insulter d\'autres utilisateurs\n• Publier des contenus haineux ou discriminatoires\n• Usurper l\'identité d\'une autre personne\n• Diffuser de fausses informations ou des escroqueries\n• Partager des informations personnelles sans consentement\n\nTout contenu inapproprié sera supprimé sans préavis.'.tr),
 
-                _buildSection('4. Protection des données personnelles',
-                    'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.snapmeet@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'),
+                _buildSection('4. Protection des données personnelles'.tr,
+                    'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.snapmeet@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'.tr),
 
-                _buildSection('5. Responsabilités',
-                    'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'),
+                _buildSection('5. Responsabilités'.tr,
+                    'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'.tr),
 
-                _buildSection('6. Abonnement Premium',
-                    'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à Zamu.'),
+                _buildSection('6. Abonnement Premium'.tr,
+                    'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à Zamu.'.tr),
 
-                _buildSection('7. Modération et sanctions',
-                    'En cas de violation des CGU :\n• Avertissement\n• Suspension temporaire\n• Suppression définitive du compte\n• Signalement aux autorités pour actes illégaux\n\nSignalez tout comportement inapproprié directement depuis l\'application.'),
+                _buildSection('7. Modération et sanctions'.tr,
+                    'En cas de violation des CGU :\n• Avertissement\n• Suspension temporaire\n• Suppression définitive du compte\n• Signalement aux autorités pour actes illégaux\n\nSignalez tout comportement inapproprié directement depuis l\'application.'.tr),
 
-                _buildSection('8. Propriété intellectuelle',
-                    'Le nom Zamu, son logo et son code sont protégés. Toute reproduction sans autorisation est interdite.\n\nVotre contenu vous appartient. En le publiant, vous accordez à Zamu une licence limitée au fonctionnement de l\'application.'),
+                _buildSection('8. Propriété intellectuelle'.tr,
+                    'Le nom Zamu, son logo et son code sont protégés. Toute reproduction sans autorisation est interdite.\n\nVotre contenu vous appartient. En le publiant, vous accordez à Zamu une licence limitée au fonctionnement de l\'application.'.tr),
 
-                _buildSection('9. Modifications',
-                    'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser Zamu après notification vaut acceptation.'),
+                _buildSection('9. Modifications'.tr,
+                    'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser Zamu après notification vaut acceptation.'.tr),
 
-                _buildSection('10. Contact',
-                    'Pour toute question ou réclamation :\n📧 support.snapmeet@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'),
+                _buildSection('10. Contact'.tr,
+                    'Pour toute question ou réclamation :\n📧 support.snapmeet@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'.tr),
 
                 // Footer
                 Container(
@@ -143,7 +143,7 @@ class _CguScreenState extends State<CguScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.border)),
                   child: Text(
-                    'En utilisant Zamu, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 Zamu — Tous droits réservés',
+                    'En utilisant Zamu, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 Zamu — Tous droits réservés'.tr,
                     style: TextStyle(
                         color: AppColors.textMuted, fontSize: 12, height: 1.6),
                     textAlign: TextAlign.center,
@@ -168,7 +168,7 @@ class _CguScreenState extends State<CguScreen> {
                           Icon(Icons.open_in_new_rounded,
                               color: AppColors.accent, size: 16),
                           SizedBox(width: 8),
-                          Text('Voir la version en ligne',
+                          Text('Voir la version en ligne'.tr,
                               style: TextStyle(
                                   color: AppColors.textPrimary,
                                   fontSize: 13,
@@ -217,7 +217,7 @@ class _CguScreenState extends State<CguScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "J'ai lu et j'accepte les Conditions Générales d'Utilisation",
+                      'J\'ai lu et j\'accepte les Conditions Générales d\'Utilisation'.tr,
                       style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
@@ -247,7 +247,7 @@ class _CguScreenState extends State<CguScreen> {
                           ]
                         : null,
                   ),
-                  child: Text('Continuer',
+                  child: Text('Continuer'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 16,
