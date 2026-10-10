@@ -1,4 +1,6 @@
 import 'dart:ui' show ImageFilter;
+import 'dart:typed_data';
+import 'package:video_thumbnail/video_thumbnail.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;

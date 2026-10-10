@@ -497,6 +497,9 @@ class _StoryReplyPreview extends StatelessWidget {
                                 fontSize: storyReply.storyText == null ? 18 : 8,
                                 fontWeight: FontWeight.w800))),
                   )
+                else if (storyReply.storyIsVideo)
+                  // Vidéo : on montre une image extraite de la vidéo
+                  _VignetteVideoStory(url: storyReply.storyPreviewUrl)
                 else
                   CachedNetworkImage(
                       imageUrl: storyReply.storyPreviewUrl,
@@ -1387,6 +1390,44 @@ class _GlisserPourRepondreState extends State<_GlisserPourRepondre>
           ),
         Transform.translate(offset: Offset(_dx, 0), child: widget.child),
       ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  VIGNETTE D'UNE STORY VIDÉO (carte de réponse à une story)
+//  Une image est extraite de la vidéo, gardée en mémoire pour ne pas
+//  la recalculer à chaque défilement.
+// ═══════════════════════════════════════════════════════════════════
+
+class _VignetteVideoStory extends StatelessWidget {
+  final String url;
+  const _VignetteVideoStory({required this.url});
+
+  static final Map<String, Future<Uint8List?>> _cache = {};
+
+  static Future<Uint8List?> _vignette(String url) =>
+      _cache.putIfAbsent(url, () async {
+        try {
+          return await VideoThumbnail.thumbnailData(
+              video: url,
+              imageFormat: ImageFormat.JPEG,
+              maxWidth: 240,
+              quality: 70);
+        } catch (_) {
+          return null; // story expirée ou réseau : fond neutre
+        }
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: _vignette(url),
+      builder: (_, snap) {
+        final octets = snap.data;
+        if (octets == null) return Container(color: AppColors.surface);
+        return Image.memory(octets, fit: BoxFit.cover, gaplessPlayback: true);
+      },
     );
   }
 }
