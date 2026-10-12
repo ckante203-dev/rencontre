@@ -342,8 +342,15 @@ class ControleurProfil extends GetxController {
           .assignAll(SupabaseService.questionsDepuis(data['questions']));
 
       // ✅ Toujours réinitialisé (sinon l'ancienne valeur restait si null)
+      // Les intérêts choisis à l'inscription (« 🎮 Jeux vidéo ») sont
+      // ramenés aux libellés de cet écran (« Gaming ») pour être cochés.
       selectedInterests.value = data['interests'] is List
           ? List<String>.from(data['interests'])
+              .map(normaliserInteret)
+              .where((i) => allInterests.any((e) => e['label'] == i))
+              .toSet()
+              .take(3)
+              .toList()
           : <String>[];
 
       // Booléens sécurisés
@@ -675,6 +682,20 @@ class ControleurProfil extends GetxController {
   }
 
   // ─── MODIFIER INFOS ─────────────────────────────────────────────
+
+  /// « 🎮 Jeux vidéo » (inscription) → « Gaming » (liste de l'écran Modifier)
+  static String normaliserInteret(String valeur) {
+    final texte = valeur
+        .replaceFirst(RegExp(r'^[^\p{L}]+', unicode: true), '')
+        .trim();
+    const synonymes = {
+      'Jeux vidéo': 'Gaming',
+      'Gastronomie': 'Food',
+      'Concerts': 'Musique',
+      'Théâtre': 'Art',
+    };
+    return synonymes[texte] ?? texte;
+  }
 
   void toggleInterest(String label) {
     if (selectedInterests.contains(label)) {
