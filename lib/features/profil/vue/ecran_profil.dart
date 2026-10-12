@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/parrainage.dart';
 import 'package:rencontre/features/profil/vue/carte_partage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/features/profil/vue/ecran_verification.dart';
@@ -68,6 +69,8 @@ class EcranProfil extends StatelessWidget {
                   const _CarteAmis(),
                   const SizedBox(height: 14),
                   _CartePseudo(ctrl: ctrl),
+                  const SizedBox(height: 14),
+                  const CarteParrainage(),
                   const SizedBox(height: 14),
                   const _CarteAlbum(),
                   const SizedBox(height: 40),

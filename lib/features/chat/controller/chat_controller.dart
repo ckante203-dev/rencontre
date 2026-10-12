@@ -649,6 +649,81 @@ class ConversationController extends GetxController
   final RxBool isOtherTyping = false.obs;
   final RxBool isOtherRecording = false.obs; // « enregistre un vocal… »
   final RxBool autreVerifie = false.obs; // badge bleu dans l'en-tête
+  // Messages programmés (table messages_programmes, envoyés par le serveur)
+  final RxList<Map<String, dynamic>> programmes = <Map<String, dynamic>>[].obs;
+
+  Future<void> chargerProgrammes() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('messages_programmes')
+          .select('id, content, envoyer_le')
+          .eq('conversation_id', conversation.id)
+          .eq('sender_id', myId)
+          .order('envoyer_le');
+      programmes.assignAll(List<Map<String, dynamic>>.from(rows as List));
+    } catch (_) {} // table absente (SQL 053 pas encore passé)
+  }
+
+  /// Choisir le jour et l'heure, puis enregistrer le message à envoyer
+  Future<void> programmerMessage(BuildContext context) async {
+    final texte = textController.text.trim();
+    if (texte.isEmpty) return;
+    final maintenant = DateTime.now();
+    final jour = await showDatePicker(
+      context: context,
+      initialDate: maintenant,
+      firstDate: maintenant,
+      lastDate: maintenant.add(const Duration(days: 30)),
+      helpText: 'Envoyer le…'.tr,
+    );
+    if (jour == null || !context.mounted) return;
+    final heure = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+          maintenant.add(const Duration(hours: 1))),
+      helpText: 'À quelle heure ?'.tr,
+    );
+    if (heure == null) return;
+    final quand =
+        DateTime(jour.year, jour.month, jour.day, heure.hour, heure.minute);
+    if (quand.isBefore(DateTime.now().add(const Duration(minutes: 1)))) {
+      _snackInfo('Choisis une heure dans le futur'.tr);
+      return;
+    }
+    try {
+      await Supabase.instance.client.from('messages_programmes').insert({
+        'conversation_id': conversation.id,
+        'sender_id': myId,
+        'content': texte.substring(0, texte.length.clamp(0, 2000)),
+        'envoyer_le': quand.toUtc().toIso8601String(),
+      });
+      textController.clear();
+      inputText.value = '';
+      final h = '${quand.hour.toString().padLeft(2, '0')}:${quand.minute.toString().padLeft(2, '0')}';
+      _snackInfo('⏰ Message programmé le @j/@m à @h'.trParams({
+        'j': quand.day.toString().padLeft(2, '0'),
+        'm': quand.month.toString().padLeft(2, '0'),
+        'h': h,
+      }));
+      chargerProgrammes();
+    } catch (e) {
+      debugPrint('Programmation impossible : $e');
+      _snackInfo('Action impossible, réessaie'.tr);
+    }
+  }
+
+  Future<void> annulerProgramme(String id) async {
+    try {
+      await Supabase.instance.client
+          .from('messages_programmes')
+          .delete()
+          .eq('id', id);
+      programmes.removeWhere((p) => p['id'] == id);
+    } catch (_) {
+      _snackInfo('Action impossible, réessaie'.tr);
+    }
+  }
+
   // Message épinglé en haut de la conversation (conversations.message_epingle_id)
   final RxnString epingleId = RxnString();
   final RxnString epingleTexte = RxnString();
@@ -756,6 +831,7 @@ class ConversationController extends GetxController
       _chargerStatutConversation();
       _chargerSourdine();
       _chargerEpingle();
+      chargerProgrammes();
     });
   }
 
@@ -2071,7 +2147,7 @@ class ConversationController extends GetxController
     final ts = DateTime.now().millisecondsSinceEpoch;
     final tempId = 'temp_media_$ts';
     var contenu = video
-        ? '🎬 Vidéo'
+        ? (ephemere ? '🎬 Vidéo éphémère' : '🎬 Vidéo')
         : ephemere
             ? '📸 Photo éphémère'
             : '📷 Photo';
@@ -2079,7 +2155,8 @@ class ConversationController extends GetxController
       // Le texte sert de marqueur : « 🔞 Photo », « 🔞 Vidéo »…
       contenu = '$prefixeSensible ${contenu.substring(contenu.indexOf(' ') + 1)}';
     }
-    final type = !video && ephemere ? MessageType.snap : MessageType.image;
+    // Snap : photo OU vidéo éphémère (le texte « Vidéo » indique la vidéo)
+    final type = ephemere ? MessageType.snap : MessageType.image;
     messages.add(MessageModel(
       id: tempId,
       senderId: uid,
@@ -2121,7 +2198,7 @@ class ConversationController extends GetxController
         }
       }
       etatsEnvoi[tempId] = 'Envoi…'.tr;
-      final dossier = ephemere && !video ? 'snaps' : 'photos';
+      final dossier = ephemere ? 'snaps' : 'photos';
       final base = '$dossier/$uid/${video ? 'video' : 'photo'}_$ts';
       final cheminMedia = '$base.${video ? 'mp4' : 'jpg'}';
       final store = Supabase.instance.client.storage.from('snaps');

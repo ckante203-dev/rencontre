@@ -61,6 +61,24 @@ class _ModeSwipeState extends State<ModeSwipe> {
     });
   }
 
+  Future<void> _superLike() async {
+    final u = _actuel;
+    if (u == null || _anime || !Get.isRegistered<LikeController>()) return;
+    final ok = await Get.find<LikeController>().superLike(u);
+    if (!ok || !mounted) return;
+    setState(() {
+      _anime = true;
+      _decalage = const Offset(0, -900);
+    });
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    setState(() {
+      _index++;
+      _decalage = Offset.zero;
+      _anime = false;
+    });
+  }
+
   void _revenir() {
     if (_index == 0) return;
     if (!ControleurProfil.estPremiumMaintenant()) {
@@ -128,7 +146,10 @@ class _ModeSwipeState extends State<ModeSwipe> {
                         const SizedBox(width: 18),
                         _rond(Icons.close_rounded, AppColors.error, 64,
                             () => _decider(false)),
-                        const SizedBox(width: 18),
+                        const SizedBox(width: 14),
+                        _rond(Icons.star_rounded, const Color(0xFF2E9BFF), 50,
+                            _superLike),
+                        const SizedBox(width: 14),
                         _rond(Icons.favorite_rounded, AppColors.accent, 64,
                             () => _decider(true)),
                       ]),

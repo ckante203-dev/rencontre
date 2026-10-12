@@ -213,6 +213,34 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ]),
         ),
         _BandeauEnvoi(ctrl: ctrl),
+        // ⏰ Messages programmés (annulables)
+        Obx(() => Column(mainAxisSize: MainAxisSize.min, children: [
+              for (final p in ctrl.programmes)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
+                  color: AppColors.surface2,
+                  child: Row(children: [
+                    Icon(Icons.schedule_send_rounded,
+                        size: 16, color: AppColors.accent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                          '${DateTime.tryParse('${p['envoyer_le']}')?.toLocal().toString().substring(5, 16) ?? ''} · ${p['content']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textPrimary)),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Annuler'.tr,
+                      icon: Icon(Icons.close_rounded,
+                          size: 18, color: AppColors.textMuted),
+                      onPressed: () => ctrl.annulerProgramme('${p['id']}'),
+                    ),
+                  ]),
+                ),
+            ])),
         _InputBar(ctrl: ctrl),
       ]),
     );

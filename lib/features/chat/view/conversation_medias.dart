@@ -87,8 +87,9 @@ class _SnapBubbleState extends State<_SnapBubble> {
             ? () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) =>
-                        _PleinEcranMedia(url: msg.mediaUrl!, isVideo: false)))
+                    builder: (_) => _PleinEcranMedia(
+                        url: msg.mediaUrl!,
+                        isVideo: (msg.text ?? '').contains('Vidéo'))))
             : null,
         child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -121,7 +122,8 @@ class _SnapBubbleState extends State<_SnapBubble> {
       );
     }
 
-    if (msg.isOpened && hasPhoto && _countdown > 0) {
+    final estVideo = (msg.text ?? '').contains('Vidéo');
+    if (msg.isOpened && hasPhoto && _countdown > 0 && !estVideo) {
       final urgent = _countdown <= 3;
       return Stack(children: [
         GestureDetector(
@@ -179,7 +181,8 @@ class _SnapBubbleState extends State<_SnapBubble> {
                 MaterialPageRoute(
                     builder: (_) => _SnapPleinEcran(
                         url: msg.mediaUrl!,
-                        snapDuration: msg.snapDurationSec ?? 10)));
+                        snapDuration: msg.snapDurationSec ?? 10,
+                        isVideo: estVideo)));
           });
         },
         child: Container(
@@ -191,7 +194,8 @@ class _SnapBubbleState extends State<_SnapBubble> {
           child:  Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.photo_camera_rounded, size: 26, color: AppColors.surAccent),
+                Icon(estVideo ? Icons.videocam_rounded : Icons.photo_camera_rounded,
+                    size: 26, color: AppColors.surAccent),
                 SizedBox(height: 6),
                 Text('Appuie pour voir'.tr,
                     style: TextStyle(
@@ -225,7 +229,12 @@ class _SnapBubbleState extends State<_SnapBubble> {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary)),
-              Text(msg.isOpened ? 'Photo éphémère vue ✓'.tr : 'Non ouvert à temps'.tr,
+              Text(
+                  msg.isOpened
+                      ? (estVideo
+                          ? 'Vidéo éphémère vue ✓'.tr
+                          : 'Photo éphémère vue ✓'.tr)
+                      : 'Non ouvert à temps'.tr,
                   style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
             ]),
       ]),
@@ -240,7 +249,9 @@ class _SnapBubbleState extends State<_SnapBubble> {
 class _SnapPleinEcran extends StatefulWidget {
   final String url;
   final int snapDuration;
-  const _SnapPleinEcran({required this.url, required this.snapDuration});
+  final bool isVideo;
+  const _SnapPleinEcran(
+      {required this.url, required this.snapDuration, this.isVideo = false});
   @override
   State<_SnapPleinEcran> createState() => _SnapPleinEcranState();
 }
@@ -249,9 +260,34 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
   late int _countdown;
   Timer? _timer;
 
+  VideoPlayerController? _video;
+
   @override
   void initState() {
     super.initState();
+    if (widget.isVideo) {
+      // Vidéo éphémère : lue une fois en entier, puis l'écran se ferme
+      _countdown = 0;
+      final v = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      _video = v;
+      v.initialize().then((_) {
+        if (!mounted) return;
+        setState(() {});
+        v.play();
+        v.addListener(() {
+          final val = v.value;
+          if (val.isInitialized &&
+              val.position >= val.duration &&
+              val.duration > Duration.zero &&
+              mounted) {
+            Navigator.pop(context);
+          }
+        });
+      }).catchError((e) {
+        debugPrint('Snap vidéo non chargé : $e');
+      });
+      return;
+    }
     _countdown = widget.snapDuration;
     if (_countdown > 0) {
       _timer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -275,12 +311,45 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
   @override
   void dispose() {
     _timer?.cancel();
+    _video?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final urgent = _countdown <= 3 && _countdown > 0;
+    final v = _video;
+    if (widget.isVideo) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(children: [
+          Center(
+            child: v != null && v.value.isInitialized
+                ? AspectRatio(
+                    aspectRatio: v.value.aspectRatio, child: VideoPlayer(v))
+                : const CircularProgressIndicator(color: AppColors.surMedia),
+          ),
+          if (v != null && v.value.isInitialized)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: VideoProgressIndicator(v,
+                  allowScrubbing: false,
+                  colors: const VideoProgressColors(
+                      playedColor: AppColors.surMedia)),
+            ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, color: AppColors.surMedia),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ]),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(children: [

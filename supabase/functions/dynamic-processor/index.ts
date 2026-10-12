@@ -353,6 +353,16 @@ serve(async (req) => {
     }
 
     const en = toProfile.langue === "en";
+    // ⭐ Super Like (likes.est_super, SQL 053) : texte dédié
+    let superLike = false;
+    if (eventType === "like" || eventType === "match") {
+      const { data: l } = await supabase.from("likes")
+        .select("est_super")
+        .eq("from_user_id", from_user_id)
+        .eq("to_user_id", to_user_id)
+        .maybeSingle();
+      superLike = l?.est_super === true;
+    }
     let { title, body, channelId } = buildNotificationContent(
       eventType,
       fromProfile.name,
@@ -374,9 +384,18 @@ serve(async (req) => {
     const boostActif = !!toProfile.boost_jusqua &&
       new Date(toProfile.boost_jusqua).getTime() > Date.now();
     if (eventType === "like" && toProfile.is_premium !== true && !boostActif) {
-      title = en ? "❤️ Someone liked you!" : "❤️ Quelqu'un t'a liké !";
+      title = superLike
+        ? (en ? "⭐ Someone sent you a Super Like!" : "⭐ Quelqu'un t'a envoyé un Super Like !")
+        : (en ? "❤️ Someone liked you!" : "❤️ Quelqu'un t'a liké !");
       body = en ? "Find out who liked you 👀" : "Découvre qui t'a liké 👀";
       data = { type: "like_anonyme" };
+    } else if (eventType === "like" && superLike) {
+      title = en
+        ? `⭐ ${fromProfile.name} sent you a Super Like!`
+        : `⭐ ${fromProfile.name} t'a envoyé un Super Like !`;
+      body = en
+        ? `${fromProfile.name} really likes you. Like them back!`
+        : `${fromProfile.name} t'aime vraiment bien. Like en retour !`;
     }
 
     // ── Envoi FCM ─────────────────────────────────────────────────

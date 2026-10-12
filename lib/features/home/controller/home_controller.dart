@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
@@ -900,6 +901,14 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   Future<void> loadProfiles() async {
     isLoading.value = true;
+    // Temps de chargement de l'Accueil (Firebase Performance)
+    Trace? mesure;
+    try {
+      mesure = FirebasePerformance.instance.newTrace('chargement_accueil');
+      await mesure.start();
+    } catch (_) {
+      mesure = null;
+    }
     try {
       final fetched = await _service.fetchProfiles(
         myLat: _latRecherche,
@@ -909,10 +918,12 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       _figerOrdre(fetched);
       _allUsers.value = fetched;
       profiles.value = fetched;
+      mesure?.setMetric('profils', fetched.length);
     } catch (e) {
       debugPrint('loadProfiles error: $e');
     } finally {
       isLoading.value = false;
+      mesure?.stop().catchError((_) {});
     }
   }
 

@@ -403,6 +403,26 @@ class _FormuleTile extends StatelessWidget {
                       ),
                     ],
                   ]),
+                  // Essai gratuit configuré dans la Play Console (offre de
+                  // lancement à 0) : affiché tel quel
+                  if (p.introductoryPrice != null &&
+                      p.introductoryPrice!.price == 0) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                        '🎁 @n @unite gratuits'.trParams({
+                          'n': '${p.introductoryPrice!.periodNumberOfUnits}',
+                          'unite': p.introductoryPrice!.periodUnit ==
+                                  PeriodUnit.week
+                              ? 'semaine(s)'.tr
+                              : p.introductoryPrice!.periodUnit ==
+                                      PeriodUnit.month
+                                  ? 'mois'.tr
+                                  : 'jours'.tr,
+                        }),
+                        style: _T.detail().copyWith(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w700)),
+                  ],
                   if (parSemaine != null && jours > 7) ...[
                     const SizedBox(height: 3),
                     Text(

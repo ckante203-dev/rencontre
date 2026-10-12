@@ -187,7 +187,10 @@ serve(async (req) => {
             ? texte
             : "📷 Photo")
       : type === "audio" ? t("🎤 Vocal", "🎤 Voice message")
-      : type === "snap" ? t("📸 Photo éphémère", "📸 Disappearing photo")
+      : type === "snap"
+        ? (texte.includes("Vidéo")
+          ? t("🎬 Vidéo éphémère", "🎬 Disappearing video")
+          : t("📸 Photo éphémère", "📸 Disappearing photo"))
       : type === "location" ? t("📍 Position", "📍 Location")
       : t("Nouveau message", "New message");
 

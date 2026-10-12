@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:rencontre/features/profil/vue/ecran_profil.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -433,21 +434,50 @@ class ControleurProfil extends GetxController {
 
   // ─── PHOTO PRINCIPALE ───────────────────────────────────────────
 
+  /// Recadrage après le choix de la photo (format portrait 3:4 des cartes).
+  /// null si la personne annule.
+  Future<String?> _recadrer(String chemin) async {
+    try {
+      final r = await ImageCropper().cropImage(
+        sourcePath: chemin,
+        aspectRatio: const CropAspectRatio(ratioX: 3, ratioY: 4),
+        compressQuality: 90,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Recadrer'.tr,
+            toolbarColor: Colors.black,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: AppColors.accent,
+            lockAspectRatio: false,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(title: 'Recadrer'.tr),
+        ],
+      );
+      return r?.path;
+    } catch (e) {
+      debugPrint('Recadrage indisponible, photo gardée telle quelle : $e');
+      return chemin;
+    }
+  }
+
   Future<void> changerPhoto() async {
     final source = await _choisirSource();
     if (source == null) return;
     final picked = await _picker.pickImage(
       source: source,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
+      maxWidth: 1080,
+      maxHeight: 1440,
+      imageQuality: 90,
     );
     if (picked == null) return;
+    final chemin = await _recadrer(picked.path);
+    if (chemin == null) return;
     isUploadingPhoto.value = true;
     try {
       final uid = supabase.auth.currentUser!.id;
-      final file = File(picked.path);
-      final ext = picked.path.split('.').last;
+      final file = File(chemin);
+      final ext = chemin.split('.').last;
       // ✅ Nom unique à chaque envoi : une photo refusée ou en attente
       // n'écrase plus la photo actuelle (et plus de souci de cache).
       final path = '$uid/photo_${DateTime.now().millisecondsSinceEpoch}.$ext';
@@ -576,15 +606,17 @@ class ControleurProfil extends GetxController {
     final picked = await _picker.pickImage(
       source: source,
       maxWidth: 1080,
-      maxHeight: 1080,
-      imageQuality: 85,
+      maxHeight: 1440,
+      imageQuality: 90,
     );
     if (picked == null) return;
+    final chemin = await _recadrer(picked.path);
+    if (chemin == null) return;
     isUploadingPhoto.value = true;
     try {
       final uid = supabase.auth.currentUser!.id;
-      final file = File(picked.path);
-      final ext = picked.path.split('.').last;
+      final file = File(chemin);
+      final ext = chemin.split('.').last;
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
       final path = '$uid/$fileName';
       await supabase.storage.from('profile-photos').upload(path, file);

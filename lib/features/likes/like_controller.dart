@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart' show Color;
 import 'package:rencontre/core/services/avis_service.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/shared/models/user_model.dart';
 import 'package:rencontre/core/services/notification_service.dart';
@@ -115,6 +117,57 @@ class LikeController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  /// ⭐ Super Like : 1 par jour (5 avec Premium), vérifié par la base
+  /// (fonction envoyer_super_like, SQL 053). Retourne true si envoyé.
+  Future<bool> superLike(UserModel targetUser) async {
+    final myId = _myId;
+    if (myId == null || myId == targetUser.id) return false;
+    if (hasLiked(targetUser.id)) {
+      _info('⭐ Super Like', 'Tu as déjà liké ce profil'.tr);
+      return false;
+    }
+    try {
+      final r = await _sb.rpc('envoyer_super_like',
+          params: {'p_to': targetUser.id}) as String?;
+      if (r != 'ok') {
+        _info(
+            '⭐ Super Like',
+            r == 'limite'
+                ? (ControleurProfil.estPremiumMaintenant()
+                    ? 'Tu as utilisé tes 5 Super Likes du jour'.tr
+                    : 'Ton Super Like du jour est utilisé. Premium : 5 par jour 👑'.tr)
+                : 'Action impossible, réessaie'.tr);
+        return false;
+      }
+      likedUserIds.add(targetUser.id);
+      HapticFeedback.heavyImpact();
+      final mutual = await _sb
+          .from('likes')
+          .select('from_user_id')
+          .eq('from_user_id', targetUser.id)
+          .eq('to_user_id', myId)
+          .maybeSingle();
+      if (mutual != null) {
+        await _createMatch(myId, targetUser.id);
+        matchedUserIds.add(targetUser.id);
+        _showMatchPopup(targetUser);
+      } else {
+        _info('⭐ Super Like', 'Envoyé ! @nom le verra en premier'.trParams({'nom': targetUser.name}));
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Super Like : $e');
+      _info('⭐ Super Like', 'Vérifie ta connexion et réessaie'.tr);
+      return false;
+    }
+  }
+
+  void _info(String titre, String texte) => Get.snackbar(titre, texte,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: AppColors.surface,
+      colorText: AppColors.textPrimary,
+      duration: const Duration(seconds: 3));
 
   Future<void> _createMatch(String myId, String otherId) async {
     final u1 = myId.compareTo(otherId) < 0 ? myId : otherId;

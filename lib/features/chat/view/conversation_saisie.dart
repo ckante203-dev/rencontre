@@ -52,7 +52,9 @@ class _InputBar extends StatelessWidget {
                                 ? Icons.close_rounded
                                 : Icons.add_rounded,
                             size: 20,
-                            color: ctrl.showAttachMenu.value ? AppColors.surAccent : AppColors.textPrimary)),
+                            color: ctrl.showAttachMenu.value
+                                ? AppColors.surAccent
+                                : AppColors.textPrimary)),
                   )),
               const SizedBox(width: 8),
               Expanded(
@@ -84,6 +86,9 @@ class _InputBar extends StatelessWidget {
                 final isRec = ctrl.isRecording.value;
                 return GestureDetector(
                   onTap: hasText ? ctrl.sendText : null,
+                  // Texte écrit : appui long = programmer l'envoi
+                  onLongPress:
+                      hasText ? () => ctrl.programmerMessage(context) : null,
                   onLongPressStart:
                       hasText ? null : (_) => ctrl.startRecording(),
                   onLongPressEnd: hasText ? null : (_) => ctrl.stopRecording(),
@@ -179,7 +184,10 @@ class _ReplyBar extends StatelessWidget {
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(msg.senderId == ctrl.myId ? 'Vous'.tr : ctrl.conversation.userName,
+          Text(
+              msg.senderId == ctrl.myId
+                  ? 'Vous'.tr
+                  : ctrl.conversation.userName,
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -385,7 +393,8 @@ class _AttachMenu extends StatelessWidget {
           context: ctx,
           backgroundColor: Colors.transparent,
           isScrollControlled: true,
-          builder: (_) => _PreviewSheet(ctrl: ctrl, filePath: photos.first.path));
+          builder: (_) =>
+              _PreviewSheet(ctrl: ctrl, filePath: photos.first.path));
       return;
     }
     final picked = await picker.pickImage(
@@ -425,7 +434,8 @@ class _AttachMenu extends StatelessWidget {
                 for (final c in chemins)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.file(File(c), fit: BoxFit.cover, cacheWidth: 300),
+                    child:
+                        Image.file(File(c), fit: BoxFit.cover, cacheWidth: 300),
                   ),
               ],
             ),
@@ -439,7 +449,8 @@ class _AttachMenu extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
-                icon: const Icon(Icons.send_rounded, color: AppColors.surAccent),
+                icon:
+                    const Icon(Icons.send_rounded, color: AppColors.surAccent),
                 label: Text(
                     'Envoyer @n photos'.trParams({'n': '${chemins.length}'}),
                     style: const TextStyle(
@@ -553,7 +564,8 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                         aspectRatio: _videoCtrl!.value.aspectRatio,
                         child: VideoPlayer(_videoCtrl!))
                     : const Center(
-                        child: CircularProgressIndicator(color: AppColors.surMedia)))
+                        child: CircularProgressIndicator(
+                            color: AppColors.surMedia)))
                 : Image.file(File(widget.filePath), fit: BoxFit.contain),
           )),
           if (_modeEphemere && _showDureePicker)
@@ -596,54 +608,54 @@ class _PreviewSheetState extends State<_PreviewSheet> {
             padding: EdgeInsets.fromLTRB(
                 16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
             child: Row(children: [
-              if (!widget.isVideo)
-                GestureDetector(
-                  onTap: () => setState(() {
-                    _modeEphemere = !_modeEphemere;
-                    if (_modeEphemere) _showDureePicker = true;
-                  }),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _modeEphemere
-                          ? AppColors.accent.withOpacity(0.15)
-                          : AppColors.surface2,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: _modeEphemere
-                              ? AppColors.accent.withOpacity(0.5)
-                              : AppColors.border),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.timer_rounded,
-                          size: 16,
-                          color: _modeEphemere
-                              ? AppColors.accent
-                              : AppColors.textMuted),
-                      const SizedBox(width: 5),
-                      Text(_modeEphemere ? _duree.label : 'Éphémère'.tr,
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: _modeEphemere
-                                  ? AppColors.textPrimary
-                                  : AppColors.textMuted,
-                              fontWeight: FontWeight.w500)),
-                      if (_modeEphemere) ...[
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                            onTap: () => setState(
-                                () => _showDureePicker = !_showDureePicker),
-                            child: Icon(
-                                _showDureePicker
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                                size: 16,
-                                color: AppColors.accent)),
-                      ],
-                    ]),
+              // Éphémère : photo ou vidéo (snap)
+              GestureDetector(
+                onTap: () => setState(() {
+                  _modeEphemere = !_modeEphemere;
+                  if (_modeEphemere) _showDureePicker = true;
+                }),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _modeEphemere
+                        ? AppColors.accent.withOpacity(0.15)
+                        : AppColors.surface2,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: _modeEphemere
+                            ? AppColors.accent.withOpacity(0.5)
+                            : AppColors.border),
                   ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.timer_rounded,
+                        size: 16,
+                        color: _modeEphemere
+                            ? AppColors.accent
+                            : AppColors.textMuted),
+                    const SizedBox(width: 5),
+                    Text(_modeEphemere ? _duree.label : 'Éphémère'.tr,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: _modeEphemere
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
+                            fontWeight: FontWeight.w500)),
+                    if (_modeEphemere) ...[
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                          onTap: () => setState(
+                              () => _showDureePicker = !_showDureePicker),
+                          child: Icon(
+                              _showDureePicker
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              size: 16,
+                              color: AppColors.accent)),
+                    ],
+                  ]),
                 ),
+              ),
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => setState(() => _sensible = !_sensible),
@@ -715,7 +727,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
     widget.ctrl.envoyerMediaEnFond(
       chemin: widget.filePath,
       video: widget.isVideo,
-      ephemere: _modeEphemere && !widget.isVideo,
+      ephemere: _modeEphemere,
       snapSecondes: _modeEphemere ? _duree.seconds : null,
       sensible: _sensible,
     );
