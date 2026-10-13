@@ -260,6 +260,20 @@ class EcranParametres extends StatelessWidget {
                     ctrl.accepteDemandesAmi, 'accepte_demandes_ami', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
+                icon: '👁️',
+                title: 'Masquer quand j\'ai lu 👑'.tr,
+                subtitle: 'Les autres ne voient pas « Lu » sous leurs messages'.tr,
+                value: ctrl.lecturesMasquees.value,
+                onChanged: (v) {
+                  if (v && !ControleurProfil.estPremiumMaintenant()) {
+                    ctrl.ouvrirPaywall();
+                    return;
+                  }
+                  ctrl.majReglage(
+                      ctrl.lecturesMasquees, 'lectures_masquees', v);
+                })),
+            const SizedBox(height: 10),
+            Obx(() => _Toggle(
                 icon: '📍',
                 title: 'Afficher ma distance'.tr,
                 subtitle: 'Les autres voient à quelle distance tu es'.tr,

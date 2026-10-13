@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/stories_une.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
@@ -635,6 +636,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                   _chainingModal = false;
                 }
               });
+            },
+          ),
+          const _OptionDivider(),
+          _OptionTile(
+            icon: Icons.star_rounded,
+            label: 'Mettre à la une'.tr,
+            color: Colors.white,
+            onTap: () async {
+              Get.back();
+              final erreur = await StoriesUneService.ajouter(story);
+              Get.snackbar(
+                  '⭐', erreur ?? 'Ajoutée à la une de ton profil'.tr,
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: const Color(0xFF1C1C1E),
+                  colorText: Colors.white);
             },
           ),
           const _OptionDivider(),
@@ -1820,12 +1836,52 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   }
 
   /// Galerie : photo OU vidéo dans le même sélecteur.
+  /// Plusieurs éléments choisis : une story par photo (5 au maximum),
+  /// publiées l'une après l'autre ; une seule : l'éditeur habituel.
   Future<void> _pickGalerie() async {
     try {
-      final file = await _picker.pickMedia(
-          maxWidth: 1080, maxHeight: 1920, imageQuality: 85);
-      if (file == null) return;
-      _setMedia(file.path, await _estVideo(file));
+      final fichiers = await _picker.pickMultipleMedia(
+          maxWidth: 1080, maxHeight: 1920, imageQuality: 85, limit: 5);
+      if (fichiers.isEmpty) return;
+      if (fichiers.length == 1) {
+        _setMedia(fichiers.first.path, await _estVideo(fichiers.first));
+        return;
+      }
+      final photos = <XFile>[
+        for (final f in fichiers)
+          if (!await _estVideo(f)) f
+      ];
+      if (photos.isEmpty) {
+        _setMedia(fichiers.first.path, true);
+        return;
+      }
+      final ok = await Get.dialog<bool>(AlertDialog(
+        title: Text('Publier @n stories ?'.trParams({'n': '${photos.length}'})),
+        content: Text(fichiers.length > photos.length
+            ? 'Les vidéos sont à publier une par une (découpe à 30 s).'.tr
+            : 'Une story par photo, visibles comme tes autres stories.'.tr),
+        actions: [
+          TextButton(
+              onPressed: () => Get.back(result: false),
+              child: Text('Annuler'.tr)),
+          TextButton(
+              onPressed: () => Get.back(result: true),
+              child: Text('Publier'.tr)),
+        ],
+      ));
+      if (ok != true) return;
+      _publiee = true;
+      final homeCtrl = Get.find<HomeController>();
+      final duree = _durationHours, visibilite = _visibility;
+      Get.back(); // l'envoi continue en arrière-plan
+      for (final f in photos) {
+        await homeCtrl.publishStory(
+          file: File(f.path),
+          isVideo: false,
+          durationHours: duree,
+          visibility: visibilite,
+        );
+      }
     } catch (_) {
       _snack('Erreur lors de la sélection'.tr);
     }

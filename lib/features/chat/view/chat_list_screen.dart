@@ -688,7 +688,8 @@ class _ConversationTile extends GetView<ChatListController> {
     );
     if (!mine) return texte;
     // Mon dernier message : coches de lecture devant (façon WhatsApp)
-    final lu = msg.status == MessageStatus.read;
+    final lu = msg.status == MessageStatus.read &&
+        !Get.find<ChatListController>().masquentLu.contains(conv.userId);
     return Row(children: [
       Icon(
           msg.status == MessageStatus.sent

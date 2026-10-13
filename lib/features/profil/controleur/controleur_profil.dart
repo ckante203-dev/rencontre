@@ -68,6 +68,8 @@ class ControleurProfil extends GetxController {
   final Rx<DateTime?> birthdate = Rx<DateTime?>(null);
   final RxString selectedMorphologie = ''.obs;
   final RxString selectedLieuRencontre = ''.obs;
+  // Premium : les autres ne voient pas « Lu » sur mes conversations
+  final RxBool lecturesMasquees = false.obs;
   // Profil enrichi (SQL 051)
   final metierController = TextEditingController();
   final etudesController = TextEditingController();
@@ -370,6 +372,7 @@ class ControleurProfil extends GetxController {
       NotificationService.sonActive = notifSon.value;
       profilPublic.value = data['is_public'] ?? true;
       showDistance.value = data['show_distance'] ?? true;
+      lecturesMasquees.value = data['lectures_masquees'] == true;
       isPremium.value = data['is_premium'] ?? false;
 
       // Thème et photos

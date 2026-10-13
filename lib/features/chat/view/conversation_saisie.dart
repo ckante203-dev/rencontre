@@ -512,6 +512,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
   bool _uploading = false;
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
+  final _legende = TextEditingController();
 
   @override
   void initState() {
@@ -533,6 +534,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
   @override
   void dispose() {
     _videoCtrl?.dispose();
+    _legende.dispose();
     super.dispose();
   }
 
@@ -568,6 +570,31 @@ class _PreviewSheetState extends State<_PreviewSheet> {
                             color: AppColors.surMedia)))
                 : Image.file(File(widget.filePath), fit: BoxFit.contain),
           )),
+          // Légende (pas pour un snap éphémère)
+          if (!_modeEphemere)
+            Container(
+              color: AppColors.surface,
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: TextField(
+                controller: _legende,
+                maxLength: 1000,
+                minLines: 1,
+                maxLines: 3,
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Ajouter une légende…'.tr,
+                  hintStyle: TextStyle(color: AppColors.textMuted),
+                  counterText: '',
+                  filled: true,
+                  fillColor: AppColors.surface2,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+            ),
           if (_modeEphemere && _showDureePicker)
             Container(
                 color: AppColors.surface,
@@ -730,6 +757,8 @@ class _PreviewSheetState extends State<_PreviewSheet> {
       ephemere: _modeEphemere,
       snapSecondes: _modeEphemere ? _duree.seconds : null,
       sensible: _sensible,
+      // Pas de légende sur un snap (il disparaît, le texte resterait)
+      legende: _modeEphemere ? null : _legende.text,
     );
     Get.back();
   }

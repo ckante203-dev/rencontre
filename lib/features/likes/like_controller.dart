@@ -3,6 +3,7 @@ import 'package:rencontre/core/services/avis_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rencontre/shared/models/user_model.dart';
@@ -160,6 +161,30 @@ class LikeController extends GetxController {
       debugPrint('Super Like : $e');
       _info('⭐ Super Like', 'Vérifie ta connexion et réessaie'.tr);
       return false;
+    }
+  }
+
+  /// Like (ou Super Like) accompagné d'un mot : le mot part comme premier
+  /// message (demande de message s'il n'y a pas de match).
+  Future<void> likerAvecMot(UserModel u, String mot,
+      {bool superLike = false}) async {
+    if (superLike) {
+      if (!await this.superLike(u)) return;
+    } else if (!hasLiked(u.id)) {
+      await toggleLike(u);
+    }
+    final texte = mot.trim();
+    if (texte.isEmpty) return;
+    try {
+      final service = SupabaseService();
+      final convId = await service.getOrCreateConversation(u.id);
+      await service.sendMessage(
+          conversationId: convId,
+          content: texte.substring(0, texte.length.clamp(0, 500)));
+      _info('💬', 'Ton mot a été envoyé à @nom'.trParams({'nom': u.name}));
+    } catch (e) {
+      debugPrint('Mot non envoyé : $e');
+      _info('💬', 'Le like est parti, mais pas le mot. Écris-lui depuis Messages.'.tr);
     }
   }
 

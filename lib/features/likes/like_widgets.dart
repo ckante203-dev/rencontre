@@ -14,6 +14,74 @@ class LikeButton extends StatelessWidget {
   final double size;
   const LikeButton({super.key, required this.user, this.size = 50});
 
+  Future<void> _likerAvecMot(LikeController ctrl) async {
+    final saisie = TextEditingController();
+    final choix = await Get.bottomSheet<String>(
+      Container(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Un mot pour @nom ?'.trParams({'nom': user.name}),
+                style: TextStyle(
+                    fontFamily: 'Syne',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: saisie,
+              autofocus: true,
+              maxLength: 500,
+              maxLines: 3,
+              minLines: 1,
+              style: TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Ex : Ton sourire m\'a fait craquer 😄'.tr,
+                hintStyle: TextStyle(color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.surface2,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF2E9BFF)),
+                      padding: const EdgeInsets.symmetric(vertical: 12)),
+                  onPressed: () => Get.back(result: 'super'),
+                  child: Text('⭐ Super Like',
+                      style: TextStyle(color: AppColors.textPrimary)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      padding: const EdgeInsets.symmetric(vertical: 12)),
+                  onPressed: () => Get.back(result: 'like'),
+                  child: Text('❤️ Liker'.tr,
+                      style: const TextStyle(color: AppColors.surAccent)),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+    if (choix == null) return;
+    await ctrl.likerAvecMot(user, saisie.text, superLike: choix == 'super');
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<LikeController>();
@@ -26,6 +94,8 @@ class LikeButton extends StatelessWidget {
 
       return GestureDetector(
         onTap: loading ? null : () => ctrl.toggleLike(user),
+        // Appui long : liker avec un mot (ou un Super Like)
+        onLongPress: loading || filled ? null : () => _likerAvecMot(ctrl),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,

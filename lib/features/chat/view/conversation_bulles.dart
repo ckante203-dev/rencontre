@@ -304,6 +304,7 @@ class _MessageBubble extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: _StatusIcon(
+                                masquerLu: ctrl.autreMasqueLu.value,
                                 status: msg.status, readAt: msg.readAt),
                           ),
                       ] else ...[
@@ -324,6 +325,7 @@ class _MessageBubble extends StatelessWidget {
                             // le serveur). Avant : la même heure — souvent celle
                             // d'envoi du dernier message lu — sur tous les messages.
                             _StatusIcon(
+                                masquerLu: ctrl.autreMasqueLu.value,
                                 status: msg.status,
                                 readAt: dernierLu ? msg.readAt : null),
                           ],

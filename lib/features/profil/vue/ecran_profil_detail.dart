@@ -3,6 +3,7 @@ import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/stories_une.dart';
 import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
@@ -1041,6 +1042,8 @@ class _CorpsProfil extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           // ── À propos ──
+          // ⭐ Stories à la une
+          RangeeStoriesUne(key: ValueKey('une_${user.id}'), userId: user.id),
           if (user.bio != null && user.bio!.isNotEmpty) ...[
              _SectionTitle('À propos'.tr),
             const SizedBox(height: 8),

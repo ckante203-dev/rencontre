@@ -108,6 +108,22 @@ class ChatListController extends GetxController {
     } catch (_) {}
   }
 
+  // Personnes qui masquent leurs lectures (pas de coche bleue chez moi)
+  final RxSet<String> masquentLu = <String>{}.obs;
+
+  Future<void> _chargerMasquentLu() async {
+    final ids = conversations.map((c) => c.userId).toSet().toList();
+    if (ids.isEmpty) return;
+    try {
+      final rows = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .inFilter('id', ids)
+          .eq('lectures_masquees', true);
+      masquentLu.assignAll((rows as List).map((r) => r['id'] as String));
+    } catch (_) {} // colonne absente (SQL 054 pas encore passé)
+  }
+
   bool _estArchivee(ConversationModel c) =>
       archivees.contains(c.id) && c.unreadCount == 0;
   final _box = GetStorage();
@@ -208,6 +224,7 @@ class ChatListController extends GetxController {
       } catch (_) {}
       conversations.value = _convertir(data, uid);
       _sortConversations();
+      unawaited(_chargerMasquentLu());
       // ✅ FIX Realtime — on marque l'heure de la dernière synchro réussie
       _lastSyncAt = DateTime.now();
       _lastFullSyncAt = _lastSyncAt;
@@ -649,6 +666,7 @@ class ConversationController extends GetxController
   final RxBool isOtherTyping = false.obs;
   final RxBool isOtherRecording = false.obs; // « enregistre un vocal… »
   final RxBool autreVerifie = false.obs; // badge bleu dans l'en-tête
+  final RxBool autreMasqueLu = false.obs; // pas de « Lu » (réglage Premium)
   // Messages programmés (table messages_programmes, envoyés par le serveur)
   final RxList<Map<String, dynamic>> programmes = <Map<String, dynamic>>[].obs;
 
@@ -1069,13 +1087,24 @@ class ConversationController extends GetxController
 
   Future<void> _fetchOtherOnlineStatus(String otherUserId) async {
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select('is_online, last_seen, est_verifie')
-          .eq('id', otherUserId)
-          .maybeSingle();
+      Map<String, dynamic>? data;
+      try {
+        data = await Supabase.instance.client
+            .from('profiles')
+            .select('is_online, last_seen, est_verifie, lectures_masquees')
+            .eq('id', otherUserId)
+            .maybeSingle();
+      } on PostgrestException {
+        // Colonne lectures_masquees absente (SQL 054 pas encore passé)
+        data = await Supabase.instance.client
+            .from('profiles')
+            .select('is_online, last_seen, est_verifie')
+            .eq('id', otherUserId)
+            .maybeSingle();
+      }
       if (data != null) {
         autreVerifie.value = data['est_verifie'] == true;
+        autreMasqueLu.value = data['lectures_masquees'] == true;
         isOtherOnline.value = SupabaseService.isReallyOnline(
             data['is_online'], data['last_seen']);
         otherLastSeen.value =
@@ -2147,6 +2176,7 @@ class ConversationController extends GetxController
     bool ephemere = false,
     int? snapSecondes,
     bool sensible = false,
+    String? legende, // texte envoyé juste après la photo / vidéo
   }) async {
     if (!peutEnvoyer()) return;
     final uid = _service.currentUserId!;
@@ -2256,6 +2286,17 @@ class ConversationController extends GetxController
       final vrai = _rowToMessage(enregistre);
       messages.removeWhere((m) => m.id == tempId);
       if (!messages.any((m) => m.id == vrai.id)) messages.add(vrai);
+      // Légende : envoyée après le média pour garder l'ordre
+      final texte = (legende ?? '').trim();
+      if (texte.isNotEmpty) {
+        try {
+          await _service.sendMessage(
+              conversationId: conversation.id,
+              content: texte.substring(0, texte.length.clamp(0, 1000)));
+        } catch (e) {
+          debugPrint('Légende non envoyée : $e');
+        }
+      }
     } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
       if (gererRefusServeur(e)) return;

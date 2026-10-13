@@ -802,11 +802,16 @@ class _AudioWaveformState extends State<_AudioWaveform>
 class _StatusIcon extends StatelessWidget {
   final MessageStatus status;
   final DateTime? readAt; // ✅ heure de lecture
-  const _StatusIcon({required this.status, this.readAt});
+  final bool masquerLu; // l'autre a masqué ses lectures (Premium)
+  const _StatusIcon(
+      {required this.status, this.readAt, this.masquerLu = false});
 
   @override
   Widget build(BuildContext context) {
-    switch (status) {
+    final statut = masquerLu && status == MessageStatus.read
+        ? MessageStatus.delivered
+        : status;
+    switch (statut) {
       case MessageStatus.sending:
         return SizedBox(
             width: 11,
