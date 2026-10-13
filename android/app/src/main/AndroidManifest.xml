@@ -125,6 +125,15 @@
 
             </intent-filter>
 
+            <!-- Clic sur une notification push : les fonctions serveur
+                 envoient click_action = FLUTTER_NOTIFICATION_CLICK. Sans ce
+                 filtre, Android ne transmettait pas la notification à l'app
+                 (pas d'ouverture de la bonne conversation). -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
             <!-- Lien de profil : zamu://profil/<id> (page web p.html) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

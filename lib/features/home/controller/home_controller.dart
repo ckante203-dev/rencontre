@@ -1306,6 +1306,10 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     if (!_viewedStoryIds.add(storyId)) return;
     final idx = _allStories.indexWhere((s) => s.id == storyId);
     if (idx >= 0) _allStories[idx] = _allStories[idx].copyWith(isSeen: true);
+    // L'onglet Stories lit l'ordre « Découvrir » : il doit aussi savoir
+    // que la story est vue (sinon l'anneau restait comme « à voir »).
+    final j = _discoverOrder.indexWhere((s) => s.id == storyId);
+    if (j >= 0) _discoverOrder[j] = _discoverOrder[j].copyWith(isSeen: true);
     _markStorySeenInDb(storyId);
   }
 
