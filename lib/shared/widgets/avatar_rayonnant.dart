@@ -76,6 +76,7 @@ class AvatarRayonnantState extends State<AvatarRayonnant>
                     imageUrl: url,
                     fit: BoxFit.cover,
                     errorWidget: (_, __, ___) => _vide(),
+                    memCacheWidth: 1080,
                   )
                 : _vide(),
           ),

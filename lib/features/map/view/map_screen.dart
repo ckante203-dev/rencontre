@@ -1017,7 +1017,8 @@ class _AvatarProfil extends StatelessWidget {
                                     color: AppColors.surMedia,
                                     fontWeight: FontWeight.w900,
                                     fontSize: size * 0.38)),
-                          ))
+                          ),
+                          memCacheWidth: 1080,)
                   : Center(
                       child: Text(letter,
                           style: TextStyle(
@@ -1515,7 +1516,8 @@ class _MonMarqueurState extends State<_MonMarqueur> {
                       errorWidget: (_, __, ___) => const Icon(
                           Icons.person_rounded,
                           color: AppColors.surMedia,
-                          size: 26))
+                          size: 26),
+                          memCacheWidth: 1080,)
                   : const Icon(Icons.person_rounded,
                       color: AppColors.surMedia, size: 26),
             ),
@@ -1600,7 +1602,8 @@ class _MarqueurProfil extends StatelessWidget {
                                 fontSize: 20),
                           ),
                         ),
-                      ))
+                      ),
+                      memCacheWidth: 1080,)
               // ✅ Pas de photo → avatar dégradé
               : Container(
                   decoration: BoxDecoration(

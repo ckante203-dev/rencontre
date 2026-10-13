@@ -912,6 +912,7 @@ class _Avatar extends StatelessWidget {
           height: size,
           placeholder: (_, __) => fallback,
           errorWidget: (_, __, ___) => fallback,
+          memCacheWidth: 1080,
         ),
       );
     }
@@ -1098,7 +1099,7 @@ class _ResultatsRecherche extends GetView<ChatListController> {
                     radius: 24,
                     backgroundColor: AppColors.surface2,
                     backgroundImage: (p.photoUrl ?? '').isNotEmpty
-                        ? CachedNetworkImageProvider(p.photoUrl!)
+                        ? CachedNetworkImageProvider(p.photoUrl!, maxWidth: 400)
                         : null,
                     child: (p.photoUrl ?? '').isEmpty
                         ? Text(p.name.isEmpty ? '?' : p.name[0].toUpperCase(),
@@ -1260,7 +1261,7 @@ class _RappelMatchs extends StatelessWidget {
                       backgroundColor: AppColors.surface2,
                       backgroundImage:
                           (p['photo_url'] ?? '').toString().isNotEmpty
-                              ? CachedNetworkImageProvider(p['photo_url'])
+                              ? CachedNetworkImageProvider(p['photo_url'], maxWidth: 400)
                               : null,
                     ),
                     title: Text((p['name'] ?? '').toString(),

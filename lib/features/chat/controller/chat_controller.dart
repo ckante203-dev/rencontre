@@ -1899,7 +1899,7 @@ class ConversationController extends GetxController
                           leading: CircleAvatar(
                             backgroundColor: AppColors.surface2,
                             backgroundImage: (c.userPhotoUrl ?? '').isNotEmpty
-                                ? CachedNetworkImageProvider(c.userPhotoUrl!)
+                                ? CachedNetworkImageProvider(c.userPhotoUrl!, maxWidth: 400)
                                 : null,
                             child: (c.userPhotoUrl ?? '').isEmpty
                                 ? Text(c.userName.isNotEmpty

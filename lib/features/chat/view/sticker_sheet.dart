@@ -261,6 +261,7 @@ class _StickerSheetState extends State<_StickerSheet> {
               fit: _gif ? BoxFit.cover : BoxFit.contain,
               placeholder: (_, __) => Container(color: AppColors.surface2),
               errorWidget: (_, __, ___) => Container(color: AppColors.surface2),
+              memCacheWidth: 1080,
             ),
           ),
         );

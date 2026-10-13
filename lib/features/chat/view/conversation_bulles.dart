@@ -370,6 +370,7 @@ class _MessageBubble extends StatelessWidget {
             placeholder: (_, __) => const SizedBox(width: 140, height: 140),
             errorWidget: (_, __, ___) =>
                 _MediaBubble(msg: msg, isMine: isMine, isVideo: false),
+                memCacheWidth: 420,
           );
         }
         final sensible = !isMine &&
@@ -552,7 +553,8 @@ class _StoryReplyPreview extends StatelessWidget {
                             errorWidget: (_, __, ___) => Container(
                                 color: AppColors.surface,
                                 child: const Icon(Icons.photo_camera_rounded,
-                                    color: Color(0x61FFFFFF), size: 32))),
+                                    color: Color(0x61FFFFFF), size: 32)),
+                                    memCacheWidth: 1080,),
                       if (storyReply.storyIsVideo)
                         const Center(
                             child: Icon(Icons.play_circle_fill_rounded,
@@ -690,6 +692,7 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
                       errorWidget: (_, __, ___) => const Center(
                           child: Icon(Icons.broken_image_rounded,
                               color: Color(0x61FFFFFF), size: 48)),
+                              memCacheWidth: 1080,
                     ),
         ),
         // ── Dégradé + en-tête façon Snapchat ──
@@ -1174,6 +1177,7 @@ class _AnnonceReplyBubble extends StatelessWidget {
                       height: 64,
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      memCacheWidth: 168,
                     ),
                   )
                 else if (reply?.annonceIsVideo == true)
@@ -1265,7 +1269,8 @@ class _Avatar extends StatelessWidget {
               width: size,
               height: size,
               placeholder: (_, __) => fallback,
-              errorWidget: (_, __, ___) => fallback));
+              errorWidget: (_, __, ___) => fallback,
+              memCacheWidth: 1080,));
     }
     return fallback;
   }

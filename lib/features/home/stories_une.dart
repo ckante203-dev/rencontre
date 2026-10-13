@@ -297,7 +297,7 @@ class _VueStoryUneState extends State<_VueStoryUne> {
                   : const CircularProgressIndicator(color: AppColors.surMedia),
             )
           else
-            CachedNetworkImage(imageUrl: u.mediaUrl, fit: BoxFit.contain),
+            CachedNetworkImage(imageUrl: u.mediaUrl, fit: BoxFit.contain, memCacheWidth: 1080),
           CoucheStickers(u.stickers),
           if ((u.legende ?? '').isNotEmpty)
             Positioned(

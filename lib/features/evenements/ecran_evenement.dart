@@ -151,7 +151,7 @@ class _EcranEvenementState extends State<EcranEvenement> {
           flexibleSpace: FlexibleSpaceBar(
             background: Stack(fit: StackFit.expand, children: [
               if ((ev.imageUrl ?? '').isNotEmpty)
-                CachedNetworkImage(imageUrl: ev.imageUrl!, fit: BoxFit.cover)
+                CachedNetworkImage(imageUrl: ev.imageUrl!, fit: BoxFit.cover, memCacheWidth: 1080)
               else
                 Container(
                   decoration: BoxDecoration(gradient: AppColors.gradientPink),
@@ -563,7 +563,7 @@ class _Participant extends StatelessWidget {
               radius: 28,
               backgroundColor: AppColors.surface2,
               backgroundImage: (p.photoUrl ?? '').isNotEmpty
-                  ? CachedNetworkImageProvider(p.photoUrl!)
+                  ? CachedNetworkImageProvider(p.photoUrl!, maxWidth: 400)
                   : null,
               onBackgroundImageError:
                   (p.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
@@ -634,7 +634,7 @@ class _BulleStory extends StatelessWidget {
             radius: 28,
             backgroundColor: AppColors.surface2,
             backgroundImage: (image ?? '').isNotEmpty
-                ? CachedNetworkImageProvider(image!)
+                ? CachedNetworkImageProvider(image!, maxWidth: 400)
                 : null,
             onBackgroundImageError: (image ?? '').isNotEmpty ? (_, __) {} : null,
             child: (image ?? '').isEmpty

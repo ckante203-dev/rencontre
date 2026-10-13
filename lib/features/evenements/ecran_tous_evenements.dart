@@ -215,7 +215,7 @@ class _LigneEvenement extends StatelessWidget {
               width: 74,
               height: 74,
               child: (ev.imageUrl ?? '').isNotEmpty
-                  ? CachedNetworkImage(imageUrl: ev.imageUrl!, fit: BoxFit.cover)
+                  ? CachedNetworkImage(imageUrl: ev.imageUrl!, fit: BoxFit.cover, memCacheWidth: 1080)
                   : Container(
                       decoration:
                           BoxDecoration(gradient: AppColors.gradientPink),

@@ -192,6 +192,7 @@ class VisuelSticker extends StatelessWidget {
                 fit: BoxFit.contain,
                 placeholder: (_, __) => const SizedBox(),
                 errorWidget: (_, __, ___) => const SizedBox(),
+                memCacheWidth: 1080,
               ),
             ),
     );

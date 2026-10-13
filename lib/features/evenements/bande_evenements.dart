@@ -116,6 +116,7 @@ class _CarteEvenement extends StatelessWidget {
               imageUrl: ev.imageUrl!,
               fit: BoxFit.cover,
               errorWidget: (_, __, ___) => const SizedBox(),
+              memCacheWidth: 1080,
             )
           else
             Center(

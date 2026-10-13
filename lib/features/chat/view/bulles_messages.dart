@@ -207,7 +207,7 @@ class _Avatar extends StatelessWidget {
           child: CircleAvatar(
             backgroundColor: AppColors.surface2,
             backgroundImage:
-                photo.isNotEmpty ? CachedNetworkImageProvider(photo) : null,
+                photo.isNotEmpty ? CachedNetworkImageProvider(photo, maxWidth: 400) : null,
             onBackgroundImageError: photo.isNotEmpty ? (_, __) {} : null,
             child: photo.isEmpty
                 ? Text(

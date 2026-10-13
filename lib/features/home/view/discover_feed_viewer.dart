@@ -658,6 +658,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                       Icons.broken_image_outlined,
                       color: Colors.white38,
                       size: 48),
+                      memCacheWidth: 1440,
                 ),
         ),
          DecoratedBox(
@@ -734,7 +735,8 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                 child: ClipOval(
                   child: s.userPhotoUrl != null && s.userPhotoUrl!.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
+                          imageUrl: s.userPhotoUrl!, fit: BoxFit.cover,
+                          memCacheWidth: 1440,)
                       : Container(
                           color: CouleursMedia.accent2,
                           child: Center(

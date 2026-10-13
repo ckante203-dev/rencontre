@@ -302,7 +302,8 @@ class _RondStory extends StatelessWidget {
                       ? _apercu(s, texte: 9)
                       : ((photoProfil ?? '').isNotEmpty
                           ? CachedNetworkImage(
-                              imageUrl: photoProfil!, fit: BoxFit.cover)
+                              imageUrl: photoProfil!, fit: BoxFit.cover,
+                              memCacheWidth: 1080,)
                           : Container(color: AppColors.surface2)),
                 ),
               ),
@@ -414,7 +415,7 @@ class _CarteStory extends StatelessWidget {
                     radius: avatar,
                     backgroundColor: AppColors.surface2,
                     backgroundImage: (s.userPhotoUrl ?? '').isNotEmpty
-                        ? CachedNetworkImageProvider(s.userPhotoUrl!)
+                        ? CachedNetworkImageProvider(s.userPhotoUrl!, maxWidth: 400)
                         : null,
                   ),
                 ),

@@ -190,7 +190,7 @@ class _EcranAmisState extends State<EcranAmis> {
           radius: 24,
           backgroundColor: AppColors.surface2,
           backgroundImage: (a.photoUrl ?? '').isNotEmpty
-              ? CachedNetworkImageProvider(a.photoUrl!)
+              ? CachedNetworkImageProvider(a.photoUrl!, maxWidth: 400)
               : null,
           onBackgroundImageError:
               (a.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,

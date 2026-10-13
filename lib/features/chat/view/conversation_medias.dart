@@ -138,7 +138,8 @@ class _SnapBubbleState extends State<_SnapBubble> {
                   imageUrl: msg.mediaUrl!,
                   width: 210,
                   height: 260,
-                  fit: BoxFit.cover)),
+                  fit: BoxFit.cover,
+                  memCacheWidth: 630,)),
         ),
         Positioned(
             top: 8,
@@ -361,7 +362,8 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
                     child: CircularProgressIndicator(color: AppColors.surMedia)),
                 errorWidget: (_, __, ___) => const Center(
                     child: Icon(Icons.broken_image_rounded,
-                        color: Color(0x61FFFFFF), size: 48)))),
+                        color: Color(0x61FFFFFF), size: 48)),
+                        memCacheWidth: 1440,)),
         if (widget.snapDuration > 0)
           Positioned(
               top: MediaQuery.of(context).padding.top + 16,
@@ -655,7 +657,8 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
                       errorWidget: (_, __, ___) => const Icon(
                           Icons.broken_image_rounded,
                           color: Color(0x61FFFFFF),
-                          size: 48)))),
+                          size: 48),
+                          memCacheWidth: 1440,))),
     );
   }
 }

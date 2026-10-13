@@ -219,7 +219,8 @@ class _NotifTile extends StatelessWidget {
                         : notif.actorPhotoUrl != null &&
                             notif.actorPhotoUrl!.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: notif.actorPhotoUrl!, fit: BoxFit.cover)
+                            imageUrl: notif.actorPhotoUrl!, fit: BoxFit.cover,
+                            memCacheWidth: 1080,)
                         : Container(
                             color: AppColors.surface2,
                             child: Center(

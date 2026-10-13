@@ -555,6 +555,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(
                         width: 220, height: 220, color: AppColors.surface2),
+                        memCacheWidth: 660,
                   ),
                 ),
         );
@@ -564,6 +565,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
           width: 150,
           fit: BoxFit.contain,
           errorWidget: (_, __, ___) => const SizedBox(),
+          memCacheWidth: 450,
         );
       default:
         corps = Container(
@@ -652,7 +654,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
         radius: 16,
         backgroundColor: AppColors.surface2,
         backgroundImage: (m?.photoUrl ?? '').isNotEmpty
-            ? CachedNetworkImageProvider(m!.photoUrl!)
+            ? CachedNetworkImageProvider(m!.photoUrl!, maxWidth: 400)
             : null,
         onBackgroundImageError:
             (m?.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
@@ -672,7 +674,7 @@ class _EcranGroupeState extends State<EcranGroupe> {
         body: Center(
           child: InteractiveViewer(
             maxScale: 5,
-            child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
+            child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain, memCacheWidth: 1080),
           ),
         ),
       ));
@@ -755,7 +757,7 @@ class AvatarGroupe extends StatelessWidget {
       radius: rayon,
       backgroundColor: AppColors.accent.withValues(alpha: 0.25),
       backgroundImage:
-          photo.isNotEmpty ? CachedNetworkImageProvider(photo) : null,
+          photo.isNotEmpty ? CachedNetworkImageProvider(photo, maxWidth: 400) : null,
       onBackgroundImageError: photo.isNotEmpty ? (_, __) {} : null,
       child: photo.isEmpty
           ? Text(

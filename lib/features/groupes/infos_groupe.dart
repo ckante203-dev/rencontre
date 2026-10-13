@@ -290,7 +290,7 @@ class _InfosGroupeState extends State<InfosGroupe> {
             leading: CircleAvatar(
               backgroundColor: AppColors.surface2,
               backgroundImage: (m.photoUrl ?? '').isNotEmpty
-                  ? CachedNetworkImageProvider(m.photoUrl!)
+                  ? CachedNetworkImageProvider(m.photoUrl!, maxWidth: 400)
                   : null,
               onBackgroundImageError:
                   (m.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,

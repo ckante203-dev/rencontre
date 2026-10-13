@@ -139,6 +139,7 @@ class _GrandePhotoState extends State<_GrandePhoto> {
                         fit: BoxFit.cover,
                         errorWidget: (_, __, ___) =>
                             _PlaceholderAvatar(ctrl: ctrl),
+                            memCacheWidth: 1080,
                       ),
                     ),
             ),

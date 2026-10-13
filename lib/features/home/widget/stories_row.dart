@@ -102,7 +102,8 @@ class _MyStoryItem extends StatelessWidget {
                         child: ClipOval(
                           child: myPhotoUrl != null && myPhotoUrl!.isNotEmpty
                               ? CachedNetworkImage(
-                                  imageUrl: myPhotoUrl!, fit: BoxFit.cover)
+                                  imageUrl: myPhotoUrl!, fit: BoxFit.cover,
+                                  memCacheWidth: 1080,)
                               : Container(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
@@ -246,7 +247,8 @@ class _StoryItem extends StatelessWidget {
                                 story.userPhotoUrl!.isNotEmpty
                             ? CachedNetworkImage(
                                 imageUrl: story.userPhotoUrl!,
-                                fit: BoxFit.cover)
+                                fit: BoxFit.cover,
+                                memCacheWidth: 1080,)
                             : Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(colors: [

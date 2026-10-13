@@ -235,7 +235,8 @@ class _LikesDetailsScreenState extends State<LikesDetailsScreen> {
                               height: 46,
                               child: photo != null && photo.isNotEmpty
                                   ? CachedNetworkImage(
-                                      imageUrl: photo, fit: BoxFit.cover)
+                                      imageUrl: photo, fit: BoxFit.cover,
+                                      memCacheWidth: 1080,)
                                   : Container(
                                       color: AppColors.surface2,
                                       child: Center(

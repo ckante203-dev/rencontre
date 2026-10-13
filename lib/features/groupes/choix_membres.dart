@@ -286,7 +286,7 @@ class _ChoixMembresState extends State<ChoixMembres> {
         radius: r,
         backgroundColor: AppColors.surface2,
         backgroundImage: (c.photo ?? '').isNotEmpty
-            ? CachedNetworkImageProvider(c.photo!)
+            ? CachedNetworkImageProvider(c.photo!, maxWidth: 400)
             : null,
         onBackgroundImageError: (c.photo ?? '').isNotEmpty ? (_, __) {} : null,
         child: (c.photo ?? '').isEmpty

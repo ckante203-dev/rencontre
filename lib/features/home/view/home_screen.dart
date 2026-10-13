@@ -1842,6 +1842,7 @@ class _LockedBlurredPhoto extends StatelessWidget {
               fit: BoxFit.cover,
               placeholder: (_, __) => _GradientAvatar(name: name),
               errorWidget: (_, __, ___) => _GradientAvatar(name: name),
+              memCacheWidth: 1080,
             )
           : _GradientAvatar(name: name),
     );

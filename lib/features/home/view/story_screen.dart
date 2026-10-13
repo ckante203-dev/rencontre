@@ -1058,7 +1058,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                       child: s.userPhotoUrl != null &&
                               s.userPhotoUrl!.isNotEmpty
                           ? CachedNetworkImage(
-                              imageUrl: s.userPhotoUrl!, fit: BoxFit.cover)
+                              imageUrl: s.userPhotoUrl!, fit: BoxFit.cover,
+                              memCacheWidth: 1440,)
                           : Container(
                               color: CouleursMedia.accent2,
                               child: Center(
@@ -1188,7 +1189,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
         errorWidget: (_, __, ___) => const Center(
             child: Icon(Icons.broken_image_outlined,
-                color: Colors.white38, size: 48)));
+                color: Colors.white38, size: 48)),
+                memCacheWidth: 1440,);
   }
 
   Widget _buildMedia(StoryModel s) {
@@ -1214,7 +1216,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
         errorWidget: (_, __, ___) => const Center(
             child: Icon(Icons.broken_image_outlined,
-                color: Colors.white38, size: 48)));
+                color: Colors.white38, size: 48)),
+                memCacheWidth: 1440,);
   }
 
   Widget _buildTextStoryContent(StoryModel s) {
@@ -1497,7 +1500,8 @@ class _ViewerTileState extends State<_ViewerTile> {
                   : ClipOval(
                       child: _photoUrl != null
                           ? CachedNetworkImage(
-                              imageUrl: _photoUrl!, fit: BoxFit.cover)
+                              imageUrl: _photoUrl!, fit: BoxFit.cover,
+                              memCacheWidth: 1440,)
                           : Center(
                               child: Text(
                                   _name.isNotEmpty
@@ -1613,7 +1617,8 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
                   : ClipOval(
                       child: _photoUrl != null
                           ? CachedNetworkImage(
-                              imageUrl: _photoUrl!, fit: BoxFit.cover)
+                              imageUrl: _photoUrl!, fit: BoxFit.cover,
+                              memCacheWidth: 1440,)
                           : Center(
                               child: Text(
                                   _name.isNotEmpty

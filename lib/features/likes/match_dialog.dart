@@ -256,6 +256,7 @@ class _MatchAvatar extends StatelessWidget {
                 imageUrl: user.photoUrl!,
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => _fallback(user.name),
+                memCacheWidth: 1080,
               )
             : _fallback(user.name),
       ),

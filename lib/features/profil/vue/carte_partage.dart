@@ -104,7 +104,7 @@ class _Carte extends StatelessWidget {
           radius: 52,
           backgroundColor: Colors.white24,
           backgroundImage: (photoUrl ?? '').isNotEmpty
-              ? CachedNetworkImageProvider(photoUrl!)
+              ? CachedNetworkImageProvider(photoUrl!, maxWidth: 400)
               : null,
           child: (photoUrl ?? '').isEmpty
               ? Text(nom.isNotEmpty ? nom[0].toUpperCase() : '?',

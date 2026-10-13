@@ -268,7 +268,7 @@ class _EcranAmisProchesState extends State<EcranAmisProches> {
         radius: 22,
         backgroundColor: AppColors.surface2,
         backgroundImage: (p.photo ?? '').isNotEmpty
-            ? CachedNetworkImageProvider(p.photo!)
+            ? CachedNetworkImageProvider(p.photo!, maxWidth: 400)
             : null,
         onBackgroundImageError:
             (p.photo ?? '').isNotEmpty ? (_, __) {} : null,

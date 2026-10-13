@@ -195,7 +195,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
                       leading: CircleAvatar(
                         backgroundColor: AppColors.surface2,
                         backgroundImage: (p.photoUrl ?? '').isNotEmpty
-                            ? CachedNetworkImageProvider(p.photoUrl!)
+                            ? CachedNetworkImageProvider(p.photoUrl!, maxWidth: 400)
                             : null,
                         child: (p.photoUrl ?? '').isEmpty
                             ? Icon(Icons.person_rounded,
@@ -391,6 +391,7 @@ class _Vignette extends StatelessWidget {
             color: AppColors.surface2,
             child: Icon(Icons.broken_image_rounded,
                 color: AppColors.textMuted.withValues(alpha: 0.38))),
+                memCacheWidth: 1440,
       ),
     );
   }
@@ -423,6 +424,7 @@ class _PleinEcran extends StatelessWidget {
               fit: BoxFit.contain,
               placeholder: (_, __) => const Center(
                   child: CircularProgressIndicator(color: AppColors.surMedia)),
+                  memCacheWidth: 1440,
             ),
           ),
         ),

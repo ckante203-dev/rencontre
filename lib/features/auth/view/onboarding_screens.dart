@@ -472,6 +472,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                                     _InitialAvatar(name: _nameController.text),
                                 errorWidget: (_, __, ___) =>
                                     _InitialAvatar(name: _nameController.text),
+                                    memCacheWidth: 1080,
                               )
                             : _InitialAvatar(name: _nameController.text),
                       ),

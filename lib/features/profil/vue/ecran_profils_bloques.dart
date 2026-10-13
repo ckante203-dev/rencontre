@@ -128,7 +128,8 @@ class EcranProfilsBloques extends StatelessWidget {
                             imageUrl: photo,
                             fit: BoxFit.cover,
                             errorWidget: (_, __, ___) =>
-                                _InitialAvatar(name: name))
+                                _InitialAvatar(name: name),
+                                memCacheWidth: 1080,)
                         : _InitialAvatar(name: name),
                   ),
                 ),

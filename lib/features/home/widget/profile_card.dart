@@ -185,6 +185,7 @@ class ProfileCard extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (_, __) => Container(color: AppColors.surface2),
         errorWidget: (_, __, ___) => _buildFallback(),
+        memCacheWidth: 1080,
       );
     }
     return _buildFallback();

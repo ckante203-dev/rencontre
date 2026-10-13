@@ -768,7 +768,7 @@ class _PhotoSlot extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(imageUrl: url, fit: BoxFit.cover),
+          CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, memCacheWidth: 1080),
           if (index == 0)
             Positioned(
               top: 6,
