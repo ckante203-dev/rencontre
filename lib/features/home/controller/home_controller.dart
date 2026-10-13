@@ -839,6 +839,10 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         if (estInvisible || estFantome) return;
       }
       await _service.updateLocation(lat, lng);
+      // « Croisés aujourd'hui » : passage enregistré (arrondi, 24 h)
+      unawaited(Supabase.instance.client
+          .rpc('noter_passage', params: {'p_lat': lat, 'p_lng': lng})
+          .then((_) {}, onError: (_) {}));
     } catch (e) {
       debugPrint('_updateLocationIfAllowed error: $e');
     }
@@ -942,7 +946,22 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     profiles.removeWhere((u) => u.id == userId);
   }
 
-  void setFilter(String mode) => filterMode.value = mode;
+  // Personnes croisées dans les dernières 24 h (SQL 056)
+  final RxSet<String> croises = <String>{}.obs;
+
+  Future<void> chargerCroises() async {
+    try {
+      final r = await Supabase.instance.client.rpc('croises_aujourdhui');
+      croises.assignAll((r as List).map((e) => e.toString()));
+    } catch (e) {
+      debugPrint('Croisés : $e');
+    }
+  }
+
+  void setFilter(String mode) {
+    filterMode.value = mode;
+    if (mode == 'croises') chargerCroises();
+  }
 
   // ✅ MODIFIÉ — tri systématique du profil le plus proche
   // au plus éloigné, quel que soit le filtre actif (Tous /
@@ -960,6 +979,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         return false;
       }
       if (filterMode.value == 'favoris' && !favoris.contains(u.id)) {
+        return false;
+      }
+      if (filterMode.value == 'croises' && !croises.contains(u.id)) {
         return false;
       }
       // Âge : les personnes qui cachent leur âge ne sont pas filtrées

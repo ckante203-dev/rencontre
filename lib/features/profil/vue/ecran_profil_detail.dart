@@ -3,6 +3,7 @@ import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/video_profil.dart';
 import 'package:rencontre/features/home/stories_une.dart';
 import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
@@ -1042,6 +1043,11 @@ class _CorpsProfil extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           // ── À propos ──
+          // 🎬 Vidéo de profil (si validée)
+          BoutonVideoProfil(
+              key: ValueKey('video_${user.id}'),
+              userId: user.id,
+              nom: user.name),
           // ⭐ Stories à la une
           RangeeStoriesUne(key: ValueKey('une_${user.id}'), userId: user.id),
           if (user.bio != null && user.bio!.isNotEmpty) ...[

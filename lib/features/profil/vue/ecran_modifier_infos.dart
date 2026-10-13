@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/profil/vue/video_profil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -288,6 +289,12 @@ class EcranModifierInfos extends StatelessWidget {
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: _inputDeco('Dis quelque chose sur toi...'.tr),
             ),
+            const SizedBox(height: 20),
+
+            // ── Vidéo de profil ────────────────────────────────
+             _SectionLabel(icon: '🎬', title: 'Ma vidéo'.tr),
+            const SizedBox(height: 8),
+            const BlocVideoProfil(),
             const SizedBox(height: 20),
 
             // ── Métier / Études ────────────────────────────────
