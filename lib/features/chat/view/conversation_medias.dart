@@ -857,16 +857,13 @@ class _LocationBubble extends StatelessWidget {
 
   LatLng? _parseLatLng() {
     final c = msg.text ?? '';
-    if (c.contains(',') && !c.startsWith('http')) {
-      final p = c.split(',');
-      if (p.length == 2) {
-        final lat = double.tryParse(p[0].trim());
-        final lng = double.tryParse(p[1].trim());
-        if (lat != null && lng != null) return LatLng(lat, lng);
-      }
-    }
-    return null;
+    if (c.startsWith('http')) return null;
+    final l = PositionDirect.lire(c);
+    return l == null ? null : LatLng(l.$1, l.$2);
   }
+
+  /// Fin du partage en direct (null : position simple)
+  DateTime? get _finDirect => PositionDirect.lire(msg.text)?.$3;
 
   Future<void> _open(LatLng pt) async {
     final geoUri = Uri.parse(
@@ -917,6 +914,8 @@ class _LocationBubble extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       FlutterMap(
+                        // Position en direct : la carte suit les mises à jour
+                        key: ValueKey('${pt.latitude},${pt.longitude}'),
                         options: MapOptions(
                             initialCenter: pt,
                             initialZoom: 15.5,
@@ -1022,7 +1021,15 @@ class _LocationBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Position partagée'.tr,
+                  Text(
+                      _finDirect == null
+                          ? 'Position partagée'.tr
+                          : DateTime.now().isBefore(_finDirect!)
+                              ? '🔴 En direct jusqu\'à @h'.trParams({
+                                  'h':
+                                      '${_finDirect!.hour.toString().padLeft(2, '0')}:${_finDirect!.minute.toString().padLeft(2, '0')}'
+                                })
+                              : 'Position en direct terminée'.tr,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,

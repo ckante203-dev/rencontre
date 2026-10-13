@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profil Zamu</title>
+<meta property="og:title" content="Retrouve-moi sur Zamu">
+<meta property="og:description" content="Rencontres, stories et sorties près de chez toi.">
+<style>
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+         background: #0d0b16; color: #fff; text-align: center; padding: 64px 16px; }
+  a.bouton { display: inline-block; margin-top: 18px; padding: 15px 28px; border-radius: 999px;
+             background: linear-gradient(90deg, #8c46f0, #d94bc8); color: #fff;
+             font-weight: 800; text-decoration: none; }
+  p { color: #b9b2cc; }
+</style>
+</head>
+<body>
+  <h1>Zamu</h1>
+  <p id="texte">Ouverture du profil…</p>
+  <a class="bouton" id="ouvrir" href="#">Ouvrir dans Zamu</a>
+  <p><a href="https://play.google.com/store/apps/details?id=com.vybestyle.zamu" style="color:#b9b2cc">Pas encore Zamu ? Télécharger sur Google Play</a></p>
+<script>
+  // Lien de profil : ouvre zamu://profil/<id> sur Android, sinon le Play Store
+  var play = 'https://play.google.com/store/apps/details?id=com.vybestyle.zamu';
+  var u = new URLSearchParams(location.search).get('u') || '';
+  var valide = /^[0-9a-fA-F-]{36}$/.test(u);
+  var lien = valide
+    ? 'intent://profil/' + u + '#Intent;scheme=zamu;package=com.vybestyle.zamu;S.browser_fallback_url=' + encodeURIComponent(play) + ';end'
+    : play;
+  document.getElementById('ouvrir').href = lien;
+  if (/android/i.test(navigator.userAgent)) { location.href = lien; }
+  else { document.getElementById('texte').textContent = 'Zamu est disponible sur Android.'; }
+</script>
+</body>
+</html>

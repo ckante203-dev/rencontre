@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/appareil_service.dart';
+import 'package:rencontre/core/services/liens_profil.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/chat/view/bulles_messages.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
@@ -101,6 +103,8 @@ class _MainNavigationState extends State<MainNavigation> {
       _refreshForCurrentUser();
       // « Quoi de neuf » une fois après la mise à jour (anciens membres)
       afficherNouveautesSiBesoin();
+      LiensProfil.demarrer(); // ouverture d'un profil par lien zamu://
+      AppareilService.enregistrer(); // bannissement d'appareil (SQL 057)
     });
   }
 

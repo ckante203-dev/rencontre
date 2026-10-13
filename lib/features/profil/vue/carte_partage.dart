@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:rencontre/core/services/liens_profil.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 import 'package:share_plus/share_plus.dart';
@@ -63,8 +64,11 @@ Future<void> _capturerEtPartager(GlobalKey cle, String pseudo) async {
     await fichier.writeAsBytes(octets!.buffer.asUint8List());
     await SharePlus.instance.share(ShareParams(
       files: [XFile(fichier.path)],
-      text: 'Retrouve-moi sur Zamu 💬 : @@pseudo\nCherche mon pseudo dans Messages 🔍\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'
-          .trParams({'pseudo': pseudo}),
+      text: 'Retrouve-moi sur Zamu 💬 : @@pseudo\n@lien'.trParams({
+        'pseudo': pseudo,
+        'lien': LiensProfil.lien(
+            Supabase.instance.client.auth.currentUser?.id ?? ''),
+      }),
     ));
   } catch (e) {
     debugPrint('Partage de la carte impossible : $e');

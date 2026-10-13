@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/chat/controller/position_direct.dart';
 import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/features/chat/model/detection_arnaque.dart';
 import 'package:rencontre/features/profil/vue/urgence.dart';
@@ -450,6 +451,16 @@ class _ConvMenu extends StatelessWidget {
                     activeColor: AppColors.accent,
                   ),
                 )),
+            if (PositionDirect.messageEnCours.value != null)
+              _MenuItem(
+                icon: Icons.location_off_rounded,
+                label: 'Arrêter ma position en direct'.tr,
+                color: AppColors.error,
+                onTap: () {
+                  Get.back();
+                  PositionDirect.arreter();
+                },
+              ),
             _MenuItem(
               icon: Icons.search_rounded,
               label: 'Rechercher dans la conversation'.tr,
@@ -486,7 +497,8 @@ class _ConvMenu extends StatelessWidget {
                 final raison = await choisirMotifSignalement(
                     'Pourquoi signaler @prenom ?'.trParams({'prenom': prenom.toString()}));
                 if (raison != null) {
-                  ControleurProfil.to.signalerProfil(conv.userId, raison);
+                  ControleurProfil.to.signalerProfil(conv.userId, raison,
+                      preuves: ctrl.extraitPourSignalement());
                 }
               },
             ),

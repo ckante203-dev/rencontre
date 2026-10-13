@@ -1156,7 +1156,10 @@ class ControleurProfil extends GetxController {
     }
   }
 
-  Future<void> signalerProfil(String targetId, String reason) async {
+  /// [preuves] : extrait de la conversation (derniers messages de la
+  /// personne signalée), joint pour l'équipe de modération.
+  Future<void> signalerProfil(String targetId, String reason,
+      {String? preuves}) async {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null) return;
     try {
@@ -1164,6 +1167,7 @@ class ControleurProfil extends GetxController {
         'reporter_id': uid,
         'reported_id': targetId,
         'reason': reason,
+        if ((preuves ?? '').isNotEmpty) 'description': preuves,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       _snackSuccess('Signalement envoyé. Merci !'.tr);

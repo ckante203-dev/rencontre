@@ -125,6 +125,14 @@
 
             </intent-filter>
 
+            <!-- Lien de profil : zamu://profil/<id> (page web p.html) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="zamu" android:host="profil" />
+            </intent-filter>
+
         </activity>
 
         <!-- ===================================================== -->

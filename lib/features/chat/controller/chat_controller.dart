@@ -667,6 +667,24 @@ class ConversationController extends GetxController
   final RxBool isOtherRecording = false.obs; // « enregistre un vocal… »
   final RxBool autreVerifie = false.obs; // badge bleu dans l'en-tête
   final RxBool autreMasqueLu = false.obs; // pas de « Lu » (réglage Premium)
+  /// Derniers messages de l'autre personne (20 au plus), datés, pour
+  /// accompagner un signalement.
+  String extraitPourSignalement() {
+    String deux(int n) => n.toString().padLeft(2, '0');
+    final siens = messages
+        .where((m) => m.senderId == conversation.userId && !m.id.startsWith('temp_'))
+        .toList();
+    final derniers = siens.length > 20 ? siens.sublist(siens.length - 20) : siens;
+    final lignes = [
+      for (final m in derniers)
+        '[${deux(m.createdAt.day)}/${deux(m.createdAt.month)} '
+            '${deux(m.createdAt.hour)}:${deux(m.createdAt.minute)}] '
+            '${m.type == MessageType.text ? (m.text ?? '') : '(${m.type.name})'}'
+    ];
+    final texte = 'Derniers messages de la personne signalée :\n${lignes.join('\n')}';
+    return texte.length > 3000 ? texte.substring(texte.length - 3000) : texte;
+  }
+
   // Messages programmés (table messages_programmes, envoyés par le serveur)
   final RxList<Map<String, dynamic>> programmes = <Map<String, dynamic>>[].obs;
 

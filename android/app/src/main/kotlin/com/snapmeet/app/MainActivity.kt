@@ -1,5 +1,6 @@
 package com.snapmeet.app
 
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.media.MediaCodec
 import android.media.MediaExtractor
@@ -7,6 +8,7 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -31,8 +33,37 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private var canalLiens: MethodChannel? = null
+
+    // App déjà ouverte : un nouveau lien zamu:// arrive ici
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.data?.toString()?.let { canalLiens?.invokeMethod("lien", it) }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Identifiant de l'appareil (bannissement d'appareil, SQL 057)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zamu/appareil")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "id") {
+                    result.success(
+                        Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+                } else {
+                    result.notImplemented()
+                }
+            }
+        // Liens de profil zamu://profil/<id> : lien de départ lu par Dart
+        canalLiens = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zamu/liens")
+        canalLiens?.setMethodCallHandler { call, result ->
+            if (call.method == "initial") {
+                result.success(intent?.data?.toString())
+                intent?.data = null // une seule fois
+            } else {
+                result.notImplemented()
+            }
+        }
         // Découpe de vidéo pour les stories (comme le statut WhatsApp).
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zamu/video")
             .setMethodCallHandler { call, result ->

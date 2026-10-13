@@ -310,7 +310,8 @@ class _MessageBubble extends StatelessWidget {
                       ] else ...[
                         const SizedBox(height: 2),
                         Row(mainAxisSize: MainAxisSize.min, children: [
-                          if (msg.modifieLe != null)
+                          if (msg.modifieLe != null &&
+                              msg.type != MessageType.location)
                             Text('modifié · '.tr,
                                 style: TextStyle(
                                     fontSize: 10,

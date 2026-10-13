@@ -340,7 +340,7 @@ class _AttachMenu extends StatelessWidget {
             icon: Icons.location_on_rounded,
             label: 'Position'.tr,
             color: const Color(0xFFFFD93D),
-            onTap: ctrl.envoyerLocalisation),
+            onTap: () => _choisirPosition(context)),
         _AttachItem(
             icon: Icons.lock_rounded,
             label: 'Album'.tr,
@@ -467,6 +467,55 @@ class _AttachMenu extends StatelessWidget {
                 },
               ),
             ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// Position : actuelle, ou en direct pendant 1 h (rendez-vous)
+  void _choisirPosition(BuildContext context) {
+    ctrl.showAttachMenu.value = false;
+    Get.bottomSheet(
+      SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(Icons.place_rounded, color: AppColors.accent),
+              title: Text('Position actuelle'.tr,
+                  style: TextStyle(color: AppColors.textPrimary)),
+              onTap: () {
+                Get.back();
+                ctrl.envoyerLocalisation();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.radio_button_checked_rounded,
+                  color: Colors.red),
+              title: Text('En direct pendant 1 h'.tr,
+                  style: TextStyle(color: AppColors.textPrimary)),
+              subtitle: Text(
+                  'Pour un rendez-vous : ta position se met à jour chaque minute, app ouverte.'.tr,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              onTap: () async {
+                Get.back();
+                if (!ctrl.peutEnvoyer()) return;
+                final ok =
+                    await PositionDirect.demarrer(ctrl.conversation.id);
+                if (!ok) {
+                  Get.snackbar('📍', 'Impossible de récupérer la position'.tr,
+                      snackPosition: SnackPosition.TOP,
+                      backgroundColor: AppColors.surface,
+                      colorText: AppColors.textPrimary);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
           ]),
         ),
       ),

@@ -43,6 +43,7 @@ class _BoostSheetState extends State<_BoostSheet> {
     if ((_rc?.boosts ?? const []).isEmpty) _rc?.fetchOfferings();
     _chargerBilan();
     _chargerOffert();
+    _chargerProgramme();
     _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       // Bilan rafraîchi toutes les 30 s pendant le Boost
@@ -107,6 +108,59 @@ class _BoostSheetState extends State<_BoostSheet> {
     } catch (e) {
       debugPrint('boost_offert_etat: $e');
     }
+  }
+
+  // Boost offert programmé (table boosts_programmes, SQL 058)
+  DateTime? _programme;
+
+  Future<void> _chargerProgramme() async {
+    try {
+      final r = await Supabase.instance.client
+          .from('boosts_programmes')
+          .select('a_lancer_le')
+          .maybeSingle();
+      if (mounted) {
+        setState(() => _programme =
+            DateTime.tryParse('${r?['a_lancer_le'] ?? ''}')?.toLocal());
+      }
+    } catch (_) {} // table absente (SQL 058 pas encore passé)
+  }
+
+  /// Lancer le Boost offert plus tard (ex. 20 h, quand il y a du monde)
+  Future<void> _programmerOffert() async {
+    final maintenant = DateTime.now();
+    final heure = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 20, minute: 0),
+      helpText: 'Lancer mon Boost à…'.tr,
+    );
+    if (heure == null) return;
+    var quand = DateTime(maintenant.year, maintenant.month, maintenant.day,
+        heure.hour, heure.minute);
+    if (quand.isBefore(maintenant.add(const Duration(minutes: 2)))) {
+      quand = quand.add(const Duration(days: 1)); // demain à cette heure
+    }
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      await Supabase.instance.client.from('boosts_programmes').upsert(
+          {'user_id': uid, 'a_lancer_le': quand.toUtc().toIso8601String()});
+      setState(() => _programme = quand);
+      _snack('⏰ Boost programmé à @h'.trParams({
+        'h': '${quand.hour.toString().padLeft(2, '0')}:${quand.minute.toString().padLeft(2, '0')}'
+      }));
+    } catch (e) {
+      debugPrint('Boost programmé : $e');
+      _snack('Impossible d\'activer le Boost. Réessaie.'.tr);
+    }
+  }
+
+  Future<void> _annulerProgramme() async {
+    try {
+      await Supabase.instance.client.from('boosts_programmes').delete().eq(
+          'user_id', Supabase.instance.client.auth.currentUser?.id ?? '');
+      setState(() => _programme = null);
+    } catch (_) {}
   }
 
   Future<void> _utiliserOffert() async {
@@ -210,6 +264,24 @@ class _BoostSheetState extends State<_BoostSheet> {
                 Text('1 heure · inclus avec Premium'.tr,
                     style:
                         TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                const SizedBox(height: 4),
+                // ⏰ Programmer (ou annuler) le lancement
+                GestureDetector(
+                  onTap: _programme == null
+                      ? _programmerOffert
+                      : _annulerProgramme,
+                  child: Text(
+                      _programme == null
+                          ? '⏰ Programmer à une heure précise'.tr
+                          : '⏰ Programmé à @h · annuler'.trParams({
+                              'h':
+                                  '${_programme!.hour.toString().padLeft(2, '0')}:${_programme!.minute.toString().padLeft(2, '0')}'
+                            }),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accent)),
+                ),
               ]),
         ),
         GestureDetector(
