@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/groupes/communautes.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/groupes/choix_membres.dart';
 import 'package:rencontre/features/groupes/ecran_groupe.dart';
@@ -41,6 +42,20 @@ class ListeGroupes extends StatelessWidget {
                   style: TextStyle(
                       fontWeight: FontWeight.w700, color: AppColors.lien)),
               subtitle: Text('Discute avec plusieurs amis à la fois'.tr,
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            ),
+            // 🌍 Communautés publiques (créées par l'équipe Zamu)
+            ListTile(
+              onTap: () => Get.to(() => const EcranCommunautes()),
+              leading: CircleAvatar(
+                radius: 26,
+                backgroundColor: AppColors.surface2,
+                child: const Text('🌍', style: TextStyle(fontSize: 22)),
+              ),
+              title: Text('Communautés'.tr,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: AppColors.lien)),
+              subtitle: Text('Rejoins des groupes autour de tes passions'.tr,
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             ),
             if (liste.isEmpty)

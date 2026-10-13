@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart' show compute;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/chat/model/message_model.dart';
+import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'package:rencontre/features/home/stories_une.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
@@ -590,6 +592,138 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
+  /// Story d'un autre : l'envoyer à un ami (stories publiques seulement)
+  /// ou la signaler.
+  void _optionsStoryAutre(StoryModel story) {
+    final publique = story.visibility == 'public';
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(0, 12, 0, 32),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (publique) ...[
+            _OptionTile(
+              icon: Icons.send_rounded,
+              label: 'Envoyer à un ami'.tr,
+              color: Colors.white,
+              onTap: () {
+                _chainingModal = true;
+                Get.back();
+                Future.delayed(const Duration(milliseconds: 200), () {
+                  if (mounted) _envoyerStoryAUnAmi(story);
+                });
+              },
+            ),
+            const _OptionDivider(),
+          ],
+          _OptionTile(
+            icon: Icons.flag_outlined,
+            label: 'Signaler'.tr,
+            color: Colors.orange,
+            onTap: () {
+              _chainingModal = true;
+              Get.back();
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (mounted) _reportStory(story);
+              });
+            },
+          ),
+        ]),
+      ),
+    ).then((_) {
+      if (_chainingModal) {
+        _chainingModal = false;
+        return;
+      }
+      _resumeWhenVisible();
+    });
+  }
+
+  Future<void> _envoyerStoryAUnAmi(StoryModel story) async {
+    final moi = Supabase.instance.client.auth.currentUser?.id;
+    if (moi == null || !Get.isRegistered<ChatListController>()) {
+      _resumeWhenVisible();
+      return;
+    }
+    final convs = Get.find<ChatListController>()
+        .conversations
+        .where((c) => c.userId != story.userId)
+        .toList();
+    final choisie = await Get.bottomSheet<ConversationModel>(
+      Container(
+        constraints: BoxConstraints(maxHeight: Get.height * 0.6),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Envoyer à…'.tr,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800)),
+            ),
+            Flexible(
+              child: ListView(shrinkWrap: true, children: [
+                for (final c in convs)
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.white12,
+                      backgroundImage: (c.userPhotoUrl ?? '').isNotEmpty
+                          ? CachedNetworkImageProvider(c.userPhotoUrl!,
+                              maxWidth: 200)
+                          : null,
+                    ),
+                    title: Text(c.userName,
+                        style: const TextStyle(color: Colors.white)),
+                    onTap: () => Get.back(result: c),
+                  ),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+    if (choisie != null) {
+      final ok = await ConversationController.insertStoryReplyRow(
+        conversationId: choisie.id,
+        senderId: moi,
+        text: '↗ Story de @nom'.trParams({'nom': story.userName}),
+        storyData: StoryReplyData(
+          storyId: story.id,
+          storyPreviewUrl: story.mediaUrl,
+          storyIsVideo: story.isVideo,
+          storyOwnerName: story.userName,
+          storyText: story.isTextStory ? story.textContent : null,
+          storyBgColor: story.isTextStory ? story.bgColor : null,
+        ),
+      );
+      if (ok) {
+        try {
+          await Supabase.instance.client.from('conversations').update({
+            'updated_at': DateTime.now().toUtc().toIso8601String()
+          }).eq('id', choisie.id);
+        } catch (_) {}
+      }
+      Get.snackbar(
+          '↗',
+          ok
+              ? 'Envoyé à @prenom ✓'.trParams({'prenom': choisie.userName})
+              : 'Impossible d\'envoyer le message'.tr,
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFF1C1C1E),
+          colorText: Colors.white);
+    }
+    if (mounted) _resumeWhenVisible();
+  }
+
   // Story d'un autre : signalement. Une story signalée est masquée ;
   // on ferme alors le viewer (sa liste de stories est figée).
   Future<void> _reportStory(StoryModel story) async {
@@ -1144,7 +1278,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 if (isOwner) {
                   _showStoryOptions(s);
                 } else {
-                  _reportStory(s);
+                  _optionsStoryAutre(s);
                 }
               },
               behavior: HitTestBehavior.opaque,
