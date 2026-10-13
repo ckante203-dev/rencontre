@@ -97,6 +97,22 @@ flutter:
     - assets/images/
     - assets/sounds/
 
+  # Police des titres (fontFamily: 'Syne' dans tout le code). Avant, elle
+  # n'était pas incluse : les titres s'affichaient avec la police système.
+  fonts:
+    - family: Syne
+      fonts:
+        - asset: assets/fonts/Syne-400.ttf
+          weight: 400
+        - asset: assets/fonts/Syne-500.ttf
+          weight: 500
+        - asset: assets/fonts/Syne-600.ttf
+          weight: 600
+        - asset: assets/fonts/Syne-700.ttf
+          weight: 700
+        - asset: assets/fonts/Syne-800.ttf
+          weight: 800
+
 flutter_launcher_icons:
   android: true
   ios: false
