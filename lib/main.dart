@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:rencontre/core/services/avis_service.dart';
 import 'package:flutter/material.dart';
@@ -106,8 +107,22 @@ void main() async {
       erreur is HttpException ||
       origine == 'image resource service' ||
       erreur.toString().contains('HttpException');
+  // Réseau coupé ou instable (rafraîchissement de la connexion Supabase,
+  // requête impossible) : pas un plantage, l'app réessaie toute seule.
+  // C'était « AuthRetryableFetchException » : 208 faux plantages en 1 jour.
+  bool erreurReseau(Object erreur) =>
+      erreur is AuthRetryableFetchException ||
+      erreur is SocketException ||
+      erreur is TimeoutException ||
+      erreur.toString().contains('AuthRetryableFetchException') ||
+      erreur.toString().contains('SocketException') ||
+      erreur.toString().contains('Failed host lookup') ||
+      erreur.toString().contains('Connection closed') ||
+      erreur.toString().contains('Connection reset');
+  bool nonFatale(Object erreur, String? origine) =>
+      imageIntrouvable(erreur, origine) || erreurReseau(erreur);
   FlutterError.onError = (details) {
-    if (imageIntrouvable(details.exception, details.library)) {
+    if (nonFatale(details.exception, details.library)) {
       FirebaseCrashlytics.instance.recordFlutterError(details);
       return;
     }
@@ -115,7 +130,7 @@ void main() async {
   };
   PlatformDispatcher.instance.onError = (erreur, pile) {
     FirebaseCrashlytics.instance
-        .recordError(erreur, pile, fatal: !imageIntrouvable(erreur, null));
+        .recordError(erreur, pile, fatal: !nonFatale(erreur, null));
     return true;
   };
 
