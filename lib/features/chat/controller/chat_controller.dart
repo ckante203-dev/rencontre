@@ -1901,10 +1901,16 @@ class ConversationController extends GetxController
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
+      // Défilant : sur les petits écrans, toutes les options restent
+      // accessibles (plus de débordement).
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      builder: (_) => SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+            16, 12, 16, 16 + MediaQuery.of(context).padding.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
               width: 36,
