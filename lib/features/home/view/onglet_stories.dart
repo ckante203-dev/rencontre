@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/stories_officielles.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
@@ -103,6 +104,8 @@ class OngletStories extends StatelessWidget {
                               }
                             },
                           ),
+                          // 📣 Stories officielles Zamu (nouveautés)
+                          const RondZamuOfficiel(),
                           for (var i = 0; i < amis.length; i++)
                             _RondStory(
                               nom: amis[i].cover.userName,

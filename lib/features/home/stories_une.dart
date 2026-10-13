@@ -213,6 +213,11 @@ class _RangeeStoriesUneState extends State<RangeeStoriesUne> {
   }
 }
 
+/// Ouvre la visionneuse plein écran (stories à la une, stories officielles)
+Future<bool?>? ouvrirVueStories(List<StoryUne> liste, int depart) =>
+    Get.to<bool>(() => _VueStoryUne(liste: liste, depart: depart),
+        fullscreenDialog: true);
+
 /// Plein écran : on passe d'une story à la une à l'autre en touchant
 class _VueStoryUne extends StatefulWidget {
   final List<StoryUne> liste;

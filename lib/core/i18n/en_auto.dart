@@ -1394,4 +1394,7 @@ const Map<String, String> enAuto = {
   'Ouvrir': 'Open',
   'Rejoindre': 'Join',
   'Rejoins des groupes autour de tes passions': 'Join groups around your passions',
+  'Merci, ton avis nous aide à améliorer Zamu !': 'Thanks, your feedback helps us improve Zamu!',
+  'Qu\'est-ce qu\'on peut améliorer ? (facultatif)': 'What could we improve? (optional)',
+  'Un commentaire ? (facultatif)': 'Any comment? (optional)',
 };
