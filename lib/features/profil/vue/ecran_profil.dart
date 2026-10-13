@@ -276,8 +276,8 @@ class _NomStatut extends StatelessWidget {
                 child: Text(p.age > 0 ? '${p.name}, ${p.age}' : p.name,
                     style: TextStyle(
                         fontFamily: 'Syne',
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
               ),
               if (ctrl.monProfil.value?.estVerifie == true) ...[
@@ -344,7 +344,7 @@ class _Completion extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.carte,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.carteBord),
             ),
             child: Column(
@@ -408,7 +408,7 @@ class _Stats extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.border)),
             child: Row(children: [
               Expanded(
@@ -449,11 +449,11 @@ class _StatItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(children: [
+        // Chiffres : police du texte (Syne est trop large pour des nombres)
         Text(value,
             style: TextStyle(
-                fontFamily: 'Syne',
                 fontSize: 20,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary)),
         const SizedBox(height: 2),
         Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
@@ -481,7 +481,7 @@ class _CartePremium extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: premium ? null : AppColors.gradientPink,
               color: premium ? AppColors.surface : null,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: premium
                   ? Border.all(color: AppColors.yellow.withOpacity(0.5))
                   : null,
@@ -854,7 +854,7 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
                   filled: true,
                   fillColor: AppColors.surface2,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -868,7 +868,7 @@ class _FeuillePseudoState extends State<FeuillePseudo> {
                 height: 48,
                 decoration: BoxDecoration(
                   gradient: AppColors.gradientPink,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
                   child: _envoi

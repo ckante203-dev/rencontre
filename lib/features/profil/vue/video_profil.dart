@@ -160,7 +160,7 @@ class _BlocVideoProfilState extends State<BlocVideoProfil> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(children: [
@@ -236,7 +236,7 @@ class _BoutonVideoProfilState extends State<BoutonVideoProfil> {
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             gradient: AppColors.gradientPink,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.play_circle_fill_rounded, color: AppColors.surAccent),

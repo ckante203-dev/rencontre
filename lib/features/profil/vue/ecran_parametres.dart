@@ -115,7 +115,7 @@ class EcranParametres extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border)),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +174,7 @@ class EcranParametres extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border)),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,7 +439,7 @@ class EcranParametres extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.border)),
                   child: Row(children: [
                     Container(
@@ -805,7 +805,7 @@ class _Toggle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border)),
       child: Row(children: [
         Text(icon, style: const TextStyle(fontSize: 20)),
@@ -855,7 +855,7 @@ class _Tuile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border)),
         child: Row(children: [
           Text(icon, style: const TextStyle(fontSize: 20)),
