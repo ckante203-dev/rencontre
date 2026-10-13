@@ -550,17 +550,19 @@ class _ConvMenu extends StatelessWidget {
   void _rechercher(BuildContext context) {
     final requete = ''.obs;
     final prenom = ctrl.conversation.userName.split(' ').first;
+    // Le menu ⋮ est déjà fermé : on s'appuie sur le contexte de l'appli
+    final ctxAppli = Get.context ?? context;
     showModalBottomSheet(
-      context: context,
+      context: ctxAppli,
       backgroundColor: AppColors.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Padding(
+      builder: (ctxFeuille) => Padding(
         padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom),
+            bottom: MediaQuery.of(ctxFeuille).viewInsets.bottom),
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.75,
+          height: MediaQuery.of(ctxFeuille).size.height * 0.75,
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

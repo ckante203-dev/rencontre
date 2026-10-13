@@ -43,15 +43,16 @@ class Urgence {
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none),
         );
+    // Peut être appelé depuis un menu déjà fermé : contexte de l'appli
     await showModalBottomSheet(
-      context: context,
+      context: Get.context ?? context,
       backgroundColor: AppColors.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Padding(
+      builder: (ctxFeuille) => Padding(
         padding: EdgeInsets.fromLTRB(
-            20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+            20, 20, 20, MediaQuery.of(ctxFeuille).viewInsets.bottom + 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
