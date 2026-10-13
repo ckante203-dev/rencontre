@@ -1008,7 +1008,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
           return false;
         }
       }
-      if (filterMode.value != 'nearby') {
+      // Curseur au maximum (« 50+ km ») = pas de limite de distance
+      if (filterMode.value != 'nearby' && filterDistance.value < 50) {
         final dist = u.distanceMeters;
         if (dist != null && dist > filterDistance.value * 1000) return false;
       }

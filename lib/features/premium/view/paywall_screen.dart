@@ -329,8 +329,12 @@ class _FormuleTile extends StatelessWidget {
     }
   }
 
-  /// 1990 → « 1 990 FCFA » (XOF), sinon montant + code devise.
+  /// 1990 → « 1 990 FCFA » (XOF) ; 1.845 → « 1,85 € » (devises à centimes).
   static String _montant(double v, String devise) {
+    if (devise != 'XOF') {
+      final c = v.toStringAsFixed(2).replaceAll('.', ',');
+      return devise == 'EUR' ? '$c €' : '$c $devise';
+    }
     final n = v
         .round()
         .toString()

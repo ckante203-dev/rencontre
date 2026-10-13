@@ -101,6 +101,28 @@ serve(async (req) => {
 
   console.log(`RevenueCat event ${type} (${environment}) id=${event.id ?? '?'}`);
 
+  // 📊 Journal des achats pour la page Statistiques (SQL 063). Ne bloque
+  // jamais le traitement : table absente ou doublon = simplement ignoré.
+  try {
+    const user = uuidCandidates(event.app_user_id, event.original_app_user_id, event.aliases)[0] ?? null;
+    const quand = Number(event.event_timestamp_ms ?? event.purchased_at_ms);
+    const { error } = await supabase.from('achats_journal').upsert({
+      event_id: String(event.id ?? crypto.randomUUID()),
+      user_id: user,
+      type,
+      produit: event.product_id ?? null,
+      prix_usd: typeof event.price === 'number' ? event.price : null,
+      prix_local: typeof event.price_in_purchased_currency === 'number' ? event.price_in_purchased_currency : null,
+      devise: event.currency ?? null,
+      pays: event.country_code ?? null,
+      environnement: environment,
+      le: Number.isFinite(quand) && quand > 0 ? new Date(quand).toISOString() : new Date().toISOString(),
+    }, { onConflict: 'event_id', ignoreDuplicates: true });
+    if (error) console.warn('achats_journal :', error.message);
+  } catch (e) {
+    console.warn('achats_journal :', e);
+  }
+
   try {
     // ── TRANSFER : l'abonnement passe d'un compte à un autre ──────────────
     if (type === 'TRANSFER') {
