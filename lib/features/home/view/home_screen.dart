@@ -5,6 +5,7 @@ import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/widget/coins_animes.dart';
 import 'package:rencontre/features/home/view/mode_swipe.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
 import 'package:rencontre/features/evenements/bande_evenements.dart';
@@ -421,6 +422,27 @@ class _FilterChipsState extends State<_FilterChips> {
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textMuted)),
                       ]),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // 🔥 Coins animés (zones les plus actives aujourd'hui)
+                  GestureDetector(
+                    onTap: () => afficherCoinsAnimes(
+                        controller.maLat, controller.maLng),
+                    child: Container(
+                      height: 42,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.surface2,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Text('🔥 Coins animés'.tr,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textMuted)),
                     ),
                   ),
                 ],

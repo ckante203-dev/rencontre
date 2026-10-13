@@ -247,30 +247,6 @@ class _MapScreenState extends State<MapScreen>
                 child: _BanniereFantome(ctrl: _ctrl),
               ),
 
-            // ── 🔥 Coins animés ─────────────────────────────
-            if (_ctrl.peutVoirLaCarte && !showList)
-              Positioned(
-                left: 16,
-                bottom: 80,
-                child: GestureDetector(
-                  onTap: _coinsAnimes,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text('🔥 Coins animés'.tr,
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                  ),
-                ),
-              ),
-
             // ── Compteur profils ───────────────────────────
             if (_ctrl.peutVoirLaCarte && !showList)
               Positioned(
@@ -360,96 +336,6 @@ class _MapScreenState extends State<MapScreen>
           ],
         );
       }),
-    );
-  }
-
-
-  /// Zones (≈ 1 km) où il y a le plus de membres actifs aujourd'hui
-  /// autour de moi (fonction lieux_populaires, SQL 059). Aucune personne
-  /// n'est identifiable : 3 membres au moins par zone.
-  Future<void> _coinsAnimes() async {
-    final moi = _ctrl.myPosition.value;
-    if (moi == null) return;
-    List zones = const [];
-    try {
-      zones = await Supabase.instance.client.rpc('lieux_populaires',
-          params: {'p_lat': moi.latitude, 'p_lng': moi.longitude}) as List;
-    } catch (e) {
-      debugPrint('Coins animés : $e');
-    }
-    // Nom du quartier (OpenStreetMap), au mieux
-    Future<String> nom(double lat, double lng) async {
-      try {
-        final r = await http.get(
-            Uri.parse(
-                'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&zoom=15&accept-language=fr'),
-            headers: {'User-Agent': 'Zamu/1.0'}).timeout(const Duration(seconds: 6));
-        final a = (jsonDecode(r.body) as Map)['address'] as Map? ?? {};
-        return (a['suburb'] ?? a['neighbourhood'] ?? a['quarter'] ??
-                a['city_district'] ?? a['town'] ?? a['city'] ?? '')
-            .toString();
-      } catch (_) {
-        return '';
-      }
-    }
-
-    final noms = await Future.wait([
-      for (final z in zones)
-        nom((z['lat'] as num).toDouble(), (z['lng'] as num).toDouble())
-    ]);
-    if (!mounted) return;
-    Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('🔥 Coins animés aujourd\'hui'.tr,
-                  style: TextStyle(
-                      fontFamily: 'Syne',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-            ),
-            if (zones.isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Text(
-                    'Pas encore assez de monde autour de toi. Reviens ce soir !'.tr,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textMuted)),
-              ),
-            for (var i = 0; i < zones.length; i++)
-              ListTile(
-                leading: Text(['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i.clamp(0, 4)],
-                    style: const TextStyle(fontSize: 22)),
-                title: Text(
-                    noms[i].isEmpty ? 'Zone @n'.trParams({'n': '${i + 1}'}) : noms[i],
-                    style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600)),
-                subtitle: Text(
-                    '@n membres actifs aujourd\'hui'
-                        .trParams({'n': '${zones[i]['nb']}'}),
-                    style: TextStyle(color: AppColors.textMuted)),
-                trailing: Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textMuted),
-                onTap: () {
-                  Get.back();
-                  _mapController.move(
-                      LatLng((zones[i]['lat'] as num).toDouble(),
-                          (zones[i]['lng'] as num).toDouble()),
-                      15);
-                },
-              ),
-            const SizedBox(height: 8),
-          ]),
-        ),
-      ),
     );
   }
 

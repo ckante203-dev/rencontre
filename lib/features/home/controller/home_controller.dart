@@ -123,6 +123,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   RealtimeChannel? _storiesChannel; // ✅ auto-refresh des stories
 
   double? _myLat;
+  double? get maLat => _myLat;
+  double? get maLng => _myLng;
   double? _myLng;
 
   // ✈️ MODE VOYAGE (Premium) : les profils et distances sont calculés depuis
