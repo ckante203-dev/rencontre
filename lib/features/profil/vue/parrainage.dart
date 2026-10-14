@@ -6,7 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Parrainage : mon code = mon @pseudo. Un nouvel inscrit (compte de moins
-/// de 7 jours) entre le code d'un ami : 1 h de Boost pour les deux
+/// de 7 jours) entre le code d'un ami : 7 jours de Premium pour le parrain,
+/// 24 h pour l'ami (SQL 064)
 /// (fonction utiliser_code_parrainage, SQL 053).
 class CarteParrainage extends StatefulWidget {
   const CarteParrainage({super.key});
@@ -42,7 +43,7 @@ class _CarteParrainageState extends State<CarteParrainage> {
       text: pseudo.isEmpty
           ? 'Rejoins-moi sur Zamu 💬\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'
               .tr
-          : 'Rejoins-moi sur Zamu 💬 À l\'inscription, entre mon code @pseudo : on gagne tous les deux 1 h de Boost ⚡\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'
+          : 'Rejoins-moi sur Zamu 💬 À l\'inscription, entre mon code @pseudo : tu gagnes 24 h de Premium offertes ⚡\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu'
               .trParams({'pseudo': pseudo}),
     ));
   }
@@ -84,7 +85,7 @@ class _CarteParrainageState extends State<CarteParrainage> {
       r = 'erreur';
     }
     final messages = {
-      'ok': 'Code accepté ⚡ 1 h de Boost pour toi et ton ami !'.tr,
+      'ok': 'Code accepté ⚡ 24 h de Premium pour toi, 7 jours pour ton ami !'.tr,
       'introuvable': 'Aucun membre avec ce pseudo'.tr,
       'deja_parraine': 'Tu as déjà utilisé un code'.tr,
       'trop_tard': 'Le code doit être entré dans les 7 jours après l\'inscription'.tr,
@@ -134,7 +135,7 @@ class _CarteParrainageState extends State<CarteParrainage> {
           Text(
               pseudo.isEmpty
                   ? 'Choisis ton pseudo : il sert de code de parrainage.'.tr
-                  : 'Ton code : @@pseudo. Chaque ami inscrit avec ton code vous donne 1 h de Boost à tous les deux.'
+                  : 'Ton code : @@pseudo. Chaque ami inscrit avec ton code te donne 7 jours de Premium (24 h pour lui).'
                       .trParams({'pseudo': pseudo}),
               style: TextStyle(
                   fontSize: 13, color: AppColors.textMuted, height: 1.4)),

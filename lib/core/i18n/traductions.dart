@@ -83,8 +83,8 @@ const _fr = {
   'inscription.deja_compte': 'Déjà un compte ? ',
   'inscription.accepte': 'En créant un compte, tu acceptes nos ',
   'inscription.et_notre': ' et notre ',
-  'inscription.pseudo': "Nom d'utilisateur",
-  'inscription.pseudo_hint': 'ex: sarah_ci',
+  'inscription.pseudo': "Nom d'utilisateur (facultatif)",
+  'inscription.pseudo_hint': 'ex: sarah.k',
   'inscription.verification': 'Vérification...',
   'inscription.disponible': 'Disponible',
   'inscription.deja_pris': 'Déjà pris',
@@ -100,6 +100,13 @@ const _fr = {
 };
 
 const _en = {
+  // ── Parrainage généreux (SQL 064) ──
+  'Rejoins-moi sur Zamu 💬 À l\'inscription, entre mon code @pseudo : tu gagnes 24 h de Premium offertes ⚡\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu':
+      'Join me on Zamu 💬 When you sign up, enter my code @pseudo: you get 24 h of free Premium ⚡\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu',
+  'Code accepté ⚡ 24 h de Premium pour toi, 7 jours pour ton ami !':
+      'Code accepted ⚡ 24 h of Premium for you, 7 days for your friend!',
+  'Ton code : @@pseudo. Chaque ami inscrit avec ton code te donne 7 jours de Premium (24 h pour lui).':
+      'Your code: @@pseudo. Each friend who signs up with your code gives you 7 days of Premium (24 h for them).',
   // ── Common ──
   'commun.ou': 'or',
   'commun.email': 'Email',
@@ -134,8 +141,8 @@ const _en = {
   'inscription.deja_compte': 'Already have an account? ',
   'inscription.accepte': 'By creating an account, you accept our ',
   'inscription.et_notre': ' and our ',
-  'inscription.pseudo': 'Username',
-  'inscription.pseudo_hint': 'e.g. sarah_ci',
+  'inscription.pseudo': 'Username (optional)',
+  'inscription.pseudo_hint': 'e.g. sarah.k',
   'inscription.verification': 'Checking...',
   'inscription.disponible': 'Available',
   'inscription.deja_pris': 'Already taken',

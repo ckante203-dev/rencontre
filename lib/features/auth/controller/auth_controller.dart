@@ -246,9 +246,11 @@ class AuthController extends GetxController {
       // déjà pris faisait échouer la création du profil après celle du
       // compte, laissant un compte sans profil bloqué dans l'onboarding.
       try {
-        final available = await supabase.rpc('username_available', params: {
-          'p_username': usernameController.text.trim().toLowerCase()
-        });
+        final saisi = usernameController.text.trim().toLowerCase();
+        final available = saisi.isEmpty
+            ? true
+            : await supabase.rpc('username_available',
+                params: {'p_username': saisi});
         if (available == false) {
           usernameAvailable.value = false;
           errorMessage.value = 'Ce nom d\'utilisateur est déjà pris'.tr;
@@ -268,7 +270,10 @@ class AuthController extends GetxController {
         final parsed = _parseBirthdate(birthdateController.text);
         await _createProfile(
           res.user!,
-          username: usernameController.text.trim().toLowerCase(),
+          // Facultatif : vide → nom automatique (user + début de l'id)
+          username: usernameController.text.trim().isEmpty
+              ? null
+              : usernameController.text.trim().toLowerCase(),
           birthdate: parsed['iso'],
           age: parsed['age'],
         );
@@ -757,17 +762,14 @@ class AuthController extends GetxController {
       return false;
     }
 
+    // Nom d'utilisateur facultatif : on ne bloque que s'il est saisi
     final username = usernameController.text.trim().toLowerCase();
-    if (username.isEmpty) {
-      errorMessage.value = 'Choisis un nom d\'utilisateur'.tr;
-      return false;
-    }
-    if (!RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(username)) {
+    if (username.isNotEmpty && !RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(username)) {
       errorMessage.value =
           'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)'.tr;
       return false;
     }
-    if (!usernameAvailable.value) {
+    if (username.isNotEmpty && !usernameAvailable.value) {
       errorMessage.value = 'Ce nom d\'utilisateur est déjà pris'.tr;
       return false;
     }
