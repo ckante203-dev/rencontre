@@ -130,6 +130,18 @@ EXCEPTION WHEN OTHERS THEN RETURN '[]'::jsonb;
 END;
 $$;
 
+-- Texte « AAAA-MM-JJ… » → date, ou NULL si vide ou invalide
+CREATE OR REPLACE FUNCTION public._date_sure(p text)
+RETURNS date
+LANGUAGE plpgsql IMMUTABLE
+AS $$
+BEGIN
+  RETURN substr(p, 1, 10)::date;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.admin_statistiques(p_debut date, p_fin date)
 RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
@@ -260,12 +272,15 @@ BEGIN
         SELECT COALESCE(NULLIF(lower(gender), ''), 'non précisé') AS g, count(*) AS n FROM profiles
          WHERE last_seen > now() - interval '30 days' GROUP BY 1) x),
     'ages', (SELECT COALESCE(jsonb_object_agg(t, n), '{}'::jsonb) FROM (
-        SELECT CASE WHEN birthdate IS NULL THEN 'inconnu'
-                    WHEN age(birthdate) < interval '25 years' THEN '18-24'
-                    WHEN age(birthdate) < interval '35 years' THEN '25-34'
-                    WHEN age(birthdate) < interval '45 years' THEN '35-44'
+        -- birthdate est du texte (« AAAA-MM-JJ… ») : conversion prudente
+        SELECT CASE WHEN nais IS NULL THEN 'inconnu'
+                    WHEN age(nais) < interval '25 years' THEN '18-24'
+                    WHEN age(nais) < interval '35 years' THEN '25-34'
+                    WHEN age(nais) < interval '45 years' THEN '35-44'
                     ELSE '45+' END AS t, count(*) AS n
-          FROM profiles WHERE last_seen > now() - interval '30 days' GROUP BY 1) x)
+          FROM (SELECT public._date_sure(birthdate::text) AS nais
+                  FROM profiles WHERE last_seen > now() - interval '30 days') pr
+         GROUP BY 1) x)
   ) INTO v_res;
 
   RETURN v_res;

@@ -327,7 +327,13 @@ class ControleurProfil extends GetxController {
       monUsername.value = data['username']?.toString() ?? '';
       usernameController.text = monUsername.value;
       usernameText.value = monUsername.value;
-      if (monUsername.value.isEmpty) _proposerPseudo();
+      // « Je cherche » sert à la visibilité mutuelle (SQL 070) : on le
+      // demande d'abord ; le pseudo attendra la prochaine ouverture.
+      if ((data['looking_for']?.toString() ?? '').isEmpty) {
+        _demanderCherche();
+      } else if (monUsername.value.isEmpty) {
+        _proposerPseudo();
+      }
       usernameDispo.value = null;
       bioController.text = data['bio']?.toString() ?? '';
       tailleController.text = data['taille']?.toString() ?? '';
@@ -851,6 +857,75 @@ class ControleurProfil extends GetxController {
 
   /// Compte sans pseudo (souvent créé avec Google) : on propose d'en
   /// choisir un, au plus une fois tous les 3 jours.
+  /// Une fois par jour au plus, tant que « Je cherche » est vide.
+  void _demanderCherche() {
+    final box = GetStorage();
+    final dernier = box.read<int>('cherche_demande_le') ?? 0;
+    final maintenant = DateTime.now().millisecondsSinceEpoch;
+    if (maintenant - dernier < const Duration(days: 1).inMilliseconds) return;
+    Future.delayed(const Duration(seconds: 3), () {
+      if (isClosed || selectedLookingFor.value.isNotEmpty) return;
+      if (Get.isBottomSheetOpen == true || Get.isDialogOpen == true) return;
+      box.write('cherche_demande_le', maintenant);
+      Get.bottomSheet(
+        SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('Qui veux-tu rencontrer ?'.tr,
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 6),
+              Text(
+                  'Tu verras seulement les personnes qui te cherchent aussi. Ce choix reste privé.'
+                      .tr,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              const SizedBox(height: 18),
+              for (final opt in lookingForOptions)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () {
+                        setLookingFor(opt);
+                        Get.back();
+                        // L'Accueil se recharge avec les bons profils
+                        if (Get.isRegistered<HomeController>()) {
+                          Get.find<HomeController>().loadProfiles();
+                        }
+                      },
+                      child: Text(opt.capitalizeFirst!.tr,
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+        ),
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+      );
+    });
+  }
+
   void _proposerPseudo() {
     final box = GetStorage();
     final dernier = box.read<int>('pseudo_propose_le') ?? 0;

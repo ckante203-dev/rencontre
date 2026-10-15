@@ -15,6 +15,8 @@ import 'package:rencontre/features/home/view/main_navigation.dart';
 // ont écrit monte depuis l'icône Messages, comme les cœurs d'un live
 // (5 maximum, ~6 s chacune). Toucher une bulle ouvre la conversation.
 // Jamais deux fois pour les mêmes messages ; seulement sur l'Accueil.
+// Seulement À L'OUVERTURE de l'app (ou au retour dedans) : un message reçu
+// pendant qu'on est déjà dans l'app ne fait pas monter de bulle.
 
 class BullesMessages extends StatefulWidget {
   const BullesMessages({super.key});
@@ -36,6 +38,10 @@ class _BullesMessagesState extends State<BullesMessages>
   List<double> _balancement = [];
   final List<Worker> _ecouteurs = [];
   Timer? _attente;
+  // true à l'ouverture / au retour dans l'app ; consommé par la 1re
+  // vérification faite sur l'Accueil avec les conversations chargées
+  bool _ouverture = true;
+  DateTime _ouvertLe = DateTime.now();
 
   @override
   void initState() {
@@ -73,6 +79,8 @@ class _BullesMessagesState extends State<BullesMessages>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Retour dans l'app : les conversations se rafraîchissent d'abord
     if (state == AppLifecycleState.resumed) {
+      _ouverture = true;
+      _ouvertLe = DateTime.now();
       _bientot(const Duration(milliseconds: 1800));
     }
   }
@@ -95,6 +103,19 @@ class _BullesMessagesState extends State<BullesMessages>
     }
     // Un écran ouvert par-dessus (profil, conversation…) : plus tard
     if (Get.currentRoute != '/main' && Get.currentRoute != '/') return;
+    // Déjà dans l'app : pas de bulle pour les messages qui arrivent
+    if (!_ouverture) return;
+    // Fenêtre d'ouverture : 20 s au plus
+    if (DateTime.now().difference(_ouvertLe) > const Duration(seconds: 20)) {
+      _ouverture = false;
+      return;
+    }
+    // Conversations pas encore arrivées juste après l'ouverture : on attend
+    if (chat.conversations.isEmpty &&
+        DateTime.now().difference(_ouvertLe) < const Duration(seconds: 12)) {
+      return;
+    }
+    _ouverture = false;
 
     final vues = List<String>.from(_box.read<List>(_cle) ?? const []);
     String cle(ConversationModel c) =>

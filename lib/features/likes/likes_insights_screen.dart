@@ -715,17 +715,28 @@ class _HeuresDeVisite extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
+                    // La barre prend une fraction de la place laissée par
+                    // l'heure (sinon débordement avec un texte agrandi)
                     child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Container(
-                            height: 6 + 50 * tranches[i] / max,
-                            decoration: BoxDecoration(
-                              gradient: i == meilleure
-                                  ? AppColors.gradientPink
-                                  : null,
-                              color: i == meilleure ? null : AppColors.surface2,
-                              borderRadius: BorderRadius.circular(6),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: FractionallySizedBox(
+                                heightFactor: (6 + 50 * tranches[i] / max) / 56,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: i == meilleure
+                                        ? AppColors.gradientPink
+                                        : null,
+                                    color: i == meilleure
+                                        ? null
+                                        : AppColors.surface2,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 4),

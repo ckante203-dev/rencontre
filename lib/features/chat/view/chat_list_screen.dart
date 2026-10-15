@@ -8,6 +8,7 @@ import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/groupes/liste_groupes.dart';
 import 'package:rencontre/features/notifications/view/bouton_cloche.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
+import 'package:rencontre/features/groupes/groupe_model.dart';
 import 'package:rencontre/core/services/ouvrir_profil.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -308,7 +309,28 @@ class _ConversationList extends GetView<ChatListController> {
           return _ResultatsRecherche(conversations: list);
         }
 
-        if (list.isEmpty) {
+        // 👥 Comme WhatsApp : les groupes dans « Tous » (et « Non lus »),
+        // mêlés aux conversations par date ; les épinglées restent en haut
+        final filtre = ctrl.activeFilter.value;
+        final groupes = (filtre == ChatFilter.all ||
+                    filtre == ChatFilter.unread) &&
+                Get.isRegistered<GroupesController>()
+            ? GroupesController.to.groupes
+                .where((g) => filtre == ChatFilter.all || g.nonLus > 0)
+                .toList()
+            : <GroupeResume>[];
+        DateTime date(Object o) => o is GroupeResume
+            ? o.derniereActivite
+            : (o as ConversationModel).lastActivity ?? DateTime(0);
+        final items = <Object>[
+          ...list.where((c) => ctrl.pinnedIds.contains(c.id)),
+          ...([
+            ...list.where((c) => !ctrl.pinnedIds.contains(c.id)),
+            ...groupes,
+          ]..sort((a, b) => date(b).compareTo(date(a)))),
+        ];
+
+        if (items.isEmpty) {
           if (ctrl.searchQuery.value.isNotEmpty) {
             return Center(
               child: Column(
@@ -331,7 +353,7 @@ class _ConversationList extends GetView<ChatListController> {
 
         return ListView.separated(
           physics: const BouncingScrollPhysics(),
-          itemCount: list.length,
+          itemCount: items.length,
           // Séparation bien visible entre deux discussions
           separatorBuilder: (_, __) => Divider(
             height: 1,
@@ -340,7 +362,12 @@ class _ConversationList extends GetView<ChatListController> {
             endIndent: 16,
             color: Color.lerp(AppColors.border, AppColors.textMuted, 0.3),
           ),
-          itemBuilder: (_, i) => _ConversationTile(conv: list[i]),
+          itemBuilder: (_, i) {
+            final o = items[i];
+            return o is GroupeResume
+                ? TuileGroupe(groupe: o)
+                : _ConversationTile(conv: o as ConversationModel);
+          },
         );
       }),
     );
@@ -1233,7 +1260,8 @@ class _RappelMatchs extends StatelessWidget {
     } catch (e) {
       debugPrint('Matchs sans message : $e');
     }
-    if (profils.isEmpty) return;
+    // L'écran a pu être quitté pendant le chargement
+    if (profils.isEmpty || !context.mounted) return;
     Get.bottomSheet(
       Container(
         constraints:

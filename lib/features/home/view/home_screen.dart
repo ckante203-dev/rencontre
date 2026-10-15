@@ -1221,7 +1221,7 @@ class _UsersGridScrollable extends GetView<HomeController> {
           'Fais vérifier le tien depuis Mon profil.'.tr),
       'favoris' => ('⭐', 'Aucun favori pour l\'instant'.tr,
           'Ajoute des profils en favori avec l\'étoile ⭐.'.tr),
-      'croises' => ('👣', "Personne croisé pour l'instant".tr,
+      'croises' => ('👣', "Personne croisée pour l'instant".tr,
           'Les personnes passées près de toi dans les dernières 24 h apparaîtront ici.'.tr),
       _ => ('🔍', 'Aucun profil pour le moment'.tr,
           'Tire vers le bas pour actualiser.'.tr),

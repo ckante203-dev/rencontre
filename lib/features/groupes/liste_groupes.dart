@@ -74,7 +74,7 @@ class ListeGroupes extends StatelessWidget {
                 endIndent: 16,
                 color: Color.lerp(AppColors.border, AppColors.textMuted, 0.3),
               ),
-              _TuileGroupe(groupe: g),
+              TuileGroupe(groupe: g),
             ],
           ],
         ),
@@ -83,9 +83,9 @@ class ListeGroupes extends StatelessWidget {
   }
 }
 
-class _TuileGroupe extends StatelessWidget {
+class TuileGroupe extends StatelessWidget {
   final GroupeResume groupe;
-  const _TuileGroupe({required this.groupe});
+  const TuileGroupe({super.key, required this.groupe});
 
   static String _heure(DateTime d) {
     final n = DateTime.now();

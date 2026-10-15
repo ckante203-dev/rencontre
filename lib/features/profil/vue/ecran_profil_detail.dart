@@ -1239,14 +1239,19 @@ class _PhysiqueBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
+      // Flexible : une étiquette longue (langues, lieux de rencontre) passe
+      // à la ligne dans sa bulle au lieu de déborder de l'écran
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text(icon, style: const TextStyle(fontSize: 14)),
         const SizedBox(width: 6),
-        Text(label,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
+        Flexible(
+          child: Text(label,
+              softWrap: true,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+        ),
       ]),
     );
   }

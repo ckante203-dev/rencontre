@@ -100,6 +100,10 @@ const _fr = {
 };
 
 const _en = {
+  'Qui veux-tu rencontrer ?': 'Who do you want to meet?',
+  'Tu verras seulement les personnes qui te cherchent aussi. Ce choix reste privé.':
+      'You will only see people who are looking for you too. This choice stays private.',
+  "Personne croisée pour l'instant": 'Nobody crossed yet',
   // ── Parrainage généreux (SQL 064) ──
   'Rejoins-moi sur Zamu 💬 À l\'inscription, entre mon code @pseudo : tu gagnes 24 h de Premium offertes ⚡\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu':
       'Join me on Zamu 💬 When you sign up, enter my code @pseudo: you get 24 h of free Premium ⚡\nhttps://play.google.com/store/apps/details?id=com.vybestyle.zamu',

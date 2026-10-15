@@ -1740,7 +1740,8 @@ class _ProfilCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     if (user.gender != null)
                       Text(
-                        '${user.gender!.capitalize}${user.lookingFor != null ? ' · cherche ${user.lookingFor}' : ''}',
+                        // « Je cherche » reste privé (sert seulement au tri, SQL 070)
+                        '${user.gender!.capitalize}',
                         style:  TextStyle(
                             fontSize: 11, color: AppColors.textMuted),
                         maxLines: 1,
