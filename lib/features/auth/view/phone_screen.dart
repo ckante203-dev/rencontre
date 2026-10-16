@@ -95,7 +95,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                   decoration: BoxDecoration(
                       color: AppColors.border,
                       borderRadius: BorderRadius.circular(2))),
-               Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text('Choisir un pays'.tr,
                     style: TextStyle(
@@ -108,12 +108,12 @@ class _PhoneScreenState extends State<PhoneScreen> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
                   controller: search,
-                  style:  TextStyle(color: AppColors.textPrimary),
+                  style: TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Rechercher...'.tr,
-                    hintStyle:  TextStyle(color: AppColors.textMuted),
-                    prefixIcon:  Icon(Icons.search_rounded,
-                        color: AppColors.textMuted),
+                    hintStyle: TextStyle(color: AppColors.textMuted),
+                    prefixIcon:
+                        Icon(Icons.search_rounded, color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.surface2,
                     border: OutlineInputBorder(
@@ -187,7 +187,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                         color: AppColors.surface2,
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.border)),
-                    child:  Icon(Icons.arrow_back_ios_rounded,
+                    child: Icon(Icons.arrow_back_ios_rounded,
                         size: 18, color: AppColors.textPrimary),
                   ),
                 ),
@@ -197,14 +197,14 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 const SizedBox(height: 16),
 
                 Text('Connexion par\ntéléphone'.tr,
-                      style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          height: 1.2)),
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        height: 1.2)),
                 const SizedBox(height: 8),
-                 Text(
+                Text(
                   'Connecte-toi avec ton numéro de téléphone via SMS.'.tr,
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.5),
@@ -226,7 +226,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 16),
-                          decoration:  BoxDecoration(
+                          decoration: BoxDecoration(
                               border: Border(
                                   right: BorderSide(color: AppColors.border))),
                           child: Row(children: [
@@ -234,12 +234,12 @@ class _PhoneScreenState extends State<PhoneScreen> {
                                 style: const TextStyle(fontSize: 20)),
                             const SizedBox(width: 6),
                             Text(_selected.code,
-                                style:  TextStyle(
+                                style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textPrimary)),
                             const SizedBox(width: 4),
-                             Icon(Icons.keyboard_arrow_down_rounded,
+                            Icon(Icons.keyboard_arrow_down_rounded,
                                 size: 18, color: AppColors.textMuted),
                           ]),
                         ),
@@ -247,9 +247,9 @@ class _PhoneScreenState extends State<PhoneScreen> {
                       Expanded(
                         child: TextField(
                           enabled: false,
-                          style:  TextStyle(
+                          style: TextStyle(
                               fontSize: 15, color: AppColors.textPrimary),
-                          decoration:  InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'Numéro de téléphone'.tr,
                             hintStyle: TextStyle(color: AppColors.textMuted),
                             border: InputBorder.none,
@@ -284,7 +284,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           child: Text('🔔', style: TextStyle(fontSize: 18))),
                     ),
                     const SizedBox(width: 12),
-                     Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -297,7 +297,8 @@ class _PhoneScreenState extends State<PhoneScreen> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Cette fonctionnalité arrive prochainement. Utilise Email ou Google pour te connecter.'.tr,
+                            'Cette fonctionnalité arrive prochainement. Utilise Email ou Google pour te connecter.'
+                                .tr,
                             style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
@@ -376,7 +377,9 @@ class _ActionButton extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: isPrimary ? AppColors.surAccent : AppColors.textPrimary)),
+                    color: isPrimary
+                        ? AppColors.surAccent
+                        : AppColors.textPrimary)),
           ],
         ),
       ),

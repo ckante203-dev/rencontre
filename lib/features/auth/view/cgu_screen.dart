@@ -81,15 +81,16 @@ class _CguScreenState extends State<CguScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(children: [
-                     Text('Zamu'.tr,
+                    Text('Zamu'.tr,
                         style: TextStyle(
                             color: AppColors.surAccent,
                             fontFamily: 'Syne',
                             fontSize: 22,
                             fontWeight: FontWeight.w900)),
                     const SizedBox(height: 4),
-                     Text('Conditions Générales d\'Utilisation'.tr,
-                        style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 13),
+                    Text('Conditions Générales d\'Utilisation'.tr,
+                        style:
+                            TextStyle(color: Color(0xB3FFFFFF), fontSize: 13),
                         textAlign: TextAlign.center),
                     SizedBox(height: 8),
                     Container(
@@ -98,41 +99,62 @@ class _CguScreenState extends State<CguScreen> {
                       decoration: BoxDecoration(
                           color: AppColors.surAccent.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8)),
-                      child:  Text('Dernière mise à jour : Mars 2026'.tr,
-                          style: TextStyle(color: AppColors.surAccent, fontSize: 11)),
+                      child: Text('Dernière mise à jour : Mars 2026'.tr,
+                          style: TextStyle(
+                              color: AppColors.surAccent, fontSize: 11)),
                     ),
                   ]),
                 ),
 
-                _buildSection('1. Présentation'.tr,
-                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.zamuapp@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'.tr),
+                _buildSection(
+                    '1. Présentation'.tr,
+                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.zamuapp@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'
+                        .tr),
 
-                _buildSection('2. Conditions d\'accès'.tr,
-                    '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'.tr),
+                _buildSection(
+                    '2. Conditions d\'accès'.tr,
+                    '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'
+                        .tr),
 
-                _buildSection('3. Règles de comportement'.tr,
-                    'Il est strictement interdit de :\n\n• Publier des contenus pornographiques ou impliquant des mineurs\n• Harceler, menacer ou insulter d\'autres utilisateurs\n• Publier des contenus haineux ou discriminatoires\n• Usurper l\'identité d\'une autre personne\n• Diffuser de fausses informations ou des escroqueries\n• Partager des informations personnelles sans consentement\n\nTout contenu inapproprié sera supprimé sans préavis.'.tr),
+                _buildSection(
+                    '3. Règles de comportement'.tr,
+                    'Il est strictement interdit de :\n\n• Publier des contenus pornographiques ou impliquant des mineurs\n• Harceler, menacer ou insulter d\'autres utilisateurs\n• Publier des contenus haineux ou discriminatoires\n• Usurper l\'identité d\'une autre personne\n• Diffuser de fausses informations ou des escroqueries\n• Partager des informations personnelles sans consentement\n\nTout contenu inapproprié sera supprimé sans préavis.'
+                        .tr),
 
-                _buildSection('4. Protection des données personnelles'.tr,
-                    'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.zamuapp@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'.tr),
+                _buildSection(
+                    '4. Protection des données personnelles'.tr,
+                    'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.zamuapp@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'
+                        .tr),
 
-                _buildSection('5. Responsabilités'.tr,
-                    'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'.tr),
+                _buildSection(
+                    '5. Responsabilités'.tr,
+                    'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'
+                        .tr),
 
-                _buildSection('6. Abonnement Premium'.tr,
-                    'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à Zamu.'.tr),
+                _buildSection(
+                    '6. Abonnement Premium'.tr,
+                    'L\'application de base est entièrement gratuite.\n\nL\'abonnement Premium donne accès à des fonctionnalités avancées décrites dans l\'application.\n\nTarification : affichée avant toute souscription. Toute modification sera annoncée 30 jours à l\'avance.\n\nRenouvellement automatique sauf résiliation depuis l\'application. La résiliation prend effet à la fin de la période payée.\n\nRemboursement : non effectué sauf défaut technique imputable à Zamu.'
+                        .tr),
 
-                _buildSection('7. Modération et sanctions'.tr,
-                    'En cas de violation des CGU :\n• Avertissement\n• Suspension temporaire\n• Suppression définitive du compte\n• Signalement aux autorités pour actes illégaux\n\nSignalez tout comportement inapproprié directement depuis l\'application.'.tr),
+                _buildSection(
+                    '7. Modération et sanctions'.tr,
+                    'En cas de violation des CGU :\n• Avertissement\n• Suspension temporaire\n• Suppression définitive du compte\n• Signalement aux autorités pour actes illégaux\n\nSignalez tout comportement inapproprié directement depuis l\'application.'
+                        .tr),
 
-                _buildSection('8. Propriété intellectuelle'.tr,
-                    'Le nom Zamu, son logo et son code sont protégés. Toute reproduction sans autorisation est interdite.\n\nVotre contenu vous appartient. En le publiant, vous accordez à Zamu une licence limitée au fonctionnement de l\'application.'.tr),
+                _buildSection(
+                    '8. Propriété intellectuelle'.tr,
+                    'Le nom Zamu, son logo et son code sont protégés. Toute reproduction sans autorisation est interdite.\n\nVotre contenu vous appartient. En le publiant, vous accordez à Zamu une licence limitée au fonctionnement de l\'application.'
+                        .tr),
 
-                _buildSection('9. Modifications'.tr,
-                    'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser Zamu après notification vaut acceptation.'.tr),
+                _buildSection(
+                    '9. Modifications'.tr,
+                    'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser Zamu après notification vaut acceptation.'
+                        .tr),
 
-                _buildSection('10. Contact'.tr,
-                    'Pour toute question ou réclamation :\n📧 support.zamuapp@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'.tr),
+                _buildSection(
+                    '10. Contact'.tr,
+                    'Pour toute question ou réclamation :\n📧 support.zamuapp@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'
+                        .tr),
 
                 // Footer
                 Container(
@@ -143,7 +165,8 @@ class _CguScreenState extends State<CguScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.border)),
                   child: Text(
-                    'En utilisant Zamu, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 Zamu — Tous droits réservés'.tr,
+                    'En utilisant Zamu, vous confirmez avoir lu, compris et accepté l\'intégralité des présentes Conditions Générales d\'Utilisation.\n\n© 2026 Zamu — Tous droits réservés'
+                        .tr,
                     style: TextStyle(
                         color: AppColors.textMuted, fontSize: 12, height: 1.6),
                     textAlign: TextAlign.center,
@@ -217,7 +240,8 @@ class _CguScreenState extends State<CguScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'J\'ai lu et j\'accepte les Conditions Générales d\'Utilisation'.tr,
+                      'J\'ai lu et j\'accepte les Conditions Générales d\'Utilisation'
+                          .tr,
                       style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
@@ -252,8 +276,9 @@ class _CguScreenState extends State<CguScreen> {
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color:
-                              _accepted ? AppColors.surAccent : AppColors.textMuted)),
+                          color: _accepted
+                              ? AppColors.surAccent
+                              : AppColors.textMuted)),
                 ),
               ),
             ]),

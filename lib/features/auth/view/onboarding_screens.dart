@@ -170,12 +170,12 @@ class _OnboardBase extends StatelessWidget {
                       children: [
                         WidgetSpan(
                           child: Text(titleHighlight,
-                                style: TextStyle(
-                                  fontFamily: 'Syne',
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.textPrimary,
-                                )),
+                              style: TextStyle(
+                                fontFamily: 'Syne',
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              )),
                         ),
                       ],
                     ),
@@ -345,7 +345,8 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
       debugPrint('🎂 Age: $age');
 
       if (age < 18 || age > 100) {
-        Get.snackbar('Erreur'.tr, 'Âge invalide (@age ans).'.trParams({'age': age.toString()}),
+        Get.snackbar('Erreur'.tr,
+            'Âge invalide (@age ans).'.trParams({'age': age.toString()}),
             snackPosition: SnackPosition.TOP,
             backgroundColor: AppColors.surface,
             colorText: AppColors.textPrimary);
@@ -377,12 +378,16 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
 
       // Essayer update, puis insert si profil inexistant
       try {
-        final updated = await Supabase.instance.client.from('profiles').update({
-          'name': nom,
-          'birthdate': birthdateStr,
-          'age': age,
-          'updated_at': now.toUtc().toIso8601String(),
-        }).eq('id', uid).select('id');
+        final updated = await Supabase.instance.client
+            .from('profiles')
+            .update({
+              'name': nom,
+              'birthdate': birthdateStr,
+              'age': age,
+              'updated_at': now.toUtc().toIso8601String(),
+            })
+            .eq('id', uid)
+            .select('id');
         // ✅ Un update sur 0 ligne ne lève pas d'erreur : sans ce test
         // l'insert de secours ne s'exécutait jamais.
         if ((updated as List).isEmpty) throw Exception('profil absent');
@@ -472,7 +477,7 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                                     _InitialAvatar(name: _nameController.text),
                                 errorWidget: (_, __, ___) =>
                                     _InitialAvatar(name: _nameController.text),
-                                    memCacheWidth: 1080,
+                                memCacheWidth: 1080,
                               )
                             : _InitialAvatar(name: _nameController.text),
                       ),
@@ -593,15 +598,16 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
                 const Text('🎂', style: TextStyle(fontSize: 40)),
                 const SizedBox(height: 16),
                 Text('Ta date de\nnaissance'.tr,
-                      style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          height: 1.2)),
+                    style: TextStyle(
+                        fontFamily: 'Syne',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        height: 1.2)),
                 const SizedBox(height: 8),
                 Text(
-                  'Nous avons besoin de ta date de naissance pour vérifier que tu as au moins 18 ans.'.tr,
+                  'Nous avons besoin de ta date de naissance pour vérifier que tu as au moins 18 ans.'
+                      .tr,
                   style: TextStyle(
                       fontSize: 14, color: AppColors.textMuted, height: 1.6),
                 ),
@@ -888,7 +894,8 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
       title: 'Ajoute ta '.tr,
       titleHighlight: 'photo',
       description:
-          'Les profils avec photo obtiennent 5× plus de matchs. Choisis une belle photo de toi !'.tr,
+          'Les profils avec photo obtiennent 5× plus de matchs. Choisis une belle photo de toi !'
+              .tr,
       buttonLabel: _isUploading
           ? 'Envoi...'.tr
           : (_photo != null ? 'Continuer →'.tr : 'Choisir une photo'.tr),
@@ -985,7 +992,8 @@ class _OnboardingPhotoScreenState extends State<OnboardingPhotoScreen> {
                 SizedBox(width: 8),
                 Expanded(
                     child: Text(
-                        'Ta photo Google a été importée ✅ Tu peux en choisir une autre ou continuer.'.tr,
+                        'Ta photo Google a été importée ✅ Tu peux en choisir une autre ou continuer.'
+                            .tr,
                         style: TextStyle(
                             fontSize: 11,
                             color: AppColors.online,
@@ -1014,14 +1022,14 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
   bool get _canContinue => _gender != null && _lookingFor != null;
 
   static List<Map<String, String>> get _genders => [
-    {'value': 'homme', 'emoji': '👨', 'label': 'Homme'.tr},
-    {'value': 'femme', 'emoji': '👩', 'label': 'Femme'.tr},
-  ];
+        {'value': 'homme', 'emoji': '👨', 'label': 'Homme'.tr},
+        {'value': 'femme', 'emoji': '👩', 'label': 'Femme'.tr},
+      ];
   static List<Map<String, String>> get _lookingForOptions => [
-    {'value': 'hommes', 'emoji': '👨', 'label': 'Des hommes'.tr},
-    {'value': 'femmes', 'emoji': '👩', 'label': 'Des femmes'.tr},
-    {'value': 'tout le monde', 'emoji': '💑', 'label': 'Tout le monde'.tr},
-  ];
+        {'value': 'hommes', 'emoji': '👨', 'label': 'Des hommes'.tr},
+        {'value': 'femmes', 'emoji': '👩', 'label': 'Des femmes'.tr},
+        {'value': 'tout le monde', 'emoji': '💑', 'label': 'Tout le monde'.tr},
+      ];
 
   Future<void> _continuer() async {
     if (!_canContinue) return;
@@ -1043,8 +1051,10 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
       title: 'Qui '.tr,
       titleHighlight: 'es-tu ?'.tr,
       description:
-          'Ces infos permettent de te montrer les bons profils et d\'éviter les mauvaises rencontres.'.tr,
-      buttonLabel: _canContinue ? 'Continuer →'.tr : 'Choisis tes préférences'.tr,
+          'Ces infos permettent de te montrer les bons profils et d\'éviter les mauvaises rencontres.'
+              .tr,
+      buttonLabel:
+          _canContinue ? 'Continuer →'.tr : 'Choisis tes préférences'.tr,
       nextEnabled: _canContinue,
       onNext: _continuer,
       onBack: () => Get.offNamed('/onboarding/photo'),
@@ -1166,7 +1176,8 @@ class _OnboardingIdentityScreenState extends State<OnboardingIdentityScreen> {
             SizedBox(width: 8),
             Expanded(
                 child: Text(
-                    'Tu ne verras que les profils compatibles avec tes préférences.'.tr,
+                    'Tu ne verras que les profils compatibles avec tes préférences.'
+                        .tr,
                     style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -1223,9 +1234,11 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
       title: 'Tes '.tr,
       titleHighlight: 'passions',
       description:
-          'Choisis jusqu\'à 3 centres d\'intérêt pour trouver des personnes compatibles.'.tr,
+          'Choisis jusqu\'à 3 centres d\'intérêt pour trouver des personnes compatibles.'
+              .tr,
       buttonLabel: enoughSelected
-          ? 'Continuer (@length/3) →'.trParams({'length': _selected.length.toString()})
+          ? 'Continuer (@length/3) →'
+              .trParams({'length': _selected.length.toString()})
           : 'Choisis au moins 1'.tr,
       nextEnabled: enoughSelected,
       onNext: () async {
@@ -1272,8 +1285,9 @@ class _OnboardingInterestsScreenState extends State<OnboardingInterestsScreen> {
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color:
-                            isSelected ? AppColors.surAccent : AppColors.textMuted)),
+                        color: isSelected
+                            ? AppColors.surAccent
+                            : AppColors.textMuted)),
               ),
             );
           }).toList()),
@@ -1308,7 +1322,8 @@ class OnboardingPermissionsScreen extends StatelessWidget {
       title: 'Active ta '.tr,
       titleHighlight: 'position',
       description:
-          'Pour voir les personnes autour de toi en temps réel, on a besoin de quelques autorisations.'.tr,
+          'Pour voir les personnes autour de toi en temps réel, on a besoin de quelques autorisations.'
+              .tr,
       buttonLabel: 'Terminer →'.tr,
       onNext: _finish,
       onBack: () => Get.offNamed('/onboarding/interests'),
@@ -1327,7 +1342,8 @@ class OnboardingPermissionsScreen extends StatelessWidget {
             icon: '🔔',
             color: AppColors.accent2,
             title: 'Notifications'.tr,
-            description: 'Reçois les matchs, messages et snaps instantanément.'.tr,
+            description:
+                'Reçois les matchs, messages et snaps instantanément.'.tr,
             isRequired: false),
         const SizedBox(height: 10),
         _PermissionCard(

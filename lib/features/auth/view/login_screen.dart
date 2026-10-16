@@ -180,8 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // ── Pas de compte : gros bouton rouge, bien visible ──
                 Center(
                   child: Text('connexion.pas_de_compte'.tr,
-                      style: TextStyle(
-                          fontSize: 14, color: Color(0xFF9999BB))),
+                      style: TextStyle(fontSize: 14, color: Color(0xFF9999BB))),
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
@@ -194,7 +193,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE5304A).withValues(alpha: 0.35),
+                          color:
+                              const Color(0xFFE5304A).withValues(alpha: 0.35),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -245,9 +245,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPassword(BuildContext context, AuthController ctrl) {
-    final forgotEmailCtrl =
-        TextEditingController(text: ctrl.emailController.text);
-
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -255,9 +252,103 @@ class _LoginScreenState extends State<LoginScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      builder: (_) => _MotDePasseOublie(
+          ctrl: ctrl, emailInitial: ctrl.emailController.text.trim()),
+    );
+  }
+}
+
+/// Mot de passe oublié en deux étapes : 1) e-mail → code envoyé ;
+/// 2) code à 8 chiffres + nouveau mot de passe (tout se passe dans l'app).
+class _MotDePasseOublie extends StatefulWidget {
+  final AuthController ctrl;
+  final String emailInitial;
+  const _MotDePasseOublie({required this.ctrl, required this.emailInitial});
+
+  @override
+  State<_MotDePasseOublie> createState() => _MotDePasseOublieState();
+}
+
+class _MotDePasseOublieState extends State<_MotDePasseOublie> {
+  late final _email = TextEditingController(
+      text: widget.emailInitial.contains('@') ? widget.emailInitial : '');
+  final _code = TextEditingController();
+  final _mdp = TextEditingController();
+  final _mdp2 = TextEditingController();
+  bool _codeEnvoye = false;
+  bool _chargement = false;
+  bool _voirMdp = false;
+  String _erreur = '';
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _code.dispose();
+    _mdp.dispose();
+    _mdp2.dispose();
+    super.dispose();
+  }
+
+  Future<void> _envoyer() async {
+    final email = _email.text.trim();
+    if (!email.contains('@')) {
+      setState(() => _erreur = 'Entre ton adresse email'.tr);
+      return;
+    }
+    setState(() {
+      _chargement = true;
+      _erreur = '';
+    });
+    final err = await widget.ctrl.envoyerCodeReinitialisation(email);
+    if (!mounted) return;
+    setState(() {
+      _chargement = false;
+      if (err == null) {
+        _codeEnvoye = true;
+      } else {
+        _erreur = err;
+      }
+    });
+  }
+
+  Future<void> _valider() async {
+    final code = _code.text.replaceAll(' ', '');
+    if (code.length < 6) {
+      setState(() => _erreur = 'Entre le code reçu par email'.tr);
+      return;
+    }
+    if (_mdp.text.length < 8) {
+      setState(() =>
+          _erreur = 'Le mot de passe doit faire au moins 8 caractères'.tr);
+      return;
+    }
+    if (_mdp.text != _mdp2.text) {
+      setState(() => _erreur = 'inscription.mdp_ko'.tr);
+      return;
+    }
+    setState(() {
+      _chargement = true;
+      _erreur = '';
+    });
+    final err =
+        await widget.ctrl.reinitialiserMotDePasse(_email.text, code, _mdp.text);
+    if (!mounted) return;
+    if (err == null) {
+      Navigator.of(context).pop();
+    } else {
+      setState(() {
+        _chargement = false;
+        _erreur = err;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,7 +367,6 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               'connexion.oublie'.tr,
               style: TextStyle(
-                fontFamily: 'Syne',
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
@@ -284,26 +374,75 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'connexion.oublie_texte'.tr,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF9999BB)),
+              _codeEnvoye
+                  ? 'Entre le code reçu à @email (regarde aussi dans les spams), puis ton nouveau mot de passe.'
+                      .trParams({'email': _email.text.trim()})
+                  : "On t'envoie un code par email pour choisir un nouveau mot de passe."
+                      .tr,
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
             const SizedBox(height: 20),
-            AuthInputField(
-              label: 'commun.email'.tr,
-              hint: 'commun.email_hint'.tr,
-              icon: '✉️',
-              controller: forgotEmailCtrl,
-              keyboardType: TextInputType.emailAddress,
-            ),
+            if (!_codeEnvoye)
+              AuthInputField(
+                label: 'commun.email'.tr,
+                hint: 'commun.email_hint'.tr,
+                icon: '✉️',
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+              )
+            else ...[
+              AuthInputField(
+                label: 'Code reçu par email'.tr,
+                hint: '12345678',
+                icon: '🔢',
+                controller: _code,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              AuthInputField(
+                label: 'Nouveau mot de passe'.tr,
+                hint: 'inscription.mdp_hint'.tr,
+                icon: '🔒',
+                controller: _mdp,
+                isPassword: true,
+                showPassword: _voirMdp,
+                onTogglePassword: () => setState(() => _voirMdp = !_voirMdp),
+              ),
+              const SizedBox(height: 12),
+              AuthInputField(
+                label: 'inscription.confirmer_mdp'.tr,
+                hint: 'inscription.confirmer_mdp_hint'.tr,
+                icon: '🔒',
+                controller: _mdp2,
+                isPassword: true,
+                showPassword: _voirMdp,
+                onTogglePassword: () => setState(() => _voirMdp = !_voirMdp),
+              ),
+            ],
+            if (_erreur.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(_erreur,
+                  style: TextStyle(fontSize: 13, color: AppColors.error)),
+            ],
             const SizedBox(height: 16),
             AuthPrimaryButton(
-              label: 'connexion.envoyer_lien'.tr,
+              label: _codeEnvoye
+                  ? 'Changer mon mot de passe'.tr
+                  : 'Envoyer le code'.tr,
+              isLoading: _chargement,
               onTap: () {
-                ctrl.emailController.text = forgotEmailCtrl.text;
-                ctrl.sendPasswordReset();
-                Get.back();
+                if (_chargement) return;
+                _codeEnvoye ? _valider() : _envoyer();
               },
             ),
+            if (_codeEnvoye)
+              Center(
+                child: TextButton(
+                  onPressed: _chargement ? null : _envoyer,
+                  child: Text('Renvoyer le code'.tr,
+                      style: TextStyle(color: AppColors.lien)),
+                ),
+              ),
             const SizedBox(height: 8),
           ],
         ),

@@ -41,64 +41,81 @@ class AuthInputField extends StatelessWidget {
       children: [
         Text(
           label.toUpperCase(),
-          style:  TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700,
-            color: AppColors.textMuted, letterSpacing: 0.8,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textMuted,
+            letterSpacing: 0.8,
           ),
         ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            boxShadow: hasError ? [
-              BoxShadow(color: AppColors.error.withOpacity(0.15), blurRadius: 8, spreadRadius: 1),
-            ] : isSuccess ? [
-              BoxShadow(color: AppColors.online.withOpacity(0.1), blurRadius: 8, spreadRadius: 1),
-            ] : null,
+            boxShadow: hasError
+                ? [
+                    BoxShadow(
+                        color: AppColors.error.withOpacity(0.15),
+                        blurRadius: 8,
+                        spreadRadius: 1),
+                  ]
+                : isSuccess
+                    ? [
+                        BoxShadow(
+                            color: AppColors.online.withOpacity(0.1),
+                            blurRadius: 8,
+                            spreadRadius: 1),
+                      ]
+                    : null,
           ),
           child: TextField(
             controller: controller,
             obscureText: isPassword && !showPassword,
             keyboardType: keyboardType,
-            style:  TextStyle(fontSize: 15, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 15, color: AppColors.textPrimary),
             onChanged: onChanged,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle:  TextStyle(color: AppColors.textMuted, fontSize: 14),
+              hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
               prefixIcon: Padding(
                 padding: const EdgeInsets.only(left: 14, right: 8),
                 child: Text(icon, style: const TextStyle(fontSize: 18)),
               ),
               prefixIconConstraints: const BoxConstraints(minWidth: 44),
               suffixIcon: isPassword
-                ? GestureDetector(
-                    onTap: onTogglePassword,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: Text(showPassword ? '🙈' : '👁',
-                        style: const TextStyle(fontSize: 18)),
-                    ),
-                  )
-                : suffixText != null
-                  ? Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: Text(suffixText!,
-                        style:  TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                  ? GestureDetector(
+                      onTap: onTogglePassword,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: Text(showPassword ? '🙈' : '👁',
+                            style: const TextStyle(fontSize: 18)),
+                      ),
                     )
-                  : null,
+                  : suffixText != null
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 14),
+                          child: Text(suffixText!,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600)),
+                        )
+                      : null,
               suffixIconConstraints: const BoxConstraints(minHeight: 0),
               filled: true,
               fillColor: AppColors.surface2,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:  BorderSide(color: AppColors.border, width: 1.5),
+                borderSide: BorderSide(color: AppColors.border, width: 1.5),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: hasError ? AppColors.error
-                    : isSuccess ? AppColors.online
-                    : AppColors.border,
+                  color: hasError
+                      ? AppColors.error
+                      : isSuccess
+                          ? AppColors.online
+                          : AppColors.border,
                   width: 1.5,
                 ),
               ),
@@ -109,7 +126,8 @@ class AuthInputField extends StatelessWidget {
                   width: 1.5,
                 ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             ),
           ),
         ),
@@ -144,27 +162,33 @@ class AuthPrimaryButton extends StatelessWidget {
           gradient: isLoading ? null : AppColors.gradientPink,
           color: isLoading ? AppColors.surface2 : null,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isLoading ? null : [
-            BoxShadow(
-              color: AppColors.accent.withOpacity(0.3),
-              blurRadius: 20, offset: const Offset(0, 6),
-            ),
-          ],
+          boxShadow: isLoading
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.accent.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
         ),
         child: Center(
           child: isLoading
-            ? const SizedBox(
-                width: 22, height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
-                ),
-              )
-            : Text(label,
-                style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700,
-                  color: AppColors.surAccent, letterSpacing: 0.3,
-                )),
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                )
+              : Text(label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.surAccent,
+                    letterSpacing: 0.3,
+                  )),
         ),
       ),
     );
@@ -203,10 +227,11 @@ class AuthSocialButton extends StatelessWidget {
             Text(icon, style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 10),
             Text(label,
-              style:  TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              )),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                )),
           ],
         ),
       ),
@@ -224,9 +249,10 @@ class AuthDivider extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: Container(height: 1, color: AppColors.border)),
-         Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text('commun.ou'.tr, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          child: Text('commun.ou'.tr,
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         ),
         Expanded(child: Container(height: 1, color: AppColors.border)),
       ],
@@ -257,9 +283,11 @@ class AuthErrorMessage extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(message,
-              style:  TextStyle(
-                fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w500,
-              )),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w500,
+                )),
           ),
         ],
       ),
@@ -287,20 +315,24 @@ class PasswordStrengthBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: List.generate(4, (i) => Expanded(
-            child: Container(
-              height: 3,
-              margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
-              decoration: BoxDecoration(
-                color: i < strength ? color : AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          )),
+          children: List.generate(
+              4,
+              (i) => Expanded(
+                    child: Container(
+                      height: 3,
+                      margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
+                      decoration: BoxDecoration(
+                        color: i < strength ? color : AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  )),
         ),
         if (label.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11, color: color, fontWeight: FontWeight.w500)),
         ],
       ],
     );

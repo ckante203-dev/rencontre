@@ -100,6 +100,23 @@ const _fr = {
 };
 
 const _en = {
+  // ── Mot de passe oublié (code par e-mail) ──
+  'Entre le code reçu à @email (regarde aussi dans les spams), puis ton nouveau mot de passe.':
+      'Enter the code sent to @email (check your spam too), then your new password.',
+  "On t'envoie un code par email pour choisir un nouveau mot de passe.":
+      "We'll email you a code to choose a new password.",
+  'Code reçu par email': 'Code from the email',
+  'Nouveau mot de passe': 'New password',
+  'Changer mon mot de passe': 'Change my password',
+  'Envoyer le code': 'Send code',
+  'Renvoyer le code': 'Resend code',
+  'Entre le code reçu par email': 'Enter the code from the email',
+  'Le mot de passe doit faire au moins 8 caractères': 'Password must be at least 8 characters',
+  'Mot de passe modifié ✅': 'Password changed ✅',
+  'Tu es connecté avec ton nouveau mot de passe': "You're logged in with your new password",
+  'Code incorrect ou expiré. Renvoie un nouveau code.': 'Wrong or expired code. Send a new one.',
+  "Choisis un mot de passe différent de l'ancien.": 'Choose a password different from the old one.',
+  'Trop de demandes. Réessaie dans quelques minutes.': 'Too many requests. Try again in a few minutes.',
   'Réactiver les notifications': 'Turn notifications back on',
   'Quitter le groupe': 'Leave group',
   'Bienvenue sur Zamu !': 'Welcome to Zamu!',

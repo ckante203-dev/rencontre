@@ -74,32 +74,32 @@ class _SignupForm extends StatelessWidget {
             children: [
               const SizedBox(height: 16),
               Row(children: [
-              GestureDetector(
-                onTap: () => Get.back(),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface2,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
+                GestureDetector(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Icon(Icons.arrow_back_ios_rounded,
+                        size: 18, color: AppColors.textPrimary),
                   ),
-                  child: Icon(Icons.arrow_back_ios_rounded,
-                      size: 18, color: AppColors.textPrimary),
                 ),
-              ),
                 const Spacer(),
                 const BoutonLangue(),
               ]),
               const SizedBox(height: 28),
 
               Text('inscription.titre'.tr,
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        height: 1.2)),
+                  style: TextStyle(
+                      fontFamily: 'Syne',
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      height: 1.2)),
               const SizedBox(height: 8),
               Text('inscription.sous_titre'.tr,
                   style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
@@ -325,7 +325,9 @@ class _UsernameField extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      available ? 'inscription.disponible'.tr : 'inscription.deja_pris'.tr,
+                      available
+                          ? 'inscription.disponible'.tr
+                          : 'inscription.deja_pris'.tr,
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -400,9 +402,7 @@ class _ConfirmPasswordFieldState extends State<_ConfirmPasswordField> {
               ),
               const SizedBox(width: 6),
               Text(
-                isSuccess
-                    ? 'inscription.mdp_ok'.tr
-                    : 'inscription.mdp_ko'.tr,
+                isSuccess ? 'inscription.mdp_ok'.tr : 'inscription.mdp_ko'.tr,
                 style: TextStyle(
                     fontSize: 11,
                     color: isSuccess ? AppColors.online : AppColors.error,
@@ -469,15 +469,16 @@ class _EmailOtpScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               Text('Vérifie\nton email'.tr,
-                    style: TextStyle(
-                        fontFamily: 'Syne',
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        height: 1.1)),
+                  style: TextStyle(
+                      fontFamily: 'Syne',
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      height: 1.1)),
               const SizedBox(height: 12),
               Text(
-                'On a envoyé un code à 8 chiffres à\n@p'.trParams({'p': (ctrl.emailController.text.trim()).toString()}),
+                'On a envoyé un code à 8 chiffres à\n@p'.trParams(
+                    {'p': (ctrl.emailController.text.trim()).toString()}),
                 style: TextStyle(
                     fontSize: 14, color: AppColors.textMuted, height: 1.6),
               ),
@@ -495,9 +496,12 @@ class _EmailOtpScreen extends StatelessWidget {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Tu pourras valider ton email plus tard depuis ton profil.'.tr,
+                      'Tu pourras valider ton email plus tard depuis ton profil.'
+                          .tr,
                       style: TextStyle(
-                          fontSize: 11, color: AppColors.textPrimary, height: 1.4),
+                          fontSize: 11,
+                          color: AppColors.textPrimary,
+                          height: 1.4),
                     ),
                   ),
                 ]),

@@ -132,17 +132,17 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 28),
                           Text(
-                              'Zamu'.tr,
-                              style: TextStyle(
-                                fontFamily: 'Syne',
-                                fontSize: 40,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -1.5,
-                              ),
+                            'Zamu'.tr,
+                            style: TextStyle(
+                              fontFamily: 'Syne',
+                              fontSize: 40,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -1.5,
                             ),
+                          ),
                           const SizedBox(height: 10),
-                           Text(
+                          Text(
                             'Rencontre. Connecte. Vis.'.tr,
                             style: TextStyle(
                               fontSize: 15,
@@ -175,7 +175,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ],
                             ),
-                            child:  Center(
+                            child: Center(
                               child: Text('Créer un compte'.tr,
                                   style: TextStyle(
                                     fontSize: 16,
@@ -198,7 +198,7 @@ class _SplashScreenState extends State<SplashScreen>
                               border: Border.all(
                                   color: AppColors.border, width: 1.5),
                             ),
-                            child:  Center(
+                            child: Center(
                               child: Text('Se connecter'.tr,
                                   style: TextStyle(
                                     fontSize: 16,
@@ -213,7 +213,8 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 24),
                     Text(
-                      'En continuant, tu acceptes nos Conditions d\'utilisation\net notre Politique de confidentialité'.tr,
+                      'En continuant, tu acceptes nos Conditions d\'utilisation\net notre Politique de confidentialité'
+                          .tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,

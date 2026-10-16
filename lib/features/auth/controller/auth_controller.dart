@@ -250,8 +250,8 @@ class AuthController extends GetxController {
         final saisi = usernameController.text.trim().toLowerCase();
         final available = saisi.isEmpty
             ? true
-            : await supabase.rpc('username_available',
-                params: {'p_username': saisi});
+            : await supabase
+                .rpc('username_available', params: {'p_username': saisi});
         if (available == false) {
           usernameAvailable.value = false;
           errorMessage.value = 'Ce nom d\'utilisateur est déjà pris'.tr;
@@ -365,7 +365,8 @@ class AuthController extends GetxController {
 
         final foundEmail = match?['email'] as String?;
         if (foundEmail == null || foundEmail.isEmpty) {
-          errorMessage.value = 'Aucun compte trouvé avec ce nom d\'utilisateur'.tr;
+          errorMessage.value =
+              'Aucun compte trouvé avec ce nom d\'utilisateur'.tr;
           _setLoading(false);
           return;
         }
@@ -384,6 +385,57 @@ class AuthController extends GetxController {
       errorMessage.value = 'Une erreur est survenue. Réessaie.'.tr;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Mot de passe oublié, étape 1 : envoie l'e-mail contenant le code.
+  /// Renvoie null si c'est bon, sinon le message d'erreur.
+  Future<String?> envoyerCodeReinitialisation(String email) async {
+    try {
+      await supabase.auth.resetPasswordForEmail(email.trim());
+      return null;
+    } on AuthException catch (e) {
+      return e.message.toLowerCase().contains('rate')
+          ? 'Trop de demandes. Réessaie dans quelques minutes.'.tr
+          : _errorMsg(e.message);
+    } catch (_) {
+      return 'Erreur de connexion. Réessaie.'.tr;
+    }
+  }
+
+  /// Étape 2 : vérifie le code reçu par e-mail puis enregistre le nouveau
+  /// mot de passe. Avant, l'e-mail ne contenait qu'un lien qui n'ouvrait
+  /// aucun écran pour changer le mot de passe.
+  /// La vérification connecte la personne (la navigation vers l'Accueil
+  /// est faite par _handleAuthChange) : le code tourne ici, dans le
+  /// contrôleur, pour finir même si la feuille se ferme.
+  Future<String?> reinitialiserMotDePasse(
+      String email, String code, String motDePasse) async {
+    try {
+      final res = await supabase.auth.verifyOTP(
+        email: email.trim(),
+        token: code.trim(),
+        type: OtpType.recovery,
+      );
+      if (res.user == null) return 'Code incorrect. Vérifie ton email.'.tr;
+      await supabase.auth.updateUser(UserAttributes(password: motDePasse));
+      Get.snackbar('Mot de passe modifié ✅'.tr,
+          'Tu es connecté avec ton nouveau mot de passe'.tr,
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: AppColors.textPrimary);
+      return null;
+    } on AuthException catch (e) {
+      final m = e.message.toLowerCase();
+      if (m.contains('expired') || m.contains('invalid')) {
+        return 'Code incorrect ou expiré. Renvoie un nouveau code.'.tr;
+      }
+      if (m.contains('same') || m.contains('different')) {
+        return 'Choisis un mot de passe différent de l\'ancien.'.tr;
+      }
+      return _errorMsg(e.message);
+    } catch (_) {
+      return 'Erreur de connexion. Réessaie.'.tr;
     }
   }
 
@@ -768,9 +820,11 @@ class AuthController extends GetxController {
 
     // Nom d'utilisateur facultatif : on ne bloque que s'il est saisi
     final username = usernameController.text.trim().toLowerCase();
-    if (username.isNotEmpty && !RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(username)) {
+    if (username.isNotEmpty &&
+        !RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(username)) {
       errorMessage.value =
-          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)'.tr;
+          'Nom d\'utilisateur invalide (3-20 caractères : lettres, chiffres, . ou _)'
+              .tr;
       return false;
     }
     if (username.isNotEmpty && !usernameAvailable.value) {
@@ -854,8 +908,10 @@ class AuthController extends GetxController {
   }
 
   String _errorMsg(String msg) {
-    if (msg.contains('already registered')) return 'Cet email est déjà utilisé'.tr;
-    if (msg.contains('Invalid login')) return 'Email ou mot de passe incorrect'.tr;
+    if (msg.contains('already registered'))
+      return 'Cet email est déjà utilisé'.tr;
+    if (msg.contains('Invalid login'))
+      return 'Email ou mot de passe incorrect'.tr;
     if (msg.contains('Email not confirmed'))
       return 'Confirme ton email avant de te connecter'.tr;
     if (msg.contains('Password should be'))
