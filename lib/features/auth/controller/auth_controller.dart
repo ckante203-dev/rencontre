@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/services/update_service.dart';
@@ -259,6 +260,11 @@ class AuthController extends GetxController {
         }
       } catch (_) {}
 
+      // ✅ Lus AVANT la création du compte : dès que la session existe,
+      // l'app part vers l'onboarding pendant qu'on enregistre le profil.
+      final parsed = _parseBirthdate(birthdateController.text);
+      final pseudo = usernameController.text.trim().toLowerCase();
+
       final res = await supabase.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text,
@@ -268,16 +274,23 @@ class AuthController extends GetxController {
       errorMessage.value = '';
 
       if (res.user != null) {
-        final parsed = _parseBirthdate(birthdateController.text);
-        await _createProfile(
-          res.user!,
-          // Facultatif : vide → nom automatique (user + début de l'id)
-          username: usernameController.text.trim().isEmpty
-              ? null
-              : usernameController.text.trim().toLowerCase(),
-          birthdate: parsed['iso'],
-          age: parsed['age'],
-        );
+        try {
+          await _createProfile(
+            res.user!,
+            // Facultatif : vide → nom automatique (user + début de l'id)
+            username: pseudo.isEmpty ? null : pseudo,
+            birthdate: parsed['iso'],
+            age: parsed['age'],
+          );
+        } catch (e, st) {
+          // Le profil minimal a pu être créé en parallèle (_checkOnboarding) :
+          // on complète ci-dessous au lieu d'abandonner.
+          FirebaseCrashlytics.instance
+              .recordError(e, st, reason: 'inscription : _createProfile');
+        }
+        // ✅ Date de naissance enregistrée à part : avant, elle se perdait
+        // pour ~8 inscrits sur 10 (profil créé en parallèle sans date).
+        await _enregistrerNaissance(res.user!.id, parsed);
         // ✅ La navigation vers l'onboarding se déclenche automatiquement
         // via _handleAuthChange dès que la session est active.
       } else {
@@ -689,6 +702,28 @@ class AuthController extends GetxController {
   }
 
   // ─── HELPERS ───────────────────────────────────────────────
+
+  Future<void> _enregistrerNaissance(
+      String uid, Map<String, dynamic> parsed) async {
+    if (parsed['iso'] == null) return;
+    for (var essai = 0; essai < 3; essai++) {
+      try {
+        final ligne = await supabase
+            .from('profiles')
+            .update({'birthdate': parsed['iso'], 'age': parsed['age']})
+            .eq('id', uid)
+            .select('id');
+        if ((ligne as List).isNotEmpty) return;
+      } catch (e, st) {
+        if (essai == 2) {
+          FirebaseCrashlytics.instance
+              .recordError(e, st, reason: 'inscription : date de naissance');
+        }
+      }
+      // Profil pas encore créé : on réessaie un peu plus tard
+      await Future.delayed(const Duration(seconds: 1));
+    }
+  }
 
   Map<String, dynamic> _parseBirthdate(String dateText) {
     try {
