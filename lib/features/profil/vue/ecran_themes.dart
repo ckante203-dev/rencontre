@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
@@ -16,9 +17,9 @@ class EcranThemes extends StatefulWidget {
 }
 
 class _EcranThemesState extends State<EcranThemes> {
-  late AppPalette _choisi = ThemeController.to.palette.value;
+  late AppPalette _choisi = ThemeController.to.choix.value;
 
-  AppPalette get _actuel => ThemeController.to.palette.value;
+  AppPalette get _actuel => ThemeController.to.choix.value;
 
   void _appliquer() {
     if (Get.isRegistered<ControleurProfil>()) {
@@ -49,6 +50,9 @@ class _EcranThemesState extends State<EcranThemes> {
               children: [
                 Center(child: _Apercu(p: _choisi)),
                 const SizedBox(height: 22),
+                // Clair / Sombre / Système : en préparation, visible en
+                // développement seulement (écrans pas tous prêts en clair)
+                if (kDebugMode) const _ChoixApparence(),
                 _Section('Classiques'.tr, unis, _choisi,
                     (p) => setState(() => _choisi = p)),
                 if (illustres.isNotEmpty)
@@ -328,6 +332,64 @@ class _Apercu extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Apparence : Système / Sombre / Clair (en préparation)
+class _ChoixApparence extends StatelessWidget {
+  const _ChoixApparence();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = ThemeController.to;
+    const options = [
+      (Apparence.systeme, 'Système', Icons.brightness_auto_rounded),
+      (Apparence.sombre, 'Sombre', Icons.dark_mode_rounded),
+      (Apparence.clair, 'Clair', Icons.light_mode_rounded),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Apparence (test)'.tr,
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        const SizedBox(height: 10),
+        Obx(() => Row(children: [
+              for (final (a, nom, icone) in options)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: GestureDetector(
+                      onTap: () => ctrl.setApparence(a),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: ctrl.apparence.value == a
+                                  ? AppColors.accent
+                                  : AppColors.border,
+                              width: ctrl.apparence.value == a ? 2 : 1),
+                        ),
+                        child: Column(children: [
+                          Icon(icone, color: AppColors.textPrimary, size: 22),
+                          const SizedBox(height: 4),
+                          Text(nom.tr,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+            ])),
+      ]),
     );
   }
 }

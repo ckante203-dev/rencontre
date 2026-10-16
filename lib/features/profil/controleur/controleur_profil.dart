@@ -385,7 +385,7 @@ class ControleurProfil extends GetxController {
       // Thème retiré (ex. gold, forest) → on affiche celui réellement actif.
       final theme = data['theme']?.toString();
       selectedTheme.value = AppPalettes.resoudre(theme)?.id ??
-          ThemeController.to.palette.value.id;
+          ThemeController.to.choix.value.id;
       photoUrls.value = data['photo_urls'] is List
           ? List<String>.from(data['photo_urls'])
           : <String>[];
