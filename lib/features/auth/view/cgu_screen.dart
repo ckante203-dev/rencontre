@@ -105,7 +105,7 @@ class _CguScreenState extends State<CguScreen> {
                 ),
 
                 _buildSection('1. Présentation'.tr,
-                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.snapmeet@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'.tr),
+                    'Zamu est une application mobile de rencontre et de réseau social permettant aux utilisateurs de se découvrir, d\'échanger et de créer des liens.\n\nContact : support.zamuapp@gmail.com\n\nEn utilisant Zamu, vous acceptez sans réserve les présentes conditions. Si vous n\'acceptez pas, cessez d\'utiliser l\'application.'.tr),
 
                 _buildSection('2. Conditions d\'accès'.tr,
                     '• Âge minimum : 18 ans requis. Tout compte mineur sera supprimé immédiatement.\n\n• Compte unique : un seul compte par personne. Les faux profils entraînent une suppression immédiate.\n\n• Informations exactes : vous vous engagez à fournir de vraies informations. L\'usurpation d\'identité est interdite.'.tr),
@@ -114,7 +114,7 @@ class _CguScreenState extends State<CguScreen> {
                     'Il est strictement interdit de :\n\n• Publier des contenus pornographiques ou impliquant des mineurs\n• Harceler, menacer ou insulter d\'autres utilisateurs\n• Publier des contenus haineux ou discriminatoires\n• Usurper l\'identité d\'une autre personne\n• Diffuser de fausses informations ou des escroqueries\n• Partager des informations personnelles sans consentement\n\nTout contenu inapproprié sera supprimé sans préavis.'.tr),
 
                 _buildSection('4. Protection des données personnelles'.tr,
-                    'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.snapmeet@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'.tr),
+                    'Données collectées : profil (nom, âge, photo), localisation (avec autorisation), messages, données techniques.\n\nUtilisation : uniquement pour faire fonctionner l\'application, envoyer des notifications et assurer la sécurité.\n\nPartage : vos données ne sont jamais vendues à des tiers.\n\nVos droits : accès, rectification, suppression, opposition.\n→ Exercez-les à : support.zamuapp@gmail.com\n\nSuppression du compte : vos données sont effacées dans les 30 jours.'.tr),
 
                 _buildSection('5. Responsabilités'.tr,
                     'Zamu est une plateforme de mise en relation. Nous ne sommes pas responsables des comportements entre utilisateurs, des rencontres physiques, ni des informations inexactes communiquées.\n\n⚠️ Recommandations de sécurité :\n• Informez un proche avant un rendez-vous\n• Choisissez un lieu public pour la première rencontre\n• Ne partagez jamais vos informations bancaires\n\nNotre responsabilité est limitée au montant payé lors des 3 derniers mois.'.tr),
@@ -132,7 +132,7 @@ class _CguScreenState extends State<CguScreen> {
                     'Ces CGU peuvent être modifiées à tout moment. Vous serez notifié via l\'application. Continuer à utiliser Zamu après notification vaut acceptation.'.tr),
 
                 _buildSection('10. Contact'.tr,
-                    'Pour toute question ou réclamation :\n📧 support.snapmeet@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'.tr),
+                    'Pour toute question ou réclamation :\n📧 support.zamuapp@gmail.com\n\nRéponse garantie sous 7 jours ouvrables.'.tr),
 
                 // Footer
                 Container(

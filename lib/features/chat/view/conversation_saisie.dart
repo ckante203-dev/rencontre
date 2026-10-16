@@ -26,14 +26,13 @@ class _InputBar extends StatelessWidget {
             Obx(() => ctrl.enModification.value != null
                 ? _BandeauModification(ctrl: ctrl)
                 : const SizedBox.shrink()),
-            Obx(() => ctrl.isRecording.value
-                ? _RecordingIndicator(ctrl: ctrl)
-                : const SizedBox.shrink()),
             Obx(() => ctrl.showAttachMenu.value
                 ? _AttachMenu(ctrl: ctrl)
                 : const SizedBox.shrink()),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Obx(() => GestureDetector(
+              Obx(() => ctrl.isRecording.value || ctrl.vocalApercu.value != null
+                  ? const SizedBox.shrink()
+                  : GestureDetector(
                     onTap: ctrl.toggleAttachMenu,
                     child: Container(
                         width: 38,
@@ -57,8 +56,14 @@ class _InputBar extends StatelessWidget {
                                 : AppColors.textPrimary)),
                   )),
               const SizedBox(width: 8),
+              // 🎤 Comme WhatsApp : pendant un vocal, la ligne d'enregistrement
+              // (ou la réécoute) remplace le champ de texte
               Expanded(
-                  child: Container(
+                  child: Obx(() => ctrl.isRecording.value
+                      ? _RecordingIndicator(ctrl: ctrl)
+                      : ctrl.vocalApercu.value != null
+                          ? _ApercuVocal(ctrl: ctrl)
+                          : Container(
                 decoration: BoxDecoration(
                     color: AppColors.surface2,
                     borderRadius: BorderRadius.circular(22),
@@ -79,19 +84,30 @@ class _InputBar extends StatelessWidget {
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 14, vertical: 9)),
                 ),
-              )),
+              ))),
               const SizedBox(width: 8),
               Obx(() {
                 final hasText = ctrl.inputText.value.trim().isNotEmpty;
                 final isRec = ctrl.isRecording.value;
-                return GestureDetector(
+                // Verrouillé ou en réécoute : les boutons sont dans la ligne
+                if (ctrl.vocalVerrouille.value || ctrl.vocalApercu.value != null) {
+                  return const SizedBox.shrink();
+                }
+                // Toujours la même structure (cadenas puis micro) : le
+                // micro ne doit pas être recréé pendant l'appui
+                return Column(mainAxisSize: MainAxisSize.min, children: [
+                  isRec ? const _IndiceVerrou() : const SizedBox.shrink(),
+                  GestureDetector(
                   onTap: hasText ? ctrl.sendText : null,
                   // Texte écrit : appui long = programmer l'envoi
                   onLongPress:
                       hasText ? () => ctrl.programmerMessage(context) : null,
                   onLongPressStart:
                       hasText ? null : (_) => ctrl.startRecording(),
-                  onLongPressEnd: hasText ? null : (_) => ctrl.stopRecording(),
+                  onLongPressMoveUpdate: hasText
+                      ? null
+                      : (d) => ctrl.glisserVocal(d.offsetFromOrigin),
+                  onLongPressEnd: hasText ? null : (_) => ctrl.lacherVocal(),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     width: isRec ? 46 : 38,
@@ -113,7 +129,8 @@ class _InputBar extends StatelessWidget {
                         size: 18,
                         color: AppColors.surAccent),
                   ),
-                );
+                ),
+                ]);
               }),
             ]),
           ])),
@@ -253,10 +270,10 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 42),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-          color: AppColors.surface2, borderRadius: BorderRadius.circular(12)),
+          color: AppColors.surface2, borderRadius: BorderRadius.circular(22)),
       child: Row(children: [
         AnimatedBuilder(
             animation: _anim,
@@ -282,9 +299,22 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
                           borderRadius: BorderRadius.circular(2)))));
         }),
         const SizedBox(width: 8),
-        Text('Enregistrement...'.tr,
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-        const Spacer(),
+        // Pas verrouillé : consigne qui s'efface quand on glisse ;
+        // verrouillé : 🔒 mains libres
+        Expanded(
+          child: Obx(() => widget.ctrl.vocalVerrouille.value
+              ? Text('🔒 ' + 'Enregistrement...'.tr,
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted))
+              : Opacity(
+                  opacity: (1 + widget.ctrl.vocalGlisse.value / 110)
+                      .clamp(0.2, 1.0),
+                  child: Text('◀ Glisse pour annuler · ▲ pour verrouiller'.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textMuted)),
+                )),
+        ),
         Obx(() {
           final s = widget.ctrl.recordingSeconds.value;
           return Text(
@@ -294,11 +324,106 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600));
         }),
-        const SizedBox(width: 8),
-        GestureDetector(
-            onTap: widget.ctrl.cancelRecording,
-            child: Icon(Icons.delete_outline_rounded,
-                size: 18, color: AppColors.textMuted)),
+        // Verrouillé : 🗑 supprimer · ⏹ arrêter pour réécouter · ➤ envoyer
+        Obx(() => widget.ctrl.vocalVerrouille.value
+            ? Row(mainAxisSize: MainAxisSize.min, children: [
+                const SizedBox(width: 6),
+                _BoutonVocal(
+                    icone: Icons.delete_outline_rounded,
+                    onTap: widget.ctrl.cancelRecording),
+                _BoutonVocal(
+                    icone: Icons.stop_circle_outlined,
+                    onTap: widget.ctrl.arreterPourApercu),
+                _BoutonVocal(
+                    icone: Icons.send_rounded,
+                    accent: true,
+                    onTap: widget.ctrl.stopRecording),
+              ])
+            : const SizedBox.shrink()),
+      ]),
+    );
+  }
+}
+
+class _IndiceVerrou extends StatelessWidget {
+  const _IndiceVerrou();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.lock_outline_rounded, size: 18, color: AppColors.textPrimary),
+        Icon(Icons.keyboard_arrow_up_rounded,
+            size: 18, color: AppColors.textMuted),
+      ]),
+    );
+  }
+}
+
+class _BoutonVocal extends StatelessWidget {
+  final IconData icone;
+  final VoidCallback onTap;
+  final bool accent;
+  const _BoutonVocal(
+      {required this.icone, required this.onTap, this.accent = false});
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        margin: const EdgeInsets.only(left: 6),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: accent ? AppColors.gradientPink : null,
+          color: accent ? null : AppColors.surface,
+        ),
+        child: Icon(icone,
+            size: 18,
+            color: accent ? AppColors.surAccent : AppColors.textPrimary),
+      ),
+    );
+  }
+}
+
+/// Vocal enregistré (mode verrouillé, ⏹) : réécouter, supprimer ou envoyer
+class _ApercuVocal extends StatelessWidget {
+  final ConversationController ctrl;
+  const _ApercuVocal({required this.ctrl});
+  @override
+  Widget build(BuildContext context) {
+    final s = ctrl.recordingSeconds.value;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 42),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+          color: AppColors.surface2, borderRadius: BorderRadius.circular(22)),
+      child: Row(children: [
+        _BoutonVocal(
+            icone: Icons.delete_outline_rounded, onTap: ctrl.supprimerApercu),
+        Obx(() => _BoutonVocal(
+            icone: ctrl.apercuEnLecture.value
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded,
+            onTap: ctrl.ecouterApercu)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+              '🎤 ${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+        ),
+        _BoutonVocal(
+            icone: Icons.send_rounded, accent: true, onTap: ctrl.envoyerApercu),
       ]),
     );
   }

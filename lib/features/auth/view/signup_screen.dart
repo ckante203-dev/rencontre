@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/i18n/bouton_langue.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
@@ -72,6 +73,7 @@ class _SignupForm extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
+              Row(children: [
               GestureDetector(
                 onTap: () => Get.back(),
                 child: Container(
@@ -86,6 +88,9 @@ class _SignupForm extends StatelessWidget {
                       size: 18, color: AppColors.textPrimary),
                 ),
               ),
+                const Spacer(),
+                const BoutonLangue(),
+              ]),
               const SizedBox(height: 28),
 
               Text('inscription.titre'.tr,

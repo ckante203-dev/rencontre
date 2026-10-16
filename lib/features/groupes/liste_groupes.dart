@@ -22,7 +22,8 @@ class ListeGroupes extends StatelessWidget {
         return Center(
             child: CircularProgressIndicator(color: AppColors.accent));
       }
-      final liste = ctrl.groupes;
+      final liste =
+          ctrl.groupes.where((g) => !ctrl.archives.contains(g.id)).toList();
       return RefreshIndicator(
         onRefresh: ctrl.charger,
         color: AppColors.accent,
@@ -105,6 +106,8 @@ class TuileGroupe extends StatelessWidget {
     final nonLu = g.nonLus > 0;
     return ListTile(
       onTap: () => Get.to(() => EcranGroupe(groupe: g)),
+      // Maintien : mêmes actions que pour une conversation
+      onLongPress: () => _actionsGroupe(g),
       leading: AvatarGroupe(groupe: g),
       title: Row(children: [
         if (g.estEvenement)
@@ -124,6 +127,12 @@ class TuileGroupe extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 4),
             child: Icon(Icons.notifications_off_rounded,
+                size: 13, color: AppColors.textMuted),
+          ),
+        if (GroupesController.to.epingles.contains(g.id))
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Icon(Icons.push_pin_rounded,
                 size: 13, color: AppColors.textMuted),
           ),
         const SizedBox(width: 6),
@@ -162,4 +171,78 @@ class TuileGroupe extends StatelessWidget {
       ]),
     );
   }
+}
+
+
+/// Feuille d'actions au maintien d'un groupe (comme les conversations)
+void _actionsGroupe(GroupeResume g) {
+  final ctrl = GroupesController.to;
+  final epingle = ctrl.epingles.contains(g.id);
+  final archive = ctrl.archives.contains(g.id);
+  Widget action(IconData icone, String texte, VoidCallback faire,
+          {bool danger = false}) =>
+      ListTile(
+        leading: Icon(icone,
+            color: danger ? const Color(0xFFFF3B30) : AppColors.textPrimary),
+        title: Text(texte,
+            style: TextStyle(
+                color: danger ? const Color(0xFFFF3B30) : AppColors.textPrimary,
+                fontWeight: FontWeight.w600)),
+        onTap: () {
+          Get.back();
+          faire();
+        },
+      );
+  Get.bottomSheet(
+    SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(g.nom,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+          ),
+          if (g.nonLus > 0)
+            action(Icons.mark_chat_read_rounded, 'Marquer comme lu'.tr,
+                () => ctrl.marquerCommeLu(g)),
+          if (!archive)
+            action(
+                epingle ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                epingle ? 'Désépingler'.tr : 'Épingler en haut'.tr,
+                () => ctrl.basculerEpingle(g.id)),
+          action(
+              g.sourdine
+                  ? Icons.notifications_active_rounded
+                  : Icons.notifications_off_rounded,
+              g.sourdine ? 'Réactiver les notifications'.tr : 'Mettre en sourdine'.tr,
+              () => ctrl.basculerSourdine(g)),
+          action(archive ? Icons.unarchive_rounded : Icons.archive_rounded,
+              archive ? 'Désarchiver'.tr : 'Archiver'.tr,
+              () => ctrl.basculerArchive(g.id)),
+          action(Icons.logout_rounded, 'Quitter le groupe'.tr,
+              () => ctrl.quitter(g),
+              danger: true),
+        ]),
+      ),
+    ),
+    backgroundColor: Colors.transparent,
+  );
 }

@@ -128,7 +128,7 @@ class MapController extends GetxController {
       // « geocode » appelée avant n'existe pas, la recherche ne trouvait
       // jamais rien. Nominatim exige un User-Agent identifiant l'app.
       final res = await http.get(Uri.parse(url),
-          headers: {'User-Agent': 'Zamu/1.0 (support.snapmeet@gmail.com)'});
+          headers: {'User-Agent': 'Zamu/1.0 (support.zamuapp@gmail.com)'});
       if (res.statusCode != 200) return null;
       final results = jsonDecode(res.body) as List;
       if (results.isEmpty) return null;

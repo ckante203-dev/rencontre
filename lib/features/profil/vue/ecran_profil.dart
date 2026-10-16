@@ -323,13 +323,15 @@ class _Completion extends StatelessWidget {
       }.length;
       // (étape manquante, conseil affiché)
       final etapes = <(bool, String)>[
-        (nbPhotos >= 1, 'Ajoute une photo de profil'),
+        (nbPhotos >= 1, 'Ajoute une photo où l\'on voit ton visage'),
         (nbPhotos >= 3, 'Ajoute au moins 3 photos'),
         ((p.bio ?? '').trim().isNotEmpty, 'Écris une courte bio'),
         (ctrl.birthdate.value != null, 'Indique ta date de naissance'),
         (p.interests.isNotEmpty, 'Choisis tes intérêts (3 maximum)'),
         ((p.lookingFor ?? '').isNotEmpty, 'Dis ce que tu recherches'),
         (p.taille != null, 'Indique ta taille'),
+        (p.estVerifie,
+            'Vérifie ton profil (badge bleu ✓)'),
       ];
       final faites = etapes.where((e) => e.$1).length;
       if (faites == etapes.length) return const SizedBox();

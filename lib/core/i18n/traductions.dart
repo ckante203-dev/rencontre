@@ -100,6 +100,20 @@ const _fr = {
 };
 
 const _en = {
+  'Réactiver les notifications': 'Turn notifications back on',
+  'Quitter le groupe': 'Leave group',
+  'Bienvenue sur Zamu !': 'Welcome to Zamu!',
+  'Tu as @h h de Premium offertes': 'You have @h h of free Premium',
+  'Vois qui t\'a liké et qui a vu ton profil': 'See who liked you and who viewed your profile',
+  'Jusqu\'à 600 profils': 'Up to 600 profiles',
+  'Ton profil mis en avant': 'Your profile boosted',
+  'Voir qui m\'a liké': 'See who liked me',
+  'Plus tard': 'Later',
+  'Ajoute une photo où l\'on voit ton visage': 'Add a photo that shows your face',
+  'Vérifie ton profil (badge bleu ✓)': 'Verify your profile (blue badge ✓)',
+  'Le message disparaît aussi chez l\'autre personne': 'The message also disappears for the other person',
+  'Il reste visible chez l\'autre personne': 'It stays visible for the other person',
+  '◀ Glisse pour annuler · ▲ pour verrouiller': '◀ Slide to cancel · ▲ to lock',
   'Qui veux-tu rencontrer ?': 'Who do you want to meet?',
   'Tu verras seulement les personnes qui te cherchent aussi. Ce choix reste privé.':
       'You will only see people who are looking for you too. This choice stays private.',

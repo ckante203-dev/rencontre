@@ -24,6 +24,11 @@ void main() {
         'On se voit au maquis ce soir ?',
         'J\'adore ta photo 🔥',
         'Tu fais quoi ce week-end',
+        // Plus de fausses alertes (16/10/2026)
+        'je vais te transférer la photo',
+        "Wave c'est le prénom de ma sœur",
+        'regarde cette vidéo https://vm.tiktok.com/abc',
+        'https://www.youtube.com/watch?v=123',
         null,
         'ok',
       ]) {

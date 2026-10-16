@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/groupes/ecran_groupe.dart';
@@ -25,6 +26,99 @@ class GroupesController extends GetxController {
   int get totalNonLus => groupes
       .where((g) => !g.sourdine)
       .fold(0, (n, g) => n + g.nonLus);
+
+  // ── Actions au maintien (comme les conversations) ──
+  // Épinglés / archivés : gardés sur le téléphone, comme pour les
+  // conversations. Sourdine, « lu » et quitter : enregistrés sur le serveur.
+  final _box = GetStorage();
+  static const _cleEpingles = 'groupes_epingles';
+  static const _cleArchives = 'groupes_archives';
+  late final RxSet<String> epingles =
+      <String>{...List<String>.from(_box.read<List>(_cleEpingles) ?? [])}.obs;
+  late final RxSet<String> archives =
+      <String>{...List<String>.from(_box.read<List>(_cleArchives) ?? [])}.obs;
+
+  void basculerEpingle(String id) {
+    epingles.contains(id) ? epingles.remove(id) : epingles.add(id);
+    _box.write(_cleEpingles, epingles.toList());
+  }
+
+  void basculerArchive(String id) {
+    if (archives.contains(id)) {
+      archives.remove(id);
+    } else {
+      archives.add(id);
+      epingles.remove(id);
+      _box.write(_cleEpingles, epingles.toList());
+    }
+    _box.write(_cleArchives, archives.toList());
+  }
+
+  String? get _moi => supabase.auth.currentUser?.id;
+
+  Future<void> basculerSourdine(GroupeResume g) async {
+    try {
+      await supabase
+          .from('groupe_membres')
+          .update({'sourdine': !g.sourdine})
+          .eq('groupe_id', g.id)
+          .eq('user_id', _moi!);
+      await charger();
+    } catch (_) {
+      _snackErreur('Réglage non enregistré'.tr);
+    }
+  }
+
+  Future<void> marquerCommeLu(GroupeResume g) async {
+    marquerLu(g.id);
+    try {
+      await supabase
+          .from('groupe_membres')
+          .update({'dernier_lu': DateTime.now().toUtc().toIso8601String()})
+          .eq('groupe_id', g.id)
+          .eq('user_id', _moi!);
+    } catch (_) {}
+  }
+
+  Future<void> quitter(GroupeResume g) async {
+    final ok = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Text('Quitter « @nom » ?'.trParams({'nom': g.nom}),
+          style: TextStyle(color: AppColors.textPrimary)),
+      content: Text(
+          g.estEvenement
+              ? 'Tu ne recevras plus les messages de cet événement. Tu restes inscrit à l\'événement.'.tr
+              : 'Tu ne recevras plus les messages de ce groupe.'.tr,
+          style: TextStyle(color: AppColors.textMuted)),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text('Annuler'.tr)),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text('Quitter'.tr,
+                style: const TextStyle(color: Color(0xFFFF3B30)))),
+      ],
+    ));
+    if (ok != true) return;
+    try {
+      await supabase
+          .from('groupe_membres')
+          .delete()
+          .eq('groupe_id', g.id)
+          .eq('user_id', _moi!);
+      epingles.remove(g.id);
+      archives.remove(g.id);
+      await charger();
+    } catch (_) {
+      _snackErreur('Impossible de quitter le groupe'.tr);
+    }
+  }
+
+  void _snackErreur(String texte) => Get.snackbar('Oups'.tr, texte,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: AppColors.surface,
+      colorText: AppColors.textPrimary);
 
   @override
   void onInit() {

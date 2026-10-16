@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/i18n/traductions.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
 import 'package:rencontre/features/groupes/groupes_controller.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
@@ -687,6 +688,9 @@ class AuthController extends GetxController {
     final now = DateTime.now();
     await supabase.from('profiles').upsert({
       'id': user.id,
+      // Langue choisie avant l'inscription (bouton 🌐) : notifications
+      // envoyées dans cette langue dès le premier jour
+      'langue': Langue.code,
       'name': name ?? user.userMetadata?['name'] ?? 'Utilisateur',
       'username': username ?? 'user${user.id.substring(0, 8)}',
       'email': user.email ?? '',

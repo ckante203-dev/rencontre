@@ -146,9 +146,11 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: p.textPrimary),
-        titleTextStyle: GoogleFonts.syne(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
+        // Poppins comme le reste de l'app (avant : Syne, très large, qui
+        // étirait aussi les sous-titres comme « 2 membres »)
+        titleTextStyle: GoogleFonts.poppins(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
           color: p.textPrimary,
         ),
       ),

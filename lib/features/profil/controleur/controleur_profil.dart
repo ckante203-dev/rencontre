@@ -221,7 +221,7 @@ class ControleurProfil extends GetxController {
   // Laisser vide = l'entrée est masquée dans les Paramètres.
   static const String urlConfidentialite =
       'https://supportsnapmeet-jpg.github.io/zamu-legal/politique-confidentialite.html';
-  static const String emailContact = 'support.snapmeet@gmail.com';
+  static const String emailContact = 'support.zamuapp@gmail.com';
   static const String _packageAndroid = 'com.vybestyle.zamu';
 
   final RxString versionApp = ''.obs;
@@ -1364,7 +1364,7 @@ class ControleurProfil extends GetxController {
   Future<void> ouvrirWhatsApp() async {
     const phone = '2250720457945';
     final msg = Uri.encodeComponent(
-        'Bonjour SnapMeet, je vous contacte depuis l\'application.');
+        'Bonjour Zamu, je vous contacte depuis l\'application.');
     final uri = Uri.parse('https://wa.me/$phone?text=$msg');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:rencontre/features/likes/like_controller.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/groupes/liste_groupes.dart';
 import 'package:rencontre/features/notifications/view/bouton_cloche.dart';
@@ -30,7 +28,6 @@ class ChatListScreen extends StatelessWidget {
             _buildTopBar(),
             const _SearchBar(),
             const _FilterBar(),
-            const _RappelMatchs(),
             Expanded(
               child: Obx(() =>
                   Get.find<ChatListController>().activeFilter.value ==
@@ -312,21 +309,32 @@ class _ConversationList extends GetView<ChatListController> {
         // 👥 Comme WhatsApp : les groupes dans « Tous » (et « Non lus »),
         // mêlés aux conversations par date ; les épinglées restent en haut
         final filtre = ctrl.activeFilter.value;
-        final groupes = (filtre == ChatFilter.all ||
-                    filtre == ChatFilter.unread) &&
-                Get.isRegistered<GroupesController>()
-            ? GroupesController.to.groupes
-                .where((g) => filtre == ChatFilter.all || g.nonLus > 0)
-                .toList()
-            : <GroupeResume>[];
+        final gc = Get.isRegistered<GroupesController>()
+            ? GroupesController.to
+            : null;
+        final groupes = gc == null
+            ? <GroupeResume>[]
+            : filtre == ChatFilter.archives
+                // Archives : les groupes archivés aussi
+                ? gc.groupes.where((g) => gc.archives.contains(g.id)).toList()
+                : (filtre == ChatFilter.all || filtre == ChatFilter.unread)
+                    ? gc.groupes
+                        .where((g) =>
+                            !gc.archives.contains(g.id) &&
+                            (filtre == ChatFilter.all || g.nonLus > 0))
+                        .toList()
+                    : <GroupeResume>[];
+        final groupesEpingles =
+            groupes.where((g) => gc!.epingles.contains(g.id)).toList();
         DateTime date(Object o) => o is GroupeResume
             ? o.derniereActivite
             : (o as ConversationModel).lastActivity ?? DateTime(0);
         final items = <Object>[
           ...list.where((c) => ctrl.pinnedIds.contains(c.id)),
+          ...groupesEpingles,
           ...([
             ...list.where((c) => !ctrl.pinnedIds.contains(c.id)),
-            ...groupes,
+            ...groupes.where((g) => !groupesEpingles.contains(g)),
           ]..sort((a, b) => date(b).compareTo(date(a)))),
         ];
 
@@ -1198,117 +1206,3 @@ class BadgeFlamme extends StatelessWidget {
 //  RAPPEL : matchs à qui je n'ai encore rien écrit
 // ═══════════════════════════════════════════════════════════════════
 
-class _RappelMatchs extends StatelessWidget {
-  const _RappelMatchs();
-
-  @override
-  Widget build(BuildContext context) {
-    if (!Get.isRegistered<LikeController>()) return const SizedBox.shrink();
-    final likes = Get.find<LikeController>();
-    final chat = Get.find<ChatListController>();
-    return Obx(() {
-      if (chat.activeFilter.value != ChatFilter.all ||
-          chat.searchQuery.value.trim().isNotEmpty) {
-        return const SizedBox.shrink();
-      }
-      final avecMessages = chat.conversations
-          .where((c) => c.lastMessage != null)
-          .map((c) => c.userId)
-          .toSet();
-      final sansMessage =
-          likes.matchedUserIds.where((id) => !avecMessages.contains(id)).toList();
-      if (sansMessage.isEmpty) return const SizedBox.shrink();
-      return GestureDetector(
-        onTap: () => _ouvrir(context, sansMessage),
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: AppColors.gradientPink,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(children: [
-            const Text('💘', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                  (sansMessage.length > 1
-                          ? '@n matchs attendent ton message'
-                          : '1 match attend ton message')
-                      .trParams({'n': '${sansMessage.length}'}),
-                  style: const TextStyle(
-                      color: AppColors.surAccent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14)),
-            ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.surAccent),
-          ]),
-        ),
-      );
-    });
-  }
-
-  Future<void> _ouvrir(BuildContext context, List<String> ids) async {
-    List<Map<String, dynamic>> profils = [];
-    try {
-      final rows = await Supabase.instance.client
-          .from('profiles')
-          .select('id, name, photo_url')
-          .inFilter('id', ids.take(30).toList());
-      profils = List<Map<String, dynamic>>.from(rows as List);
-    } catch (e) {
-      debugPrint('Matchs sans message : $e');
-    }
-    // L'écran a pu être quitté pendant le chargement
-    if (profils.isEmpty || !context.mounted) return;
-    Get.bottomSheet(
-      Container(
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SafeArea(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Dis-leur bonjour 👋'.tr,
-                  style: TextStyle(
-                      fontFamily: 'Syne',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-            ),
-            Flexible(
-              child: ListView(shrinkWrap: true, children: [
-                for (final p in profils)
-                  ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.surface2,
-                      backgroundImage:
-                          (p['photo_url'] ?? '').toString().isNotEmpty
-                              ? CachedNetworkImageProvider(p['photo_url'], maxWidth: 400)
-                              : null,
-                    ),
-                    title: Text((p['name'] ?? '').toString(),
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600)),
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted),
-                    onTap: () {
-                      Get.back();
-                      ouvrirProfilParId(p['id'] as String);
-                    },
-                  ),
-              ]),
-            ),
-          ]),
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-}

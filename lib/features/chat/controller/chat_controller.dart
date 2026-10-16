@@ -813,6 +813,17 @@ class ConversationController extends GetxController
   String get vitesseAudioLabel =>
       vitesseAudio.value == 1.0 ? '1×' : vitesseAudio.value == 1.5 ? '1,5×' : '2×';
   Timer? _recordingSecondsTimer;
+
+  // 🎤 Vocal façon WhatsApp : en maintenant le micro, glisser à gauche =
+  // annuler, glisser vers le haut = verrouiller (mains libres). Verrouillé :
+  // 🗑 supprimer, ⏹ arrêter pour réécouter, ➤ envoyer.
+  final RxBool vocalVerrouille = false.obs;
+  final RxDouble vocalGlisse = 0.0.obs; // décalage du doigt vers la gauche
+  final RxnString vocalApercu = RxnString(); // vocal enregistré, pas encore envoyé
+  final RxBool apercuEnLecture = false.obs;
+  int _apercuDuree = 0;
+  final AudioPlayer _apercuPlayer = AudioPlayer();
+  StreamSubscription? _apercuFin;
   Codec? _detectedCodec;
   String? _detectedExt;
   RealtimeChannel? _channel;
@@ -1305,9 +1316,13 @@ class ConversationController extends GetxController
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _lectureEnAttente && !_closed) {
-      _lectureEnAttente = false;
-      _markReadAndUpdateBadge(conversation.id);
+    if (state == AppLifecycleState.resumed && !_closed) {
+      // Messages arrivés pendant que l'app était en arrière-plan
+      unawaited(rattraper());
+      if (_lectureEnAttente) {
+        _lectureEnAttente = false;
+        _markReadAndUpdateBadge(conversation.id);
+      }
     }
   }
 
@@ -1525,6 +1540,17 @@ class ConversationController extends GetxController
         t.cancel();
         return;
       }
+      await rattraper();
+    });
+  }
+
+  /// Recharge les messages et ajoute ceux qui manquent. Appelé par le
+  /// polling de secours, au retour dans l'app et quand une notification
+  /// arrive pour cette conversation (le Realtime a pu se couper sans
+  /// prévenir : le message n'apparaissait qu'en sortant puis revenant).
+  Future<void> rattraper() async {
+    if (_closed) return;
+    {
       try {
         final data = await _service.fetchMessages(conversation.id);
         if (_closed) return;
@@ -1581,7 +1607,7 @@ class ConversationController extends GetxController
         // ✅ FIX — comme en Realtime : messages reçus => marqués lus
         if (receivedFromOther) _marquerLuSiVisible(conversation.id);
       } catch (_) {}
-    });
+    }
   }
 
   // ✅ FIX — comparaison de deux maps de réactions
@@ -1794,42 +1820,112 @@ class ConversationController extends GetxController
     _box.write(_cleMasques, masques.toList());
   }
 
-  /// Choix « pour moi » / « pour tout le monde » (WhatsApp).
+  /// Choix « pour moi » / « pour tout le monde » (WhatsApp), en feuille
+  /// du bas : boutons pleine largeur, icône et explication sous chaque choix.
   void confirmerSuppression(MessageModel msg) {
     final mien = msg.senderId == myId;
-    Get.dialog(AlertDialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Supprimer le message ?'.tr,
-          style: TextStyle(
-              color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
-      actionsAlignment: MainAxisAlignment.end,
-      actionsOverflowDirection: VerticalDirection.down,
-      actionsOverflowButtonSpacing: 4,
-      actions: [
-        if (mien)
-          TextButton(
-              onPressed: () {
+    const rouge = Color(0xFFFF3B30);
+    Widget choix({
+      required IconData icone,
+      required String titre,
+      required String detail,
+      required VoidCallback action,
+      bool fort = false,
+    }) =>
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Material(
+            color: fort ? rouge.withValues(alpha: 0.14) : AppColors.surface2,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
                 Get.back();
-                deleteMessage(msg);
+                action();
               },
-              child:  Text('Supprimer pour tout le monde'.tr,
-                  style: TextStyle(
-                      color: Color(0xFFFF3B30), fontWeight: FontWeight.w700))),
-        TextButton(
-            onPressed: () {
-              Get.back();
-              supprimerPourMoi(msg);
-            },
-            child:  Text('Supprimer pour moi'.tr,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(children: [
+                  Icon(icone, color: rouge, size: 22),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(titre,
+                              style: const TextStyle(
+                                  color: rouge,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(detail,
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12)),
+                        ]),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        );
+
+    Get.bottomSheet(
+      SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            Text('Supprimer le message ?'.tr,
                 style: TextStyle(
-                    color: Color(0xFFFF3B30), fontWeight: FontWeight.w600))),
-        TextButton(
-            onPressed: () => Get.back(),
-            child: Text('Annuler'.tr,
-                style: TextStyle(color: AppColors.textMuted))),
-      ],
-    ));
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 17)),
+            const SizedBox(height: 18),
+            if (mien)
+              choix(
+                icone: Icons.delete_forever_rounded,
+                titre: 'Supprimer pour tout le monde'.tr,
+                detail: 'Le message disparaît aussi chez l\'autre personne'.tr,
+                action: () => deleteMessage(msg),
+                fort: true,
+              ),
+            choix(
+              icone: Icons.delete_outline_rounded,
+              titre: 'Supprimer pour moi'.tr,
+              detail: 'Il reste visible chez l\'autre personne'.tr,
+              action: () => supprimerPourMoi(msg),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Get.back(),
+                style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: Text('Annuler'.tr,
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ]),
+        ),
+      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+    );
   }
 
   /// Supprimer « pour tout le monde » (mes messages uniquement).
@@ -2481,7 +2577,7 @@ class ConversationController extends GetxController
         recordingSeconds.value++;
         if (recordingSeconds.value >= 120) {
           t.cancel();
-          stopRecording();
+          vocalVerrouille.value ? arreterPourApercu() : stopRecording();
         }
       });
     } catch (e) {
@@ -2495,8 +2591,92 @@ class ConversationController extends GetxController
     _updateTypingStatus(false, activite: null, avecActivite: true);
   }
 
+  /// Doigt glissé pendant l'enregistrement (pas encore verrouillé)
+  void glisserVocal(Offset depuisDebut) {
+    if (!isRecording.value || vocalVerrouille.value) return;
+    vocalGlisse.value = depuisDebut.dx.clamp(-160.0, 0.0);
+    if (depuisDebut.dx < -110) {
+      HapticFeedback.mediumImpact();
+      cancelRecording();
+    } else if (depuisDebut.dy < -80) {
+      HapticFeedback.mediumImpact();
+      vocalVerrouille.value = true;
+      vocalGlisse.value = 0;
+    }
+  }
+
+  /// Doigt levé : envoi direct, sauf si verrouillé (on continue) ou annulé
+  void lacherVocal() {
+    vocalGlisse.value = 0;
+    if (vocalVerrouille.value) return;
+    stopRecording();
+  }
+
+  /// Verrouillé → ⏹ : on garde le fichier pour le réécouter avant d'envoyer
+  Future<void> arreterPourApercu() async {
+    if (!isRecording.value) return;
+    _finVocal();
+    try {
+      _recordingSecondsTimer?.cancel();
+      final path = await _recorder.stopRecorder();
+      await _recorder.closeRecorder();
+      _recorderOpen = false;
+      isRecording.value = false;
+      vocalVerrouille.value = false;
+      recordingDb.value = 0;
+      if (path == null || recordingSeconds.value < 1) return;
+      _apercuDuree = recordingSeconds.value;
+      vocalApercu.value = path;
+    } catch (e) {
+      _recorderOpen = false;
+      isRecording.value = false;
+      vocalVerrouille.value = false;
+    }
+  }
+
+  Future<void> ecouterApercu() async {
+    final path = vocalApercu.value;
+    if (path == null) return;
+    try {
+      if (apercuEnLecture.value) {
+        await _apercuPlayer.pause();
+        apercuEnLecture.value = false;
+        return;
+      }
+      _apercuFin ??= _apercuPlayer.onPlayerComplete
+          .listen((_) => apercuEnLecture.value = false);
+      await _apercuPlayer.play(DeviceFileSource(path));
+      apercuEnLecture.value = true;
+    } catch (e) {
+      apercuEnLecture.value = false;
+    }
+  }
+
+  Future<void> supprimerApercu() async {
+    final path = vocalApercu.value;
+    vocalApercu.value = null;
+    apercuEnLecture.value = false;
+    recordingSeconds.value = 0;
+    try {
+      await _apercuPlayer.stop();
+      if (path != null) await File(path).delete();
+    } catch (_) {}
+  }
+
+  Future<void> envoyerApercu() async {
+    final path = vocalApercu.value;
+    if (path == null) return;
+    vocalApercu.value = null;
+    apercuEnLecture.value = false;
+    try {
+      await _apercuPlayer.stop();
+    } catch (_) {}
+    await _sendAudio(File(path), _apercuDuree);
+  }
+
   Future<void> stopRecording() async {
     if (!isRecording.value) return;
+    vocalVerrouille.value = false;
     _finVocal();
     try {
       _recordingSecondsTimer?.cancel();
@@ -2514,6 +2694,8 @@ class ConversationController extends GetxController
   }
 
   void cancelRecording() async {
+    vocalVerrouille.value = false;
+    vocalGlisse.value = 0;
     _recordingSecondsTimer?.cancel();
     _finVocal();
     try {
@@ -2771,6 +2953,8 @@ class ConversationController extends GetxController
     _pollingTimer?.cancel();
     _pollingTimer = null;
     _recordingSecondsTimer?.cancel();
+    _apercuFin?.cancel();
+    _apercuPlayer.dispose().catchError((_) {});
     _updateTypingStatus(false);
     if (_recorderOpen) _recorder.closeRecorder().catchError((_) {});
     _expirationTimer?.cancel();

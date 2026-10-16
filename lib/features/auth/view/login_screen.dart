@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/i18n/bouton_langue.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
@@ -42,8 +43,9 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 28),
 
-                // ── HEADER : Nom ──
-                Text(
+                // ── HEADER : Nom + choix de la langue ──
+                Row(children: [
+                  Text(
                     'Zamu'.tr,
                     style: TextStyle(
                       fontFamily: 'Syne',
@@ -53,6 +55,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       letterSpacing: -0.5,
                     ),
                   ),
+                  const Spacer(),
+                  const BoutonLangue(),
+                ]),
 
                 const SizedBox(height: 40),
 

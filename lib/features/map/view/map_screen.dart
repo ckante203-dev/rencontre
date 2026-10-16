@@ -88,7 +88,7 @@ class _MapScreenState extends State<MapScreen>
                           // Fond de carte clair ou sombre selon le thème
                           'https://{s}.basemaps.cartocdn.com/${AppColors.clair ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png',
                       subdomains: const ['a', 'b', 'c', 'd'],
-                      userAgentPackageName: 'com.snapmeet.app',
+                      userAgentPackageName: 'com.vybestyle.zamu',
                       retinaMode: true,
                     ),
 
@@ -346,7 +346,7 @@ class _MapScreenState extends State<MapScreen>
       final response = await http.get(
         Uri.parse(
             'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=5&accept-language=fr'),
-        headers: {'User-Agent': 'SnapMeet/1.0'},
+        headers: {'User-Agent': 'Zamu/1.0'},
       );
       if (response.statusCode == 200) {
         final results = json.decode(response.body) as List;
@@ -689,7 +689,7 @@ class _BarreRecherche extends StatelessWidget {
       final response = await http.get(
         Uri.parse(
             'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=4&accept-language=fr'),
-        headers: {'User-Agent': 'SnapMeet/1.0'},
+        headers: {'User-Agent': 'Zamu/1.0'},
       );
       if (response.statusCode == 200) {
         final results = json.decode(response.body) as List;

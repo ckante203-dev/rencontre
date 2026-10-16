@@ -201,7 +201,8 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                         ]),
                         const SizedBox(height: 16),
                       ],
-                      if (!premium && liste.isNotEmpty) ...[
+                      // Bannière seulement s'il reste des profils floutés
+                      if (!premium && liste.length > _gratuitsVisibles) ...[
                         _BanniereDeblocage(
                           count: _ongletVues
                               ? ctrl.viewersCount.value
@@ -239,18 +240,22 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (_, i) {
                           final p = liste[i];
+                          // Sans Premium : les 6 plus récents sont visibles,
+                          // le reste est flouté (cadenas → page Premium)
+                          final visible = premium ||
+                              (i < _gratuitsVisibles && p.id.isNotEmpty);
                           return _CartePersonne(
                             personne: p,
-                            premium: premium,
+                            premium: visible,
                             nouveau: ctrl.estNouveau(p),
                             dejaLike: _ongletVues &&
                                 Get.isRegistered<LikeController>() &&
                                 Get.find<LikeController>().hasLiked(p.id),
-                            onTap: premium
+                            onTap: visible
                                 ? () => _ouvrirProfil(p, liste)
                                 : _ouvrirPaywall,
-                            onLike: premium ? () => _likerEnRetour(p) : null,
-                            onPasser: premium && !_ongletVues
+                            onLike: visible ? () => _likerEnRetour(p) : null,
+                            onPasser: visible && !_ongletVues
                                 ? () => ctrl.masquer(p.id)
                                 : null,
                           );
@@ -404,6 +409,9 @@ class _BanniereDeblocage extends StatelessWidget {
     );
   }
 }
+
+/// Profils visibles sans Premium dans « M'ont liké » / « M'ont vu »
+const _gratuitsVisibles = 6;
 
 // ─── CARTE D'UNE PERSONNE ─────────────────────────────────────────
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -629,7 +631,11 @@ class NotificationService {
     // ✅ Conversation déjà ouverte à l'écran : le message s'affiche dans la
     // discussion, pas besoin de notification (avant : bannière + son à
     // chaque message de la personne avec qui on discute).
-    if (Get.isRegistered<ConversationController>(tag: convId)) return;
+    if (Get.isRegistered<ConversationController>(tag: convId)) {
+      // …et on force l'affichage du message si le Realtime l'a manqué
+      unawaited(Get.find<ConversationController>(tag: convId).rattraper());
+      return;
+    }
     await showMessageNotification(
       senderName: s('senderName') ?? title ?? 'Quelqu\'un',
       message: s('message') ?? body ?? '',
