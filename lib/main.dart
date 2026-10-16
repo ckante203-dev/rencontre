@@ -37,10 +37,21 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Le clic est géré par onMessageOpenedApp / getInitialMessage.
   if (message.notification != null) return;
 
-  await Firebase.initializeApp();
   final data = message.data;
   final type = data['type'] ?? 'message';
   final isLike = type == 'like' || type == 'match';
+  // ✅ Push sans contenu affichable (type inconnu, message sans
+  // conversation ni expéditeur) : on n'affiche rien. Avant, chacun
+  // devenait une notification « Nouveau message » vide (13 d'un coup).
+  if (!isLike &&
+      (type != 'message' ||
+          (data['conversationId'] ?? '').isEmpty ||
+          ((data['senderName'] ?? '').isEmpty &&
+              (data['message'] ?? '').isEmpty))) {
+    return;
+  }
+
+  await Firebase.initializeApp();
   await AwesomeNotifications().createNotification(
     content: NotificationContent(
       id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
