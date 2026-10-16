@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/features/nouveautes/ecran_nouveautes.dart';
@@ -10,6 +9,7 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
 import 'package:rencontre/features/profil/vue/ecran_securite.dart';
+import 'package:rencontre/features/profil/vue/ecran_themes.dart';
 import 'package:rencontre/core/i18n/traductions.dart';
 
 /// « tout le monde » → « Tout le monde » (pas « Tout Le Monde »)
@@ -343,10 +343,16 @@ class EcranParametres extends StatelessWidget {
             // ════ THÈME ══════════════════════════════════════════
              _Titre('Thème de l\'application'.tr),
             const SizedBox(height: 10),
-            Obx(() => _SelecteurTheme(
-                  selected: ctrl.selectedTheme.value,
-                  onSelected: ctrl.setTheme,
-                )),
+            Obx(() {
+              final p = AppPalettes.resoudre(ctrl.selectedTheme.value) ??
+                  AppPalettes.defaut;
+              return _Tuile(
+                icon: p.emoji ?? '🎨',
+                title: 'Thèmes'.tr,
+                subtitle: p.label.tr,
+                onTap: () => Get.to(() => const EcranThemes()),
+              );
+            }),
             const SizedBox(height: 28),
 
             // ════ LANGUE ═════════════════════════════════════════
@@ -693,85 +699,6 @@ class EcranParametres extends StatelessWidget {
 }
 
 // ─── BLOC SOUTENIR ───────────────────────────────────────────────
-
-// ─── SÉLECTEUR THÈME ────────────────────────────────────────────
-
-class _SelecteurTheme extends StatelessWidget {
-  final String selected;
-  final void Function(String) onSelected;
-  const _SelecteurTheme({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    // Pastille : le fond du thème avec sa couleur d'accent au centre
-    final themes = [
-      ...AppPalettes.all.values,
-      // Fond blanc en préparation : visible en développement seulement
-      if (kDebugMode) ...AppPalettes.enPreparation.values,
-    ];
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border)),
-      child: Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        children: [
-          for (final p in themes)
-            GestureDetector(
-              onTap: () => onSelected(p.id),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 52,
-                  height: 52,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: selected == p.id
-                            ? p.accent
-                            : AppColors.border,
-                        width: selected == p.id ? 2.5 : 1),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: p.surface2,
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle, color: p.accent),
-                        child: selected == p.id
-                            ? const Icon(Icons.check_rounded,
-                                color: AppColors.surAccent, size: 15)
-                            : null,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(p.label.tr,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: selected == p.id
-                            ? AppColors.textPrimary
-                            : AppColors.textMuted,
-                        fontWeight: selected == p.id
-                            ? FontWeight.w700
-                            : FontWeight.w500)),
-              ]),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── WIDGETS PARTAGÉS ───────────────────────────────────────────
 

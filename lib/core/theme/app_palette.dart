@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Dessin léger en fond des écrans de liste (thèmes « illustrés »,
+/// façon Snapchat). Dessiné en code : aucune image à télécharger.
+enum Motif { aucun, coeurs, vagues, etoiles, citrouilles, flocons }
+
 class AppPalette {
   final String id;
   final String label;
@@ -23,10 +27,21 @@ class AppPalette {
   // Touches de couleur (façon Snapchat) — null = couleurs habituelles :
   /// « Nouveau » : messages non lus, nouveautés (bleu vif en fond blanc)
   final Color? nouveau;
+
   /// Pastilles de compteur (rouge en fond blanc)
   final Color? pastille;
+
   /// Anneau des stories à voir (couleurs du logo Zamu en fond blanc)
   final List<Color>? anneauStory;
+
+  /// Thème illustré : motif dessiné derrière les listes + petit emoji
+  final Motif motif;
+  final String? emoji;
+
+  /// Thème de saison : proposé seulement entre ces deux dates (mois, jour),
+  /// la période peut chevaucher le 1er janvier. Qui l'a choisi le garde.
+  final (int, int)? saisonDebut;
+  final (int, int)? saisonFin;
 
   const AppPalette({
     required this.id,
@@ -47,15 +62,29 @@ class AppPalette {
     this.nouveau,
     this.pastille,
     this.anneauStory,
+    this.motif = Motif.aucun,
+    this.emoji,
+    this.saisonDebut,
+    this.saisonFin,
   });
+
+  bool get estSaison => saisonDebut != null && saisonFin != null;
+
+  /// Thème de saison proposé à cette date ? (toujours vrai sinon)
+  bool disponibleLe(DateTime d) {
+    if (!estSaison) return true;
+    final x = d.month * 100 + d.day;
+    final debut = saisonDebut!.$1 * 100 + saisonDebut!.$2;
+    final fin = saisonFin!.$1 * 100 + saisonFin!.$2;
+    return debut <= fin ? x >= debut && x <= fin : x >= debut || x <= fin;
+  }
 
   Brightness get luminosite => clair ? Brightness.light : Brightness.dark;
 
   /// Icônes de la barre d'état (heure, batterie) lisibles sur le fond
-  SystemUiOverlayStyle get barreSysteme => (clair
-          ? SystemUiOverlayStyle.dark
-          : SystemUiOverlayStyle.light)
-      .copyWith(statusBarColor: Colors.transparent);
+  SystemUiOverlayStyle get barreSysteme =>
+      (clair ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light)
+          .copyWith(statusBarColor: Colors.transparent);
 
   LinearGradient get gradientPink => LinearGradient(
         colors: [accent, accent2],
@@ -95,7 +124,7 @@ class AppPalettes {
 
   static const minuit = AppPalette(
     id: 'minuit',
-    label: 'Minuit',
+    label: 'Cerise noire',
     bg: Color(0xFF0E0F14),
     surface: Color(0xFF16181F),
     surface2: Color(0xFF1E212A),
@@ -112,7 +141,7 @@ class AppPalettes {
 
   static const graphite = AppPalette(
     id: 'graphite',
-    label: 'Graphite',
+    label: 'Indigo',
     bg: Color(0xFF111214),
     surface: Color(0xFF18191C),
     surface2: Color(0xFF202226),
@@ -205,6 +234,108 @@ class AppPalettes {
     anneauStory: [Color(0xFFD94BC8), Color(0xFF9B5DE5)],
   );
 
+  // ── Thèmes illustrés ───────────────────────────────────────────────
+  static const amour = AppPalette(
+    id: 'amour',
+    label: "Lettre d'amour",
+    bg: Color(0xFF1A0B14),
+    surface: Color(0xFF24111C),
+    surface2: Color(0xFF2E1724),
+    border: Color(0xFF472438),
+    accent: Color(0xFFE0306E),
+    accent2: Color(0xFFC21E5A),
+    accent3: Color(0xFFFF7BA6),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF8F1F4),
+    textMuted: Color(0xFFB59CA9),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
+    motif: Motif.coeurs,
+    emoji: '💌',
+  );
+
+  static const lagune = AppPalette(
+    id: 'lagune',
+    label: 'Lagune',
+    bg: Color(0xFF061417),
+    surface: Color(0xFF0C1E22),
+    surface2: Color(0xFF12282D),
+    border: Color(0xFF1F3F45),
+    accent: Color(0xFF0E8C9A),
+    accent2: Color(0xFF0B7480),
+    accent3: Color(0xFF4FD6E0),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF1F7F8),
+    textMuted: Color(0xFF93AEB2),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
+    motif: Motif.vagues,
+    emoji: '🌊',
+  );
+
+  static const nuitEtoilee = AppPalette(
+    id: 'nuit_etoilee',
+    label: 'Nuit étoilée',
+    bg: Color(0xFF0A0A1F),
+    surface: Color(0xFF12122C),
+    surface2: Color(0xFF1A1A38),
+    border: Color(0xFF2B2B55),
+    accent: Color(0xFF6A4FE0),
+    accent2: Color(0xFF5538C8),
+    accent3: Color(0xFFA996FF),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF3F2FA),
+    textMuted: Color(0xFFA09EBE),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
+    motif: Motif.etoiles,
+    emoji: '✨',
+  );
+
+  // ── Thèmes de saison ───────────────────────────────────────────────
+  static const halloween = AppPalette(
+    id: 'halloween',
+    label: 'Halloween',
+    bg: Color(0xFF120D08),
+    surface: Color(0xFF1C140D),
+    surface2: Color(0xFF261B12),
+    border: Color(0xFF3F2C1C),
+    // Orange assez profond : texte blanc lisible sur les boutons
+    accent: Color(0xFFC75A0A),
+    accent2: Color(0xFFA84A08),
+    accent3: Color(0xFFFF9A3D),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF8F3EE),
+    textMuted: Color(0xFFB1A190),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
+    motif: Motif.citrouilles,
+    emoji: '🎃',
+    saisonDebut: (10, 15),
+    saisonFin: (11, 5),
+  );
+
+  static const fetes = AppPalette(
+    id: 'fetes',
+    label: 'Fêtes',
+    bg: Color(0xFF0B1210),
+    surface: Color(0xFF111C18),
+    surface2: Color(0xFF182520),
+    border: Color(0xFF283B33),
+    accent: Color(0xFFC0263B),
+    accent2: Color(0xFFA11E31),
+    accent3: Color(0xFFF2C14E),
+    yellow: Color(0xFFF5C451),
+    textPrimary: Color(0xFFF4F7F5),
+    textMuted: Color(0xFF9DB0A8),
+    online: Color(0xFF22C55E),
+    error: Color(0xFFEF4444),
+    motif: Motif.flocons,
+    emoji: '🎄',
+    saisonDebut: (12, 1),
+    saisonFin: (1, 6),
+  );
+
   /// Thème par défaut (nouveaux comptes) : les couleurs du logo.
   static const defaut = zamu;
 
@@ -215,7 +346,19 @@ class AppPalettes {
     'saphir': saphir,
     'emeraude': emeraude,
     'champagne': champagne,
+    'amour': amour,
+    'lagune': lagune,
+    'nuit_etoilee': nuitEtoilee,
+    'halloween': halloween,
+    'fetes': fetes,
   };
+
+  /// Thèmes proposés à cette date (ceux de saison hors période sont
+  /// cachés), plus le thème actuel s'il n'en fait plus partie.
+  static List<AppPalette> proposes(DateTime d, {String? actuel}) => [
+        for (final p in all.values)
+          if (p.disponibleLe(d) || p.id == actuel) p,
+      ];
 
   /// Anciens thèmes (néon, retirés) → thème pro le plus proche.
   static const Map<String, String> _anciens = {

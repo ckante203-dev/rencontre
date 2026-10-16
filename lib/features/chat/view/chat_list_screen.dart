@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/theme/fond_theme.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/groupes/liste_groupes.dart';
 import 'package:rencontre/features/notifications/view/bouton_cloche.dart';
@@ -22,25 +23,28 @@ class ChatListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            const _SearchBar(),
-            const _FilterBar(),
-            Expanded(
-              child: Obx(() =>
-                  Get.find<ChatListController>().activeFilter.value ==
-                              ChatFilter.groupes &&
-                          Get.find<ChatListController>()
-                              .searchQuery
-                              .value
-                              .trim()
-                              .isEmpty
-                      ? const ListeGroupes()
-                      : const _ConversationList()),
-            ),
-          ],
+      // Thème illustré : motif dessiné derrière la liste
+      body: FondTheme(
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(),
+              const _SearchBar(),
+              const _FilterBar(),
+              Expanded(
+                child: Obx(() =>
+                    Get.find<ChatListController>().activeFilter.value ==
+                                ChatFilter.groupes &&
+                            Get.find<ChatListController>()
+                                .searchQuery
+                                .value
+                                .trim()
+                                .isEmpty
+                        ? const ListeGroupes()
+                        : const _ConversationList()),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -52,11 +56,11 @@ class ChatListScreen extends StatelessWidget {
       child: Row(
         children: [
           Text('Messages'.tr,
-                style: TextStyle(
-                    fontFamily: 'Syne',
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
+              style: TextStyle(
+                  fontFamily: 'Syne',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
           const Spacer(),
           // 🔔 Activité : likes, matchs, demandes d'amis…
           const BoutonCloche(taille: 38),
@@ -100,7 +104,8 @@ class _BoutonRecherche extends GetView<ChatListController> {
                 color: actif ? Colors.transparent : AppColors.border),
           ),
           child: Icon(actif ? Icons.close_rounded : Icons.search_rounded,
-              size: 19, color: actif ? AppColors.surAccent : AppColors.textPrimary),
+              size: 19,
+              color: actif ? AppColors.surAccent : AppColors.textPrimary),
         ),
       );
     });
@@ -257,8 +262,9 @@ class _FilterChip extends StatelessWidget {
           children: [
             Icon(icon,
                 size: label == 'En ligne' ? 8 : 13,
-                color:
-                    active ? AppColors.surAccent : (iconColor ?? AppColors.textMuted)),
+                color: active
+                    ? AppColors.surAccent
+                    : (iconColor ?? AppColors.textMuted)),
             const SizedBox(width: 5),
             Text(label,
                 style: TextStyle(
@@ -309,9 +315,8 @@ class _ConversationList extends GetView<ChatListController> {
         // 👥 Comme WhatsApp : les groupes dans « Tous » (et « Non lus »),
         // mêlés aux conversations par date ; les épinglées restent en haut
         final filtre = ctrl.activeFilter.value;
-        final gc = Get.isRegistered<GroupesController>()
-            ? GroupesController.to
-            : null;
+        final gc =
+            Get.isRegistered<GroupesController>() ? GroupesController.to : null;
         final groupes = gc == null
             ? <GroupeResume>[]
             : filtre == ChatFilter.archives
@@ -348,7 +353,8 @@ class _ConversationList extends GetView<ChatListController> {
                       size: 48, color: AppColors.textMuted),
                   const SizedBox(height: 12),
                   Text(
-                    'Aucun résultat pour "@value"'.trParams({'value': ctrl.searchQuery.value.toString()}),
+                    'Aucun résultat pour "@value"'
+                        .trParams({'value': ctrl.searchQuery.value.toString()}),
                     style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
@@ -464,7 +470,7 @@ class _ConversationList extends GetView<ChatListController> {
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child:  Text('Découvrir des profils'.tr,
+                child: Text('Découvrir des profils'.tr,
                     style: TextStyle(
                         color: AppColors.surAccent,
                         fontSize: 14,
@@ -711,14 +717,15 @@ class _ConversationTile extends GetView<ChatListController> {
     }
 
     final texte = Text(
-      mine ? 'Toi : @p'.trParams({'p': (msg.text ?? '').toString()}) : (msg.text ?? ''),
+      mine
+          ? 'Toi : @p'.trParams({'p': (msg.text ?? '').toString()})
+          : (msg.text ?? ''),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
           fontSize: 13,
-          color: conv.unreadCount > 0
-              ? AppColors.texteNonLu
-              : AppColors.textMuted,
+          color:
+              conv.unreadCount > 0 ? AppColors.texteNonLu : AppColors.textMuted,
           fontWeight: conv.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400),
     );
     if (!mine) return texte;
@@ -853,7 +860,11 @@ class _ConversationOptions extends GetView<ChatListController> {
                 fontWeight: FontWeight.w800,
                 fontSize: 16)),
         content: Text(
-            'La conversation avec @userName sera supprimée de ton téléphone. @userName2 la garde de son côté.'.trParams({'userName2': conv.userName.toString(), 'userName': conv.userName.toString()}),
+            'La conversation avec @userName sera supprimée de ton téléphone. @userName2 la garde de son côté.'
+                .trParams({
+              'userName2': conv.userName.toString(),
+              'userName': conv.userName.toString()
+            }),
             style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
         actions: [
           TextButton(
@@ -865,7 +876,7 @@ class _ConversationOptions extends GetView<ChatListController> {
                 Get.back();
                 controller.deleteConversation(conv.id);
               },
-              child:  Text('Supprimer'.tr,
+              child: Text('Supprimer'.tr,
                   style: TextStyle(
                       color: Color(0xFFFF3B30), fontWeight: FontWeight.w700))),
         ],
@@ -995,9 +1006,7 @@ class _AvatarWithStoryRing extends StatelessWidget {
               padding: const EdgeInsets.all(2.2),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: storySeen
-                    ? null
-                    : AppColors.anneauStory,
+                gradient: storySeen ? null : AppColors.anneauStory,
                 color: storySeen ? AppColors.border : null,
               ),
               child: Container(
@@ -1031,8 +1040,7 @@ class _AvatarWithStoryRing extends StatelessWidget {
   /// Sans story : même encombrement que l'avatar entouré de l'anneau
   /// (2,2 + 1,5 px), pour que tous les noms restent alignés.
   Widget _withOnlineDot(Widget avatar) {
-    final aligne =
-        Padding(padding: const EdgeInsets.all(3.7), child: avatar);
+    final aligne = Padding(padding: const EdgeInsets.all(3.7), child: avatar);
     if (!isOnline) return aligne;
     return Stack(
       children: [
@@ -1098,8 +1106,10 @@ class _ResultatsRecherche extends GetView<ChatListController> {
               const SizedBox(height: 12),
               Text(
                 chercheProfils
-                    ? 'Aucun résultat pour "@value"'.trParams({'value': controller.searchQuery.value.toString()})
-                    : 'Tape au moins 3 lettres d\'un @pseudo\npour chercher un profil'.tr,
+                    ? 'Aucun résultat pour "@value"'.trParams(
+                        {'value': controller.searchQuery.value.toString()})
+                    : 'Tape au moins 3 lettres d\'un @pseudo\npour chercher un profil'
+                        .tr,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
@@ -1196,7 +1206,9 @@ class BadgeFlamme extends StatelessWidget {
       child: Text(
         conv.flammeEnDanger ? '🔥$n ⏳' : '🔥$n',
         style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary),
       ),
     );
   }
@@ -1205,4 +1217,3 @@ class BadgeFlamme extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 //  RAPPEL : matchs à qui je n'ai encore rien écrit
 // ═══════════════════════════════════════════════════════════════════
-

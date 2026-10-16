@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/theme/fond_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
@@ -41,11 +42,16 @@ String _ilYa(DateTime? date) {
   if (date == null) return '';
   final d = DateTime.now().toUtc().difference(date.toUtc());
   if (d.inMinutes < 1) return 'à l\'instant'.tr;
-  if (d.inMinutes < 60) return 'il y a @inMinutes min'.trParams({'inMinutes': d.inMinutes.toString()});
-  if (d.inHours < 24) return 'il y a @inHours h'.trParams({'inHours': d.inHours.toString()});
+  if (d.inMinutes < 60)
+    return 'il y a @inMinutes min'
+        .trParams({'inMinutes': d.inMinutes.toString()});
+  if (d.inHours < 24)
+    return 'il y a @inHours h'.trParams({'inHours': d.inHours.toString()});
   if (d.inDays == 1) return 'hier';
-  if (d.inDays < 7) return 'il y a @inDays j'.trParams({'inDays': d.inDays.toString()});
-  if (d.inDays < 30) return 'il y a @p sem.'.trParams({'p': (d.inDays ~/ 7).toString()});
+  if (d.inDays < 7)
+    return 'il y a @inDays j'.trParams({'inDays': d.inDays.toString()});
+  if (d.inDays < 30)
+    return 'il y a @p sem.'.trParams({'p': (d.inDays ~/ 7).toString()});
   return 'il y a @p mois'.trParams({'p': (d.inDays ~/ 30).toString()});
 }
 
@@ -140,134 +146,136 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Obx(() {
-          final premium = ProfileInsightsController.isPremiumNow();
-          final liste = _ongletVues ? ctrl.viewers : ctrl.likers;
-          // Lus ici pour que Obx suive aussi ces valeurs.
-          ctrl.seuilNouveau.value;
-          final nouveauxLikes = ctrl.likers.where(ctrl.estNouveau).length;
-          final nouvellesVues = ctrl.viewers.where(ctrl.estNouveau).length;
+      body: FondTheme(
+        child: SafeArea(
+          child: Obx(() {
+            final premium = ProfileInsightsController.isPremiumNow();
+            final liste = _ongletVues ? ctrl.viewers : ctrl.likers;
+            // Lus ici pour que Obx suive aussi ces valeurs.
+            ctrl.seuilNouveau.value;
+            final nouveauxLikes = ctrl.likers.where(ctrl.estNouveau).length;
+            final nouvellesVues = ctrl.viewers.where(ctrl.estNouveau).length;
 
-          return RefreshIndicator(
-            onRefresh: ctrl.loadCounts,
-            color: AppColors.accent,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      Text(
-                        'Likes'.tr,
-                        style: TextStyle(
-                          fontFamily: 'Syne',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(children: [
-                        Expanded(
-                          child: _Onglet(
-                            icon: Icons.favorite_rounded,
-                            label: 'M\'ont liké'.tr,
-                            count: ctrl.likersCount.value,
-                            nouveaux: nouveauxLikes,
-                            actif: !_ongletVues,
-                            onTap: () => setState(() => _ongletVues = false),
+            return RefreshIndicator(
+              onRefresh: ctrl.loadCounts,
+              color: AppColors.accent,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        Text(
+                          'Likes'.tr,
+                          style: TextStyle(
+                            fontFamily: 'Syne',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _Onglet(
-                            icon: Icons.remove_red_eye_rounded,
-                            label: 'M\'ont vu'.tr,
-                            count: ctrl.viewersCount.value,
-                            nouveaux: nouvellesVues,
-                            actif: _ongletVues,
-                            onTap: () => setState(() => _ongletVues = true),
+                        const SizedBox(height: 16),
+                        Row(children: [
+                          Expanded(
+                            child: _Onglet(
+                              icon: Icons.favorite_rounded,
+                              label: 'M\'ont liké'.tr,
+                              count: ctrl.likersCount.value,
+                              nouveaux: nouveauxLikes,
+                              actif: !_ongletVues,
+                              onTap: () => setState(() => _ongletVues = false),
+                            ),
                           ),
-                        ),
-                      ]),
-                      const SizedBox(height: 16),
-                      // Premium : heures où mon profil est le plus vu
-                      if (premium && _ongletVues && liste.length >= 5) ...[
-                        _HeuresDeVisite(dates: [
-                          for (final p in liste)
-                            if (p.date != null) p.date!.toLocal()
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _Onglet(
+                              icon: Icons.remove_red_eye_rounded,
+                              label: 'M\'ont vu'.tr,
+                              count: ctrl.viewersCount.value,
+                              nouveaux: nouvellesVues,
+                              actif: _ongletVues,
+                              onTap: () => setState(() => _ongletVues = true),
+                            ),
+                          ),
                         ]),
                         const SizedBox(height: 16),
-                      ],
-                      // Bannière seulement s'il reste des profils floutés
-                      if (!premium && liste.length > _gratuitsVisibles) ...[
-                        _BanniereDeblocage(
-                          count: _ongletVues
-                              ? ctrl.viewersCount.value
-                              : ctrl.likersCount.value,
-                          vues: _ongletVues,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ]),
-                  ),
-                ),
-                if (ctrl.isLoading.value && liste.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.accent)),
-                  )
-                else if (liste.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _Vide(vues: _ongletVues),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 32),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 6,
-                        crossAxisSpacing: 6,
-                        childAspectRatio: 0.72,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (_, i) {
-                          final p = liste[i];
-                          // Sans Premium : les 6 plus récents sont visibles,
-                          // le reste est flouté (cadenas → page Premium)
-                          final visible = premium ||
-                              (i < _gratuitsVisibles && p.id.isNotEmpty);
-                          return _CartePersonne(
-                            personne: p,
-                            premium: visible,
-                            nouveau: ctrl.estNouveau(p),
-                            dejaLike: _ongletVues &&
-                                Get.isRegistered<LikeController>() &&
-                                Get.find<LikeController>().hasLiked(p.id),
-                            onTap: visible
-                                ? () => _ouvrirProfil(p, liste)
-                                : _ouvrirPaywall,
-                            onLike: visible ? () => _likerEnRetour(p) : null,
-                            onPasser: visible && !_ongletVues
-                                ? () => ctrl.masquer(p.id)
-                                : null,
-                          );
-                        },
-                        childCount: liste.length,
-                      ),
+                        // Premium : heures où mon profil est le plus vu
+                        if (premium && _ongletVues && liste.length >= 5) ...[
+                          _HeuresDeVisite(dates: [
+                            for (final p in liste)
+                              if (p.date != null) p.date!.toLocal()
+                          ]),
+                          const SizedBox(height: 16),
+                        ],
+                        // Bannière seulement s'il reste des profils floutés
+                        if (!premium && liste.length > _gratuitsVisibles) ...[
+                          _BanniereDeblocage(
+                            count: _ongletVues
+                                ? ctrl.viewersCount.value
+                                : ctrl.likersCount.value,
+                            vues: _ongletVues,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ]),
                     ),
                   ),
-              ],
-            ),
-          );
-        }),
+                  if (ctrl.isLoading.value && liste.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.accent)),
+                    )
+                  else if (liste.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _Vide(vues: _ongletVues),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 32),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 6,
+                          crossAxisSpacing: 6,
+                          childAspectRatio: 0.72,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (_, i) {
+                            final p = liste[i];
+                            // Sans Premium : les 6 plus récents sont visibles,
+                            // le reste est flouté (cadenas → page Premium)
+                            final visible = premium ||
+                                (i < _gratuitsVisibles && p.id.isNotEmpty);
+                            return _CartePersonne(
+                              personne: p,
+                              premium: visible,
+                              nouveau: ctrl.estNouveau(p),
+                              dejaLike: _ongletVues &&
+                                  Get.isRegistered<LikeController>() &&
+                                  Get.find<LikeController>().hasLiked(p.id),
+                              onTap: visible
+                                  ? () => _ouvrirProfil(p, liste)
+                                  : _ouvrirPaywall,
+                              onLike: visible ? () => _likerEnRetour(p) : null,
+                              onPasser: visible && !_ongletVues
+                                  ? () => ctrl.masquer(p.id)
+                                  : null,
+                            );
+                          },
+                          childCount: liste.length,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -303,11 +311,13 @@ class _Onglet extends StatelessWidget {
           gradient: actif ? AppColors.gradientPink : null,
           color: actif ? null : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: actif ? Colors.transparent : AppColors.border),
+          border:
+              Border.all(color: actif ? Colors.transparent : AppColors.border),
         ),
         child: Row(children: [
-          Icon(icon, size: 18, color: actif ? AppColors.surAccent : AppColors.textPrimary),
+          Icon(icon,
+              size: 18,
+              color: actif ? AppColors.surAccent : AppColors.textPrimary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -319,13 +329,17 @@ class _Onglet extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: actif ? AppColors.surAccent : AppColors.textPrimary)),
+                        color: actif
+                            ? AppColors.surAccent
+                            : AppColors.textPrimary)),
                 Text(count > 99 ? '99+' : '$count',
                     style: TextStyle(
                         fontFamily: 'Syne',
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: actif ? AppColors.surAccent : AppColors.textPrimary)),
+                        color: actif
+                            ? AppColors.surAccent
+                            : AppColors.textPrimary)),
               ],
             ),
           ),
@@ -357,9 +371,12 @@ class _BanniereDeblocage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final qui = count > 1 ? '@count personnes'.trParams({'count': count.toString()}) : 'Quelqu\'un'.tr;
+    final qui = count > 1
+        ? '@count personnes'.trParams({'count': count.toString()})
+        : 'Quelqu\'un'.tr;
     final texte = vues
-        ? '@qui @p regardé ton profil'.trParams({'qui': qui.toString(), 'p': (count > 1 ? 'ont' : 'a').toString()})
+        ? '@qui @p regardé ton profil'.trParams(
+            {'qui': qui.toString(), 'p': (count > 1 ? 'ont' : 'a').toString()})
         : '$qui ${count > 1 ? 't\'ont' : 't\'a'} liké';
 
     return GestureDetector(
@@ -371,7 +388,8 @@ class _BanniereDeblocage extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(children: [
-          const Icon(Icons.lock_open_rounded, color: AppColors.surAccent, size: 28),
+          const Icon(Icons.lock_open_rounded,
+              color: AppColors.surAccent, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -388,7 +406,8 @@ class _BanniereDeblocage extends StatelessWidget {
                     vues
                         ? 'Passe en Premium pour voir qui c\'est'.tr
                         : 'Passe en Premium et matche en un geste'.tr,
-                    style: const TextStyle(fontSize: 12, color: AppColors.surAccent)),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.surAccent)),
               ],
             ),
           ),
@@ -491,13 +510,12 @@ class _CartePersonne extends StatelessWidget {
               top: 8,
               left: 8,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   gradient: AppColors.gradientPink,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child:  Text('Nouveau'.tr,
+                child: Text('Nouveau'.tr,
                     style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -546,8 +564,8 @@ class _CartePersonne extends StatelessWidget {
                   ]),
                 if (p.date != null)
                   Text(_ilYa(p.date),
-                      style:
-                          const TextStyle(fontSize: 11, color: AppColors.surMedia)),
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.surMedia)),
               ],
             ),
           ),
@@ -607,7 +625,9 @@ class _BoutonRond extends StatelessWidget {
           color: fond,
           gradient: degrade ? AppColors.gradientPink : null,
           borderRadius: BorderRadius.circular(17),
-          border: degrade ? null : Border.all(color: AppColors.surMedia.withValues(alpha: 0.38)),
+          border: degrade
+              ? null
+              : Border.all(color: AppColors.surMedia.withValues(alpha: 0.38)),
         ),
         child: Icon(icon, color: AppColors.surMedia, size: 20),
       ),
@@ -629,7 +649,9 @@ class _Vide extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            vues ? Icons.remove_red_eye_outlined : Icons.favorite_border_rounded,
+            vues
+                ? Icons.remove_red_eye_outlined
+                : Icons.favorite_border_rounded,
             size: 56,
             color: AppColors.textMuted,
           ),
@@ -640,11 +662,14 @@ class _Vide extends StatelessWidget {
                 : 'Personne ne t\'a encore liké'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary),
           ),
           const SizedBox(height: 6),
           Text(
-            'Ajoute de belles photos et publie une story pour te faire remarquer.'.tr,
+            'Ajoute de belles photos et publie une story pour te faire remarquer.'
+                .tr,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
@@ -653,14 +678,13 @@ class _Vide extends StatelessWidget {
           GestureDetector(
             onTap: showBoostSheet,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 gradient: const LinearGradient(
                     colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
               ),
-              child:  Row(mainAxisSize: MainAxisSize.min, children: [
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.bolt_rounded, color: AppColors.surAccent, size: 20),
                 SizedBox(width: 6),
                 Text('Booster mon profil'.tr,

@@ -100,6 +100,19 @@ const _fr = {
 };
 
 const _en = {
+  // ── Thèmes ──
+  'Thèmes': 'Themes',
+  'Classiques': 'Classic',
+  'Illustrés': 'Illustrated',
+  'De saison': 'Seasonal',
+  'Appliquer le thème': 'Apply theme',
+  'Thème actuel ✓': 'Current theme ✓',
+  'Cerise noire': 'Black cherry',
+  'Indigo': 'Indigo',
+  "Lettre d'amour": 'Love letter',
+  'Lagune': 'Lagoon',
+  'Nuit étoilée': 'Starry night',
+  'Fêtes': 'Holidays',
   'Réactiver les notifications': 'Turn notifications back on',
   'Quitter le groupe': 'Leave group',
   'Bienvenue sur Zamu !': 'Welcome to Zamu!',
