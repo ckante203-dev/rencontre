@@ -100,6 +100,13 @@ const _fr = {
 };
 
 const _en = {
+  // ── Date de naissance manquante ──
+  'Erreur de connexion. Réessaie.': 'Connection error. Try again.',
+  'Ta date de naissance 🎂': 'Your date of birth 🎂',
+  "Elle n'a pas été enregistrée à ton inscription. Ton âge s'affichera sur ton profil (tu peux masquer ta date dans les paramètres).":
+      "It wasn't saved when you signed up. Your age will show on your profile (you can hide your date in settings).",
+  'Zamu est réservé aux 18 ans et plus': 'Zamu is for people aged 18 and over',
+  'Tu ne peux pas utiliser Zamu avant tes 18 ans.': "You can't use Zamu until you're 18.",
   // ── Mot de passe oublié (code par e-mail) ──
   'Entre le code reçu à @email (regarde aussi dans les spams), puis ton nouveau mot de passe.':
       'Enter the code sent to @email (check your spam too), then your new password.',

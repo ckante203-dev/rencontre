@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:rencontre/core/services/bienvenue_premium.dart';
+import 'package:rencontre/core/services/date_naissance_manquante.dart';
 import 'package:rencontre/core/services/annonces_service.dart';
 import 'package:rencontre/core/services/appareil_service.dart';
 import 'package:rencontre/core/services/liens_profil.dart';
@@ -109,6 +110,7 @@ class _MainNavigationState extends State<MainNavigation> {
       AppareilService.enregistrer(); // bannissement d'appareil (SQL 057)
       AnnoncesService.verifier(); // annonce / sondage du panneau admin (SQL 061)
       BienvenuePremium.verifier(); // 🎁 « 48 h de Premium offertes » (nouveaux inscrits)
+      DateNaissanceManquante.verifier(); // 🎂 comptes inscrits sans date (bug < 1.1.9)
     });
   }
 
