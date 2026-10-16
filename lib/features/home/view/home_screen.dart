@@ -1620,7 +1620,11 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasUnread = unreadCount > 0 && !locked;
-    final bool booste = user.estBooste && !locked;
+    // Le Boost place le profil en tête, sans le montrer aux autres
+    // (étiquette « Boost » et contour orange : seulement sur sa propre carte)
+    final bool booste = user.estBooste &&
+        !locked &&
+        user.id == Supabase.instance.client.auth.currentUser?.id;
     final bool storyNonVue = hasActiveStory && !storyIsSeen && !locked;
     final bool storyVue = hasActiveStory && storyIsSeen && !locked;
 
