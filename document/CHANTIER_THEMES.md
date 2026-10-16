@@ -95,3 +95,15 @@ Faire des thèmes un **vrai point fort de Zamu** :
 2. Lesquels réservés au Premium ?
 3. Thèmes de saison : pilotés depuis le panneau admin ou intégrés à l'app ?
 4. Que devient un thème Premium quand l'abonnement s'arrête ?
+
+---
+
+## 7. Avancement (16/10/2026, branche `chantier-themes`)
+
+Décision : **tous les thèmes sont gratuits** (pas de Premium).
+
+- ✅ Étape 2 : `lib/features/profil/vue/ecran_themes.dart` (aperçu en direct, sections Classiques / Illustrés / De saison, bouton Appliquer) ; entrée « Thèmes » dans les Paramètres.
+- ✅ Étape 3 : Minuit → « Cerise noire », Graphite → « Indigo » (id inchangés) + traductions.
+- ✅ Étape 4 : `Motif` + `emoji` + `saisonDebut/saisonFin` dans `AppPalette` ; thèmes Lettre d'amour, Lagune, Nuit étoilée, Halloween (15/10–5/11), Fêtes (1/12–6/1) ; motif dessiné en code (`lib/core/theme/fond_theme.dart`, `FondTheme`) derrière Messages et Likes.
+- 🟡 Étape 1 (bases) : `ThemeController.choix` (couleur choisie) / `apparence` (Système / Sombre / Clair) / `palette` (affichée). Réglage « Apparence (test) » visible **en debug seulement**. Messages et Accueil déjà corrects en clair.
+- Reste pour l'étape 1 : passer chaque écran en clair (≈ 50 `Colors.white/black` hors écrans photo/vidéo, qui restent noirs : story_screen, discover_feed_viewer, caméra…) ; variante claire de chaque couleur (aujourd'hui le clair = palette « Blanc » unique, l'aperçu montre encore la couleur sombre) ; puis retirer `kDebugMode` du réglage.
