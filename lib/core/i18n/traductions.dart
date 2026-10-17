@@ -100,6 +100,16 @@ const _fr = {
 };
 
 const _en = {
+  // ── Vérifier mon e-mail / coller le code ──
+  'Vérifier mon e-mail': 'Verify my email',
+  'E-mail vérifié': 'Email verified',
+  'E-mail vérifié ✅': 'Email verified ✅',
+  "Protège ton compte : on t'envoie un code": "Protect your account: we'll send you a code",
+  'Entre le code reçu à @email (regarde aussi dans les spams).': 'Enter the code sent to @email (check your spam too).',
+  "On envoie un code à @email pour confirmer que c'est bien ton adresse.": "We'll send a code to @email to confirm it's your address.",
+  'Coller le code': 'Paste code',
+  'Rien à coller': 'Nothing to paste',
+  "Copie d'abord le code depuis l'e-mail (appui long sur le code)": 'First copy the code from the email (long-press the code)',
   // ── Date de naissance manquante ──
   'Erreur de connexion. Réessaie.': 'Connection error. Try again.',
   'Ta date de naissance 🎂': 'Your date of birth 🎂',

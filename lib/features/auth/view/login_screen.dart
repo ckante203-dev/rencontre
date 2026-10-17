@@ -6,6 +6,7 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/auth/controller/auth_controller.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
 import 'package:rencontre/features/auth/widget/auth_widgets.dart';
+import 'package:rencontre/shared/widgets/coller_code.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -398,7 +399,7 @@ class _MotDePasseOublieState extends State<_MotDePasseOublie> {
                 controller: _code,
                 keyboardType: TextInputType.number,
               ),
-              const SizedBox(height: 12),
+              BoutonCollerCode(champ: _code),
               AuthInputField(
                 label: 'Nouveau mot de passe'.tr,
                 hint: 'inscription.mdp_hint'.tr,

@@ -10,6 +10,7 @@ import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
 import 'package:rencontre/features/profil/vue/ecran_securite.dart';
+import 'package:rencontre/features/profil/vue/verifier_email.dart';
 import 'package:rencontre/core/i18n/traductions.dart';
 
 /// « tout le monde » → « Tout le monde » (pas « Tout Le Monde »)
@@ -97,6 +98,8 @@ class EcranParametres extends StatelessWidget {
                       : 'Email'.tr,
                   onTap: () => _dialogEmail(context, ctrl),
                 )),
+            // ✉️ Vérifier mon e-mail (code par e-mail, comme Snapchat)
+            const TuileVerifEmail(),
             const SizedBox(height: 10),
             _Tuile(
               icon: '🔒',
