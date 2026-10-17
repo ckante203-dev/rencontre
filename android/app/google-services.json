@@ -29,6 +29,13 @@
             {
               "client_id": "70132643190-skak491hsn89vg2qgmfe00ja04rcnb9j.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "70132643190-6c3po7iuqnov0feru6r5ufg0823ffajg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.vybestyle.zamu"
+              }
             }
           ]
         }
