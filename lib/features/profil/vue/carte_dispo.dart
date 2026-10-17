@@ -192,8 +192,8 @@ class _FeuilleDispoState extends State<_FeuilleDispo> {
   Widget build(BuildContext context) {
     final persoActif = _perso.text.trim().isNotEmpty;
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      // Clavier déjà géré par Get.bottomSheet (sinon compté deux fois)
+      padding: EdgeInsets.zero,
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
         decoration: BoxDecoration(

@@ -179,8 +179,9 @@ class _FeuilleVerifState extends State<_FeuilleVerif> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      // Pas de viewInsets ici : Get.bottomSheet remonte déjà la feuille
+      // au-dessus du clavier (sinon la place du clavier compte deux fois)
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
