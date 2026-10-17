@@ -106,6 +106,8 @@ class SupabaseService {
     }
 
     final users = rows
+        // Compte officiel « Zamu » (SQL 072) : jamais sur l'Accueil
+        .where((row) => row['est_officiel'] != true)
         .map((row) => profileToUser(row))
         .where((u) => !allExcluded.contains(u.id))
         .toList();
