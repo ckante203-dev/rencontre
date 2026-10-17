@@ -398,6 +398,17 @@ BEGIN
   END IF;
 END $$;
 
+-- Conservation : 12 mois au plus (politique de confidentialité),
+-- purge chaque dimanche à 4 h
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'purger-alertes-securite') THEN
+    PERFORM cron.unschedule('purger-alertes-securite');
+  END IF;
+END $$;
+SELECT cron.schedule('purger-alertes-securite', '0 4 * * 0',
+  $$DELETE FROM public.alertes_securite WHERE created_at < now() - interval '12 months'$$);
+
 COMMIT;
 
 -- Pour tester la détection sans rien créer :
