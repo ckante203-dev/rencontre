@@ -383,7 +383,6 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
             .update({
               'name': nom,
               'birthdate': birthdateStr,
-              'age': age,
               'updated_at': now.toUtc().toIso8601String(),
             })
             .eq('id', uid)
@@ -402,12 +401,10 @@ class _OnboardingBirthdateScreenState extends State<OnboardingBirthdateScreen> {
           'interests': [],
           'bio': '',
           'birthdate': birthdateStr,
-          'age': age,
           'gender': 'non précisé',
           'looking_for': null,
           'is_online': true,
           'onboarding_complete': false,
-          'phone_verified': false,
           'followers_count': 0,
           'following_count': 0,
           'matches_count': 0,

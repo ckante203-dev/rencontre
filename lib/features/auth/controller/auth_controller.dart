@@ -610,7 +610,6 @@ class AuthController extends GetxController {
     try {
       await supabase.from('profiles').update({
         'phone': phone,
-        'phone_verified': false,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', uid);
     } catch (e) {
@@ -645,7 +644,6 @@ class AuthController extends GetxController {
     if (gender != null) updates['gender'] = gender;
     if (lookingFor != null) updates['looking_for'] = lookingFor;
     if (interests != null) updates['interests'] = interests;
-    if (age != null) updates['age'] = age;
     if (bio != null) updates['bio'] = bio;
     if (complete) updates['onboarding_complete'] = true;
 
@@ -710,7 +708,7 @@ class AuthController extends GetxController {
       try {
         final ligne = await supabase
             .from('profiles')
-            .update({'birthdate': parsed['iso'], 'age': parsed['age']})
+            .update({'birthdate': parsed['iso']})
             .eq('id', uid)
             .select('id');
         if ((ligne as List).isNotEmpty) return;
@@ -787,13 +785,11 @@ class AuthController extends GetxController {
       'interests': [],
       'bio': '',
       'birthdate': birthdate,
-      'age': age ?? 18,
       'gender': 'non précisé',
       'looking_for': null,
       'is_online': true,
       'last_seen': now.toUtc().toIso8601String(),
       'onboarding_complete': false,
-      'phone_verified': false,
       'followers_count': 0,
       'following_count': 0,
       'matches_count': 0,

@@ -94,7 +94,6 @@ class _FenetreState extends State<_Fenetre> {
       await Supabase.instance.client.from('profiles').update({
         'birthdate': '${a.toString().padLeft(4, '0')}-'
             '${m.toString().padLeft(2, '0')}-${j.toString().padLeft(2, '0')}',
-        'age': age,
       }).eq('id', widget.uid);
       Get.back();
     } catch (_) {
