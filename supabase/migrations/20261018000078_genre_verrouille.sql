@@ -16,8 +16,7 @@ BEGIN
      AND OLD.gender IN ('homme', 'femme')
      AND COALESCE(OLD.onboarding_complete, false)
      AND COALESCE(auth.role(), '') = 'authenticated'
-     AND NOT EXISTS (SELECT 1 FROM admins
-                     WHERE email = auth.jwt() ->> 'email') THEN
+     AND NOT COALESCE(public.is_admin(), false) THEN
     NEW.gender := OLD.gender; -- on garde l'ancien, sans erreur
   END IF;
   RETURN NEW;
@@ -29,7 +28,7 @@ CREATE OR REPLACE FUNCTION public.suis_admin()
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
-  SELECT EXISTS (SELECT 1 FROM admins WHERE email = auth.jwt() ->> 'email');
+  SELECT COALESCE(public.is_admin(), false);
 $$;
 REVOKE ALL ON FUNCTION public.suis_admin() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.suis_admin() TO authenticated;
