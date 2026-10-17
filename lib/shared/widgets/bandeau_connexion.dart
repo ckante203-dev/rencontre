@@ -71,7 +71,10 @@ class _BandeauConnexionState extends State<BandeauConnexion>
         right: 0,
         top: 0,
         child: IgnorePointer(
-          child: AnimatedSlide(
+          // Caché : ne pas être lu par TalkBack
+          child: ExcludeSemantics(
+            excluding: !_horsLigne,
+            child: AnimatedSlide(
             duration: const Duration(milliseconds: 250),
             offset: _horsLigne ? Offset.zero : const Offset(0, -1),
             child: Material(
@@ -95,6 +98,7 @@ class _BandeauConnexionState extends State<BandeauConnexion>
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),
