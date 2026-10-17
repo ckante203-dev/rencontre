@@ -336,7 +336,12 @@ class _RondStory extends StatelessWidget {
                       : ((photoProfil ?? '').isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: photoProfil!, fit: BoxFit.cover,
-                              memCacheWidth: 1080,)
+                              memCacheWidth: 1080,
+                              placeholder: (_, __) =>
+                                  Container(color: AppColors.surface2),
+                              errorWidget: (_, __, ___) =>
+                                  Container(color: AppColors.surface2),
+                            )
                           : Container(color: AppColors.surface2)),
                 ),
               ),
