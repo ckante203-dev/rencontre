@@ -138,8 +138,9 @@ class EcranParametres extends StatelessWidget {
                     // Genre choisi à l'inscription : verrouillé (on ne
                     // peut le choisir qu'une fois s'il manque encore)
                     Obx(() {
-                      final verrouille = ControleurProfil.genders
-                          .contains(ctrl.selectedGender.value);
+                      final verrouille = !ctrl.estAdmin.value &&
+                          ControleurProfil.genders
+                              .contains(ctrl.selectedGender.value);
                       return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

@@ -24,6 +24,16 @@ BEGIN
 END;
 $$;
 
+-- L'app demande si le compte connecté est admin (genre non verrouillé)
+CREATE OR REPLACE FUNCTION public.suis_admin()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM admins WHERE email = auth.jwt() ->> 'email');
+$$;
+REVOKE ALL ON FUNCTION public.suis_admin() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.suis_admin() TO authenticated;
+
 DROP TRIGGER IF EXISTS genre_verrouille ON public.profiles;
 CREATE TRIGGER genre_verrouille
   BEFORE UPDATE OF gender ON public.profiles

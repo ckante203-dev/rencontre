@@ -117,6 +117,8 @@ class ControleurProfil extends GetxController {
   }
 
   final RxString selectedGender = ''.obs;
+  // Compte admin (table admins, SQL 078) : genre toujours modifiable
+  final RxBool estAdmin = false.obs;
   final RxString selectedLookingFor = ''.obs;
   final RxBool showBirthdate = true.obs;
   final RxBool notifMessages = true.obs;
@@ -341,6 +343,7 @@ class ControleurProfil extends GetxController {
 
       // Sélections sécurisées
       selectedGender.value = data['gender']?.toString() ?? '';
+      _chargerAdmin();
       selectedLookingFor.value = data['looking_for']?.toString() ?? '';
       selectedMorphologie.value = data['morphologie']?.toString() ?? '';
       selectedLieuRencontre.value = data['lieu_rencontre']?.toString() ?? '';
@@ -1091,6 +1094,12 @@ class ControleurProfil extends GetxController {
   }
 
   // ─── PARAMÈTRES ─────────────────────────────────────────────────
+
+  Future<void> _chargerAdmin() async {
+    try {
+      estAdmin.value = await supabase.rpc('suis_admin') == true;
+    } catch (_) {} // fonction absente (SQL 078 pas appliqué) : pas admin
+  }
 
   void setGender(String v) {
     selectedGender.value = v;
