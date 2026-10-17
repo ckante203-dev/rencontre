@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/widget/lecture_auto_stories.dart';
 import 'package:rencontre/features/home/stories_officielles.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/amis/amis_controller.dart';
@@ -50,6 +51,9 @@ class OngletStories extends StatelessWidget {
                 .where((c) =>
                     !estAmi(c.cover.userId) && !ctrl.estFavori(c.cover.userId))
                 .toList();
+            // 🔥 Découvrir : celles qui suscitent le plus d'intérêt devant
+            // (après les boostées et les non vues)
+            _trierParEngouement(autres, ctrl);
             final maStory = ctrl.myActiveStory;
 
             return RefreshIndicator(
@@ -178,6 +182,32 @@ class OngletStories extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Engouement = vues par heure depuis la publication (une story récente
+  /// très regardée passe devant une vieille story qui a cumulé des vues).
+  static double _engouement(DiscoverCard c) {
+    var score = 0.0;
+    for (final s in c.stories) {
+      final heures = DateTime.now().difference(s.createdAt).inMinutes / 60;
+      score += s.viewedBy.length / (heures + 2);
+    }
+    return score;
+  }
+
+  static void _trierParEngouement(
+      List<DiscoverCard> cartes, HomeController ctrl) {
+    final rang = {for (var i = 0; i < cartes.length; i++) cartes[i]: i};
+    cartes.sort((a, b) {
+      final ba = ctrl.storyBoostee(a.cover.userId);
+      final bb = ctrl.storyBoostee(b.cover.userId);
+      if (ba != bb) return ba ? -1 : 1;
+      final va = a.stories.any((s) => !s.isSeen);
+      final vb = b.stories.any((s) => !s.isSeen);
+      if (va != vb) return va ? -1 : 1;
+      final c = _engouement(b).compareTo(_engouement(a));
+      return c != 0 ? c : rang[a]!.compareTo(rang[b]!);
+    });
   }
 
   static Widget _titre(String texte) => SliverToBoxAdapter(
@@ -371,12 +401,29 @@ class _CarteStory extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Stack(fit: StackFit.expand, children: [
-          _apercu(s, texte: compacte ? 12 : 15),
-          if (s.isVideo)
-            const Center(
-              child: Icon(Icons.play_circle_fill_rounded,
-                  color: Color(0xB3FFFFFF), size: 36),
-            ),
+          // Découvrir : la vidéo la plus visible se lit toute seule, sans
+          // le son (comme Snapchat) ; sinon vignette + ▶
+          if (s.isVideo && !compacte && s.mediaUrl.isNotEmpty)
+            ApercuVideoAuto(
+              id: s.id,
+              url: s.mediaUrl,
+              debutMs: s.videoDebutMs,
+              vignette: Stack(fit: StackFit.expand, children: [
+                _apercu(s, texte: 15),
+                const Center(
+                  child: Icon(Icons.play_circle_fill_rounded,
+                      color: Color(0xB3FFFFFF), size: 36),
+                ),
+              ]),
+            )
+          else ...[
+            _apercu(s, texte: compacte ? 12 : 15),
+            if (s.isVideo)
+              const Center(
+                child: Icon(Icons.play_circle_fill_rounded,
+                    color: Color(0xB3FFFFFF), size: 36),
+              ),
+          ],
           // Déjà vue : assombrie, comme Snapchat
           if (!aVoir) Container(color: Colors.black.withValues(alpha: 0.35)),
            Positioned.fill(

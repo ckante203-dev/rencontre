@@ -10,6 +10,7 @@ import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
 import 'package:rencontre/features/profil/vue/ecran_securite.dart';
 import 'package:rencontre/features/profil/vue/verifier_email.dart';
+import 'package:rencontre/features/home/widget/lecture_auto_stories.dart';
 import 'package:rencontre/features/profil/vue/ecran_themes.dart';
 import 'package:rencontre/core/i18n/traductions.dart';
 
@@ -341,6 +342,15 @@ class EcranParametres extends StatelessWidget {
                 value: ctrl.notifFavoris.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.notifFavoris, 'notif_favoris', v))),
+            const SizedBox(height: 28),
+
+            // ▶️ Lecture auto des vidéos (Découvrir) : Wi-Fi seulement par défaut
+            Obx(() => _Toggle(
+                icon: '▶️',
+                title: 'Vidéos en lecture auto'.tr,
+                subtitle: 'Aussi en données mobiles (sinon Wi-Fi seulement)'.tr,
+                value: LectureAutoStories.to.aussiEnDonnees.value,
+                onChanged: LectureAutoStories.to.reglerDonnees)),
             const SizedBox(height: 28),
 
             // ════ THÈME ══════════════════════════════════════════

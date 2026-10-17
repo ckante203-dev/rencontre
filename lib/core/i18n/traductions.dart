@@ -100,6 +100,8 @@ const _fr = {
 };
 
 const _en = {
+  'Vidéos en lecture auto': 'Autoplay videos',
+  'Aussi en données mobiles (sinon Wi-Fi seulement)': 'Also on mobile data (otherwise Wi-Fi only)',
   // ── Suppression différée ──
   "Ton compte sera masqué tout de suite, puis supprimé définitivement dans 30 jours (profil, photos, messages, matchs). Tu changes d'avis ? Reconnecte-toi avant la fin des 30 jours pour le garder.":
       "Your account will be hidden right away, then permanently deleted in 30 days (profile, photos, messages, matches). Changed your mind? Log in again within 30 days to keep it.",

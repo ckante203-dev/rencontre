@@ -84,6 +84,7 @@ dependencies:
   video_compress: ^3.1.4
   image_cropper: ^12.2.1
   firebase_performance: ^0.10.1+10
+  connectivity_plus: ^7.3.2
 
 dev_dependencies:
   flutter_test:
