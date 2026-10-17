@@ -55,7 +55,11 @@ class _RondZamuOfficielState extends State<RondZamuOfficiel> {
 
   Future<void> _ouvrir() async {
     final premiere = _stories.indexWhere((s) => !_vues.contains(s.id));
-    await ouvrirVueStories(_stories, premiere < 0 ? 0 : premiere);
+    await ouvrirVueStories(_stories, premiere < 0 ? 0 : premiere,
+        // Vue comptée sur le serveur : le panneau admin affiche le total
+        onVue: (s) => Supabase.instance.client
+            .rpc('vue_story_officielle', params: {'p_story': s.id})
+            .catchError((_) => null)); // SQL 076 pas encore passé
     setState(() => _vues.addAll(_stories.map((s) => s.id)));
     try {
       GetStorage().write(_cleVues, _vues.toList());

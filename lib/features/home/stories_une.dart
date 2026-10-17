@@ -214,15 +214,20 @@ class _RangeeStoriesUneState extends State<RangeeStoriesUne> {
 }
 
 /// Ouvre la visionneuse plein écran (stories à la une, stories officielles)
-Future<bool?>? ouvrirVueStories(List<StoryUne> liste, int depart) =>
-    Get.to<bool>(() => _VueStoryUne(liste: liste, depart: depart),
+/// [onVue] : appelé une fois par story réellement affichée (vues des
+/// stories officielles, SQL 076).
+Future<bool?>? ouvrirVueStories(List<StoryUne> liste, int depart,
+        {void Function(StoryUne)? onVue}) =>
+    Get.to<bool>(
+        () => _VueStoryUne(liste: liste, depart: depart, onVue: onVue),
         fullscreenDialog: true);
 
 /// Plein écran : on passe d'une story à la une à l'autre en touchant
 class _VueStoryUne extends StatefulWidget {
   final List<StoryUne> liste;
   final int depart;
-  const _VueStoryUne({required this.liste, required this.depart});
+  final void Function(StoryUne)? onVue;
+  const _VueStoryUne({required this.liste, required this.depart, this.onVue});
 
   @override
   State<_VueStoryUne> createState() => _VueStoryUneState();
@@ -233,6 +238,12 @@ class _VueStoryUneState extends State<_VueStoryUne> {
   VideoPlayerController? _video;
 
   StoryUne get _u => widget.liste[_i];
+  final _signalees = <String>{};
+
+  /// Story à l'écran : signalée une seule fois
+  void _signalerVue() {
+    if (_signalees.add(_u.id)) widget.onVue?.call(_u);
+  }
   bool get _aMoi =>
       _u.userId == Supabase.instance.client.auth.currentUser?.id;
 
@@ -277,6 +288,7 @@ class _VueStoryUneState extends State<_VueStoryUne> {
   Widget build(BuildContext context) {
     final u = _u;
     final v = _video;
+    _signalerVue();
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
