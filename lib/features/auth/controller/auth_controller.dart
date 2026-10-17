@@ -536,9 +536,21 @@ class AuthController extends GetxController {
         }
       }
       errorMessage.value = '';
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('Google Sign-In error: $e');
-      errorMessage.value = 'Connexion Google échouée. Réessaie.'.tr;
+      FirebaseCrashlytics.instance
+          .recordError(e, st, reason: 'connexion Google');
+      // ✅ Code affiché pour savoir où ça bloque : Google (ApiException 10
+      // = empreinte SHA / client OAuth, 7 = réseau, 12500 = configuration)
+      // ou Supabase (fournisseur Google, Client IDs autorisés).
+      final t = e.toString();
+      final code = RegExp(r'ApiException: (\d+)').firstMatch(t)?.group(1);
+      final detail = code != null
+          ? ' (Google $code)'
+          : e is AuthException
+              ? ' (Supabase : ${e.message})'
+              : '';
+      errorMessage.value = 'Connexion Google échouée. Réessaie.'.tr + detail;
     } finally {
       _setLoading(false);
     }
