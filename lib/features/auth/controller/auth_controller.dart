@@ -291,6 +291,9 @@ class AuthController extends GetxController {
         // ✅ Date de naissance enregistrée à part : avant, elle se perdait
         // pour ~8 inscrits sur 10 (profil créé en parallèle sans date).
         await _enregistrerNaissance(res.user!.id, parsed);
+        // ✅ Nom d'utilisateur et langue, à part aussi : l'enregistrement
+        // complet du profil (upsert) est refusé par la base à l'inscription
+        await _completerProfil(res.user!.id, pseudo);
         // ✅ La navigation vers l'onboarding se déclenche automatiquement
         // via _handleAuthChange dès que la session est active.
       } else {
@@ -712,6 +715,31 @@ class AuthController extends GetxController {
   }
 
   // ─── HELPERS ───────────────────────────────────────────────
+
+  Future<void> _completerProfil(String uid, String pseudo) async {
+    try {
+      await supabase
+          .from('profiles')
+          .update({'langue': Langue.code}).eq('id', uid);
+    } catch (_) {}
+    try {
+      if (pseudo.isNotEmpty) {
+        await supabase
+            .from('profiles')
+            .update({'username': pseudo}).eq('id', uid);
+      } else {
+        // Facultatif : nom automatique s'il n'y en a pas encore
+        await supabase
+            .from('profiles')
+            .update({'username': 'user${uid.substring(0, 8)}'})
+            .eq('id', uid)
+            .isFilter('username', null);
+      }
+    } catch (e, st) {
+      FirebaseCrashlytics.instance
+          .recordError(e, st, reason: "inscription : nom d'utilisateur");
+    }
+  }
 
   Future<void> _enregistrerNaissance(
       String uid, Map<String, dynamic> parsed) async {
