@@ -919,6 +919,7 @@ const Map<String, String> enAuto = {
   'Comment tes données sont utilisées': 'How your data is used',
   'Nous contacter': 'Contact us',
   'Profils bloqués': 'Blocked profiles',
+  "Choisi à l'inscription, il ne peut plus être modifié.": 'Chosen at sign-up, it can no longer be changed.',
   'Aucun profil bloqué': 'No blocked profiles',
   '@count profil@p bloqué@p2': '@count profile@p blocked',
   'Se déconnecter': 'Log out',

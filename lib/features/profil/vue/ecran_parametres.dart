@@ -89,7 +89,7 @@ class EcranParametres extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ════ COMPTE ════════════════════════════════════════
-             _Titre('Compte'.tr),
+            _Titre('Compte'.tr),
             const SizedBox(height: 10),
             Obx(() => _Tuile(
                   icon: '📧',
@@ -111,7 +111,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ IDENTITÉ ══════════════════════════════════════
-             _Titre('Mon identité'.tr),
+            _Titre('Mon identité'.tr),
             const SizedBox(height: 10),
 
             // ✅ Sélecteur de genre
@@ -135,40 +135,74 @@ class EcranParametres extends StatelessWidget {
                               letterSpacing: 0.8)),
                     ]),
                     const SizedBox(height: 12),
-                    Obx(() => Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: ControleurProfil.genders.map((genre) {
-                            final isSelected =
-                                ctrl.selectedGender.value == genre;
-                            return GestureDetector(
-                              onTap: () => ctrl.setGender(genre),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 9),
-                                decoration: BoxDecoration(
-                                  gradient: isSelected
-                                      ? AppColors.gradientPink
-                                      : null,
-                                  color: isSelected ? null : AppColors.surface2,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
+                    // Genre choisi à l'inscription : verrouillé (on ne
+                    // peut le choisir qu'une fois s'il manque encore)
+                    Obx(() {
+                      final verrouille = ControleurProfil.genders
+                          .contains(ctrl.selectedGender.value);
+                      return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: ControleurProfil.genders
+                                  .where((g) =>
+                                      !verrouille ||
+                                      g == ctrl.selectedGender.value)
+                                  .map((genre) {
+                                final isSelected =
+                                    ctrl.selectedGender.value == genre;
+                                return GestureDetector(
+                                  onTap: verrouille
+                                      ? null
+                                      : () => ctrl.setGender(genre),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 9),
+                                    decoration: BoxDecoration(
+                                      gradient: isSelected
+                                          ? AppColors.gradientPink
+                                          : null,
                                       color: isSelected
-                                          ? Colors.transparent
-                                          : AppColors.border),
+                                          ? null
+                                          : AppColors.surface2,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                          color: isSelected
+                                              ? Colors.transparent
+                                              : AppColors.border),
+                                    ),
+                                    child: Text(_majuscule(genre).tr,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: isSelected
+                                                ? AppColors.surAccent
+                                                : AppColors.textMuted)),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            if (verrouille) ...[
+                              const SizedBox(height: 10),
+                              Row(children: [
+                                Icon(Icons.lock_outline_rounded,
+                                    size: 14, color: AppColors.textMuted),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                      "Choisi à l'inscription, il ne peut plus être modifié."
+                                          .tr,
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textMuted)),
                                 ),
-                                child: Text(_majuscule(genre).tr,
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: isSelected
-                                            ? AppColors.surAccent
-                                            : AppColors.textMuted)),
-                              ),
-                            );
-                          }).toList(),
-                        )),
+                              ]),
+                            ],
+                          ]);
+                    }),
                   ]),
             ),
             const SizedBox(height: 10),
@@ -234,7 +268,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ CONFIDENTIALITÉ ════════════════════════════════
-             _Titre('Confidentialité'.tr),
+            _Titre('Confidentialité'.tr),
             const SizedBox(height: 10),
             // ✅ Chaque interrupteur est enregistré dès qu'on le touche.
             Obx(() => _Toggle(
@@ -248,7 +282,9 @@ class EcranParametres extends StatelessWidget {
             Obx(() => _Toggle(
                 icon: '🔍',
                 title: 'Me trouver par mon nom d\'utilisateur'.tr,
-                subtitle: 'Les autres peuvent te chercher par @pseudo dans Messages'.tr,
+                subtitle:
+                    'Les autres peuvent te chercher par @pseudo dans Messages'
+                        .tr,
                 value: ctrl.trouvableParPseudo.value,
                 onChanged: (v) => ctrl.majReglage(
                     ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v))),
@@ -266,7 +302,8 @@ class EcranParametres extends StatelessWidget {
             Obx(() => _Toggle(
                 icon: '👁️',
                 title: 'Masquer quand j\'ai lu 👑'.tr,
-                subtitle: 'Les autres ne voient pas « Lu » sous leurs messages'.tr,
+                subtitle:
+                    'Les autres ne voient pas « Lu » sous leurs messages'.tr,
                 value: ctrl.lecturesMasquees.value,
                 onChanged: (v) {
                   if (v && !ControleurProfil.estPremiumMaintenant()) {
@@ -290,7 +327,8 @@ class EcranParametres extends StatelessWidget {
                       icon: '🔞',
                       title: 'Flouter les photos sensibles'.tr,
                       subtitle:
-                          'Les photos marquées 🔞 restent floues jusqu\'à ce que tu touches'.tr,
+                          'Les photos marquées 🔞 restent floues jusqu\'à ce que tu touches'
+                              .tr,
                       value: ConversationController.flouterSensibles,
                       onChanged: (v) {
                         GetStorage().write(
@@ -317,7 +355,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ NOTIFICATIONS & SONS ═══════════════════════════
-             _Titre('Notifications & Sons'.tr),
+            _Titre('Notifications & Sons'.tr),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '💬',
@@ -354,7 +392,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ THÈME ══════════════════════════════════════════
-             _Titre('Thème de l\'application'.tr),
+            _Titre('Thème de l\'application'.tr),
             const SizedBox(height: 10),
             Obx(() {
               final p = AppPalettes.resoudre(ctrl.selectedTheme.value) ??
@@ -380,7 +418,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ ABONNEMENT ═════════════════════════════════════
-             _Titre('Abonnement'.tr),
+            _Titre('Abonnement'.tr),
             const SizedBox(height: 10),
             Obx(() => _Tuile(
                   icon: '👑',
@@ -402,14 +440,14 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ AIDE & INFORMATIONS ════════════════════════════
-             _Titre('Aide & informations'.tr),
+            _Titre('Aide & informations'.tr),
             const SizedBox(height: 10),
             _Tuile(
               icon: '✨',
               title: 'Quoi de neuf'.tr,
               subtitle: 'Les nouveautés de Zamu'.tr,
-              onTap: () => Get.to(() => const EcranNouveautes(),
-                  fullscreenDialog: true),
+              onTap: () =>
+                  Get.to(() => const EcranNouveautes(), fullscreenDialog: true),
             ),
             const SizedBox(height: 10),
             _Tuile(
@@ -431,7 +469,8 @@ class EcranParametres extends StatelessWidget {
                 icon: '🛡️',
                 title: 'Politique de confidentialité'.tr,
                 subtitle: 'Comment tes données sont utilisées'.tr,
-                onTap: () => ctrl.ouvrirLien(ControleurProfil.urlConfidentialite),
+                onTap: () =>
+                    ctrl.ouvrirLien(ControleurProfil.urlConfidentialite),
               ),
             ],
             if (ControleurProfil.emailContact.isNotEmpty) ...[
@@ -446,7 +485,7 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ════ PROFILS BLOQUÉS ════════════════════════════════
-             _Titre('Profils bloqués'.tr),
+            _Titre('Profils bloqués'.tr),
             const SizedBox(height: 10),
             Obx(() {
               final count = ctrl.blockedProfiles.length;
@@ -485,7 +524,11 @@ class EcranParametres extends StatelessWidget {
                             Text(
                               count == 0
                                   ? 'Aucun profil bloqué'.tr
-                                  : '@count profil@p bloqué@p2'.trParams({'count': count.toString(), 'p2': (count > 1 ? 's' : '').toString(), 'p': (count > 1 ? 's' : '').toString()}),
+                                  : '@count profil@p bloqué@p2'.trParams({
+                                      'count': count.toString(),
+                                      'p2': (count > 1 ? 's' : '').toString(),
+                                      'p': (count > 1 ? 's' : '').toString()
+                                    }),
                               style: TextStyle(
                                   fontSize: 11, color: AppColors.textMuted),
                             ),
@@ -565,7 +608,8 @@ class EcranParametres extends StatelessWidget {
                     child: Text(
                         ctrl.versionApp.value.isEmpty
                             ? ''
-                            : 'Zamu · version @value'.trParams({'value': ctrl.versionApp.value.toString()}),
+                            : 'Zamu · version @value'.trParams(
+                                {'value': ctrl.versionApp.value.toString()}),
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                   ),
@@ -607,11 +651,11 @@ class EcranParametres extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  colors: [AppColors.accent, AppColors.accent2]),
+              gradient:
+                  LinearGradient(colors: [AppColors.accent, AppColors.accent2]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child:  Text('Modifier'.tr,
+            child: Text('Modifier'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
@@ -640,8 +684,8 @@ class EcranParametres extends StatelessWidget {
               controller: newPassCtrl,
               obscureText: !showNew.value,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: _passInputDeco('Nouveau mot de passe'.tr, showNew.value,
-                  () => showNew.value = !showNew.value),
+              decoration: _passInputDeco('Nouveau mot de passe'.tr,
+                  showNew.value, () => showNew.value = !showNew.value),
             )),
         const SizedBox(height: 12),
         Obx(() => TextField(
@@ -660,7 +704,8 @@ class EcranParametres extends StatelessWidget {
         GestureDetector(
           onTap: () {
             if (newPassCtrl.text != confirmCtrl.text) {
-              Get.snackbar('Erreur'.tr, 'Les mots de passe ne correspondent pas'.tr,
+              Get.snackbar(
+                  'Erreur'.tr, 'Les mots de passe ne correspondent pas'.tr,
                   snackPosition: SnackPosition.TOP,
                   backgroundColor: AppColors.surface,
                   colorText: AppColors.textPrimary);
@@ -672,11 +717,11 @@ class EcranParametres extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  colors: [AppColors.accent, AppColors.accent2]),
+              gradient:
+                  LinearGradient(colors: [AppColors.accent, AppColors.accent2]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child:  Text('Modifier'.tr,
+            child: Text('Modifier'.tr,
                 style: TextStyle(
                     color: AppColors.surAccent, fontWeight: FontWeight.w700)),
           ),
