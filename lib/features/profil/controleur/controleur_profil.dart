@@ -1423,7 +1423,8 @@ class ControleurProfil extends GetxController {
               color: AppColors.textPrimary,
               fontSize: 18)),
       content: Text(
-          'Cette action est irréversible. Toutes tes données (profil, photos, messages, matchs) seront définitivement supprimées.'.tr,
+          "Ton compte sera masqué tout de suite, puis supprimé définitivement dans 30 jours (profil, photos, messages, matchs). Tu changes d'avis ? Reconnecte-toi avant la fin des 30 jours pour le garder."
+              .tr,
           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       actions: [
         TextButton(
@@ -1435,9 +1436,24 @@ class ControleurProfil extends GetxController {
             Get.back();
             isSaving.value = true;
             try {
-              await supabase.functions.invoke('delete-account');
+              // ✅ Suppression différée de 30 jours (SQL 077) : le compte est
+              // masqué tout de suite, puis supprimé par la purge de nuit.
+              final fin = await supabase.rpc('demander_suppression_compte');
+              final date = DateTime.tryParse('$fin')?.toLocal();
               await AuthController.to.signOut();
               Get.offAllNamed('/login');
+              Get.snackbar(
+                  'Compte masqué'.tr,
+                  date == null
+                      ? 'Il sera supprimé définitivement dans 30 jours.'.tr
+                      : 'Il sera supprimé définitivement le @date.'.trParams({
+                          'date':
+                              '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'
+                        }),
+                  snackPosition: SnackPosition.TOP,
+                  duration: const Duration(seconds: 6),
+                  backgroundColor: AppColors.surface,
+                  colorText: AppColors.textPrimary);
             } catch (e) {
               debugPrint('$e');
       _snackError('Impossible de supprimer le compte. Réessaie.'.tr);

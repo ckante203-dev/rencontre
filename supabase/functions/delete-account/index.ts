@@ -7,6 +7,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? SUPABASE_SERVICE_ROLE_KEY;
+// Purge des comptes dont la suppression a été demandée il y a 30 jours
+// (pg_cron, SQL 077) : même secret que purge-expired.
+const PURGE_SECRET = Deno.env.get("PURGE_SECRET") ?? "";
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -195,14 +198,14 @@ async function isAdmin(user: { email?: string }): Promise<boolean> {
 //   supprime SON compte.
 // • Panneau admin : JWT d'un admin + body { "user_id": "<uuid>" } →
 //   supprime ce compte-là (refusé si l'appelant n'est pas dans admins).
+// • pg_cron (SQL 077) : en-tête x-purge-secret + body { "user_id" } →
+//   supprime le compte SEULEMENT si sa suppression a été demandée depuis
+//   plus de 30 jours (l'app ne supprime plus tout de suite).
 // Supprime les fichiers, les données puis le compte.
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const user = await getAuthUser(req);
-    if (!user) return json({ error: "unauthorized" }, 401);
-
     let cible: string | undefined;
     try {
       const body = await req.json();
@@ -210,6 +213,25 @@ serve(async (req) => {
     } catch (_) {
       // pas de body : suppression de son propre compte
     }
+
+    // ── Purge automatique (30 jours après la demande) ──
+    const secret = req.headers.get("x-purge-secret") ?? "";
+    if (PURGE_SECRET && secret === PURGE_SECRET) {
+      if (!cible || !UUID_RE.test(cible)) return json({ error: "user_id invalide" }, 400);
+      const { data: p } = await admin.from("profiles")
+        .select("suppression_le").eq("id", cible).maybeSingle();
+      const le = p?.suppression_le ? new Date(p.suppression_le).getTime() : null;
+      if (!le || Date.now() - le < 30 * 24 * 3600 * 1000) {
+        return json({ error: "suppression non demandée ou trop récente" }, 409);
+      }
+      const { data: u } = await admin.auth.admin.getUserById(cible);
+      if (u?.user && (await isAdmin(u.user))) return json({ error: "admin" }, 403);
+      console.log(`Purge du compte ${cible} (suppression demandée le ${p?.suppression_le})`);
+      return await supprimerCompte(cible);
+    }
+
+    const user = await getAuthUser(req);
+    if (!user) return json({ error: "unauthorized" }, 401);
 
     let uid = user.id;
     if (cible && cible !== user.id) {
@@ -224,6 +246,16 @@ serve(async (req) => {
       console.log(`Suppression admin du compte ${cible} par ${user.email}`);
     }
 
+    return await supprimerCompte(uid);
+  } catch (err) {
+    console.error("❌ Error:", String(err));
+    return json({ error: "internal error" }, 500);
+  }
+});
+
+// Fichiers, lignes, profil puis compte d'authentification
+async function supprimerCompte(uid: string): Promise<Response> {
+  {
     // 1. Fichiers Storage (non bloquant : on journalise les erreurs)
     const storageErrors = await deleteUserFiles(uid);
 
@@ -250,8 +282,5 @@ serve(async (req) => {
       console.log(`Compte ${uid} supprimé`);
     }
     return new Response("OK", { status: 200, headers: cors });
-  } catch (err) {
-    console.error("❌ Error:", String(err));
-    return json({ error: "internal error" }, 500);
   }
-});
+}

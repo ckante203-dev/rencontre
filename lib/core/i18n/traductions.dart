@@ -100,6 +100,19 @@ const _fr = {
 };
 
 const _en = {
+  // ── Suppression différée ──
+  "Ton compte sera masqué tout de suite, puis supprimé définitivement dans 30 jours (profil, photos, messages, matchs). Tu changes d'avis ? Reconnecte-toi avant la fin des 30 jours pour le garder.":
+      "Your account will be hidden right away, then permanently deleted in 30 days (profile, photos, messages, matches). Changed your mind? Log in again within 30 days to keep it.",
+  'Compte masqué': 'Account hidden',
+  'Il sera supprimé définitivement dans 30 jours.': 'It will be permanently deleted in 30 days.',
+  'Il sera supprimé définitivement le @date.': 'It will be permanently deleted on @date.',
+  'Garder ton compte ?': 'Keep your account?',
+  'Tu as demandé la suppression de ton compte. Il est masqué et sera supprimé définitivement le @date.':
+      'You asked to delete your account. It is hidden and will be permanently deleted on @date.',
+  'Continuer la suppression': 'Continue deletion',
+  'Garder mon compte': 'Keep my account',
+  'Bon retour 💜': 'Welcome back 💜',
+  'Ton compte est de nouveau visible.': 'Your account is visible again.',
   // ── Vérifier mon e-mail / coller le code ──
   'Vérifier mon e-mail': 'Verify my email',
   'E-mail vérifié': 'Email verified',
