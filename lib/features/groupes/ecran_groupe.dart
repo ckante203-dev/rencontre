@@ -659,7 +659,9 @@ class _EcranGroupeState extends State<EcranGroupe> {
         onBackgroundImageError:
             (m?.photoUrl ?? '').isNotEmpty ? (_, __) {} : null,
         child: (m?.photoUrl ?? '').isEmpty
-            ? Text((m?.nom ?? '?').isEmpty ? '?' : m!.nom[0].toUpperCase(),
+            // ✅ Membre introuvable (parti, compte supprimé) : « ? » au lieu
+            // d'un plantage (m! sur null)
+            ? Text((m?.nom ?? '').isEmpty ? '?' : m!.nom[0].toUpperCase(),
                 style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,

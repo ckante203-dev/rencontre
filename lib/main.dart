@@ -130,8 +130,27 @@ void main() async {
       erreur.toString().contains('Failed host lookup') ||
       erreur.toString().contains('Connection closed') ||
       erreur.toString().contains('Connection reset');
+  // Situations normales qui ne sont pas des bugs de l'app : permission
+  // refusée (appareil photo), limite Google des notifications, image du
+  // cache effacée, base de données lente, connexion interrompue.
+  bool situationNormale(Object erreur) {
+    final t = erreur.toString();
+    return t.contains('camera_access_denied') ||
+        t.contains('photo_access_denied') ||
+        t.contains('TOO_MANY_REGISTRATIONS') ||
+        t.contains('libCachedImageData') ||
+        t.contains('Invalid image data') ||
+        t.contains('statement timeout') ||
+        t.contains('ClientException') ||
+        t.contains('HandshakeException') ||
+        t.contains('connection abort') ||
+        t.contains('closed socket');
+  }
+
   bool nonFatale(Object erreur, String? origine) =>
-      imageIntrouvable(erreur, origine) || erreurReseau(erreur);
+      imageIntrouvable(erreur, origine) ||
+      erreurReseau(erreur) ||
+      situationNormale(erreur);
   FlutterError.onError = (details) {
     if (nonFatale(details.exception, details.library)) {
       FirebaseCrashlytics.instance.recordFlutterError(details);
@@ -264,9 +283,11 @@ Future<void> _setupFirebaseMessaging() async {
 
   messaging.requestPermission(alert: true, badge: true, sound: true);
 
+  // ✅ getToken peut échouer (TOO_MANY_REGISTRATIONS, services Google
+  // absents) : ce n'est pas un plantage, on réessaiera au prochain lancement
   messaging.getToken().then((token) {
     if (token != null) _saveFcmToken(token);
-  });
+  }).catchError((_) {});
 
   messaging.onTokenRefresh.listen(_saveFcmToken);
 

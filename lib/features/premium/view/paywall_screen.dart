@@ -40,7 +40,12 @@ class PaywallScreen extends StatefulWidget {
 }
 
 class _PaywallScreenState extends State<PaywallScreen> {
-  final rc = Get.find<RevenueCatService>();
+  // ✅ Le service d'achat est créé juste après le lancement : s'il n'est pas
+  // encore prêt, on l'attend (avant : plantage « RevenueCatService not found »)
+  RevenueCatService? _rc = Get.isRegistered<RevenueCatService>()
+      ? Get.find<RevenueCatService>()
+      : null;
+  RevenueCatService get rc => _rc!;
   Package? _choisie;
   final _scroll = ScrollController();
   bool _enBas = false; // flèche « encore du contenu » masquée en bas
@@ -62,6 +67,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
   void initState() {
     super.initState();
     _scroll.addListener(_majFleche);
+    _attendreService();
+  }
+
+  Future<void> _attendreService() async {
+    for (var i = 0; _rc == null && i < 40; i++) {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      if (Get.isRegistered<RevenueCatService>()) {
+        setState(() => _rc = Get.find<RevenueCatService>());
+      }
+    }
+    if (_rc == null) return;
     // ✅ Si le chargement des offres avait échoué au démarrage, le paywall
     // tournait indéfiniment : on relance le chargement à l'ouverture.
     if (rc.formulesPremium.isEmpty) rc.fetchOfferings();
@@ -84,203 +101,231 @@ class _PaywallScreenState extends State<PaywallScreen> {
         backgroundColor: AppColors.bg,
         elevation: 0,
       ),
-      body: Obx(() {
-        final packages = rc.formulesPremium;
-        if (packages.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final populaire = _populaire(packages);
-        // Par défaut : la formule 1 semaine (la plus courte, en premier)
-        final choisie =
-            packages.contains(_choisie) ? _choisie! : packages.first;
-        WidgetsBinding.instance.addPostFrameCallback((_) => _majFleche());
-        // Référence pour calculer l'économie : la formule la plus courte.
-        final reference = packages.first.storeProduct;
+      body: _rc == null
+          ? const Center(child: CircularProgressIndicator())
+          : Obx(() {
+              final packages = rc.formulesPremium;
+              if (packages.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final populaire = _populaire(packages);
+              // Par défaut : la formule 1 semaine (la plus courte, en premier)
+              final choisie =
+                  packages.contains(_choisie) ? _choisie! : packages.first;
+              WidgetsBinding.instance.addPostFrameCallback((_) => _majFleche());
+              // Référence pour calculer l'économie : la formule la plus courte.
+              final reference = packages.first.storeProduct;
 
-        return Column(
-          children: [
-            Expanded(
-              child: Stack(children: [
-                ListView(
-                  controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                  children: [
-                    // ─── En-tête : ta photo qui rayonne ──────────
-                    Center(
-                      child: AvatarRayonnant(
-                        photoUrl: Get.isRegistered<HomeController>()
-                            ? Get.find<HomeController>().myProfile?.photoUrl
-                            : null,
-                        actif: true,
-                        icone: Icons.workspace_premium_rounded,
-                      ),
-                    ),
-                    Text('Zamu Premium'.tr,
-                        textAlign: TextAlign.center, style: _T.titre()),
-                    const SizedBox(height: 4),
-                    Text('Débloque tout le potentiel de Zamu'.tr,
-                        textAlign: TextAlign.center, style: _T.sousTitre()),
-                    const SizedBox(height: 24),
-
-                    // ─── Avantages ───────────────────────────────
-                    _BenefitTile(
-                      icon: Icons.remove_red_eye_rounded,
-                      iconColor: _icone(const Color(0xFF1D8FE1), AppColors.accent),
-                      title: 'Vois qui t\'a vu'.tr,
-                      subtitle:
-                          'Découvre l\'identité de toutes les personnes qui ont consulté ton profil'.tr,
-                    ),
-                    _BenefitTile(
-                      icon: Icons.favorite_rounded,
-                      iconColor: _icone(const Color(0xFFE8508E), AppColors.accent),
-                      title: 'Vois qui t\'a liké'.tr,
-                      subtitle:
-                          'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi'.tr,
-                    ),
-                    _BenefitTile(
-                      icon: Icons.people_alt_rounded,
-                      iconColor: _icone(const Color(0xFF22A55B), AppColors.accent2),
-                      title: 'Beaucoup plus de profils'.tr,
-                      subtitle:
-                          'Accède à un nombre de profils bien plus large que la version gratuite'.tr,
-                    ),
-                    _BenefitTile(
-                      icon: Icons.location_city_rounded,
-                      iconColor: _icone(const Color(0xFF8B5CF6), AppColors.accent2),
-                      title: 'Explore une autre ville'.tr,
-                      subtitle:
-                          'Découvre les profils d\'Abidjan, Bouaké ou ailleurs avant d\'y aller'.tr,
-                    ),
-                    _BenefitTile(
-                      icon: Icons.bolt_rounded,
-                      iconColor: const Color(0xFFFFA500),
-                      title: '1 Boost offert chaque mois'.tr,
-                      subtitle:
-                          'Ton profil passe en tête de l\'Accueil pendant 1 heure'.tr,
-                    ),
-                    _BenefitTile(
-                      icon: Icons.visibility_off_rounded,
-                      iconColor: _icone(const Color(0xFF64748B), AppColors.accent),
-                      title: 'Mode fantôme sur la carte'.tr,
-                      subtitle: 'Vois les autres sans apparaître toi-même'.tr,
-                    ),
-                    // Seulement si les propositions sont ouvertes (sinon on
-                    // promettrait un avantage qui n'existe pas)
-                    if (propositionsOuvertes)
-                      _BenefitTile(
-                        icon: Icons.event_rounded,
-                        iconColor: _icone(const Color(0xFF0EA5A4), AppColors.accent2),
-                        title: 'Propose tes événements'.tr,
-                        subtitle:
-                            'Soirées, sorties, rencontres : crée ton événement'.tr,
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // ─── Comparatif Gratuit / Premium ────────────
-                    const _Comparatif(),
-                    const SizedBox(height: 20),
-
-                    // ─── Formules ────────────────────────────────
-                    Text('CHOISIS TA FORMULE'.tr, style: _T.section()),
-                    const SizedBox(height: 12),
-                    ...packages.map((pkg) => _FormuleTile(
-                          package: pkg,
-                          reference: reference,
-                          choisie: identical(pkg, choisie),
-                          populaire: identical(pkg, populaire),
-                          onTap: () => setState(() => _choisie = pkg),
-                        )),
-
-                    const SizedBox(height: 4),
-                    Center(
-                      child: TextButton(
-                        onPressed: rc.isProcessing.value
-                            ? null
-                            : () async {
-                                final restored = await rc.restorePurchases();
-                                if (restored && context.mounted) {
-                                  Navigator.of(context).pop();
-                                }
-                              },
-                        child: Text(
-                          'Restaurer mes achats'.tr,
-                          style:
-                              _T.detail().copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                // ─── Flèche : il reste du contenu plus bas ───
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 10,
-                  child: IgnorePointer(
-                    ignoring: _enBas,
-                    child: AnimatedOpacity(
-                      opacity: _enBas ? 0 : 1,
-                      duration: const Duration(milliseconds: 250),
-                      child: Center(
-                        child: GestureDetector(
-                          onTap: () => _scroll.animateTo(
-                              _scroll.position.maxScrollExtent,
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeOutCubic),
-                          child: const _FlecheRebond(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ]),
-            ),
-
-            // ─── Bouton d'achat ──────────────────────────────
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                  20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
-              decoration: BoxDecoration(
-                color: AppColors.bg,
-                border: Border(top: BorderSide(color: AppColors.border)),
-              ),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                GestureDetector(
-                  onTap: rc.isProcessing.value
-                      ? null
-                      : () => _handlePurchase(context, choisie),
-                  child: Container(
-                    width: double.infinity,
-                    height: 54,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.gradientPink,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: rc.isProcessing.value
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2.5, color: AppColors.surAccent))
-                        : Text(
-                            'Continuer · @p'.trParams({'p': (RevenueCatService.libellePrix(choisie.storeProduct)).toString()}),
-                            style: _T.ligne().copyWith(color: AppColors.surAccent),
+              return Column(
+                children: [
+                  Expanded(
+                    child: Stack(children: [
+                      ListView(
+                        controller: _scroll,
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                        children: [
+                          // ─── En-tête : ta photo qui rayonne ──────────
+                          Center(
+                            child: AvatarRayonnant(
+                              photoUrl: Get.isRegistered<HomeController>()
+                                  ? Get.find<HomeController>()
+                                      .myProfile
+                                      ?.photoUrl
+                                  : null,
+                              actif: true,
+                              icone: Icons.workspace_premium_rounded,
+                            ),
                           ),
+                          Text('Zamu Premium'.tr,
+                              textAlign: TextAlign.center, style: _T.titre()),
+                          const SizedBox(height: 4),
+                          Text('Débloque tout le potentiel de Zamu'.tr,
+                              textAlign: TextAlign.center,
+                              style: _T.sousTitre()),
+                          const SizedBox(height: 24),
+
+                          // ─── Avantages ───────────────────────────────
+                          _BenefitTile(
+                            icon: Icons.remove_red_eye_rounded,
+                            iconColor: _icone(
+                                const Color(0xFF1D8FE1), AppColors.accent),
+                            title: 'Vois qui t\'a vu'.tr,
+                            subtitle:
+                                'Découvre l\'identité de toutes les personnes qui ont consulté ton profil'
+                                    .tr,
+                          ),
+                          _BenefitTile(
+                            icon: Icons.favorite_rounded,
+                            iconColor: _icone(
+                                const Color(0xFFE8508E), AppColors.accent),
+                            title: 'Vois qui t\'a liké'.tr,
+                            subtitle:
+                                'Ne passe plus à côté d\'un match — vois qui s\'intéresse déjà à toi'
+                                    .tr,
+                          ),
+                          _BenefitTile(
+                            icon: Icons.people_alt_rounded,
+                            iconColor: _icone(
+                                const Color(0xFF22A55B), AppColors.accent2),
+                            title: 'Beaucoup plus de profils'.tr,
+                            subtitle:
+                                'Accède à un nombre de profils bien plus large que la version gratuite'
+                                    .tr,
+                          ),
+                          _BenefitTile(
+                            icon: Icons.location_city_rounded,
+                            iconColor: _icone(
+                                const Color(0xFF8B5CF6), AppColors.accent2),
+                            title: 'Explore une autre ville'.tr,
+                            subtitle:
+                                'Découvre les profils d\'Abidjan, Bouaké ou ailleurs avant d\'y aller'
+                                    .tr,
+                          ),
+                          _BenefitTile(
+                            icon: Icons.bolt_rounded,
+                            iconColor: const Color(0xFFFFA500),
+                            title: '1 Boost offert chaque mois'.tr,
+                            subtitle:
+                                'Ton profil passe en tête de l\'Accueil pendant 1 heure'
+                                    .tr,
+                          ),
+                          _BenefitTile(
+                            icon: Icons.visibility_off_rounded,
+                            iconColor: _icone(
+                                const Color(0xFF64748B), AppColors.accent),
+                            title: 'Mode fantôme sur la carte'.tr,
+                            subtitle:
+                                'Vois les autres sans apparaître toi-même'.tr,
+                          ),
+                          // Seulement si les propositions sont ouvertes (sinon on
+                          // promettrait un avantage qui n'existe pas)
+                          if (propositionsOuvertes)
+                            _BenefitTile(
+                              icon: Icons.event_rounded,
+                              iconColor: _icone(
+                                  const Color(0xFF0EA5A4), AppColors.accent2),
+                              title: 'Propose tes événements'.tr,
+                              subtitle:
+                                  'Soirées, sorties, rencontres : crée ton événement'
+                                      .tr,
+                            ),
+
+                          const SizedBox(height: 20),
+
+                          // ─── Comparatif Gratuit / Premium ────────────
+                          const _Comparatif(),
+                          const SizedBox(height: 20),
+
+                          // ─── Formules ────────────────────────────────
+                          Text('CHOISIS TA FORMULE'.tr, style: _T.section()),
+                          const SizedBox(height: 12),
+                          ...packages.map((pkg) => _FormuleTile(
+                                package: pkg,
+                                reference: reference,
+                                choisie: identical(pkg, choisie),
+                                populaire: identical(pkg, populaire),
+                                onTap: () => setState(() => _choisie = pkg),
+                              )),
+
+                          const SizedBox(height: 4),
+                          Center(
+                            child: TextButton(
+                              onPressed: rc.isProcessing.value
+                                  ? null
+                                  : () async {
+                                      final restored =
+                                          await rc.restorePurchases();
+                                      if (restored && context.mounted) {
+                                        Navigator.of(context).pop();
+                                      }
+                                    },
+                              child: Text(
+                                'Restaurer mes achats'.tr,
+                                style: _T
+                                    .detail()
+                                    .copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // ─── Flèche : il reste du contenu plus bas ───
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 10,
+                        child: IgnorePointer(
+                          ignoring: _enBas,
+                          child: AnimatedOpacity(
+                            opacity: _enBas ? 0 : 1,
+                            duration: const Duration(milliseconds: 250),
+                            child: Center(
+                              child: GestureDetector(
+                                onTap: () => _scroll.animateTo(
+                                    _scroll.position.maxScrollExtent,
+                                    duration: const Duration(milliseconds: 500),
+                                    curve: Curves.easeOutCubic),
+                                child: const _FlecheRebond(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Renouvellement automatique. Résiliable à tout moment dans Google Play.'.tr,
-                  textAlign: TextAlign.center,
-                  style: _T.detail().copyWith(fontSize: 11),
-                ),
-              ]),
-            ),
-          ],
-        );
-      }),
+
+                  // ─── Bouton d'achat ──────────────────────────────
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                        20, 12, 20, MediaQuery.of(context).padding.bottom + 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      border: Border(top: BorderSide(color: AppColors.border)),
+                    ),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      GestureDetector(
+                        onTap: rc.isProcessing.value
+                            ? null
+                            : () => _handlePurchase(context, choisie),
+                        child: Container(
+                          width: double.infinity,
+                          height: 54,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.gradientPink,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: rc.isProcessing.value
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: AppColors.surAccent))
+                              : Text(
+                                  'Continuer · @p'.trParams({
+                                    'p': (RevenueCatService.libellePrix(
+                                            choisie.storeProduct))
+                                        .toString()
+                                  }),
+                                  style: _T
+                                      .ligne()
+                                      .copyWith(color: AppColors.surAccent),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Renouvellement automatique. Résiliable à tout moment dans Google Play.'
+                            .tr,
+                        textAlign: TextAlign.center,
+                        style: _T.detail().copyWith(fontSize: 11),
+                      ),
+                    ]),
+                  ),
+                ],
+              );
+            }),
     );
   }
 
@@ -339,7 +384,9 @@ class _FormuleTile extends StatelessWidget {
         .round()
         .toString()
         .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ' ');
-    return devise == 'XOF' ? '@n FCFA'.trParams({'n': n.toString()}) : '$n $devise';
+    return devise == 'XOF'
+        ? '@n FCFA'.trParams({'n': n.toString()})
+        : '$n $devise';
   }
 
   @override
@@ -415,13 +462,13 @@ class _FormuleTile extends StatelessWidget {
                     Text(
                         '🎁 @n @unite gratuits'.trParams({
                           'n': '${p.introductoryPrice!.periodNumberOfUnits}',
-                          'unite': p.introductoryPrice!.periodUnit ==
-                                  PeriodUnit.week
-                              ? 'semaine(s)'.tr
-                              : p.introductoryPrice!.periodUnit ==
-                                      PeriodUnit.month
-                                  ? 'mois'.tr
-                                  : 'jours'.tr,
+                          'unite':
+                              p.introductoryPrice!.periodUnit == PeriodUnit.week
+                                  ? 'semaine(s)'.tr
+                                  : p.introductoryPrice!.periodUnit ==
+                                          PeriodUnit.month
+                                      ? 'mois'.tr
+                                      : 'jours'.tr,
                         }),
                         style: _T.detail().copyWith(
                             color: AppColors.accent,
@@ -430,7 +477,9 @@ class _FormuleTile extends StatelessWidget {
                   if (parSemaine != null && jours > 7) ...[
                     const SizedBox(height: 3),
                     Text(
-                      'soit @p / semaine'.trParams({'p': (_montant(parSemaine, p.currencyCode)).toString()}),
+                      'soit @p / semaine'.trParams({
+                        'p': (_montant(parSemaine, p.currencyCode)).toString()
+                      }),
                       style: _T.detail(),
                     ),
                   ],
