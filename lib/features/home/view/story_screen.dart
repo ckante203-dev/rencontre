@@ -3225,7 +3225,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             colors: c.$4),
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Stack(children: [
+                      child: Stack(clipBehavior: Clip.none, children: [
                         Row(children: [
                           Text(c.$2, style: const TextStyle(fontSize: 28)),
                           const SizedBox(width: 8),
@@ -3239,10 +3239,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                     fontWeight: FontWeight.w800)),
                           ),
                         ]),
+                        // Badge au-dessus de l'émoji (ne cache pas le titre)
                         if (c.$5)
                           Positioned(
-                            top: 6,
-                            right: 0,
+                            top: 4,
+                            left: -4,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
