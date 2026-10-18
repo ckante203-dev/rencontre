@@ -118,12 +118,46 @@ serve(async (req) => {
       return new Response("Missing fields", { status: 400 });
     }
 
+    // ── Anti-doublon ──────────────────────────────────────────────────
+    // Un membre recevait de nouveau la notification d'un message auquel
+    // il avait déjà répondu : un message MODIFIÉ (passé « distribué » /
+    // « lu », réaction…) ne doit jamais renvoyer de notification.
+    const ignorer = (raison: string) => {
+      console.log(`⏭️ Pas de notification (${raison}) :`, record.id ?? "?");
+      return new Response(`ignoré : ${raison}`, { status: 200 });
+    };
+    if ((body.type && body.type !== "INSERT") || body.old_record) {
+      return ignorer("modification, pas un nouveau message");
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const saRaw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!;
     
     const sa = JSON.parse(saRaw);
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    if (record.id) {
+      // État ACTUEL du message (l'appel a pu arriver en retard)
+      const { data: actuel } = await supabase.from("messages")
+        .select("status, read_at, created_at")
+        .eq("id", record.id)
+        .maybeSingle();
+      if (!actuel) return ignorer("message supprimé");
+      if (actuel.read_at || actuel.status === "read") {
+        return ignorer("déjà lu");
+      }
+      const cree = Date.parse(actuel.created_at ?? record.created_at ?? "");
+      if (!Number.isNaN(cree) && Date.now() - cree > 10 * 60 * 1000) {
+        return ignorer("message de plus de 10 min");
+      }
+      // Une seule notification par message (SQL 081). Table absente :
+      // on continue comme avant.
+      const { error: dejaEnvoye } = await supabase
+        .from("push_messages_envoyes")
+        .insert({ message_id: record.id });
+      if (dejaEnvoye?.code === "23505") return ignorer("déjà notifié");
+    }
 
     const [{ data: conv }, accessToken] = await Promise.all([
       supabase.from("conversations")
@@ -139,6 +173,17 @@ serve(async (req) => {
     }
 
     const recipientId = conv.user1_id === sender_id ? conv.user2_id : conv.user1_id;
+
+    // Le destinataire a déjà répondu après ce message : il l'a vu
+    if (record.created_at) {
+      const { data: reponse } = await supabase.from("messages")
+        .select("id")
+        .eq("conversation_id", conversation_id)
+        .eq("sender_id", recipientId)
+        .gt("created_at", record.created_at)
+        .limit(1);
+      if (reponse && reponse.length) return ignorer("destinataire a déjà répondu");
+    }
 
     const [{ data: recipient }, { data: sender }] = await Promise.all([
       // select("*") : les colonnes de préférences peuvent manquer sur
