@@ -2718,8 +2718,15 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               child: Stack(fit: StackFit.expand, children: [
                                 AvecFiltre(
                                     filtre: _filtre,
-                                    child: Image.file(File(_previewPath!),
-                                        fit: BoxFit.contain)),
+                                    child: (_visages != null &&
+                                            EffetVisage.estDeformation(
+                                                _effetVisage))
+                                        ? PhotoDeformee(
+                                            chemin: _previewPath!,
+                                            resultat: _visages!,
+                                            effet: _effetVisage)
+                                        : Image.file(File(_previewPath!),
+                                            fit: BoxFit.contain)),
                                 if (_visages != null && _effetVisage != 'aucun')
                                   CoucheEffetsVisage(
                                       resultat: _visages!,
