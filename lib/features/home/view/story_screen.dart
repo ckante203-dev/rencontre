@@ -2491,9 +2491,32 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 fontWeight: FontWeight.w800)),
         leading: IconButton(
             icon: const Icon(Icons.close_rounded, color: Colors.white),
-            onPressed: () {
+            onPressed: () async {
               if (_textMode) {
                 setState(() => _textMode = false);
+              } else if (_previewPath != null) {
+                final ok = await Get.dialog<bool>(AlertDialog(
+                  backgroundColor: const Color(0xFF1C1C1E),
+                  title: Text(
+                      _isVideo
+                          ? 'Abandonner cette vidéo ?'.tr
+                          : 'Abandonner cette photo ?'.tr,
+                      style: const TextStyle(color: Colors.white)),
+                  content: Text('Tu reviens à la caméra.'.tr,
+                      style: const TextStyle(color: Colors.white70)),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Get.back(result: false),
+                        child: Text('Annuler'.tr)),
+                    TextButton(
+                        onPressed: () => Get.back(result: true),
+                        child: Text('Abandonner'.tr,
+                            style: const TextStyle(color: Color(0xFFFF4D6A)))),
+                  ],
+                ));
+                if (ok == true && mounted) {
+                  setState(() => _previewPath = null);
+                }
               } else {
                 Get.back(result: false);
               }
@@ -2825,6 +2848,60 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               ),
             ),
 
+          // ── Outils à droite (comme Snap) : Rencontre en tête ──
+          if (!_editionLegende && !_deplacementSticker && _texteEdite == null)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: SafeArea(
+                bottom: false,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  _OutilVertical(
+                    icon: Icons.favorite_rounded,
+                    label: 'Rencontre'.tr,
+                    vedette: true,
+                    actif: _stickers.any((x) => x.estRencontre),
+                    onTap: _ajouterStickerRencontre,
+                  ),
+                  _OutilVertical(
+                    icon: Icons.text_fields_rounded,
+                    label: 'Texte'.tr,
+                    actif: _stickers.any((x) => x.estTexte),
+                    onTap: _ouvrirTexte,
+                  ),
+                  _OutilVertical(
+                    icon: Icons.emoji_emotions_rounded,
+                    label: 'Stickers'.tr,
+                    actif: _stickers.any((x) => !x.estTexte && !x.estRencontre),
+                    onTap: _ajouterSticker,
+                  ),
+                  _OutilVertical(
+                    icon: Icons.auto_awesome_rounded,
+                    label: 'Filtres'.tr,
+                    actif: _filtre != 'normal' || _bandeauFiltres,
+                    onTap: () => setState(() {
+                      _bandeauFiltres = !_bandeauFiltres;
+                      if (_bandeauFiltres) _bandeauVisage = false;
+                    }),
+                  ),
+                  if (!_isVideo)
+                    _OutilVertical(
+                      icon: Icons.face_retouching_natural_rounded,
+                      label: _detectionVisage ? '…' : 'Visage'.tr,
+                      actif: _effetVisage != 'aucun' || _bandeauVisage,
+                      onTap: _ouvrirEffetsVisage,
+                    ),
+                  if (!_isVideo && !_cadrage.value.isIdentity())
+                    _OutilVertical(
+                      icon: Icons.crop_free_rounded,
+                      label: 'Recadrer'.tr,
+                      onTap: () =>
+                          setState(() => _cadrage.value = Matrix4.identity()),
+                    ),
+                ]),
+              ),
+            ),
+
           // ── Barre du bas ──
           if (!_editionLegende && !_deplacementSticker && _texteEdite == null)
             Positioned(
@@ -2854,64 +2931,6 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               ),
                               const SizedBox(height: 10),
                             ],
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(children: [
-                              _BoutonEditeur(
-                                icon: Icons.text_fields_rounded,
-                                label: 'Texte'.tr,
-                                actif: _stickers.any((s) => s.estTexte),
-                                onTap: _ouvrirTexte,
-                              ),
-                              const SizedBox(width: 8),
-                              _BoutonEditeur(
-                                icon: Icons.emoji_emotions_rounded,
-                                label: 'Stickers'.tr,
-                                actif: _stickers.isNotEmpty,
-                                onTap: _ajouterSticker,
-                              ),
-                              const SizedBox(width: 8),
-                              _BoutonEditeur(
-                                icon: Icons.favorite_rounded,
-                                label: 'Rencontre'.tr,
-                                actif: _stickers.any((x) => x.estRencontre),
-                                onTap: _ajouterStickerRencontre,
-                              ),
-                              if (!_isVideo) ...[
-                                const SizedBox(width: 8),
-                                _BoutonEditeur(
-                                  icon: Icons.face_retouching_natural_rounded,
-                                  label: _detectionVisage ? '…' : 'Visage'.tr,
-                                  actif: _effetVisage != 'aucun' || _bandeauVisage,
-                                  onTap: _ouvrirEffetsVisage,
-                                ),
-                              ],
-                              const SizedBox(width: 8),
-                              _BoutonEditeur(
-                                icon: Icons.auto_awesome_rounded,
-                                label: 'Filtres'.tr,
-                                actif: _filtre != 'normal' || _bandeauFiltres,
-                                onTap: () => setState(
-                                    () => _bandeauFiltres = !_bandeauFiltres),
-                              ),
-                              if (!_isVideo &&
-                                  !_cadrage.value.isIdentity()) ...[
-                                const SizedBox(width: 8),
-                                _BoutonEditeur(
-                                  icon: Icons.crop_free_rounded,
-                                  label: 'Recadrer'.tr,
-                                  onTap: () => setState(() =>
-                                      _cadrage.value = Matrix4.identity()),
-                                ),
-                              ],
-                              const SizedBox(width: 8),
-                              _BoutonEditeur(
-                                icon: Icons.refresh_rounded,
-                                label: 'Reprendre'.tr,
-                                onTap: () =>
-                                    setState(() => _previewPath = null),
-                              ),
-                            ])),
                             if (_evenementEnCours != null) ...[
                               const SizedBox(height: 10),
                               _puceEvenement(_evenementEnCours!),
@@ -3376,54 +3395,60 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
 // ─── BOUTON DE L'ÉDITEUR ──────────────────────────────────────────
 
-class _BoutonEditeur extends StatelessWidget {
+/// Outil de la barre verticale de l'éditeur (icône ronde + petit nom).
+class _OutilVertical extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool actif;
+  final bool vedette; // 💘 Rencontre : dégradé Zamu
   final VoidCallback onTap;
-  const _BoutonEditeur(
-      {required this.icon,
-      required this.label,
-      required this.onTap,
-      this.actif = false});
+  const _OutilVertical({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.actif = false,
+    this.vedette = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-            color: actif ? CouleursMedia.accent.withOpacity(0.2) : Colors.black54,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: actif ? CouleursMedia.accent : Colors.white24)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: vedette
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)])
+                  : null,
+              color: vedette ? null : (actif ? Colors.white : Colors.black45),
+              border: Border.all(
+                  color: actif && vedette ? Colors.white : Colors.white24,
+                  width: actif && vedette ? 2 : 1),
+              boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black38)],
+            ),
+            child: Icon(icon,
+                size: 22,
+                color: vedette || !actif ? Colors.white : Colors.black),
+          ),
+          const SizedBox(height: 2),
           Text(label,
               style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  shadows: [Shadow(blurRadius: 4)])),
         ]),
       ),
     );
   }
 }
-
-/// Encodage JPEG hors du fil principal (pas de saccade à la publication).
-List<int> _encoderJpeg(Map<String, Object> m) {
-  final image = img.Image.fromBytes(
-    width: m['w'] as int,
-    height: m['h'] as int,
-    bytes: (m['rgba'] as Uint8List).buffer,
-    numChannels: 4,
-  );
-  return img.encodeJpg(image, quality: 85);
-}
-
-// ─── PUCE DE VISIBILITÉ ───────────────────────────────────────────
 
 class _VisibilityChip extends StatelessWidget {
   final IconData icon;
@@ -3564,3 +3589,16 @@ class _VideoPreviewState extends State<_VideoPreview> {
 }
 
 // ─── WIDGETS UTILITAIRES ─────────────────────────────────────────
+
+/// Encodage JPEG hors du fil principal (pas de saccade à la publication).
+List<int> _encoderJpeg(Map<String, Object> m) {
+  final image = img.Image.fromBytes(
+    width: m['w'] as int,
+    height: m['h'] as int,
+    bytes: (m['rgba'] as Uint8List).buffer,
+    numChannels: 4,
+  );
+  return img.encodeJpg(image, quality: 85);
+}
+
+// ─── PUCE DE VISIBILITÉ ───────────────────────────────────────────
