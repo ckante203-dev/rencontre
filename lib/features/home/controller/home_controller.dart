@@ -1273,6 +1273,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       legendeEchelle: (row['legende_echelle'] as num?)?.toDouble(),
       videoDebutMs: (row['video_debut_ms'] as num?)?.toInt(),
       videoFinMs: (row['video_fin_ms'] as num?)?.toInt(),
+      filtre: row['filtre'] as String?,
       stickers: StickerStory.listeDepuis(row['stickers']),
       isVideo: row['is_video'] ?? false,
       isSeen: viewedBy.contains(uid) || _viewedStoryIds.contains(row['id']),

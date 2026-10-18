@@ -22,6 +22,7 @@ import 'package:rencontre/features/evenements/evenement_model.dart';
 import 'package:rencontre/features/chat/view/sticker_sheet.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:rencontre/features/home/widget/camera_story.dart';
+import 'package:rencontre/features/home/widget/filtres_story.dart';
 import 'package:rencontre/features/home/view/ecran_amis_proches.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1340,7 +1341,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       return Center(
           child: AspectRatio(
               aspectRatio: _videoCtrl!.value.aspectRatio,
-              child: VideoPlayer(_videoCtrl!)));
+              child: AvecFiltre(
+                  filtre: s.filtre, child: VideoPlayer(_videoCtrl!))));
     }
     return CachedNetworkImage(
         imageUrl: s.mediaUrl,
@@ -1838,6 +1840,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   int? _texteEdite; // index du texte modifié, -1 = nouveau, null = aucun
   bool _surCorbeille = false;
 
+  // Filtre (filtres_story.dart) : choisi dans la caméra ou l'éditeur
+  String _filtre = 'normal';
+  bool _bandeauFiltres = false;
+
   bool _textMode = false;
   final _textCtrl = TextEditingController();
   Color _selectedBgColor = _textBgColors.first;
@@ -1933,10 +1939,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           ? EvenementsController.to.evenementEnCoursPourMoi
           : null;
 
-  void _setMedia(String chemin, bool video, [bool miroir = false]) =>
+  void _setMedia(String chemin, bool video,
+          [bool miroir = false, String filtre = 'normal']) =>
       setState(() {
         CameraStory.memoriserDernierMedia(chemin, video);
         _miroir = miroir && !video;
+        _filtre = filtre;
+        _bandeauFiltres = false;
         _stickers.clear();
         _stickerIds.clear();
         _previewPath = chemin;
@@ -2058,13 +2067,17 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     // Photo zoomée / recadrée : on publie exactement ce qui est à l'écran.
     var fichier = file;
     // Recadrée ou selfie en miroir : on publie exactement ce qui est affiché
-    if (!_isVideo && (!_cadrage.value.isIdentity() || _miroir)) {
+    final filtre = FiltreStory.parId(_filtre);
+    if (!_isVideo &&
+        (!_cadrage.value.isIdentity() || _miroir || !filtre.neutre)) {
       fichier = await _capturerCadrage() ?? file;
     }
 
     final evenement = _avecEvenement ? _evenementEnCours : null;
     final edition = <String, dynamic>{
       if (evenement != null) 'evenement_id': evenement.id,
+      // Vidéo : le filtre est appliqué à la lecture (stories.filtre, SQL 085)
+      if (_isVideo && !filtre.neutre) 'filtre': filtre.id,
       if (_stickers.isNotEmpty)
         'stickers': _stickers.map((s) => s.toJson()).toList(),
       if (safeCaption != null) ...{
@@ -2617,7 +2630,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         return Stack(fit: StackFit.expand, children: [
           // ── Média : photo zoomable / vidéo raccourcie ──
           if (_isVideo)
-            _VideoPreview(
+            AvecFiltre(
+             filtre: _filtre,
+             child: _VideoPreview(
               path: _previewPath!,
               debut: _decoupe == null
                   ? null
@@ -2630,7 +2645,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 final sec = d.inMilliseconds / 1000;
                 _decoupe ??= RangeValues(0, sec.clamp(0, _dureeMaxStory));
               }),
-            )
+            ))
           else
             RepaintBoundary(
               key: _photoKey,
@@ -2644,8 +2659,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       child:
                           Transform.flip(
                               flipX: _miroir,
-                              child: Image.file(File(_previewPath!),
-                                  fit: BoxFit.contain))),
+                              child: AvecFiltre(
+                                  filtre: _filtre,
+                                  child: Image.file(File(_previewPath!),
+                                      fit: BoxFit.contain)))),
                 ),
               ),
             ),
@@ -2796,6 +2813,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (_isVideo && _decoupe != null) _barreDecoupe(),
+                            if (_bandeauFiltres) ...[
+                              BandeauFiltres(
+                                filtreActif: _filtre,
+                                onChoix: (id) => setState(() => _filtre = id),
+                                vignette: _vignetteFiltre,
+                              ),
+                              const SizedBox(height: 10),
+                            ],
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Row(children: [
@@ -2811,6 +2836,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                 label: 'Stickers'.tr,
                                 actif: _stickers.isNotEmpty,
                                 onTap: _ajouterSticker,
+                              ),
+                              const SizedBox(width: 8),
+                              _BoutonEditeur(
+                                icon: Icons.auto_awesome_rounded,
+                                label: 'Filtres'.tr,
+                                actif: _filtre != 'normal' || _bandeauFiltres,
+                                onTap: () => setState(
+                                    () => _bandeauFiltres = !_bandeauFiltres),
                               ),
                               if (!_isVideo &&
                                   !_cadrage.value.isIdentity()) ...[
@@ -2840,6 +2873,27 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                         )))),
         ]);
       });
+
+  Widget _vignetteFiltre(FiltreStory f) => AvecFiltre(
+        filtre: f.id,
+        child: _isVideo || _previewPath == null
+            ? const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF6B3E26),
+                      Color(0xFFB07A4F),
+                      Color(0xFF2E6F8E),
+                    ],
+                  ),
+                ),
+                child: SizedBox.expand(),
+              )
+            : Image.file(File(_previewPath!),
+                fit: BoxFit.cover, cacheWidth: 160),
+      );
 
   void _ouvrirTexte([int index = -1]) =>
       setState(() => _texteEdite = index);

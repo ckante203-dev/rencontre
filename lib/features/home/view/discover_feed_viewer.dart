@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/filtres_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -646,7 +647,8 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
               ? (_videoReady && _videoCtrl != null
                   ? AspectRatio(
                       aspectRatio: _videoCtrl!.value.aspectRatio,
-                      child: VideoPlayer(_videoCtrl!))
+                      child: AvecFiltre(
+                          filtre: s.filtre, child: VideoPlayer(_videoCtrl!)))
                   : const CircularProgressIndicator(
                       color: Colors.white, strokeWidth: 2))
               : CachedNetworkImage(

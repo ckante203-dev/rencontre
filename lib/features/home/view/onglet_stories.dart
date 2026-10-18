@@ -413,6 +413,7 @@ class _CarteStory extends StatelessWidget {
               id: s.id,
               url: s.mediaUrl,
               debutMs: s.videoDebutMs,
+              filtre: s.filtre,
               vignette: Stack(fit: StackFit.expand, children: [
                 _apercu(s, texte: 15),
                 const Center(

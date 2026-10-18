@@ -8,11 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:rencontre/features/home/widget/filtres_story.dart';
 
 // ─── CAMÉRA ZAMU (ajout de story façon Snap / Instagram) ───────────
 // Plein écran dans l'app : toucher = photo, maintenir = vidéo (30 s max,
 // anneau de progression), pincer = zoom, double-toucher = retourner,
-// flash. Vignette galerie à gauche, onglets TEXTE | STORY en bas.
+// flash, glisser à gauche / à droite = filtre (filtres_story.dart).
+// Vignette galerie à gauche, onglets TEXTE | STORY en bas.
 
 class CameraStory extends StatefulWidget {
   /// Dernière photo / vidéo prise ou choisie dans Zamu (vignette galerie).
@@ -22,8 +24,10 @@ class CameraStory extends StatefulWidget {
       GetStorage().write(cleDernierMedia, {'chemin': chemin, 'video': video});
 
   /// Photo ou vidéo prise : chemin du fichier. [miroir] = selfie, à
-  /// afficher et publier comme dans le miroir de l'aperçu.
-  final void Function(String chemin, bool video, bool miroir) onMedia;
+  /// afficher et publier comme dans le miroir de l'aperçu. [filtre] =
+  /// identifiant du filtre choisi (FiltreStory).
+  final void Function(String chemin, bool video, bool miroir, String filtre)
+      onMedia;
   final VoidCallback onGalerie;
   final VoidCallback onTexte;
   final VoidCallback onFermer;
@@ -58,6 +62,12 @@ class _CameraStoryState extends State<CameraStory>
   File? _miniature; // dernière photo / vidéo prise ou choisie dans Zamu
   bool _miniatureVideo = false;
   double _zoom = 1, _zoomMin = 1, _zoomMax = 1, _zoomDepart = 1;
+  // Filtre choisi (gardé pendant la session, comme la caméra)
+  static int _filtreMemorise = 0;
+  int _filtre = _filtreMemorise;
+  int _changementsFiltre = 0; // relance l'affichage du nom
+  double _glisse = 0; // déplacement horizontal à un doigt
+  bool _unDoigt = true;
   late final AnimationController _progression =
       AnimationController(vsync: this, duration: _dureeMax)
         ..addStatusListener((s) {
@@ -200,7 +210,9 @@ class _CameraStoryState extends State<CameraStory>
       final f = await c.takePicture();
       // Selfie : affichée tout de suite en miroir, retournée à la
       // publication (comme Snap / Instagram)
-      if (mounted) widget.onMedia(f.path, false, _avant);
+      if (mounted) {
+        widget.onMedia(f.path, false, _avant, FiltreStory.tous[_filtre].id);
+      }
     } catch (e) {
       debugPrint('takePicture : $e');
     } finally {
@@ -259,7 +271,9 @@ class _CameraStoryState extends State<CameraStory>
     try {
       final f = await c.stopVideoRecording();
       if (_flash) await c.setFlashMode(FlashMode.always);
-      if (mounted) widget.onMedia(f.path, true, false);
+      if (mounted) {
+        widget.onMedia(f.path, true, false, FiltreStory.tous[_filtre].id);
+      }
     } catch (e) {
       debugPrint('stopVideoRecording : $e');
     }
@@ -342,6 +356,16 @@ class _CameraStoryState extends State<CameraStory>
         ),
       );
 
+  void _changerFiltre(int sens) {
+    final n = FiltreStory.tous.length;
+    setState(() {
+      _filtre = (_filtre + sens + n) % n;
+      _filtreMemorise = _filtre;
+      _changementsFiltre++;
+    });
+    HapticFeedback.selectionClick();
+  }
+
   String _chrono() {
     final s = (_progression.value * _dureeMax.inSeconds).floor();
     return '0:${s.toString().padLeft(2, '0')}';
@@ -353,14 +377,40 @@ class _CameraStoryState extends State<CameraStory>
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(fit: StackFit.expand, children: [
-        // ── Aperçu : pincer = zoom, double-toucher = retourner ──
+        // ── Aperçu : pincer = zoom, double-toucher = retourner,
+        // glisser à gauche / à droite = filtre ──
         GestureDetector(
           onDoubleTap: _retourner,
-          onScaleStart: (_) => _zoomDepart = _zoom,
-          onScaleUpdate: (d) {
-            if (d.pointerCount >= 2) _zoomer(_zoomDepart * d.scale);
+          onScaleStart: (d) {
+            _zoomDepart = _zoom;
+            _glisse = 0;
+            _unDoigt = d.pointerCount <= 1;
           },
-          child: _apercu(ecran),
+          onScaleUpdate: (d) {
+            if (d.pointerCount >= 2) {
+              _unDoigt = false;
+              _zoomer(_zoomDepart * d.scale);
+            } else {
+              _glisse += d.focalPointDelta.dx;
+            }
+          },
+          onScaleEnd: (d) {
+            if (!_unDoigt || _enregistre) return;
+            final vitesse = d.velocity.pixelsPerSecond.dx;
+            if (_glisse.abs() > 60 || vitesse.abs() > 500) {
+              // Glisser vers la gauche = filtre suivant (comme Snap)
+              _changerFiltre((_glisse + vitesse / 10) < 0 ? 1 : -1);
+            }
+          },
+          child: AvecFiltre(
+              filtre: FiltreStory.tous[_filtre].id, child: _apercu(ecran)),
+        ),
+
+        // ── Nom du filtre (apparaît puis s'efface) ──
+        Center(
+          child: NomFiltre(
+              filtre: FiltreStory.tous[_filtre],
+              compteur: _changementsFiltre),
         ),
 
         // ── Haut : fermer, chrono, flash, retourner ──
@@ -416,6 +466,23 @@ class _CameraStoryState extends State<CameraStory>
             child: Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
+                // Filtre en cours (points) + rappel du geste
+                if (_pret && !_enregistre)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(children: [
+                      PointsFiltres(index: _filtre),
+                      if (!_aideVue)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text('Glisse pour changer de filtre'.tr,
+                              style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  shadows: [Shadow(blurRadius: 6)])),
+                        ),
+                    ]),
+                  ),
                 AnimatedOpacity(
                   opacity: _aideVue || !_pret ? 0 : 1,
                   duration: const Duration(milliseconds: 300),

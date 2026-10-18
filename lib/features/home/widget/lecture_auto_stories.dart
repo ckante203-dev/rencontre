@@ -1,3 +1,4 @@
+import 'package:rencontre/features/home/widget/filtres_story.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -77,12 +78,14 @@ class ApercuVideoAuto extends StatelessWidget {
   final String url;
   final int? debutMs;
   final Widget vignette;
+  final String? filtre;
   const ApercuVideoAuto({
     super.key,
     required this.id,
     required this.url,
     required this.vignette,
     this.debutMs,
+    this.filtre,
   });
 
   @override
@@ -92,7 +95,9 @@ class ApercuVideoAuto extends StatelessWidget {
       key: Key('lecture_auto_$id'),
       onVisibilityChanged: (i) => lecture.signaler(id, i.visibleFraction),
       child: Obx(() => lecture.active.value == id
-          ? _VideoMuette(url: url, debutMs: debutMs, vignette: vignette)
+          ? AvecFiltre(
+              filtre: filtre,
+              child: _VideoMuette(url: url, debutMs: debutMs, vignette: vignette))
           : vignette),
     );
   }

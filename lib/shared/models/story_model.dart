@@ -35,6 +35,8 @@ class StoryModel {
   final int? videoFinMs;
   // Stickers / emoji / GIF posés par l'auteur
   final List<StickerStory> stickers;
+  // Filtre d'une vidéo, appliqué à la lecture (stories.filtre, SQL 085)
+  final String? filtre;
 
   const StoryModel({
     required this.id,
@@ -63,6 +65,7 @@ class StoryModel {
     this.videoDebutMs,
     this.videoFinMs,
     this.stickers = const [],
+    this.filtre,
   });
 
   bool get legendePlacee => legendeX != null && legendeY != null;
@@ -138,6 +141,7 @@ class StoryModel {
       videoDebutMs: videoDebutMs,
       videoFinMs: videoFinMs,
       stickers: stickers,
+      filtre: filtre,
     );
   }
 }
