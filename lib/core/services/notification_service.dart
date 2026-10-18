@@ -628,6 +628,13 @@ class NotificationService {
 
     final convId = s('conversationId') ?? '';
     if (convId.isEmpty) return;
+    // La notification arrive par Google même quand le temps réel de
+    // Supabase s'est coupé sans prévenir : on resynchronise la liste des
+    // discussions (avant : notification reçue, message absent jusqu'à ce
+    // qu'on sorte et revienne).
+    if (Get.isRegistered<ChatListController>()) {
+      unawaited(Get.find<ChatListController>().synchroniser());
+    }
     // ✅ Conversation déjà ouverte à l'écran : le message s'affiche dans la
     // discussion, pas besoin de notification (avant : bannière + son à
     // chaque message de la personne avec qui on discute).

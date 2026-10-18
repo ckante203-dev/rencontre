@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/utils/compression_video.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
+import 'package:rencontre/features/home/view/home_screen.dart' show UnreadMessagesController;
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -194,6 +195,12 @@ class ChatListController extends GetxController {
         .addAll(List<String>.from(_box.read<List>(_cleNonLues) ?? []));
     loadConversations();
     _subscribeToMessages();
+    // Retour dans l'app : la connexion temps réel a souvent été coupée en
+    // arrière-plan sans que le canal le signale → resynchro + nouveau canal
+    _cycleDeVie = AppLifecycleListener(onResume: () {
+      if (_closed) return;
+      unawaited(synchroniser(reconnecter: true));
+    });
     // Recherche par pseudo : 400 ms après la dernière lettre tapée
     debounce(searchQuery, _chercherProfils,
         time: const Duration(milliseconds: 400));
@@ -515,6 +522,39 @@ class ChatListController extends GetxController {
     });
   }
 
+  AppLifecycleListener? _cycleDeVie;
+  DateTime? _derniereSynchro;
+
+  /// Recharge la liste (notification de message reçue, retour dans
+  /// l'app). [reconnecter] : recrée aussi le canal temps réel.
+  Future<void> synchroniser({bool reconnecter = false}) async {
+    if (_closed) return;
+    // Plusieurs notifications d'affilée : une seule resynchro par seconde
+    final maintenant = DateTime.now();
+    if (!reconnecter &&
+        _derniereSynchro != null &&
+        maintenant.difference(_derniereSynchro!).inMilliseconds < 1000) {
+      return;
+    }
+    _derniereSynchro = maintenant;
+    if (reconnecter) {
+      final ancien = _channel;
+      _channel = null;
+      _realtimeSubscribed = false;
+      if (ancien != null) {
+        await Supabase.instance.client
+            .removeChannel(ancien)
+            .catchError((_) => '');
+      }
+      if (_closed) return;
+      _subscribeToMessages();
+    }
+    await loadConversations(silent: true);
+    if (Get.isRegistered<UnreadMessagesController>()) {
+      unawaited(Get.find<UnreadMessagesController>().loadUnread());
+    }
+  }
+
   // ✅ FIX Realtime — polling de secours (3s) si le canal tombe en panne
   void _startPolling() {
     if (_closed) return; // ✅ FIX — jamais après onClose
@@ -625,6 +665,8 @@ class ChatListController extends GetxController {
     // ✅ FIX — drapeau posé AVANT de fermer le canal : le statut
     // "closed" qui en résulte ne relance plus le polling.
     _closed = true;
+    _cycleDeVie?.dispose();
+    _cycleDeVie = null;
     for (final t in _minuteursEcrit.values) {
       t.cancel();
     }
