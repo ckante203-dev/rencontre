@@ -24,6 +24,7 @@ import 'package:rencontre/features/chat/view/sticker_sheet.dart';
 import 'package:rencontre/features/home/widget/stickers_story.dart';
 import 'package:rencontre/features/home/widget/camera_story.dart';
 import 'package:rencontre/features/home/widget/filtres_story.dart';
+import 'package:rencontre/features/home/widget/visage_story.dart';
 import 'package:rencontre/features/home/view/ecran_amis_proches.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1845,6 +1846,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   // Filtre (filtres_story.dart) : choisi dans la caméra ou l'éditeur
   String _filtre = 'normal';
   bool _bandeauFiltres = false;
+  // Effets de visage (photos) : visages repérés une fois, effet choisi
+  ResultatVisages? _visages;
+  bool _detectionVisage = false;
+  bool _bandeauVisage = false;
+  String _effetVisage = 'aucun';
 
   bool _textMode = false;
   final _textCtrl = TextEditingController();
@@ -1948,6 +1954,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         _miroir = miroir && !video;
         _filtre = filtre;
         _bandeauFiltres = false;
+        _visages = null;
+        _bandeauVisage = false;
+        _effetVisage = 'aucun';
         _stickers.clear();
         _stickerIds.clear();
         _previewPath = chemin;
@@ -2071,7 +2080,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     // Recadrée ou selfie en miroir : on publie exactement ce qui est affiché
     final filtre = FiltreStory.parId(_filtre);
     if (!_isVideo &&
-        (!_cadrage.value.isIdentity() || _miroir || !filtre.neutre)) {
+        (!_cadrage.value.isIdentity() ||
+            _miroir ||
+            !filtre.neutre ||
+            _effetVisage != 'aucun')) {
       fichier = await _capturerCadrage() ?? file;
     }
 
@@ -2661,10 +2673,16 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       child:
                           Transform.flip(
                               flipX: _miroir,
-                              child: AvecFiltre(
-                                  filtre: _filtre,
-                                  child: Image.file(File(_previewPath!),
-                                      fit: BoxFit.contain)))),
+                              child: Stack(fit: StackFit.expand, children: [
+                                AvecFiltre(
+                                    filtre: _filtre,
+                                    child: Image.file(File(_previewPath!),
+                                        fit: BoxFit.contain)),
+                                if (_visages != null && _effetVisage != 'aucun')
+                                  CoucheEffetsVisage(
+                                      resultat: _visages!,
+                                      effet: _effetVisage),
+                              ]))),
                 ),
               ),
             ),
@@ -2815,6 +2833,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (_isVideo && _decoupe != null) _barreDecoupe(),
+                            if (_bandeauVisage && !_isVideo) ...[
+                              BandeauEffetsVisage(
+                                effetActif: _effetVisage,
+                                onChoix: (id) => setState(() => _effetVisage = id),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
                             if (_bandeauFiltres) ...[
                               BandeauFiltres(
                                 filtreActif: _filtre,
@@ -2846,6 +2871,15 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                 actif: _stickers.any((x) => x.estRencontre),
                                 onTap: _ajouterStickerRencontre,
                               ),
+                              if (!_isVideo) ...[
+                                const SizedBox(width: 8),
+                                _BoutonEditeur(
+                                  icon: Icons.face_retouching_natural_rounded,
+                                  label: _detectionVisage ? '…' : 'Visage'.tr,
+                                  actif: _effetVisage != 'aucun' || _bandeauVisage,
+                                  onTap: _ouvrirEffetsVisage,
+                                ),
+                              ],
                               const SizedBox(width: 8),
                               _BoutonEditeur(
                                 icon: Icons.auto_awesome_rounded,
@@ -2935,6 +2969,36 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             fond: fond));
         _stickerIds.add(_prochainStickerId++);
       }
+    });
+  }
+
+  /// Effets de visage : repère les visages la 1re fois, puis ouvre /
+  /// ferme le bandeau.
+  Future<void> _ouvrirEffetsVisage() async {
+    if (_detectionVisage || _previewPath == null) return;
+    if (_visages == null) {
+      setState(() => _detectionVisage = true);
+      final r = await detecterVisages(_previewPath!);
+      if (!mounted) return;
+      setState(() {
+        _detectionVisage = false;
+        _visages = r;
+      });
+      if (r == null || r.visages.isEmpty) {
+        _visages = null;
+        _snack('Aucun visage trouvé sur la photo'.tr);
+        return;
+      }
+      setState(() {
+        _bandeauVisage = true;
+        _bandeauFiltres = false;
+        if (_effetVisage == 'aucun') _effetVisage = 'lunettes';
+      });
+      return;
+    }
+    setState(() {
+      _bandeauVisage = !_bandeauVisage;
+      if (_bandeauVisage) _bandeauFiltres = false;
     });
   }
 
