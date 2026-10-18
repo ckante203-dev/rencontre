@@ -50,6 +50,11 @@ class MainActivity : FlutterActivity() {
                 if (call.method == "id") {
                     result.success(
                         Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+                } else if (call.method == "modele") {
+                    // « Signaler un bug » : modèle du téléphone et version d'Android
+                    result.success(mapOf(
+                        "appareil" to "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+                        "systeme" to "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})"))
                 } else {
                     result.notImplemented()
                 }

@@ -8,6 +8,7 @@ import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:rencontre/features/auth/view/cgu_screen.dart';
+import 'package:rencontre/features/profil/vue/signaler_bug.dart';
 import 'package:rencontre/features/profil/vue/ecran_securite.dart';
 import 'package:rencontre/features/profil/vue/verifier_email.dart';
 import 'package:rencontre/features/home/widget/lecture_auto_stories.dart';
@@ -442,6 +443,13 @@ class EcranParametres extends StatelessWidget {
 
             // ════ AIDE & INFORMATIONS ════════════════════════════
             _Titre('Aide & informations'.tr),
+            const SizedBox(height: 10),
+            _Tuile(
+              icon: '🐞',
+              title: 'Signaler un bug'.tr,
+              subtitle: "Un souci dans l'appli ? Dis-le-nous".tr,
+              onTap: ouvrirSignalerBug,
+            ),
             const SizedBox(height: 10),
             _Tuile(
               icon: '✨',
