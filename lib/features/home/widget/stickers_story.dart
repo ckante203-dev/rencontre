@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:math' as math;
 
 // ─── STICKERS, EMOJI ET GIF SUR LES STORIES ───────────────────────
 // Posés par l'auteur dans l'éditeur (glisser, pincer pour agrandir et
@@ -8,10 +10,14 @@ import 'package:flutter/material.dart';
 // stories.stickers (jsonb) et affichés par-dessus la photo / vidéo :
 // les GIF restent animés, même sur une vidéo.
 
-/// Stickers de rencontre (SQL 086), interactifs dans le lecteur :
+/// Stickers de rencontre (SQL 086 / 088), interactifs dans le lecteur :
 /// 'lieu' (ma ville), 'dispo' (« Dispo ce soir ? »), 'crush' (crush
-/// anonyme), 'sondage' (Vibe check, 2 choix dans [options]).
-const typesStickersRencontre = {'lieu', 'dispo', 'crush', 'sondage'};
+/// anonyme), 'sondage' (Vibe check, 2 choix dans [options]),
+/// 'question' (pose-moi une question), 'curseur' (note mon look, émoji
+/// dans [options]), 'rdv' (rendez-vous, « quand » dans [options]).
+const typesStickersRencontre = {
+  'lieu', 'dispo', 'crush', 'sondage', 'question', 'curseur', 'rdv'
+};
 
 class StickerStory {
   /// 'emoji' (valeur = l'emoji), 'giphy' (valeur = URL GIPHY),
@@ -28,6 +34,8 @@ class StickerStory {
   final int fond; // 0 = aucun, 1 = bulle noire, 2 = bulle de la couleur
   // Sondage : les 2 réponses possibles
   final List<String> options;
+  // Stickers de rencontre : 0 = blanc, 1 = dégradé Zamu, 2 = sombre
+  final int style;
 
   const StickerStory({
     required this.type,
@@ -40,6 +48,7 @@ class StickerStory {
     this.couleur = 0xFFFFFFFF,
     this.fond = 1,
     this.options = const [],
+    this.style = 0,
   });
 
   bool get estEmoji => type == 'emoji';
@@ -55,10 +64,12 @@ class StickerStory {
     bool? gras,
     int? couleur,
     int? fond,
+    int? style,
   }) =>
       StickerStory(
         type: type,
         options: options,
+        style: style ?? this.style,
         valeur: valeur ?? this.valeur,
         x: x ?? this.x,
         y: y ?? this.y,
@@ -78,6 +89,7 @@ class StickerStory {
         'r': double.parse(rotation.toStringAsFixed(3)),
         if (estTexte) ...{'g': gras, 'c': couleur, 'f': fond},
         if (options.isNotEmpty) 'o': options,
+        if (estRencontre) 's': style,
       };
 
   static StickerStory? fromJson(dynamic j) {
@@ -94,11 +106,14 @@ class StickerStory {
         ? o.whereType<String>()
             .map((x) => x.trim())
             .where((x) => x.isNotEmpty)
-            .map((x) => x.length > 25 ? x.substring(0, 25) : x)
+            .map((x) => x.length > (t == 'sondage' ? 25 : 40)
+                ? x.substring(0, t == 'sondage' ? 25 : 40)
+                : x)
             .take(2)
             .toList()
         : <String>[];
     if (t == 'sondage' && options.length != 2) return null;
+    final st = j['s'];
     // Les GIF ne viennent que de GIPHY (pas d'image arbitraire)
     if (t == 'giphy' && !estUrlGiphy(v)) return null;
     double n(Object? o, double d) => (o is num) ? o.toDouble() : d;
@@ -111,6 +126,7 @@ class StickerStory {
               ? v.substring(0, 80)
               : v,
       options: options,
+      style: st is int ? st.clamp(0, 2) : 0,
       x: n(j['x'], 0.5).clamp(0.0, 1.0),
       y: n(j['y'], 0.5).clamp(0.0, 1.0),
       echelle: n(j['e'], 1).clamp(0.3, 4.0),
@@ -281,6 +297,10 @@ class StickerEditable extends StatefulWidget {
   final ValueChanged<StickerStory> onChange;
   final void Function(bool enCours, Offset? doigt) onBouge;
   final VoidCallback? onTap; // texte : le modifier
+  /// Début du geste : l'éditeur passe ce sticker au premier plan.
+  final VoidCallback? onDebut;
+  /// Aimants : lignes de repère à afficher (centre vertical / horizontal).
+  final void Function(bool vertical, bool horizontal)? onGuides;
 
   const StickerEditable({
     super.key,
@@ -289,6 +309,8 @@ class StickerEditable extends StatefulWidget {
     required this.onChange,
     required this.onBouge,
     this.onTap,
+    this.onDebut,
+    this.onGuides,
   });
 
   @override
@@ -298,6 +320,21 @@ class StickerEditable extends StatefulWidget {
 class _StickerEditableState extends State<StickerEditable> {
   double _echelleDepart = 1, _rotationDepart = 0;
   bool _enGeste = false;
+  // Position / rotation « brutes » (sans aimant) : on peut quitter l'aimant
+  double _xBrut = 0.5, _yBrut = 0.5;
+  bool _aimantV = false, _aimantH = false, _aimantR = false;
+
+  static const _seuil = 0.025; // ~2,5 % de l'écran
+  static const _seuilAngle = 0.09; // ~5°
+
+  double _aimant(double brut, double cible, bool actif, void Function(bool) maj) {
+    final colle = (brut - cible).abs() < _seuil;
+    if (colle != actif) {
+      maj(colle);
+      if (colle) HapticFeedback.selectionClick();
+    }
+    return colle ? cible : brut;
+  }
 
   @override
   void dispose() {
@@ -326,28 +363,47 @@ class _StickerEditableState extends State<StickerEditable> {
             _enGeste = true;
             _echelleDepart = s.echelle;
             _rotationDepart = s.rotation;
+            _xBrut = s.x;
+            _yBrut = s.y;
+            widget.onDebut?.call();
             widget.onBouge(true, d.focalPoint);
           },
           onScaleUpdate: (d) {
             final cur = widget.sticker;
+            _xBrut = (_xBrut + d.focalPointDelta.dx / z.width).clamp(0.03, 0.97);
+            _yBrut = (_yBrut + d.focalPointDelta.dy / z.height).clamp(0.03, 0.97);
+            // Aimants : centre de l'écran (avec ligne de repère)
+            final x = _aimant(_xBrut, 0.5, _aimantV, (v) => _aimantV = v);
+            final y = _aimant(_yBrut, 0.5, _aimantH, (v) => _aimantH = v);
+            widget.onGuides?.call(_aimantV, _aimantH);
+            var rotation = cur.rotation;
+            if (d.pointerCount >= 2) {
+              rotation = _rotationDepart + d.rotation;
+              // Aimant de rotation : droit (0°, 90°, 180°, 270°)
+              final quart = (rotation / (math.pi / 2)).round() * (math.pi / 2);
+              final colle = (rotation - quart).abs() < _seuilAngle;
+              if (colle && !_aimantR) HapticFeedback.selectionClick();
+              _aimantR = colle;
+              if (colle) rotation = quart;
+            }
             widget.onChange(cur.copyWith(
-              x: (cur.x + d.focalPointDelta.dx / z.width).clamp(0.0, 1.0),
-              y: (cur.y + d.focalPointDelta.dy / z.height).clamp(0.0, 1.0),
+              x: x,
+              y: y,
               echelle: d.pointerCount >= 2
                   ? (_echelleDepart * d.scale).clamp(0.3, 4.0)
                   : cur.echelle,
-              rotation: d.pointerCount >= 2
-                  ? _rotationDepart + d.rotation
-                  : cur.rotation,
+              rotation: rotation,
             ));
             widget.onBouge(true, d.focalPoint);
           },
           onScaleEnd: (_) {
             _enGeste = false;
+            _aimantV = _aimantH = _aimantR = false;
+            widget.onGuides?.call(false, false);
             widget.onBouge(false, null);
           },
           child: Padding(
-            padding: const EdgeInsets.all(8), // zone de prise plus large
+            padding: const EdgeInsets.all(14), // zone de prise plus large
             child: VisuelSticker(s),
           ),
         ),
@@ -582,40 +638,114 @@ class _EditeurTexteStoryState extends State<EditeurTexteStory> {
 }
 
 
-/// Apparence d'un sticker de rencontre. [enfant] remplace la partie basse
-/// (boutons du sondage, résultats…) dans le lecteur.
+/// Couleurs d'un style de sticker de rencontre.
+class StyleRencontre {
+  final Gradient? degrade;
+  final Color? fond;
+  final Color texte;
+  final Color texteDoux;
+  final Color bouton;
+  final Color texteBouton;
+  final Color? bordure;
+  const StyleRencontre({
+    this.degrade,
+    this.fond,
+    required this.texte,
+    required this.texteDoux,
+    required this.bouton,
+    required this.texteBouton,
+    this.bordure,
+  });
+
+  static const tous = [
+    // 0 : blanc
+    StyleRencontre(
+        fond: Colors.white,
+        texte: Color(0xFF111111),
+        texteDoux: Colors.black54,
+        bouton: Color(0xFF7B2FFF),
+        texteBouton: Colors.white),
+    // 1 : dégradé Zamu
+    StyleRencontre(
+        degrade: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]),
+        texte: Colors.white,
+        texteDoux: Color(0xDDFFFFFF),
+        bouton: Colors.white,
+        texteBouton: Color(0xFF7B2FFF)),
+    // 2 : sombre
+    StyleRencontre(
+        fond: Color(0xE6141418),
+        texte: Colors.white,
+        texteDoux: Colors.white70,
+        bouton: Color(0xFFFF3CAC),
+        texteBouton: Colors.white,
+        bordure: Color(0x55FFFFFF)),
+  ];
+
+  static StyleRencontre de(int i) => tous[i.clamp(0, tous.length - 1)];
+}
+
+/// Apparence d'un sticker de rencontre. [bas] remplace la partie basse
+/// (boutons, résultats…) dans le lecteur.
 class VisuelRencontre extends StatelessWidget {
   final StickerStory s;
   final Widget? bas;
   const VisuelRencontre(this.s, {super.key, this.bas});
 
-  static const _degradeZamu =
-      LinearGradient(colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]);
+  StyleRencontre get st => StyleRencontre.de(s.style);
 
-  Widget _carte({required Widget child, Gradient? degrade, Color? fond}) =>
-      Container(
-        constraints: const BoxConstraints(maxWidth: 260),
+  Widget _carte(Widget child) => Container(
+        constraints: const BoxConstraints(maxWidth: 260, minWidth: 200),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: BoxDecoration(
-          gradient: degrade,
-          color: fond,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black38)],
+          gradient: st.degrade,
+          color: st.fond,
+          borderRadius: BorderRadius.circular(20),
+          border: st.bordure == null ? null : Border.all(color: st.bordure!),
+          boxShadow: const [BoxShadow(blurRadius: 14, color: Colors.black38)],
         ),
         child: child,
       );
 
-  Widget _bouton(String texte, {Color fond = Colors.white, Color couleur = const Color(0xFF7B2FFF)}) =>
-      Container(
+  Widget _titre(String t, {double taille = 18}) => Text(t,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+          color: st.texte, fontSize: taille, fontWeight: FontWeight.w900));
+
+  Widget _sous(String t) => Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(t,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: st.texteDoux, fontSize: 12)),
+      );
+
+  Widget bouton(String texte) => Container(
         width: double.infinity,
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-            color: fond, borderRadius: BorderRadius.circular(12)),
+            color: st.bouton, borderRadius: BorderRadius.circular(14)),
         child: Text(texte,
             textAlign: TextAlign.center,
             style: TextStyle(
-                color: couleur, fontSize: 14, fontWeight: FontWeight.w800)),
+                color: st.texteBouton,
+                fontSize: 14,
+                fontWeight: FontWeight.w800)),
+      );
+
+  /// Faux champ de saisie (Pose-moi une question)
+  Widget _champ(String texte) => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
+        decoration: BoxDecoration(
+            color: st.texte.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14)),
+        child: Text(texte,
+            style: TextStyle(color: st.texteDoux, fontSize: 13)),
       );
 
   @override
@@ -625,67 +755,80 @@ class VisuelRencontre extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
           decoration: BoxDecoration(
-            gradient: _degradeZamu,
+            gradient: st.degrade,
+            color: st.fond,
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white, width: 2),
+            border: Border.all(color: st.bordure ?? Colors.white, width: 2),
             boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black38)],
           ),
           child: Text('📍 ${s.valeur}',
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(
+                  color: st.texte,
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.3)),
         );
       case 'dispo':
-        return _carte(
-          fond: Colors.white,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('🙋 ${s.valeur}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900)),
-            bas ??
-                _bouton('Je suis dispo !'.tr,
-                    fond: const Color(0xFF7B2FFF), couleur: Colors.white),
-          ]),
-        );
+        return _carte(Column(mainAxisSize: MainAxisSize.min, children: [
+          _titre('🙋 ${s.valeur}'),
+          bas ?? bouton('Je suis dispo !'.tr),
+        ]));
       case 'crush':
-        return _carte(
-          degrade: _degradeZamu,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('💘 ${s.valeur}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text('Personne ne saura que c\'est toi 🤫'.tr,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 12)),
-            bas ?? _bouton('J\'ai un crush 💘'.tr),
-          ]),
-        );
+        return _carte(Column(mainAxisSize: MainAxisSize.min, children: [
+          _titre('💘 ${s.valeur}'),
+          _sous('Personne ne saura que c\'est toi 🤫'.tr),
+          bas ?? bouton('J\'ai un crush 💘'.tr),
+        ]));
       case 'sondage':
-        return _carte(
-          fond: Colors.white,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('🔥 ${s.valeur}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900)),
-            bas ??
-                Column(children: [
-                  for (final o in s.options)
-                    _bouton(o, fond: const Color(0xFFF1EDFF)),
+        return _carte(Column(mainAxisSize: MainAxisSize.min, children: [
+          _titre('🔥 ${s.valeur}', taille: 17),
+          bas ??
+              Column(children: [
+                for (final o in s.options) bouton(o),
+              ]),
+        ]));
+      case 'question':
+        return _carte(Column(mainAxisSize: MainAxisSize.min, children: [
+          _titre('❓ ${s.valeur}', taille: 17),
+          bas ?? _champ('Écris ta question…'.tr),
+        ]));
+      case 'curseur':
+        final emoji = s.options.isNotEmpty ? s.options.first : '😍';
+        return _carte(Column(mainAxisSize: MainAxisSize.min, children: [
+          _titre(s.valeur, taille: 17),
+          bas ??
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Stack(alignment: Alignment.centerLeft, children: [
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD1EC), Color(0xFFFF3CAC)]),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  Align(
+                    alignment: const Alignment(0.3, 0),
+                    child: Text(emoji, style: const TextStyle(fontSize: 30)),
+                  ),
                 ]),
-          ]),
-        );
+              ),
+        ]));
+      case 'rdv':
+        final quand = s.options.isNotEmpty ? s.options.first : '';
+        return _carte(Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('⏰ ${'RENDEZ-VOUS'.tr}',
+              style: TextStyle(
+                  color: st.texteDoux,
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          _titre(s.valeur),
+          if (quand.isNotEmpty) _sous('📅 $quand'),
+          bas ?? bouton('Je viens 🙋'.tr),
+        ]));
     }
     return const SizedBox.shrink();
   }

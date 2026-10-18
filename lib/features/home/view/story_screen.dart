@@ -1840,6 +1840,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   final List<int> _stickerIds = [];
   int _prochainStickerId = 0;
   bool _deplacementSticker = false;
+  bool _guideV = false, _guideH = false; // lignes de repère (aimants)
   int? _texteEdite; // index du texte modifié, -1 = nouveau, null = aucun
   bool _surCorbeille = false;
 
@@ -2798,7 +2799,31 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                 sticker: _stickers[i],
                 zone: Size(box.maxWidth, box.maxHeight),
                 onChange: (n) => setState(() => _stickers[i] = n),
-                onTap: _stickers[i].estTexte ? () => _ouvrirTexte(i) : null,
+                // Touché = au premier plan (dernier de la liste)
+                onDebut: () {
+                  if (i == _stickers.length - 1) return;
+                  setState(() {
+                    _stickers.add(_stickers.removeAt(i));
+                    _stickerIds.add(_stickerIds.removeAt(i));
+                  });
+                },
+                onGuides: (v, h) {
+                  if (v != _guideV || h != _guideH) {
+                    setState(() {
+                      _guideV = v;
+                      _guideH = h;
+                    });
+                  }
+                },
+                onTap: _stickers[i].estTexte
+                    ? () => _ouvrirTexte(i)
+                    : _stickers[i].estRencontre
+                        ? () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _stickers[i] = _stickers[i]
+                                .copyWith(style: (_stickers[i].style + 1) % 3));
+                          }
+                        : null,
                 onBouge: (enCours, doigt) {
                   if (!enCours) {
                     setState(() {
@@ -2825,6 +2850,23 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                   }
                 },
               ),
+          // Lignes de repère quand un sticker est aimanté au centre
+          if (_deplacementSticker && _guideV)
+            Positioned(
+              top: 0,
+              bottom: 0,
+              left: box.maxWidth / 2 - 0.75,
+              child: IgnorePointer(
+                  child: Container(width: 1.5, color: const Color(0xCCFF3CAC))),
+            ),
+          if (_deplacementSticker && _guideH)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: box.maxHeight / 2 - 0.75,
+              child: IgnorePointer(
+                  child: Container(height: 1.5, color: const Color(0xCCFF3CAC))),
+            ),
           if (_deplacementSticker)
             Positioned(
               left: 0,
@@ -3123,47 +3165,110 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     });
   }
 
-  /// Stickers de rencontre (SQL 086) : un seul de chaque sorte par story.
+  /// Stickers de rencontre (SQL 086 / 088) : un seul de chaque sorte.
+  /// Grille de cartes colorées ; toucher le sticker posé change son style.
   Future<void> _ajouterStickerRencontre() async {
     if (_stickers.length >= 20) {
       _snack('20 stickers maximum par story'.tr);
       return;
     }
-    Widget ligne(String id, String emoji, String titre, String sous) =>
-        ListTile(
-          leading: Text(emoji, style: const TextStyle(fontSize: 26)),
-          title: Text(titre,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700)),
-          subtitle: Text(sous,
-              style: const TextStyle(color: Colors.white60, fontSize: 12)),
-          onTap: () => Get.back(result: id),
-        );
+    const cartes = [
+      ('dispo', '🙋', 'Dispo ce soir ?', [Color(0xFF7B2FFF), Color(0xFFB06CFF)], false),
+      ('crush', '💘', 'Crush anonyme', [Color(0xFFFF3CAC), Color(0xFF7B2FFF)], false),
+      ('question', '❓', 'Pose-moi une question', [Color(0xFF0A84FF), Color(0xFF7B2FFF)], true),
+      ('curseur', '💯', 'Note mon look', [Color(0xFFFF9F0A), Color(0xFFFF3CAC)], true),
+      ('rdv', '⏰', 'Rendez-vous', [Color(0xFF30D158), Color(0xFF0A84FF)], true),
+      ('sondage', '🔥', 'Vibe check', [Color(0xFFFF3B30), Color(0xFFFF9F0A)], false),
+      ('lieu', '📍', 'Ma ville', [Color(0xFF5E5CE6), Color(0xFF0A84FF)], false),
+    ];
     final choix = await Get.bottomSheet<String>(
       SafeArea(
         child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
           decoration: const BoxDecoration(
-              color: Color(0xFF1C1C1E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+              color: Color(0xFF141418),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Stickers de rencontre'.tr,
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                  color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+            ),
+            Text('💘 ${'Stickers de rencontre'.tr}',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            ligne('dispo', '🙋', 'Dispo ce soir ?'.tr,
-                'Ceux qui sont partants te répondent en un geste'.tr),
-            ligne('crush', '💘', 'Crush anonyme'.tr,
-                'On t\'avoue un crush sans dire qui… sauf si c\'est réciproque'.tr),
-            ligne('sondage', '🔥', 'Vibe check'.tr,
-                'Un sondage à 2 choix, tu vois qui a voté quoi'.tr),
-            ligne('lieu', '📍', 'Ma ville'.tr, 'Le nom de ta ville en décoration'.tr),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('Fais-toi remarquer et provoque la rencontre'.tr,
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 14),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.1,
+              children: [
+                for (final c in cartes)
+                  GestureDetector(
+                    onTap: () => Get.back(result: c.$1),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: c.$4),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Stack(children: [
+                        Row(children: [
+                          Text(c.$2, style: const TextStyle(fontSize: 28)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(c.$3.tr,
+                                maxLines: 2,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    height: 1.15,
+                                    fontWeight: FontWeight.w800)),
+                          ),
+                        ]),
+                        if (c.$5)
+                          Positioned(
+                            top: 6,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: Text('NOUVEAU'.tr,
+                                  style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text('Astuce : touche un sticker posé pour changer sa couleur'.tr,
+                style: const TextStyle(color: Colors.white38, fontSize: 11)),
           ]),
         ),
       ),
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
     );
     if (choix == null || !mounted) return;
     if (_stickers.any((x) => x.type == choix)) {
@@ -3175,13 +3280,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       case 'dispo':
         nouveau = StickerStory(type: 'dispo', valeur: 'Dispo ce soir ?'.tr);
       case 'crush':
-        nouveau = StickerStory(type: 'crush', valeur: 'Crush anonyme'.tr);
+        nouveau =
+            StickerStory(type: 'crush', valeur: 'Crush anonyme'.tr, style: 1);
       case 'lieu':
         try {
           final r = await Supabase.instance.client.rpc('ma_ville') as List;
           if (r.isNotEmpty) {
             final v = r.first as Map;
-            nouveau = StickerStory(type: 'lieu', valeur: '${v['nom']}');
+            nouveau = StickerStory(type: 'lieu', valeur: '${v['nom']}', style: 1);
           } else {
             // Pas de position, ou aucune grande ville à moins de 60 km
             _info('Active ta position pour afficher ta ville'.tr);
@@ -3193,6 +3299,32 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         }
       case 'sondage':
         nouveau = await _composerSondage();
+      case 'question':
+        final q = await _saisir('❓ ${'Pose-moi une question'.tr}',
+            [('Ta phrase', 'Pose-moi une question 😏', 80)]);
+        if (q != null) {
+          nouveau = StickerStory(type: 'question', valeur: q[0], style: 1);
+        }
+      case 'curseur':
+        final c = await _saisir('💯 ${'Note mon look'.tr}',
+            [('Ta phrase', 'Note mon look 🔥', 80)],
+            emojis: const ['😍', '🔥', '💯', '😘', '🥵', '👑']);
+        if (c != null) {
+          nouveau = StickerStory(
+              type: 'curseur', valeur: c[0], options: [c[1]]);
+        }
+      case 'rdv':
+        final r = await _saisir('⏰ ${'Rendez-vous'.tr}', [
+          ('Quoi ?', 'Afterwork entre amis', 80),
+          ('Quand ?', 'Samedi 21h', 40),
+        ]);
+        if (r != null) {
+          nouveau = StickerStory(
+              type: 'rdv',
+              valeur: r[0],
+              options: [if (r[1].isNotEmpty) r[1]],
+              style: 2);
+        }
     }
     if (nouveau == null || !mounted) return;
     final n = nouveau;
@@ -3200,6 +3332,65 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       _stickers.add(n.copyWith(x: 0.5, y: 0.45));
       _stickerIds.add(_prochainStickerId++);
     });
+  }
+
+  /// Petit formulaire : un champ par entrée (libellé, texte proposé,
+  /// longueur max) + un choix d'émoji facultatif (ajouté à la fin).
+  Future<List<String>?> _saisir(String titre, List<(String, String, int)> champs,
+      {List<String>? emojis}) async {
+    final ctrls = [
+      for (final c in champs) TextEditingController(text: c.$2.tr)
+    ];
+    var emoji = emojis?.first;
+    final ok = await Get.dialog<bool>(StatefulBuilder(
+      builder: (_, maj) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        title: Text(titre, style: const TextStyle(color: Colors.white)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          for (var i = 0; i < champs.length; i++)
+            TextField(
+              controller: ctrls[i],
+              maxLength: champs[i].$3,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: champs[i].$1.tr,
+                labelStyle: const TextStyle(color: Colors.white60),
+                enabledBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24)),
+              ),
+            ),
+          if (emojis != null)
+            Wrap(spacing: 6, children: [
+              for (final e in emojis)
+                GestureDetector(
+                  onTap: () => maj(() => emoji = e),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: e == emoji ? Colors.white24 : Colors.transparent,
+                    ),
+                    child: Text(e, style: const TextStyle(fontSize: 26)),
+                  ),
+                ),
+            ]),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Get.back(result: false),
+              child: Text('Annuler'.tr)),
+          TextButton(
+              onPressed: () => Get.back(result: true),
+              child: Text('Ajouter'.tr)),
+        ],
+      ),
+    ));
+    final valeurs = [for (final c in ctrls) c.text.trim()];
+    for (final c in ctrls) {
+      c.dispose();
+    }
+    if (ok != true || valeurs.first.isEmpty) return null;
+    return [...valeurs, if (emoji != null) emoji!];
   }
 
   /// Question + 2 réponses du « Vibe check ».

@@ -12,6 +12,9 @@ import 'package:rencontre/shared/models/story_model.dart';
 //   🙋 Dispo ce soir : « Je suis dispo ! » envoyé en réponse à la story
 //   💘 Crush anonyme : envoyer_crush_story (révélé si like réciproque)
 //   🔥 Vibe check    : voter_story / resultats_story / votants_story
+//   ❓ Question      : la question arrive en message privé
+//   💯 Note mon look : noter_curseur_story / resultat_curseur_story (SQL 088)
+//   ⏰ Rendez-vous   : « Je viens » envoyé en message privé
 //   📍 Ma ville      : décoratif
 
 SupabaseClient get _sb => Supabase.instance.client;
@@ -75,6 +78,10 @@ class _StickerInteractifState extends State<StickerInteractif> {
   int? _monChoix;
   int _votes0 = 0, _votes1 = 0;
   bool _resultatsCharges = false;
+  // Note mon look
+  double _curseur = 0.5;
+  int? _moyenne, _nombre;
+  bool _aNote = false; // j'ai déjà noté
 
   StickerStory get s => widget.sticker;
   bool get _auteur => _sb.auth.currentUser?.id == widget.story.userId;
@@ -83,6 +90,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
   void initState() {
     super.initState();
     if (s.type == 'sondage') _chargerResultats();
+    if (s.type == 'curseur') _chargerCurseur();
   }
 
   Future<void> _chargerResultats() async {
@@ -99,6 +107,105 @@ class _StickerInteractifState extends State<StickerInteractif> {
         _votes1 = (r['votes_1'] as num?)?.toInt() ?? 0;
         _monChoix = (r['mon_choix'] as num?)?.toInt();
       });
+
+  Future<void> _chargerCurseur() async {
+    try {
+      final r = await _sb.rpc('resultat_curseur_story',
+          params: {'p_story': widget.story.id}) as List;
+      if (r.isNotEmpty && mounted) _appliquerCurseur(r.first as Map);
+    } catch (_) {}
+  }
+
+  void _appliquerCurseur(Map r) => setState(() {
+        _moyenne = (r['moyenne'] as num?)?.toInt();
+        _nombre = (r['nombre'] as num?)?.toInt();
+        final m = (r['ma_note'] as num?)?.toInt();
+        if (m != null) {
+          _aNote = true;
+          _curseur = m / 100;
+        }
+      });
+
+  Future<void> _noter(double v) async {
+    if (_auteur || _occupe) return;
+    setState(() => _occupe = true);
+    HapticFeedback.mediumImpact();
+    try {
+      final r = await _sb.rpc('noter_curseur_story', params: {
+        'p_story': widget.story.id,
+        'p_valeur': (v * 100).round(),
+      }) as List;
+      if (r.isNotEmpty && mounted) _appliquerCurseur(r.first as Map);
+    } catch (_) {
+      _info('Oups'.tr, 'Envoi impossible, réessaie'.tr);
+    }
+    if (mounted) setState(() => _occupe = false);
+  }
+
+  /// ❓ Pose-moi une question : la question part en message privé.
+  Future<void> _question() async {
+    if (_auteur || _occupe) return;
+    final champ = TextEditingController();
+    final ok = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: const Color(0xFF1C1C1E),
+      title: Text('❓ ${s.valeur}',
+          style: const TextStyle(color: Colors.white, fontSize: 17)),
+      content: TextField(
+        controller: champ,
+        autofocus: true,
+        maxLength: 300,
+        maxLines: 3,
+        minLines: 1,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Écris ta question…'.tr,
+          hintStyle: const TextStyle(color: Colors.white38),
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text('Annuler'.tr)),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text('Envoyer'.tr)),
+      ],
+    ));
+    final texte = champ.text.trim();
+    champ.dispose();
+    if (ok != true || texte.isEmpty || !mounted) return;
+    setState(() => _occupe = true);
+    final envoye = await repondreAStory(
+        widget.story, '❓ « ${s.valeur} »\n$texte');
+    if (!mounted) return;
+    setState(() {
+      _occupe = false;
+      _envoye = envoye;
+    });
+    _info(envoye ? '❓' : 'Oups'.tr,
+        envoye
+            ? 'Envoyé à @prenom ✓'.trParams({'prenom': widget.story.userName})
+            : 'Impossible d\'envoyer le message'.tr);
+  }
+
+  /// ⏰ Rendez-vous : « Je viens » en message privé.
+  Future<void> _rdv() async {
+    if (_occupe || _envoye || _auteur) return;
+    setState(() => _occupe = true);
+    HapticFeedback.mediumImpact();
+    final quand = s.options.isNotEmpty ? ' (${s.options.first})' : '';
+    final ok = await repondreAStory(
+        widget.story, '🙋 ${'Je viens !'.tr} « ${s.valeur}$quand »');
+    if (!mounted) return;
+    setState(() {
+      _occupe = false;
+      _envoye = ok;
+    });
+    _info(ok ? '⏰' : 'Oups'.tr,
+        ok
+            ? 'Envoyé à @prenom ✓'.trParams({'prenom': widget.story.userName})
+            : 'Impossible d\'envoyer le message'.tr);
+  }
 
   Future<void> _voter(int choix) async {
     if (_occupe || _auteur) return;
@@ -263,6 +370,44 @@ class _StickerInteractifState extends State<StickerInteractif> {
         if (_auteur) return _note('Les crushs arrivent en secret 🤫'.tr);
         if (_envoye) return _note('💘 Envoyé en secret'.tr);
         return null;
+      case 'question':
+        if (_auteur) return _note('Les questions arrivent en message 💬'.tr);
+        if (_envoye) return _note('✓ Question envoyée'.tr);
+        return null;
+      case 'rdv':
+        if (_auteur) return _note('Les réponses arrivent en message 💬'.tr);
+        if (_envoye) return _note('✓ Envoyé'.tr);
+        return null;
+      case 'curseur':
+        final emoji = s.options.isNotEmpty ? s.options.first : '😍';
+        final resultat = (_moyenne != null && (_nombre ?? 0) > 0)
+            ? _note('Moyenne : @m % @e · @n note@s'.trParams({
+                'm': '$_moyenne',
+                'e': emoji,
+                'n': '$_nombre',
+                's': (_nombre ?? 0) > 1 ? 's' : '',
+              }))
+            : null;
+        if (_auteur) {
+          return resultat ?? _note('Personne n\'a encore noté'.tr);
+        }
+        return Column(mainAxisSize: MainAxisSize.min, children: [
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 8,
+              activeTrackColor: const Color(0xFFFF3CAC),
+              inactiveTrackColor: const Color(0xFFFFD1EC),
+              thumbShape: _PouceEmoji(emoji),
+              overlayShape: SliderComponentShape.noOverlay,
+            ),
+            child: Slider(
+              value: _curseur,
+              onChanged: (v) => setState(() => _curseur = v),
+              onChangeEnd: _noter,
+            ),
+          ),
+          if (_aNote && resultat != null) resultat,
+        ]);
       case 'sondage':
         if (s.options.length != 2) return null;
         final total = _votes0 + _votes1;
@@ -312,7 +457,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
         child: Text(texte,
             textAlign: TextAlign.center,
             style: TextStyle(
-                color: s.type == 'crush' ? Colors.white : Colors.black54,
+                color: StyleRencontre.de(s.style).texteDoux,
                 fontSize: 13,
                 fontWeight: FontWeight.w700)),
       );
@@ -332,6 +477,10 @@ class _StickerInteractifState extends State<StickerInteractif> {
         action = _crush;
       case 'sondage':
         action = _auteur ? _voirVotants : null; // le vote se fait par bouton
+      case 'question':
+        action = _question;
+      case 'rdv':
+        action = _rdv;
     }
     if (action == null) return visuel;
     return GestureDetector(
@@ -343,5 +492,34 @@ class _StickerInteractifState extends State<StickerInteractif> {
         child: visuel,
       ),
     );
+  }
+}
+
+/// Pouce du curseur « Note mon look » : l'émoji choisi par l'auteur.
+class _PouceEmoji extends SliderComponentShape {
+  final String emoji;
+  const _PouceEmoji(this.emoji);
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(36, 36);
+
+  @override
+  void paint(PaintingContext context, Offset center,
+      {required Animation<double> activationAnimation,
+      required Animation<double> enableAnimation,
+      required bool isDiscrete,
+      required TextPainter labelPainter,
+      required RenderBox parentBox,
+      required SliderThemeData sliderTheme,
+      required TextDirection textDirection,
+      required double value,
+      required double textScaleFactor,
+      required Size sizeWithOverflow}) {
+    final taille = 30 + 10 * value; // grossit vers la droite
+    final tp = TextPainter(
+      text: TextSpan(text: emoji, style: TextStyle(fontSize: taille)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(context.canvas, center - Offset(tp.width / 2, tp.height / 2));
   }
 }
