@@ -8,9 +8,15 @@ import 'package:flutter/material.dart';
 // stories.stickers (jsonb) et affichés par-dessus la photo / vidéo :
 // les GIF restent animés, même sur une vidéo.
 
+/// Stickers de rencontre (SQL 086), interactifs dans le lecteur :
+/// 'lieu' (ma ville), 'dispo' (« Dispo ce soir ? »), 'crush' (crush
+/// anonyme), 'sondage' (Vibe check, 2 choix dans [options]).
+const typesStickersRencontre = {'lieu', 'dispo', 'crush', 'sondage'};
+
 class StickerStory {
-  /// 'emoji' (valeur = l'emoji), 'giphy' (valeur = URL GIPHY) ou
-  /// 'texte' (valeur = le texte, avec gras / couleur / fond).
+  /// 'emoji' (valeur = l'emoji), 'giphy' (valeur = URL GIPHY),
+  /// 'texte' (valeur = le texte, avec gras / couleur / fond) ou un
+  /// sticker de rencontre ([typesStickersRencontre]).
   final String type;
   final String valeur;
   final double x, y; // centre, en fraction de l'écran (0–1)
@@ -20,6 +26,8 @@ class StickerStory {
   final bool gras;
   final int couleur; // ARGB
   final int fond; // 0 = aucun, 1 = bulle noire, 2 = bulle de la couleur
+  // Sondage : les 2 réponses possibles
+  final List<String> options;
 
   const StickerStory({
     required this.type,
@@ -31,9 +39,11 @@ class StickerStory {
     this.gras = true,
     this.couleur = 0xFFFFFFFF,
     this.fond = 1,
+    this.options = const [],
   });
 
   bool get estEmoji => type == 'emoji';
+  bool get estRencontre => typesStickersRencontre.contains(type);
   bool get estTexte => type == 'texte';
 
   StickerStory copyWith({
@@ -48,6 +58,7 @@ class StickerStory {
   }) =>
       StickerStory(
         type: type,
+        options: options,
         valeur: valeur ?? this.valeur,
         x: x ?? this.x,
         y: y ?? this.y,
@@ -66,20 +77,40 @@ class StickerStory {
         'e': double.parse(echelle.toStringAsFixed(3)),
         'r': double.parse(rotation.toStringAsFixed(3)),
         if (estTexte) ...{'g': gras, 'c': couleur, 'f': fond},
+        if (options.isNotEmpty) 'o': options,
       };
 
   static StickerStory? fromJson(dynamic j) {
     if (j is! Map) return null;
     final t = j['t'], v = j['v'];
     if (t is! String || v is! String || v.trim().isEmpty) return null;
-    if (t != 'emoji' && t != 'giphy' && t != 'texte') return null;
+    if (t != 'emoji' && t != 'giphy' && t != 'texte' &&
+        !typesStickersRencontre.contains(t)) {
+      return null;
+    }
+    // Sondage : exactement 2 réponses courtes
+    final o = j['o'];
+    final options = o is List
+        ? o.whereType<String>()
+            .map((x) => x.trim())
+            .where((x) => x.isNotEmpty)
+            .map((x) => x.length > 25 ? x.substring(0, 25) : x)
+            .take(2)
+            .toList()
+        : <String>[];
+    if (t == 'sondage' && options.length != 2) return null;
     // Les GIF ne viennent que de GIPHY (pas d'image arbitraire)
     if (t == 'giphy' && !estUrlGiphy(v)) return null;
     double n(Object? o, double d) => (o is num) ? o.toDouble() : d;
     final c = j['c'], f = j['f'];
     return StickerStory(
       type: t,
-      valeur: t == 'texte' && v.length > 200 ? v.substring(0, 200) : v,
+      valeur: (t == 'texte' && v.length > 200)
+          ? v.substring(0, 200)
+          : (typesStickersRencontre.contains(t) && v.length > 80)
+              ? v.substring(0, 80)
+              : v,
+      options: options,
       x: n(j['x'], 0.5).clamp(0.0, 1.0),
       y: n(j['y'], 0.5).clamp(0.0, 1.0),
       echelle: n(j['e'], 1).clamp(0.3, 4.0),
@@ -178,6 +209,12 @@ class VisuelSticker extends StatelessWidget {
         ),
       );
     }
+    if (s.estRencontre) {
+      return Transform.rotate(
+        angle: s.rotation,
+        child: Transform.scale(scale: s.echelle, child: VisuelRencontre(s)),
+      );
+    }
     final taille = 110 * s.echelle;
     return Transform.rotate(
       angle: s.rotation,
@@ -203,26 +240,33 @@ class VisuelSticker extends StatelessWidget {
 /// écran (même repère que LegendePlacee).
 class CoucheStickers extends StatelessWidget {
   final List<StickerStory> stickers;
-  const CoucheStickers(this.stickers, {super.key});
+
+  /// Lecteur : stickers de rencontre touchables (dispo, crush, sondage).
+  /// Sans lui, tout est décoratif.
+  final Widget Function(StickerStory s)? interactif;
+  const CoucheStickers(this.stickers, {super.key, this.interactif});
 
   @override
   Widget build(BuildContext context) {
     if (stickers.isEmpty) return const SizedBox.shrink();
+    final inter = interactif;
     return Positioned.fill(
-      child: IgnorePointer(
-        child: LayoutBuilder(
-          builder: (_, box) => Stack(children: [
-            for (final s in stickers)
-              Positioned(
-                left: s.x * box.maxWidth,
-                top: s.y * box.maxHeight,
-                child: FractionalTranslation(
-                  translation: const Offset(-0.5, -0.5),
-                  child: VisuelSticker(s),
-                ),
+      child: LayoutBuilder(
+        builder: (_, box) => Stack(children: [
+          for (final s in stickers)
+            Positioned(
+              left: s.x * box.maxWidth,
+              top: s.y * box.maxHeight,
+              child: FractionalTranslation(
+                translation: const Offset(-0.5, -0.5),
+                // Seuls les stickers de rencontre captent le toucher : le
+                // reste laisse passer le balayage / l'avance du lecteur
+                child: (inter != null && s.estRencontre)
+                    ? inter(s)
+                    : IgnorePointer(child: VisuelSticker(s)),
               ),
-          ]),
-        ),
+            ),
+        ]),
       ),
     );
   }
@@ -537,3 +581,112 @@ class _EditeurTexteStoryState extends State<EditeurTexteStory> {
   }
 }
 
+
+/// Apparence d'un sticker de rencontre. [enfant] remplace la partie basse
+/// (boutons du sondage, résultats…) dans le lecteur.
+class VisuelRencontre extends StatelessWidget {
+  final StickerStory s;
+  final Widget? bas;
+  const VisuelRencontre(this.s, {super.key, this.bas});
+
+  static const _degradeZamu =
+      LinearGradient(colors: [Color(0xFFFF3CAC), Color(0xFF7B2FFF)]);
+
+  Widget _carte({required Widget child, Gradient? degrade, Color? fond}) =>
+      Container(
+        constraints: const BoxConstraints(maxWidth: 260),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: BoxDecoration(
+          gradient: degrade,
+          color: fond,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black38)],
+        ),
+        child: child,
+      );
+
+  Widget _bouton(String texte, {Color fond = Colors.white, Color couleur = const Color(0xFF7B2FFF)}) =>
+      Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+        decoration: BoxDecoration(
+            color: fond, borderRadius: BorderRadius.circular(12)),
+        child: Text(texte,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: couleur, fontSize: 14, fontWeight: FontWeight.w800)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    switch (s.type) {
+      case 'lieu':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            gradient: _degradeZamu,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black38)],
+          ),
+          child: Text('📍 ${s.valeur}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.3)),
+        );
+      case 'dispo':
+        return _carte(
+          fond: Colors.white,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('🙋 ${s.valeur}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900)),
+            bas ??
+                _bouton('Je suis dispo !'.tr,
+                    fond: const Color(0xFF7B2FFF), couleur: Colors.white),
+          ]),
+        );
+      case 'crush':
+        return _carte(
+          degrade: _degradeZamu,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('💘 ${s.valeur}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('Personne ne saura que c\'est toi 🤫'.tr,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 12)),
+            bas ?? _bouton('J\'ai un crush 💘'.tr),
+          ]),
+        );
+      case 'sondage':
+        return _carte(
+          fond: Colors.white,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('🔥 ${s.valeur}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900)),
+            bas ??
+                Column(children: [
+                  for (final o in s.options)
+                    _bouton(o, fond: const Color(0xFFF1EDFF)),
+                ]),
+          ]),
+        );
+    }
+    return const SizedBox.shrink();
+  }
+}

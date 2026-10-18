@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/interactions_story.dart';
 import 'package:rencontre/features/home/widget/filtres_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:flutter/services.dart';
@@ -825,7 +826,9 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
               ),
           ]),
         ),
-        if (!_replyFocused) CoucheStickers(s.stickers),
+        if (!_replyFocused)
+          CoucheStickers(s.stickers,
+              interactif: (st) => StickerInteractif(sticker: st, story: s)),
         if (!_replyFocused &&
             s.legendePlacee &&
             (s.caption ?? '').isNotEmpty)

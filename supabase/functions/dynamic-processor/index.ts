@@ -113,7 +113,9 @@ type EventType =
   // ⭐ Favoris (trigger SQL sur profiles, 20261002000021_favoris.sql)
   | "favori_en_ligne" | "favori_proche" | "favori_ville" | "favori_story"
   // 👥 Amis (fonctions SQL demander_ami / accepter_ami, migration 037)
-  | "ami_demande" | "ami_accepte";
+  | "ami_demande" | "ami_accepte"
+  // 💘 Crush anonyme envoyé depuis une story (SQL 086)
+  | "crush_story";
 
 function buildNotificationContent(
   eventType: EventType,
@@ -396,6 +398,17 @@ serve(async (req) => {
       body = en
         ? `${fromProfile.name} really likes you. Like them back!`
         : `${fromProfile.name} t'aime vraiment bien. Like en retour !`;
+    }
+
+    // 💘 Crush anonyme : on ne dit JAMAIS qui (révélé seulement en cas de
+    // like réciproque). Le tap ouvre l'onglet ❤️.
+    if (eventType === "crush_story") {
+      title = en ? "💘 Someone has a crush on you" : "💘 Quelqu'un a un crush sur toi";
+      body = en
+        ? "They saw your story 👀 Like the profiles you like: if it's mutual, you'll find out who"
+        : "Cette personne a vu ta story 👀 Like les profils qui te plaisent : si c'est réciproque, tu sauras qui";
+      channelId = "likes";
+      data = { type: "like_anonyme" };
     }
 
     // ── Envoi FCM ─────────────────────────────────────────────────

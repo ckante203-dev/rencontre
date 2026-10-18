@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/interactions_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
@@ -1004,7 +1005,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         ]))))),
           ),
           if (!_longPressing && !_replyFocused)
-            CoucheStickers(s.stickers),
+            CoucheStickers(s.stickers,
+                interactif: (st) => StickerInteractif(sticker: st, story: s)),
           if (!_longPressing)
             // Légende placée par l'auteur (éditeur façon Snap)
             if (s.legendePlacee &&
@@ -2839,6 +2841,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                               ),
                               const SizedBox(width: 8),
                               _BoutonEditeur(
+                                icon: Icons.favorite_rounded,
+                                label: 'Rencontre'.tr,
+                                actif: _stickers.any((x) => x.estRencontre),
+                                onTap: _ajouterStickerRencontre,
+                              ),
+                              const SizedBox(width: 8),
+                              _BoutonEditeur(
                                 icon: Icons.auto_awesome_rounded,
                                 label: 'Filtres'.tr,
                                 actif: _filtre != 'normal' || _bandeauFiltres,
@@ -2927,6 +2936,132 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         _stickerIds.add(_prochainStickerId++);
       }
     });
+  }
+
+  /// Stickers de rencontre (SQL 086) : un seul de chaque sorte par story.
+  Future<void> _ajouterStickerRencontre() async {
+    if (_stickers.length >= 20) {
+      _snack('20 stickers maximum par story'.tr);
+      return;
+    }
+    Widget ligne(String id, String emoji, String titre, String sous) =>
+        ListTile(
+          leading: Text(emoji, style: const TextStyle(fontSize: 26)),
+          title: Text(titre,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+          subtitle: Text(sous,
+              style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          onTap: () => Get.back(result: id),
+        );
+    final choix = await Get.bottomSheet<String>(
+      SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+          decoration: const BoxDecoration(
+              color: Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Stickers de rencontre'.tr,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            ligne('dispo', '🙋', 'Dispo ce soir ?'.tr,
+                'Ceux qui sont partants te répondent en un geste'.tr),
+            ligne('crush', '💘', 'Crush anonyme'.tr,
+                'On t\'avoue un crush sans dire qui… sauf si c\'est réciproque'.tr),
+            ligne('sondage', '🔥', 'Vibe check'.tr,
+                'Un sondage à 2 choix, tu vois qui a voté quoi'.tr),
+            ligne('lieu', '📍', 'Ma ville'.tr, 'Le nom de ta ville en décoration'.tr),
+          ]),
+        ),
+      ),
+      backgroundColor: Colors.transparent,
+    );
+    if (choix == null || !mounted) return;
+    if (_stickers.any((x) => x.type == choix)) {
+      _snack('Ce sticker est déjà sur ta story'.tr);
+      return;
+    }
+    StickerStory? nouveau;
+    switch (choix) {
+      case 'dispo':
+        nouveau = StickerStory(type: 'dispo', valeur: 'Dispo ce soir ?'.tr);
+      case 'crush':
+        nouveau = StickerStory(type: 'crush', valeur: 'Crush anonyme'.tr);
+      case 'lieu':
+        try {
+          final r = await Supabase.instance.client.rpc('ma_ville') as List;
+          if (r.isNotEmpty) {
+            final v = r.first as Map;
+            nouveau = StickerStory(type: 'lieu', valeur: '${v['nom']}');
+          }
+        } catch (_) {}
+        if (nouveau == null) {
+          _snack('Active ta position pour afficher ta ville'.tr);
+          return;
+        }
+      case 'sondage':
+        nouveau = await _composerSondage();
+    }
+    if (nouveau == null || !mounted) return;
+    final n = nouveau;
+    setState(() {
+      _stickers.add(n.copyWith(x: 0.5, y: 0.45));
+      _stickerIds.add(_prochainStickerId++);
+    });
+  }
+
+  /// Question + 2 réponses du « Vibe check ».
+  Future<StickerStory?> _composerSondage() async {
+    final q = TextEditingController(text: 'Resto ou balade ce soir ?'.tr);
+    final a = TextEditingController(text: 'Resto 🍽️'.tr);
+    final b = TextEditingController(text: 'Balade 🌙'.tr);
+    InputDecoration deco(String t) => InputDecoration(
+          labelText: t,
+          labelStyle: const TextStyle(color: Colors.white60),
+          enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24)),
+        );
+    const style = TextStyle(color: Colors.white);
+    final ok = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: const Color(0xFF1C1C1E),
+      title: Text('🔥 ${'Vibe check'.tr}',
+          style: const TextStyle(color: Colors.white)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(
+            controller: q,
+            maxLength: 80,
+            style: style,
+            decoration: deco('Ta question'.tr)),
+        TextField(
+            controller: a,
+            maxLength: 25,
+            style: style,
+            decoration: deco('Réponse 1'.tr)),
+        TextField(
+            controller: b,
+            maxLength: 25,
+            style: style,
+            decoration: deco('Réponse 2'.tr)),
+      ]),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text('Annuler'.tr)),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text('Ajouter'.tr)),
+      ],
+    ));
+    final question = q.text.trim(), r1 = a.text.trim(), r2 = b.text.trim();
+    q.dispose();
+    a.dispose();
+    b.dispose();
+    if (ok != true || question.isEmpty || r1.isEmpty || r2.isEmpty) return null;
+    return StickerStory(type: 'sondage', valeur: question, options: [r1, r2]);
   }
 
   Future<void> _ajouterSticker() async {
