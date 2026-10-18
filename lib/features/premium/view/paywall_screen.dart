@@ -189,14 +189,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                 'Ton profil passe en tête de l\'Accueil pendant 1 heure'
                                     .tr,
                           ),
-                          _BenefitTile(
-                            icon: Icons.visibility_off_rounded,
-                            iconColor: _icone(
-                                const Color(0xFF64748B), AppColors.accent),
-                            title: 'Mode fantôme sur la carte'.tr,
-                            subtitle:
-                                'Vois les autres sans apparaître toi-même'.tr,
-                          ),
+                          // Mode fantôme retiré : la carte n'est plus dans
+                          // l'appli (reviendra dans une offre « Ultra »)
                           // Seulement si les propositions sont ouvertes (sinon on
                           // promettrait un avantage qui n'existe pas)
                           if (propositionsOuvertes)
@@ -610,7 +604,6 @@ class _Comparatif extends StatelessWidget {
       ('Voir qui t\'a liké'.tr, '—', '✓'),
       ('Voir qui a visité ton profil'.tr, '—', '✓'),
       ('Mode voyage (autre ville)'.tr, '—', '✓'),
-      ('Mode fantôme sur la carte'.tr, '—', '✓'),
       ('Boost offert chaque mois'.tr, '—', '1'),
       ('Messages, stories, matchs'.tr, '✓', '✓'),
     ];
