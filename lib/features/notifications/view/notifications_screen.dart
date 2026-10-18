@@ -5,6 +5,7 @@ import 'package:rencontre/features/amis/ecran_amis.dart';
 import 'package:rencontre/features/home/view/main_navigation.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:rencontre/core/i18n/traductions.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/notifications/controller/notification_controller.dart';
@@ -272,7 +273,7 @@ class _NotifTile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              timeago.format(notif.createdAt, locale: 'fr'),
+              timeago.format(notif.createdAt, locale: Langue.code),
               style: TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
             if (_enAvant) ...[

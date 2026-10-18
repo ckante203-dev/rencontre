@@ -10,6 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { languesDe, traduire } from "../_shared/traduction.ts";
 
 // ── Token OAuth2 mis en cache ─────────────────────────────────────
 let _accessToken: string | null = null;
@@ -173,11 +174,19 @@ serve(async (req) => {
     const liste = (dest ?? []) as { user_id: string; fcm_token: string }[];
     if (!liste.length) return new Response(JSON.stringify({ envoyes: 0 }));
 
-    const groupe = (msg as any).groupes?.nom ?? "Groupe";
-    const auteur = (msg as any).profiles?.name ?? "Quelqu'un";
+    const nomGroupe: string | undefined = (msg as any).groupes?.nom;
+    const nomAuteur: string | undefined = (msg as any).profiles?.name;
+    const langues = await languesDe(admin, liste.map((d) => d.user_id));
     const apercu = msg.type === "image" ? "📷 Photo"
       : msg.type === "giphy" ? "GIF"
       : String(msg.contenu ?? "").slice(0, 120);
+    // Titre et texte dans la langue du destinataire
+    const texteGroupe = (l?: string): [string, string] => {
+      const en = l === "en";
+      const groupe = nomGroupe ?? (en ? "Group" : "Groupe");
+      const auteur = nomAuteur ?? (en ? "Someone" : "Quelqu'un");
+      return [`👥 ${groupe}`, `${auteur}${en ? ":" : " :"} ${apercu}`];
+    };
     const sa = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!);
     const data = { type: "groupe", groupe_id: String(msg.groupe_id) };
 
@@ -186,7 +195,7 @@ serve(async (req) => {
     for (let i = 0; i < liste.length; i += 20) {
       const lot = liste.slice(i, i + 20);
       const res = await Promise.all(lot.map((d) =>
-        envoyer(d.fcm_token, `👥 ${groupe}`, `${auteur} : ${apercu}`, data, sa)
+        envoyer(d.fcm_token, ...texteGroupe(langues.get(d.user_id)), data, sa)
           .catch(() => "erreur")));
       res.forEach((r, j) => {
         if (r === "ok") envoyes++;

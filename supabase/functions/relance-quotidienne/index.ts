@@ -11,6 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { languesDe, traduire } from "../_shared/traduction.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -139,7 +140,13 @@ serve(async (req) => {
     console.error("relances_du_jour:", error.message);
     return new Response(error.message, { status: 500 });
   }
-  const relances = (data ?? []) as Relance[];
+  // Textes traduits selon la langue choisie dans l'app
+  const brutes = (data ?? []) as Relance[];
+  const langues = await languesDe(admin, brutes.map((r) => r.user_id));
+  const relances = brutes.map((r) => {
+    const l = langues.get(r.user_id);
+    return { ...r, titre: traduire(r.titre, l), corps: traduire(r.corps, l) };
+  });
 
   if (new URL(req.url).searchParams.get("apercu") === "1") {
     return new Response(

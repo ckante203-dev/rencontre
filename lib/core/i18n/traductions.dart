@@ -7,23 +7,48 @@ import 'package:rencontre/core/i18n/en_auto.dart';
 
 /// Langues de l'application. Un texte sans clé traduite reste en français
 /// (fallbackLocale) : on traduit l'app écran par écran.
+/// Une langue proposée dans l'app.
+class LangueDispo {
+  final String code; // code ISO à 2 lettres, aussi enregistré dans profiles.langue
+  final Locale locale;
+  final String nom; // dans la langue elle-même (« Español »)
+  final String drapeau;
+  const LangueDispo(this.code, this.locale, this.nom, this.drapeau);
+}
+
 class Langue {
   static const fr = Locale('fr', 'FR');
   static const en = Locale('en', 'US');
   static const _cle = 'langue';
 
-  /// Langue enregistrée, sinon celle du téléphone (anglais si le téléphone
-  /// est en anglais, français sinon).
+  /// Langues proposées (menus de l'inscription et des Paramètres). Ajouter
+  /// une langue : une ligne ici + son dictionnaire dans [Traductions] (+ ses
+  /// textes « il y a … » dans main.dart si timeago les connaît).
+  static const disponibles = [
+    LangueDispo('fr', fr, 'Français', '🇫🇷'),
+    LangueDispo('en', en, 'English', '🇬🇧'),
+  ];
+
+  static LangueDispo _parCode(String? code) => disponibles.firstWhere(
+      (l) => l.code == code,
+      orElse: () => disponibles.first);
+
+  /// Langue enregistrée, sinon celle du téléphone si l'app la propose,
+  /// sinon le français.
   static Locale initiale() {
     final code = GetStorage().read<String>(_cle) ??
         PlatformDispatcher.instance.locale.languageCode;
-    return code == 'en' ? en : fr;
+    return _parCode(code).locale;
   }
 
-  static String get code => Get.locale?.languageCode == 'en' ? 'en' : 'fr';
+  /// Code de la langue affichée (« fr », « en »…).
+  static String get code => _parCode(Get.locale?.languageCode).code;
+
+  /// Langue affichée (nom et drapeau pour les menus).
+  static LangueDispo get actuelle => _parCode(Get.locale?.languageCode);
 
   static Future<void> changer(String code) async {
-    final locale = code == 'en' ? en : fr;
+    final locale = _parCode(code).locale;
     await GetStorage().write(_cle, locale.languageCode);
     await Get.updateLocale(locale);
     final uid = Supabase.instance.client.auth.currentUser?.id;

@@ -45,8 +45,7 @@ class BoutonLangue extends StatelessWidget {
                   color: AppColors.border,
                   borderRadius: BorderRadius.circular(2)),
             ),
-            ligne('fr', 'Français', '🇫🇷'),
-            ligne('en', 'English', '🇬🇧'),
+            for (final l in Langue.disponibles) ligne(l.code, l.nom, l.drapeau),
           ]),
         ),
       ),
@@ -72,7 +71,7 @@ class BoutonLangue extends StatelessWidget {
           ],
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(Langue.code == 'en' ? '🇬🇧' : '🇫🇷',
+          Text(Langue.actuelle.drapeau,
               style: const TextStyle(fontSize: 16)),
           const SizedBox(width: 6),
           Text(Langue.code.toUpperCase(),

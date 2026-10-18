@@ -45,8 +45,7 @@ class EcranParametres extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            choix('fr', '🇫🇷', 'Français'),
-            choix('en', '🇬🇧', 'English'),
+            for (final l in Langue.disponibles) choix(l.code, l.drapeau, l.nom),
           ]),
         ),
       ),
@@ -414,7 +413,7 @@ class EcranParametres extends StatelessWidget {
             _Tuile(
               icon: '🌐',
               title: 'Langue · Language'.tr,
-              subtitle: Langue.code == 'en' ? 'English'.tr : 'Français'.tr,
+              subtitle: Langue.actuelle.nom,
               onTap: () => _choisirLangue(context),
             ),
             const SizedBox(height: 28),

@@ -15,6 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { languesDe, traduire } from "../_shared/traduction.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -151,6 +152,7 @@ async function traiterBoosts(sa: any) {
     return { boosts: 0 };
   }
   const liste = (data ?? []) as BilanBoost[];
+  const langues = await languesDe(admin, liste.map((b) => b.user_id));
   const traites: string[] = [];
   const morts: string[] = [];
   for (let i = 0; i < liste.length; i += PAR_LOT) {
@@ -162,7 +164,9 @@ async function traiterBoosts(sa: any) {
       const corps = b.vues > 0
         ? `👀 ${b.vues} vue${b.vues > 1 ? "s" : ""} · ❤️ ${b.likes} like${b.likes > 1 ? "s" : ""}${x}`
         : "Découvre ton bilan et relance un Boost ⚡";
-      return envoyerFcm(b.fcm_token, "⚡ Ton Boost est terminé", corps,
+      const l = langues.get(b.user_id);
+      return envoyerFcm(b.fcm_token, traduire("⚡ Ton Boost est terminé", l),
+        traduire(corps, l),
         { type: "boost_bilan" }, sa).catch(() => "erreur");
     }));
     res.forEach((statut, j) => {
@@ -195,7 +199,12 @@ async function traiterCroises(sa: any) {
     console.error("croises_a_notifier:", error.message);
     return { croises: 0 };
   }
-  const liste = (data ?? []) as Croise[];
+  const brutesC = (data ?? []) as Croise[];
+  const languesC = await languesDe(admin, brutesC.map((c) => c.user_id));
+  const liste = brutesC.map((c) => {
+    const l = languesC.get(c.user_id);
+    return { ...c, titre: traduire(c.titre, l), corps: traduire(c.corps, l) };
+  });
   const notees: { evenement_id: string; user_id: string; type: string }[] = [];
   const morts: string[] = [];
   let envoyes = 0;
@@ -238,7 +247,12 @@ serve(async (req) => {
     console.error("notifs_evenements_a_envoyer:", error.message);
     return new Response(error.message, { status: 500 });
   }
-  const liste = (data ?? []) as NotifEvenement[];
+  const brutes = (data ?? []) as NotifEvenement[];
+  const langues = await languesDe(admin, brutes.map((n) => n.user_id));
+  const liste = brutes.map((n) => {
+    const l = langues.get(n.user_id);
+    return { ...n, titre: traduire(n.titre, l), corps: traduire(n.corps, l) };
+  });
 
   if (new URL(req.url).searchParams.get("apercu") === "1") {
     return new Response(

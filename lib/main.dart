@@ -103,6 +103,7 @@ void main() async {
     GetStorage.init(),
   ]);
 
+  // « il y a 5 min » : français ; l'anglais est inclus par défaut
   timeago.setLocaleMessages('fr', timeago.FrMessages());
 
   // ✅ Crashlytics : toute erreur non gérée (Flutter ou asynchrone) est
