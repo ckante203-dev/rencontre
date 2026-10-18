@@ -2221,6 +2221,12 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       backgroundColor: CouleursMedia.surface,
       colorText: CouleursMedia.textPrimary);
 
+  /// Information (pas une erreur) : sans le titre « Erreur ».
+  void _info(String msg) => Get.snackbar('💡', msg,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: CouleursMedia.surface,
+      colorText: CouleursMedia.textPrimary);
+
   void _showSettingsSheet() {
     showModalBottomSheet(
       context: context,
@@ -2986,7 +2992,9 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       });
       if (r == null || r.visages.isEmpty) {
         _visages = null;
-        _snack('Aucun visage trouvé sur la photo'.tr);
+        _info(r == null
+            ? 'Détection du visage impossible sur ce téléphone'.tr
+            : 'Aucun visage trouvé sur la photo'.tr);
         return;
       }
       setState(() {
@@ -3046,7 +3054,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     );
     if (choix == null || !mounted) return;
     if (_stickers.any((x) => x.type == choix)) {
-      _snack('Ce sticker est déjà sur ta story'.tr);
+      _info('Ce sticker est déjà sur ta story'.tr);
       return;
     }
     StickerStory? nouveau;
@@ -3061,10 +3069,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           if (r.isNotEmpty) {
             final v = r.first as Map;
             nouveau = StickerStory(type: 'lieu', valeur: '${v['nom']}');
+          } else {
+            // Pas de position, ou aucune grande ville à moins de 60 km
+            _info('Active ta position pour afficher ta ville'.tr);
+            return;
           }
-        } catch (_) {}
-        if (nouveau == null) {
-          _snack('Active ta position pour afficher ta ville'.tr);
+        } catch (_) {
+          _snack('Indisponible pour le moment, réessaie plus tard'.tr);
           return;
         }
       case 'sondage':

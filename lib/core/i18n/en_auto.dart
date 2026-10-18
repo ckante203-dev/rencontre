@@ -972,6 +972,8 @@ const Map<String, String> enAuto = {
   "Paillettes": "Sparkles",
   "En feu": "On fire",
   "Aucun visage trouvé sur la photo": "No face found in the photo",
+  "Détection du visage impossible sur ce téléphone": "Face detection isn't available on this phone",
+  "Indisponible pour le moment, réessaie plus tard": "Unavailable right now, try again later",
   "Signaler un bug": "Report a bug",
   "Un souci dans l'appli ? Dis-le-nous": "Something wrong in the app? Tell us",
   "Signaler un bug 🐞": "Report a bug 🐞",
