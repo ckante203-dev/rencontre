@@ -978,6 +978,7 @@ const Map<String, String> enAuto = {
   "Abandonner cette vidéo ?": "Discard this video?",
   "Tu reviens à la caméra.": "You'll go back to the camera.",
   "Abandonner": "Discard",
+  "Dessin": "Draw",
   "Signaler un bug": "Report a bug",
   "Un souci dans l'appli ? Dis-le-nous": "Something wrong in the app? Tell us",
   "Signaler un bug 🐞": "Report a bug 🐞",

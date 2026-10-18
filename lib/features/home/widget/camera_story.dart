@@ -68,6 +68,11 @@ class _CameraStoryState extends State<CameraStory>
   int _changementsFiltre = 0; // relance l'affichage du nom
   double _glisse = 0; // déplacement horizontal à un doigt
   bool _unDoigt = true;
+  // Minuteur de la photo (0 = aucun, 3 s, 10 s) et compte à rebours
+  static int _minuteurMemorise = 0;
+  int _minuteur = _minuteurMemorise;
+  int? _compte;
+  Timer? _decompte;
   late final AnimationController _progression =
       AnimationController(vsync: this, duration: _dureeMax)
         ..addStatusListener((s) {
@@ -103,6 +108,7 @@ class _CameraStoryState extends State<CameraStory>
 
   @override
   void dispose() {
+    _decompte?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _progression.dispose();
     _ctrl?.dispose();
@@ -199,6 +205,41 @@ class _CameraStoryState extends State<CameraStory>
       await c.setFlashMode(_flash ? FlashMode.always : FlashMode.off);
     } catch (_) {}
     setState(() {});
+  }
+
+  /// Photo tout de suite, ou après le compte à rebours du minuteur
+  /// (toucher pendant le compte = annuler).
+  void _declencher() {
+    if (_compte != null) {
+      _decompte?.cancel();
+      setState(() => _compte = null);
+      return;
+    }
+    if (_minuteur == 0) {
+      _photo();
+      return;
+    }
+    setState(() => _compte = _minuteur);
+    _decompte = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      final reste = (_compte ?? 1) - 1;
+      if (reste <= 0) {
+        t.cancel();
+        setState(() => _compte = null);
+        _photo();
+      } else {
+        HapticFeedback.selectionClick();
+        setState(() => _compte = reste);
+      }
+    });
+  }
+
+  void _changerMinuteur() {
+    setState(() {
+      _minuteur = switch (_minuteur) { 0 => 3, 3 => 10, _ => 0 };
+      _minuteurMemorise = _minuteur;
+    });
+    HapticFeedback.selectionClick();
   }
 
   Future<void> _photo() async {
@@ -406,6 +447,19 @@ class _CameraStoryState extends State<CameraStory>
               filtre: FiltreStory.tous[_filtre].id, child: _apercu(ecran)),
         ),
 
+        // ── Compte à rebours du minuteur ──
+        if (_compte != null)
+          Center(
+            child: IgnorePointer(
+              child: Text('$_compte',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 120,
+                      fontWeight: FontWeight.w900,
+                      shadows: [Shadow(blurRadius: 18)])),
+            ),
+          ),
+
         // ── Nom du filtre (apparaît puis s'efface) ──
         Center(
           child: NomFiltre(
@@ -450,6 +504,27 @@ class _CameraStoryState extends State<CameraStory>
                     const SizedBox(height: 12),
                     if (_cameras.length > 1)
                       _boutonRond(Icons.flip_camera_android_rounded, _retourner),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _changerMinuteur,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                            color: _minuteur > 0
+                                ? Colors.white
+                                : Colors.black38,
+                            shape: BoxShape.circle),
+                        child: _minuteur > 0
+                            ? Text('${_minuteur}s',
+                                style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w900))
+                            : const Icon(Icons.timer_outlined,
+                                color: Colors.white, size: 24),
+                      ),
+                    ),
                   ]),
               ],
             ),
@@ -471,7 +546,18 @@ class _CameraStoryState extends State<CameraStory>
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Column(children: [
-                      PointsFiltres(index: _filtre),
+                      RangeeFiltres(
+                        index: _filtre,
+                        onChoix: (i) {
+                          if (i == _filtre) return;
+                          setState(() {
+                            _filtre = i;
+                            _filtreMemorise = i;
+                            _changementsFiltre++;
+                          });
+                          HapticFeedback.selectionClick();
+                        },
+                      ),
                       if (!_aideVue)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
@@ -543,7 +629,7 @@ class _CameraStoryState extends State<CameraStory>
                             GestureRecognizerFactoryWithHandlers<
                                     TapGestureRecognizer>(
                                 TapGestureRecognizer.new,
-                                (r) => r.onTap = _photo),
+                                (r) => r.onTap = _declencher),
                         // 0,2 s d'appui suffisent pour filmer (au lieu de 0,5)
                         LongPressGestureRecognizer:
                             GestureRecognizerFactoryWithHandlers<

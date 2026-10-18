@@ -1851,6 +1851,14 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   bool _detectionVisage = false;
   bool _bandeauVisage = false;
   String _effetVisage = 'aucun';
+  // ✏️ Dessin au doigt (photos) : traits en fraction de l'écran
+  final List<_Trait> _traits = [];
+  bool _modeDessin = false;
+  Color _couleurDessin = Colors.white;
+  static const _couleursDessin = [
+    Colors.white, Colors.black, Color(0xFFFF3CAC), Color(0xFF7B2FFF),
+    Color(0xFFFFD60A), Color(0xFFFF3B30), Color(0xFF30D158), Color(0xFF0A84FF),
+  ];
 
   bool _textMode = false;
   final _textCtrl = TextEditingController();
@@ -1957,6 +1965,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         _visages = null;
         _bandeauVisage = false;
         _effetVisage = 'aucun';
+        _traits.clear();
+        _modeDessin = false;
         _stickers.clear();
         _stickerIds.clear();
         _previewPath = chemin;
@@ -2083,7 +2093,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
         (!_cadrage.value.isIdentity() ||
             _miroir ||
             !filtre.neutre ||
-            _effetVisage != 'aucun')) {
+            _effetVisage != 'aucun' ||
+            _traits.isNotEmpty)) {
       fichier = await _capturerCadrage() ?? file;
     }
 
@@ -2694,7 +2705,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               key: _photoKey,
               child: Container(
                 color: Colors.black,
-                child: InteractiveViewer(
+                child: Stack(fit: StackFit.expand, children: [
+                 InteractiveViewer(
                   transformationController: _cadrage,
                   minScale: 1,
                   maxScale: 5,
@@ -2712,7 +2724,12 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                       resultat: _visages!,
                                       effet: _effetVisage),
                               ]))),
-                ),
+                 ),
+                 // ✏️ Dessin : dans la zone capturée → gravé dans la photo
+                 if (_traits.isNotEmpty)
+                   IgnorePointer(
+                       child: CustomPaint(painter: _PeintreDessin(_traits))),
+                ]),
               ),
             ),
 
@@ -2848,8 +2865,71 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
               ),
             ),
 
+          // ── ✏️ Mode dessin ──
+          if (_modeDessin) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onPanStart: (d) => setState(() => _traits.add(_Trait(
+                    _couleurDessin,
+                    [Offset(d.localPosition.dx / box.maxWidth,
+                        d.localPosition.dy / box.maxHeight)]))),
+                onPanUpdate: (d) => setState(() => _traits.last.points.add(
+                    Offset(d.localPosition.dx / box.maxWidth,
+                        d.localPosition.dy / box.maxHeight))),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 8,
+              right: 8,
+              child: SafeArea(
+                bottom: false,
+                child: Row(children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: [
+                        for (final c in _couleursDessin)
+                          GestureDetector(
+                            onTap: () => setState(() => _couleurDessin = c),
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: c,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Colors.white,
+                                    width: c == _couleurDessin ? 3 : 1),
+                              ),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _traits.isEmpty
+                        ? null
+                        : () => setState(() => _traits.removeLast()),
+                    icon: const Icon(Icons.undo_rounded, color: Colors.white),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _modeDessin = false),
+                    child: Text('OK'.tr,
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w800)),
+                  ),
+                ]),
+              ),
+            ),
+          ],
+
           // ── Outils à droite (comme Snap) : Rencontre en tête ──
-          if (!_editionLegende && !_deplacementSticker && _texteEdite == null)
+          if (!_editionLegende &&
+              !_deplacementSticker &&
+              _texteEdite == null &&
+              !_modeDessin)
             Positioned(
               top: 8,
               right: 8,
@@ -2869,6 +2949,17 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     actif: _stickers.any((x) => x.estTexte),
                     onTap: _ouvrirTexte,
                   ),
+                  if (!_isVideo)
+                    _OutilVertical(
+                      icon: Icons.brush_rounded,
+                      label: 'Dessin'.tr,
+                      actif: _traits.isNotEmpty,
+                      onTap: () => setState(() {
+                        _modeDessin = true;
+                        _bandeauFiltres = false;
+                        _bandeauVisage = false;
+                      }),
+                    ),
                   _OutilVertical(
                     icon: Icons.emoji_emotions_rounded,
                     label: 'Stickers'.tr,
@@ -2903,7 +2994,10 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
             ),
 
           // ── Barre du bas ──
-          if (!_editionLegende && !_deplacementSticker && _texteEdite == null)
+          if (!_editionLegende &&
+              !_deplacementSticker &&
+              _texteEdite == null &&
+              !_modeDessin)
             Positioned(
                 bottom: 0,
                 left: 0,
@@ -3394,6 +3488,46 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 }
 
 // ─── BOUTON DE L'ÉDITEUR ──────────────────────────────────────────
+
+/// Un trait du dessin (points en fraction de la zone).
+class _Trait {
+  final Color couleur;
+  final List<Offset> points;
+  _Trait(this.couleur, this.points);
+}
+
+class _PeintreDessin extends CustomPainter {
+  final List<_Trait> traits;
+  _PeintreDessin(this.traits);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final t in traits) {
+      final p = Paint()
+        ..color = t.couleur
+        ..strokeWidth = size.width * 0.012
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke;
+      final chemin = Path();
+      for (var i = 0; i < t.points.length; i++) {
+        final o = Offset(t.points[i].dx * size.width, t.points[i].dy * size.height);
+        i == 0 ? chemin.moveTo(o.dx, o.dy) : chemin.lineTo(o.dx, o.dy);
+      }
+      if (t.points.length == 1) {
+        canvas.drawCircle(
+            Offset(t.points[0].dx * size.width, t.points[0].dy * size.height),
+            p.strokeWidth / 2,
+            p..style = PaintingStyle.fill);
+      } else {
+        canvas.drawPath(chemin, p);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PeintreDessin old) => true;
+}
 
 /// Outil de la barre verticale de l'éditeur (icône ronde + petit nom).
 class _OutilVertical extends StatelessWidget {

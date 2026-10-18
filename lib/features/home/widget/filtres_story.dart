@@ -287,3 +287,74 @@ class PointsFiltres extends StatelessWidget {
     );
   }
 }
+
+/// Caméra : rangée des filtres (émojis), celui en cours au centre et
+/// agrandi. Toucher = choisir ; glisser sur l'image marche aussi.
+class RangeeFiltres extends StatefulWidget {
+  final int index;
+  final ValueChanged<int> onChoix;
+  const RangeeFiltres({super.key, required this.index, required this.onChoix});
+
+  @override
+  State<RangeeFiltres> createState() => _RangeeFiltresState();
+}
+
+class _RangeeFiltresState extends State<RangeeFiltres> {
+  static const _largeur = 46.0;
+  late final ScrollController _defile =
+      ScrollController(initialScrollOffset: widget.index * _largeur);
+
+  @override
+  void didUpdateWidget(covariant RangeeFiltres ancien) {
+    super.didUpdateWidget(ancien);
+    if (ancien.index != widget.index && _defile.hasClients) {
+      _defile.animateTo(widget.index * _largeur,
+          duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+    }
+  }
+
+  @override
+  void dispose() {
+    _defile.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (_, box) {
+      final marge = (box.maxWidth - _largeur) / 2;
+      return SizedBox(
+        height: 52,
+        child: ListView.builder(
+          controller: _defile,
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: marge),
+          itemExtent: _largeur,
+          itemCount: FiltreStory.tous.length,
+          itemBuilder: (_, i) {
+            final f = FiltreStory.tous[i];
+            final actif = i == widget.index;
+            return GestureDetector(
+              onTap: () => widget.onChoix(i),
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: actif ? 44 : 32,
+                  height: actif ? 44 : 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: actif ? Colors.white : Colors.black38,
+                    border: Border.all(color: Colors.white54),
+                  ),
+                  child: Text(f.emoji,
+                      style: TextStyle(fontSize: actif ? 22 : 15)),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+}
