@@ -3,15 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Paramètres → « Signaler un bug » : le membre décrit le problème (+ une
-/// capture d'écran facultative). La version de l'app, le modèle du
-/// téléphone et la version d'Android sont joints (SQL 082). L'équipe
-/// répond dans la conversation « Zamu ».
+/// Paramètres → « Signaler un bug » : le membre décrit le problème. La
+/// version de l'app, le modèle du téléphone et la version d'Android sont
+/// joints (SQL 082). L'équipe répond dans la conversation « Zamu ».
+/// Pas de capture d'écran : elles sont bloquées dans l'appli (FLAG_SECURE).
 void ouvrirSignalerBug() {
   Get.bottomSheet(
     const _FeuilleBug(),
@@ -31,7 +30,6 @@ class _FeuilleBug extends StatefulWidget {
 
 class _FeuilleBugState extends State<_FeuilleBug> {
   final _texte = TextEditingController();
-  File? _capture;
   bool _envoi = false;
   String _erreur = '';
 
@@ -41,16 +39,6 @@ class _FeuilleBugState extends State<_FeuilleBug> {
   void dispose() {
     _texte.dispose();
     super.dispose();
-  }
-
-  Future<void> _choisirCapture() async {
-    try {
-      final x = await ImagePicker().pickImage(
-          source: ImageSource.gallery, maxWidth: 1600, imageQuality: 80);
-      if (x != null && mounted) setState(() => _capture = File(x.path));
-    } catch (_) {
-      // galerie refusée : la capture reste facultative
-    }
   }
 
   Future<Map<String, String?>> _infosTelephone() async {
@@ -93,17 +81,9 @@ class _FeuilleBugState extends State<_FeuilleBug> {
       _erreur = '';
     });
     try {
-      String? chemin;
-      final capture = _capture;
-      if (capture != null) {
-        chemin = '$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
-        await _sb.storage.from('bugs').upload(chemin, capture,
-            fileOptions: const FileOptions(contentType: 'image/jpeg'));
-      }
       await _sb.from('bugs_signales').insert({
         'user_id': uid,
         'texte': texte,
-        'capture': chemin,
         ...await _infosTelephone(),
       });
       Get.back();
@@ -129,7 +109,6 @@ class _FeuilleBugState extends State<_FeuilleBug> {
 
   @override
   Widget build(BuildContext context) {
-    final capture = _capture;
     return Padding(
       // Pas de viewInsets : Get.bottomSheet remonte déjà la feuille
       // au-dessus du clavier
@@ -179,32 +158,7 @@ class _FeuilleBugState extends State<_FeuilleBug> {
                     borderSide: BorderSide.none),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(children: [
-              if (capture != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(capture,
-                      width: 44, height: 44, fit: BoxFit.cover),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text('Capture ajoutée'.tr,
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.textPrimary)),
-                ),
-                IconButton(
-                  onPressed: () => setState(() => _capture = null),
-                  icon: Icon(Icons.close_rounded, color: AppColors.textMuted),
-                ),
-              ] else
-                TextButton.icon(
-                  onPressed: _envoi ? null : _choisirCapture,
-                  icon: Icon(Icons.image_outlined, color: AppColors.lien),
-                  label: Text('Ajouter une capture d\'écran (facultatif)'.tr,
-                      style: TextStyle(color: AppColors.lien, fontSize: 13)),
-                ),
-            ]),
+            const SizedBox(height: 4),
             Text(
                 'La version de l\'appli et le modèle de ton téléphone sont joints automatiquement.'
                     .tr,
