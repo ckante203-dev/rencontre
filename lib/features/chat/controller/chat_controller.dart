@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:video_compress/video_compress.dart';
+import 'package:rencontre/core/utils/compression_video.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:get_storage/get_storage.dart';
@@ -2328,20 +2328,16 @@ class ConversationController extends GetxController
       if (video) {
         etatsEnvoi[tempId] = 'Préparation…'.tr;
         try {
-          vignette = await VideoCompress.getFileThumbnail(chemin,
-              quality: 60, position: -1);
-          final info = await VideoCompress.getMediaInfo(chemin);
-          if (info.duration != null) dureeSec = (info.duration! / 1000).round();
+          vignette = await vignetteVideo(chemin);
+          final info = await infosVideo(chemin);
+          if (info?.duration != null) dureeSec = (info!.duration! / 1000).round();
           maj((m) => m.copyWith(
               vignetteUrl: vignette?.path, audioDurationSec: dureeSec));
           // Compression 720p si la vidéo dépasse ~6 Mo
-          if ((info.filesize ?? 0) > 6 * 1024 * 1024) {
+          if ((info?.filesize ?? 0) > 6 * 1024 * 1024) {
             etatsEnvoi[tempId] = 'Compression…'.tr;
-            final c = await VideoCompress.compressVideo(chemin,
-                quality: VideoQuality.Res1280x720Quality,
-                deleteOrigin: false,
-                includeAudio: true);
-            if (c?.file != null) fichier = c!.file!;
+            final c = await compresserVideo(chemin);
+            if (c != null) fichier = c;
           }
         } catch (e) {
           debugPrint('compression vidéo : $e'); // on envoie l'original
@@ -2435,7 +2431,8 @@ class ConversationController extends GetxController
       etatsEnvoi.remove(tempId);
       if (video) {
         try {
-          await VideoCompress.deleteAllCache();
+          // après les compressions en cours (file d'attente)
+          await viderCacheVideo();
         } catch (_) {}
       }
     }

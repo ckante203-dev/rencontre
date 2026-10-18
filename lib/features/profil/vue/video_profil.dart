@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:video_compress/video_compress.dart';
+import 'package:rencontre/core/utils/compression_video.dart';
 import 'package:video_player/video_player.dart';
 
 /// Vidéo de profil (15 s) : déposée par la personne, montrée aux autres
@@ -37,14 +37,14 @@ class VideoProfilService {
         source: source, maxDuration: const Duration(seconds: 15));
     if (choisie == null) return '';
     try {
-      final info = await VideoCompress.getMediaInfo(choisie.path);
+      final info = await infosVideo(choisie.path);
+      if (info == null) return 'Envoi impossible, vérifie ta connexion'.tr;
       if ((info.duration ?? 0) > 16000) {
         return 'Ta vidéo doit durer 15 secondes au maximum'.tr;
       }
       var fichier = File(choisie.path);
-      final c = await VideoCompress.compressVideo(choisie.path,
-          quality: VideoQuality.Res1280x720Quality, includeAudio: true);
-      if (c?.file != null) fichier = c!.file!;
+      final c = await compresserVideo(choisie.path);
+      if (c != null) fichier = c;
       final chemin = '$uid/video_${DateTime.now().millisecondsSinceEpoch}.mp4';
       await _sb.storage.from('profile-photos').upload(chemin, fichier,
           fileOptions: const FileOptions(contentType: 'video/mp4'));
@@ -57,7 +57,7 @@ class VideoProfilService {
       debugPrint('Vidéo de profil : $e');
       return 'Envoi impossible, vérifie ta connexion'.tr;
     } finally {
-      VideoCompress.deleteAllCache().catchError((_) => null);
+      viderCacheVideo().catchError((_) {});
     }
   }
 

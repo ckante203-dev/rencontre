@@ -138,6 +138,9 @@ void main() async {
     return t.contains('camera_access_denied') ||
         t.contains('photo_access_denied') ||
         t.contains('TOO_MANY_REGISTRATIONS') ||
+        // session expirée ou ouverte ailleurs : retour à la connexion
+        t.contains('refresh_token_not_found') ||
+        t.contains('Invalid Refresh Token') ||
         t.contains('libCachedImageData') ||
         t.contains('Invalid image data') ||
         t.contains('statement timeout') ||
