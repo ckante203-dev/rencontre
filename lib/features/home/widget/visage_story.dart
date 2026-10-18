@@ -168,7 +168,7 @@ class CoucheEffetsVisage extends StatelessWidget {
       case 'lunettes':
         return [_emoji('🕶️', ecran(v.milieuYeux), ecart * 1.25, angle)];
       case 'couronne':
-        return [_emoji('👑', haut + versHaut * largeur * 0.35, largeur * 0.42, angle)];
+        return [_emoji('👑', haut + versHaut * largeur * 0.12, largeur * 0.42, angle)];
       case 'coeurs':
         return [
           if (v.oeilGauche != null)
