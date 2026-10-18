@@ -158,14 +158,17 @@ class CoucheEffetsVisage extends StatelessWidget {
     final angle = v.inclinaison;
     final largeur = v.cadre.width * k;
     final ecart = v.ecartYeux * k;
-    final haut = ecran(Offset(v.cadre.center.dx, v.cadre.top));
     // Vecteur « vers le haut » de la tête (suit l'inclinaison)
     final versHaut = Offset(math.sin(angle), -math.cos(angle));
+    // Le cadre du visage s'arrête vers la racine des cheveux : le haut du
+    // crâne est un peu plus haut (couronne, fleurs, auréole posées dessus)
+    final haut = ecran(Offset(v.cadre.center.dx, v.cadre.top)) +
+        versHaut * largeur * 0.22;
     switch (effet) {
       case 'lunettes':
         return [_emoji('🕶️', ecran(v.milieuYeux), ecart * 1.25, angle)];
       case 'couronne':
-        return [_emoji('👑', haut + versHaut * largeur * 0.22, largeur * 0.42, angle)];
+        return [_emoji('👑', haut + versHaut * largeur * 0.35, largeur * 0.42, angle)];
       case 'coeurs':
         return [
           if (v.oeilGauche != null)
