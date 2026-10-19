@@ -481,7 +481,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     villeVoyage.value = gardee is String
         ? villesParDefaut.firstWhereOrNull((v) => v.nom == gardee)
         : VilleVoyage.fromJson(gardee);
-    chargerVillesVoyage();
+    // La liste des villes (lourde à calculer) ne se charge plus qu'à
+    // l'ouverture du choix de ville (home_screen)
     _init();
     chargerFavoris();
   }

@@ -559,9 +559,11 @@ class ChatListController extends GetxController {
   void _startPolling() {
     if (_closed) return; // ✅ FIX — jamais après onClose
     if (_pollingTimer != null) return; // déjà en cours
-    debugPrint('⚠️ [ChatList] Realtime indisponible → passage en polling (3s)');
+    debugPrint('⚠️ [ChatList] Realtime indisponible → passage en polling (10s)');
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (t) async {
+    // 10 s (avant 3 s) : quand le temps réel tombe pour tout le monde,
+    // des vérifications trop rapprochées saturaient le serveur
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (t) async {
       if (_closed) {
         t.cancel();
         return;
@@ -1577,7 +1579,9 @@ class ConversationController extends GetxController
   void _startPolling() {
     if (_closed) return; // ✅ FIX — jamais après onClose
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (t) async {
+    // 6 s (avant 3 s) : la notification de message déclenche déjà un
+    // rattrapage immédiat
+    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (t) async {
       if (_closed) {
         t.cancel();
         return;
