@@ -2375,30 +2375,36 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             color: CouleursMedia.textPrimary,
                             fontSize: 22,
                             fontWeight: FontWeight.w900)),
-                    Slider(
-                      value: _durationHours,
-                      min: 1,
-                      max: 48,
-                      divisions: 47,
-                      activeColor: CouleursMedia.accent,
-                      inactiveColor: CouleursMedia.border,
-                      label: _formatDuration(_durationHours),
-                      onChanged: (v) {
-                        setSheetState(() => _durationHours = v);
-                        setState(() => _durationHours = v);
-                      },
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('1h',
-                            style: TextStyle(
-                                fontSize: 11, color: CouleursMedia.textMuted)),
-                        Text('48h',
-                            style: TextStyle(
-                                fontSize: 11, color: CouleursMedia.textMuted)),
-                      ],
-                    ),
+                    const SizedBox(height: 10),
+                    // Mêmes durées que pour une photo / vidéo (1 h → 7 j)
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      for (final d in const [1.0, 6.0, 24.0, 48.0, 72.0, 168.0])
+                        GestureDetector(
+                          onTap: () {
+                            setSheetState(() => _durationHours = d);
+                            setState(() => _durationHours = d);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 9),
+                            decoration: BoxDecoration(
+                              gradient: _durationHours == d
+                                  ? CouleursMedia.gradientPink
+                                  : null,
+                              color: _durationHours == d
+                                  ? null
+                                  : CouleursMedia.surface2,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Text(_formatDuration(d),
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: _durationHours == d
+                                        ? FontWeight.w900
+                                        : FontWeight.w600)),
+                          ),
+                        ),
+                    ]),
                     const SizedBox(height: 24),
                      Text('Qui peut voir cette story'.tr,
                         style: TextStyle(
