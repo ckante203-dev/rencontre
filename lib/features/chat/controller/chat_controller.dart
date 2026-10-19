@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:rencontre/core/services/notification_service.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:rencontre/core/utils/compression_video.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/home/controller/home_controller.dart';
@@ -2361,6 +2362,14 @@ class ConversationController extends GetxController
           fileOptions: FileOptions(
               upsert: true, contentType: video ? 'video/mp4' : 'image/jpeg'));
       final url = store.getPublicUrl(cheminMedia);
+      // ⚡ La photo envoyée est mise en cache sous son adresse : la bulle
+      // l'affiche aussitôt (avant, elle était retéléchargée → 2e chargement)
+      if (!video) {
+        try {
+          await DefaultCacheManager()
+              .putFile(url, await fichier.readAsBytes(), fileExtension: 'jpg');
+        } catch (_) {}
+      }
       String? urlVignette;
       if (vignette != null) {
         try {
@@ -2368,6 +2377,9 @@ class ConversationController extends GetxController
               fileOptions:
                   const FileOptions(upsert: true, contentType: 'image/jpeg'));
           urlVignette = store.getPublicUrl('$base.jpg');
+          await DefaultCacheManager().putFile(
+              urlVignette, await vignette.readAsBytes(),
+              fileExtension: 'jpg');
         } catch (_) {}
       }
       final now = DateTime.now().toUtc().toIso8601String();

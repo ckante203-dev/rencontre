@@ -519,33 +519,37 @@ class _MediaBubble extends StatelessWidget {
       contenu = _image(msg.mediaUrl!);
     }
 
-    // Envoi en cours : voile + étape (Compression… / Envoi…)
+    // Envoi en cours : la photo reste nette, petite roue + étape dans le
+    // coin (comme WhatsApp ; avant, un voile sombre la cachait)
     if (msg.enEnvoi) {
       contenu = Stack(children: [
         contenu,
-        Positioned.fill(
-          child: Container(
-            color: Colors.black45,
-            child: Center(
-              child: Obx(() {
-                final etat =
-                    ConversationController.etatsEnvoi[msg.id] ?? 'Envoi…'.tr;
-                return Column(mainAxisSize: MainAxisSize.min, children: [
-                  const SizedBox(
-                      width: 34,
-                      height: 34,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 3, color: AppColors.surMedia)),
-                  const SizedBox(height: 8),
-                  Text(etat,
-                      style: const TextStyle(
-                          color: AppColors.surMedia,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600)),
-                ]);
-              }),
-            ),
-          ),
+        Positioned(
+          right: 8,
+          bottom: 8,
+          child: Obx(() {
+            final etat =
+                ConversationController.etatsEnvoi[msg.id] ?? 'Envoi…'.tr;
+            return Container(
+              padding: const EdgeInsets.fromLTRB(6, 4, 9, 4),
+              decoration: BoxDecoration(
+                  color: AppColors.voileMedia,
+                  borderRadius: BorderRadius.circular(12)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.surMedia)),
+                const SizedBox(width: 6),
+                Text(etat,
+                    style: const TextStyle(
+                        color: AppColors.surMedia,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            );
+          }),
         ),
       ]);
     }
@@ -587,9 +591,30 @@ class _PleinEcranMedia extends StatefulWidget {
   State<_PleinEcranMedia> createState() => _PleinEcranMediaState();
 }
 
-class _PleinEcranMediaState extends State<_PleinEcranMedia> {
+class _PleinEcranMediaState extends State<_PleinEcranMedia>
+    with SingleTickerProviderStateMixin {
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
+
+  // Glisser vers le haut / le bas pour fermer (comme WhatsApp) ; désactivé
+  // quand la photo est zoomée (le doigt déplace alors la photo).
+  final _zoom = TransformationController();
+  double _dy = 0;
+  bool _zoomee = false;
+  late final AnimationController _retour = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 180))
+    ..addListener(() => setState(() => _dy = _depuis * (1 - _retour.value)));
+  double _depuis = 0;
+
+  void _finGlisse(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (_dy.abs() > 120 || v.abs() > 900) {
+      Navigator.pop(context);
+      return;
+    }
+    _depuis = _dy;
+    _retour.forward(from: 0);
+  }
 
   @override
   void initState() {
@@ -611,15 +636,20 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
   @override
   void dispose() {
     _videoCtrl?.dispose();
+    _zoom.dispose();
+    _retour.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Le fond s'éclaircit à mesure qu'on glisse
+    final fond = (1 - _dy.abs() / 500).clamp(0.0, 1.0);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black.withValues(alpha: fond),
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: AppColors.surMedia),
             onPressed: () => Navigator.pop(context)),
@@ -641,7 +671,15 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
             ),
         ],
       ),
-      body: Center(
+      extendBodyBehindAppBar: true,
+      body: GestureDetector(
+        onVerticalDragStart: _zoomee ? null : (_) => _retour.stop(),
+        onVerticalDragUpdate:
+            _zoomee ? null : (d) => setState(() => _dy += d.delta.dy),
+        onVerticalDragEnd: _zoomee ? null : _finGlisse,
+        child: Transform.translate(
+          offset: Offset(0, _dy),
+          child: Center(
           child: widget.isVideo
               ? (_videoReady && _videoCtrl != null
                   ? AspectRatio(
@@ -649,6 +687,13 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
                       child: VideoPlayer(_videoCtrl!))
                   : const CircularProgressIndicator(color: AppColors.surMedia))
               : InteractiveViewer(
+                  transformationController: _zoom,
+                  // Zoomée : le doigt déplace la photo ; sinon il la ferme
+                  panEnabled: _zoomee,
+                  onInteractionEnd: (_) {
+                    final z = _zoom.value.getMaxScaleOnAxis() > 1.01;
+                    if (z != _zoomee) setState(() => _zoomee = z);
+                  },
                   child: CachedNetworkImage(
                       imageUrl: widget.url,
                       fit: BoxFit.contain,
@@ -659,6 +704,8 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia> {
                           color: Color(0x61FFFFFF),
                           size: 48),
                           memCacheWidth: 1440,))),
+        ),
+      ),
     );
   }
 }
