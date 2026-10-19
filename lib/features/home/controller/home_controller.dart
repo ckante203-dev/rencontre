@@ -113,13 +113,19 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   RealtimeChannel? _likesChannel;
 
   Timer? _heartbeatTimer;
-  static const _heartbeatInterval = Duration(seconds: 60);
+  // « En ligne » = actif dans les 30 dernières minutes : un signal toutes
+  // les 4 minutes suffit (avant : chaque minute, diffusé à tous les
+  // téléphones → serveur saturé ; voir aussi SQL 090).
+  static const _heartbeatInterval = Duration(minutes: 4);
 
   Timer? _offlineTimer;
   StreamSubscription<Position>? _positionStreamSub;
   Timer? _suiviPositionTimer;
 
   RealtimeChannel? _onlineChannel;
+  // Pastilles « en ligne » de l'Accueil : relues toutes les 3 minutes
+  // (requête légère) au lieu d'écouter en temps réel TOUS les profils
+  Timer? _enLigneTimer;
   RealtimeChannel? _storiesChannel; // ✅ auto-refresh des stories
 
   double? _myLat;
@@ -516,12 +522,51 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     isLoading.value = false;
 
     await _safeStep('heartbeat', _startHeartbeat);
-    await _safeStep('onlineChanges', _subscribeToOnlineChanges);
+    await _safeStep('onlineChanges', _demarrerEnLigne);
     await _safeStep('likes', _subscribeToLikes);
     await _safeStep('stories', _subscribeToStories);
     await _safeStep('fcmToken', _ensureFcmToken);
   }
 
+  void _demarrerEnLigne() {
+    _enLigneTimer?.cancel();
+    _enLigneTimer = Timer.periodic(
+        const Duration(minutes: 3), (_) => _rafraichirEnLigne());
+  }
+
+  /// Relit seulement id / is_online / last_seen des profils affichés et ne
+  /// touche aux listes que si une pastille change.
+  Future<void> _rafraichirEnLigne() async {
+    final ids = <String>{
+      ...profiles.take(120).map((u) => u.id),
+    }.toList();
+    if (ids.isEmpty) return;
+    try {
+      final rows = await Supabase.instance.client
+          .from('profiles')
+          .select('id, is_online, last_seen')
+          .inFilter('id', ids) as List;
+      for (final r in rows.cast<Map>()) {
+        final id = r['id'] as String?;
+        if (id == null) continue;
+        final enLigne =
+            SupabaseService.isReallyOnline(r['is_online'], r['last_seen']);
+        final i = profiles.indexWhere((u) => u.id == id);
+        if (i != -1 && profiles[i].isOnline != enLigne) {
+          profiles[i] = profiles[i].copyWith(isOnline: enLigne);
+        }
+        final j = _allUsers.indexWhere((u) => u.id == id);
+        if (j != -1 && _allUsers[j].isOnline != enLigne) {
+          _allUsers[j] = _allUsers[j].copyWith(isOnline: enLigne);
+        }
+      }
+    } catch (_) {
+      // réseau : on réessaiera au prochain tour
+    }
+  }
+
+  // Ancienne écoute en temps réel de TOUS les profils (gardée hors usage)
+  // ignore: unused_element
   void _subscribeToOnlineChanges() {
     _onlineChannel = Supabase.instance.client
         .channel('profiles:online')
@@ -640,6 +685,8 @@ class HomeController extends GetxController with WidgetsBindingObserver {
         _offlineTimer = null;
         _service.setOnline(true);
         _startHeartbeat();
+        _demarrerEnLigne();
+        unawaited(_rafraichirEnLigne());
         _ensureFcmToken();
         _silentRefresh();
         break;
@@ -649,6 +696,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         _heartbeatTimer?.cancel();
+        _enLigneTimer?.cancel();
         _offlineTimer?.cancel();
         _offlineTimer = Timer(const Duration(minutes: 5), () {
           _service.setOnline(false);
@@ -1553,6 +1601,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _finBoostTimer?.cancel();
     _heartbeatTimer?.cancel();
+    _enLigneTimer?.cancel();
     _offlineTimer?.cancel();
     _storiesReloadDebounce?.cancel();
     _onlineChannel?.unsubscribe();
