@@ -245,6 +245,7 @@ class _MessageBubble extends StatelessWidget {
     // Texte simple : heure + coches DANS la bulle (façon WhatsApp)
     final texteSimple = msg.type == MessageType.text &&
         msg.text != ConversationController.texteAlbum &&
+        !estMessageCadeau(msg.text) &&
         !_TextBubble.emojisSeuls(msg.text);
     return _GlisserPourRepondre(
       onRepondre: () => ctrl.setReplyTo(msg),
@@ -391,6 +392,12 @@ class _MessageBubble extends StatelessWidget {
       default:
         if (msg.text == ConversationController.texteAlbum) {
           return _CarteAlbumPartage(msg: msg, isMine: isMine, ctrl: ctrl);
+        }
+        if (estMessageCadeau(msg.text)) {
+          return BulleCadeau(
+              texte: msg.text!,
+              isMine: isMine,
+              autreNom: ctrl.conversation.userName.split(' ').first);
         }
         return _TextBubble(
             msg: msg,

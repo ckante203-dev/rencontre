@@ -468,6 +468,14 @@ class _AttachMenu extends StatelessWidget {
               );
             }),
         _AttachItem(
+            icon: Icons.card_giftcard_rounded,
+            label: 'Cadeau'.tr,
+            color: const Color(0xFFFFC107),
+            onTap: () {
+              ctrl.showAttachMenu.value = false;
+              ouvrirCadeaux(ctrl);
+            }),
+        _AttachItem(
             icon: Icons.emoji_emotions_rounded,
             label: 'Sticker'.tr,
             color: const Color(0xFF7CFFB2),

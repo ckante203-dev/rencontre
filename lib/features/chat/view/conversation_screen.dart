@@ -15,6 +15,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/features/album/album_service.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
 import 'package:rencontre/features/album/album_conversation.dart';
+import 'package:rencontre/features/chat/view/cadeaux_seduction.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:rencontre/core/theme/app_theme.dart';

@@ -22,6 +22,7 @@ import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
+import 'package:rencontre/features/chat/view/cadeaux_seduction.dart';
 
 enum ChatFilter { all, unread, online, favoris, groupes, archives }
 
@@ -1516,6 +1517,10 @@ class ConversationController extends GetxController
                 }
               });
               if (newMsg.senderId != myId) {
+                // 🎁 Cadeau reçu : animation plein écran
+                final cadeau = CadeauSeduction.depuisTexte(newMsg.text);
+                if (cadeau != null) jouerAnimationCadeau(cadeau.emoji);
+                if (newMsg.text == texteCadeauPremium) jouerAnimationCadeau('👑');
                 HapticFeedback.lightImpact();
                 try {
                   final player = AudioPlayer();
@@ -2498,6 +2503,29 @@ class ConversationController extends GetxController
       if (!gererRefusServeur(e)) _snackInfo('Impossible d\'envoyer le message'.tr);
     }
     return true;
+  }
+
+  /// Message texte spécial (cadeau de séduction, Premium offert) : bulle
+  /// immédiate puis envoi, comme un texte.
+  Future<void> envoyerTexteSpecial(String texte) async {
+    if (!peutEnvoyer()) return;
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    messages.add(MessageModel(
+      id: tempId,
+      senderId: myId,
+      text: texte,
+      type: MessageType.text,
+      status: MessageStatus.sending,
+      createdAt: DateTime.now(),
+    ));
+    try {
+      await _service.sendMessage(
+          conversationId: conversation.id, content: texte, type: 'text');
+    } catch (e) {
+      messages.removeWhere((m) => m.id == tempId);
+      if (gererRefusServeur(e)) return;
+      _snackInfo("Impossible d'envoyer le cadeau".tr);
+    }
   }
 
   /// Sticker ou GIF GIPHY : envoyé comme image (lien GIPHY).
