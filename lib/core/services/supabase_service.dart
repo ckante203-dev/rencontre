@@ -66,12 +66,7 @@ class SupabaseService {
         .maybeSingle();
     final myBlockedIds = List<String>.from(myData?['blocked_users'] ?? []);
 
-    final blockedMeData = await supabase
-        .from('profiles')
-        .select('id')
-        .contains('blocked_users', [uid]);
-    final blockedMeIds =
-        (blockedMeData as List).map((r) => r['id'] as String).toList();
+    final blockedMeIds = await quiMaBloque();
 
     final allExcluded = <String>{uid, ...myBlockedIds, ...blockedMeIds};
 
@@ -193,12 +188,71 @@ class SupabaseService {
   double _deg2rad(double deg) => deg * 3.141592653589793 / 180;
 
   Future<UserModel?> fetchMyProfile() async {
-    final uid = currentUserId;
-    if (uid == null) return null;
-    final data =
-        await supabase.from('profiles').select().eq('id', uid).maybeSingle();
+    final data = await monProfilBrut();
     if (data == null) return null;
     return profileToUser(data);
+  }
+
+  // ─── 🔒 ACCÈS PROTÉGÉS (SQL 098) ───────────────────────────────────
+  // Les profils des AUTRES ne sont plus lus en entier dans la table : le
+  // serveur ne renvoie que ce qui s'affiche (position arrondie, pas
+  // d'e-mail…). Repli sur l'ancienne lecture tant que le script n'est pas
+  // exécuté.
+
+  /// Ma fiche complète (réglages compris).
+  Future<Map<String, dynamic>?> monProfilBrut() async {
+    final uid = currentUserId;
+    if (uid == null) return null;
+    try {
+      final r = await supabase.rpc('mon_profil');
+      if (r is Map) return Map<String, dynamic>.from(r);
+      if (r == null) return null;
+    } catch (e) {
+      debugPrint('mon_profil indisponible : $e');
+    }
+    return await supabase.from('profiles').select().eq('id', uid).maybeSingle();
+  }
+
+  /// Fiches publiques de ces personnes (bloqués et suspendus exclus).
+  Future<List<Map<String, dynamic>>> profilsPublics(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    try {
+      final r = await supabase.rpc('profils_publics', params: {'p_ids': ids});
+      if (r is List) {
+        return r.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (e) {
+      debugPrint('profils_publics indisponible : $e');
+    }
+    final rows =
+        await supabase.from('profiles').select().inFilter('id', ids) as List;
+    return rows
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .where((r) => r['is_suspended'] != true)
+        .toList();
+  }
+
+  /// Fiche publique d'une personne (null : introuvable, bloquée…).
+  Future<Map<String, dynamic>?> profilPublic(String id) async {
+    final l = await profilsPublics([id]);
+    return l.isEmpty ? null : l.first;
+  }
+
+  /// Personnes qui m'ont bloqué (sans lire leur liste de blocage).
+  Future<List<String>> quiMaBloque() async {
+    final uid = currentUserId;
+    if (uid == null) return [];
+    try {
+      final r = await supabase.rpc('qui_m_a_bloque');
+      if (r is List) return r.map((e) => e.toString()).toList();
+    } catch (e) {
+      debugPrint('qui_m_a_bloque indisponible : $e');
+    }
+    final rows = await supabase
+        .from('profiles')
+        .select('id')
+        .contains('blocked_users', [uid]) as List;
+    return rows.map((r) => r['id'] as String).toList();
   }
 
   Future<void> setOnline(bool isOnline) async {
@@ -321,12 +375,7 @@ class SupabaseService {
         .maybeSingle();
     final myBlockedIds = List<String>.from(myData?['blocked_users'] ?? []);
 
-    final blockedMeData = await supabase
-        .from('profiles')
-        .select('id')
-        .contains('blocked_users', [uid]);
-    final blockedMeIds =
-        (blockedMeData as List).map((r) => r['id'] as String).toList();
+    final blockedMeIds = await quiMaBloque();
 
     final allExcluded = <String>{...myBlockedIds, ...blockedMeIds};
 

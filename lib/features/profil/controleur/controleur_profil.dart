@@ -303,11 +303,8 @@ class ControleurProfil extends GetxController {
       final uid = supabase.auth.currentUser?.id;
       if (uid == null) return;
 
-      final data = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', uid)
-          .maybeSingle()
+      final data = await _service
+          .monProfilBrut()
           .timeout(const Duration(seconds: 10));
 
       if (isClosed) return;

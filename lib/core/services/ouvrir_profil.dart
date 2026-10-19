@@ -20,13 +20,10 @@ UserModel profilComplet(Map<String, dynamic> row) {
 /// la base : un profil partiel afficherait un âge et une bio faux.
 Future<void> ouvrirProfilParId(String id) async {
   try {
-    final row = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', id)
-        .maybeSingle()
+    final row = await SupabaseService()
+        .profilPublic(id)
         .timeout(const Duration(seconds: 10));
-    if (row == null || row['is_suspended'] == true) {
+    if (row == null) {
       _introuvable();
       return;
     }

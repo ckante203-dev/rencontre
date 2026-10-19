@@ -373,20 +373,11 @@ class AuthController extends GetxController {
       if (identifier.contains('@')) {
         emailToUse = identifier;
       } else {
-        final match = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', identifier.toLowerCase())
-            .maybeSingle();
-
-        final foundEmail = match?['email'] as String?;
-        if (foundEmail == null || foundEmail.isEmpty) {
-          errorMessage.value =
-              'Aucun compte trouvé avec ce nom d\'utilisateur'.tr;
-          _setLoading(false);
-          return;
-        }
-        emailToUse = foundEmail;
+        // 🔒 Connexion par pseudo côté serveur : l'e-mail n'est jamais
+        // envoyé au téléphone (avant : lu dans profiles sans connexion,
+        // ce qui exposait tous les e-mails — SQL 097).
+        await _connexionParPseudo(identifier);
+        return;
       }
 
       await supabase.auth.signInWithPassword(
@@ -401,6 +392,34 @@ class AuthController extends GetxController {
       errorMessage.value = 'Une erreur est survenue. Réessaie.'.tr;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> _connexionParPseudo(String pseudo) async {
+    try {
+      final res = await supabase.functions.invoke('connexion-pseudo', body: {
+        'pseudo': pseudo,
+        'mot_de_passe': passwordController.text,
+      });
+      final data = res.data;
+      final refresh = data is Map ? data['refresh_token'] as String? : null;
+      if (refresh == null) {
+        errorMessage.value = 'Pseudo ou mot de passe incorrect'.tr;
+        return;
+      }
+      await supabase.auth.setSession(refresh);
+      errorMessage.value = '';
+      // La navigation est gérée par _handleAuthChange (signedIn)
+    } on FunctionException catch (e) {
+      final code = e.details is Map ? e.details['erreur'] : null;
+      errorMessage.value = switch (code) {
+        'email_non_confirme' => "Confirme d'abord ton e-mail".tr,
+        'trop_de_tentatives' =>
+          'Trop de tentatives. Réessaie dans quelques minutes.'.tr,
+        _ => 'Pseudo ou mot de passe incorrect'.tr,
+      };
+    } catch (_) {
+      errorMessage.value = 'Une erreur est survenue. Réessaie.'.tr;
     }
   }
 

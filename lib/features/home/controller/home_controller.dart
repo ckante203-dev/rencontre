@@ -869,11 +869,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
       // ✅ select('*') : certaines colonnes de la carte (map_visible…)
       // peuvent manquer en base ; une liste explicite faisait échouer la
       // requête et bloquait toute mise à jour de position.
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', uid)
-          .maybeSingle();
+      final data = await _service.monProfilBrut();
       if (data != null) {
         final now = DateTime.now();
 

@@ -1598,4 +1598,7 @@ const Map<String, String> enAuto = {
   "Les profils avec un visage bien visible reçoivent beaucoup plus de likes. Sans visage, ton profil passe après les autres.": "Profiles with a clearly visible face get many more likes. Without a face, your profile is shown after the others.",
   "Garder quand même": "Keep it anyway",
   "Choisir une autre photo": "Choose another photo",
+  "Pseudo ou mot de passe incorrect": "Wrong username or password",
+  "Confirme d'abord ton e-mail": "Confirm your email first",
+  "Trop de tentatives. Réessaie dans quelques minutes.": "Too many attempts. Try again in a few minutes.",
 };

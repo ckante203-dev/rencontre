@@ -365,90 +365,36 @@ class MapController extends GetxController {
       final uid = _service.currentUserId;
       if (uid == null) return;
 
-      final myData = await Supabase.instance.client
-          .from('profiles')
-          .select('blocked_users')
-          .eq('id', uid)
-          .maybeSingle();
-      final myBlockedIds = List<String>.from(myData?['blocked_users'] ?? []);
-
-      final blockedMeData = await Supabase.instance.client
-          .from('profiles')
-          .select('id')
-          .contains('blocked_users', [uid]);
-      final blockedMeIds =
-          (blockedMeData as List).map((r) => r['id'] as String).toList();
-
-      final allExcluded = <String>{uid, ...myBlockedIds, ...blockedMeIds};
-
       final myLat = myPosition.value?.latitude;
       final myLng = myPosition.value?.longitude;
 
-      var query = Supabase.instance.client
-          .from('profiles')
-          .select(
-              'id, name, bio, photo_url, photo_urls, latitude, longitude, is_online, gender, looking_for, birthdate, interests, taille, poids, morphologie, lieu_rencontre, followers_count, following_count, matches_count, is_suspended, map_visible, is_ghost, is_premium, map_invisible_until, ghost_until, position_precision, show_distance, show_birthdate')
-          .eq('is_suspended', false)
-          .not('latitude', 'is', null)
-          .not('longitude', 'is', null);
-
-      // ✅ Les 100 profils étaient pris au hasard (aucun filtre ni tri) :
-      // les utilisateurs proches manquaient souvent. On restreint à une
-      // zone englobant le rayon de recherche maximal de la carte (le
-      // filtre de distance reste appliqué côté client) et on privilégie
-      // les profils actifs récemment.
+      // 🔒 Le serveur exclut bloqués, masqués et fantômes, et renvoie des
+      // positions ARRONDIES sur une grille fixe (SQL 098). Avant, la
+      // position exacte arrivait sur le téléphone et était floutée au
+      // hasard à chaque chargement (moyenne = position exacte).
+      List<Map<String, dynamic>> rows = [];
       if (myLat != null && myLng != null) {
-        const dLat = _rayonRechercheMaxKm / 111.32;
-        final cosLat = cos(_deg2rad(myLat)).abs().clamp(0.01, 1.0);
-        final dLng = _rayonRechercheMaxKm / (111.32 * cosLat);
-        query = query.gte('latitude', myLat - dLat).lte('latitude', myLat + dLat);
-        if (myLng - dLng >= -180 && myLng + dLng <= 180) {
-          query =
-              query.gte('longitude', myLng - dLng).lte('longitude', myLng + dLng);
+        try {
+          final r = await Supabase.instance.client.rpc('profils_carte',
+              params: {
+                'p_lat': myLat,
+                'p_lng': myLng,
+                'p_rayon_km': _rayonRechercheMaxKm,
+              });
+          if (r is List) {
+            rows = r.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        } catch (e) {
+          debugPrint('profils_carte indisponible : $e');
         }
       }
 
-      final data = await query
-          .order('last_seen', ascending: false, nullsFirst: false)
-          .limit(100);
-      final now = DateTime.now();
-
-      final list = (data as List).where((row) {
-        if (allExcluded.contains(row['id'] as String)) return false;
-        final rowMapVisible = row['map_visible'] ?? true;
-        final rowGhost = row['is_ghost'] ?? false;
-        final rowPremium = row['is_premium'] ?? false;
-        final rowInvisibleUntil = row['map_invisible_until'] != null
-            ? _parseDbDate(row['map_invisible_until'])
-            : null;
-        if (rowGhost && rowPremium) {
-          final ghostUntilRow = row['ghost_until'] != null
-              ? _parseDbDate(row['ghost_until'])
-              : null;
-          if (ghostUntilRow == null || now.isBefore(ghostUntilRow)) {
-            return false;
-          }
-        }
-        if (!rowMapVisible && rowInvisibleUntil == null) return false;
-        if (rowInvisibleUntil != null && now.isBefore(rowInvisibleUntil)) {
-          return false;
-        }
-        return true;
-      }).map((row) {
+      final list = rows.map((row) {
         double? distanceMeters;
-        if (myLat != null && myLng != null) {
-          final lat = _flouterPosition(
-            (row['latitude'] as num).toDouble(),
-            row['position_precision'] ?? 'flouted',
-          );
-          final lng = _flouterPosition(
-            (row['longitude'] as num).toDouble(),
-            row['position_precision'] ?? 'flouted',
-          );
+        final lat = (row['latitude'] as num?)?.toDouble();
+        final lng = (row['longitude'] as num?)?.toDouble();
+        if (myLat != null && myLng != null && lat != null && lng != null) {
           distanceMeters = _distanceMeters(myLat, myLng, lat, lng);
-          row = Map<String, dynamic>.from(row);
-          row['latitude'] = lat;
-          row['longitude'] = lng;
         }
         return _rowToUser(row, distanceMeters);
       }).toList();
@@ -463,19 +409,6 @@ class MapController extends GetxController {
       debugPrint('MapController loadProfiles error: $e');
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  double _flouterPosition(double coord, String precision) {
-    final random = Random();
-    switch (precision) {
-      case 'exact':
-        return coord;
-      case 'very_flouted':
-        return coord + (random.nextDouble() - 0.5) * 0.018;
-      case 'flouted':
-      default:
-        return coord + (random.nextDouble() - 0.5) * 0.006;
     }
   }
 

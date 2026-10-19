@@ -83,12 +83,10 @@ class _LikesInsightsScreenState extends State<LikesInsightsScreen> {
     _ouverture = true;
     try {
       final ids = liste.map((e) => e.id).where((id) => id.isNotEmpty).toList();
-      final rows = await supabase
-          .from('profiles')
-          .select()
-          .inFilter('id', ids)
-          .timeout(const Duration(seconds: 10)) as List;
       final service = SupabaseService();
+      final rows = await service
+          .profilsPublics(ids)
+          .timeout(const Duration(seconds: 10));
       final home = Get.isRegistered<HomeController>()
           ? Get.find<HomeController>()
           : null;

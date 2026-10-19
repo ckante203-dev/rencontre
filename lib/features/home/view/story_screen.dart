@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/widget/musique_story.dart';
 import 'package:rencontre/features/home/widget/envoi_story.dart';
 import 'package:rencontre/features/home/widget/mystere_story.dart';
@@ -533,11 +534,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _pause();
 
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', story.userId)
-          .maybeSingle();
+      final data = await SupabaseService().profilPublic(story.userId);
       if (data == null) return;
       final user = profilComplet(data);
       // ✅ On attend le retour de l'écran de profil pour savoir
@@ -1654,11 +1651,7 @@ class _ViewerTileState extends State<_ViewerTile> {
 
   Future<void> _load() async {
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', widget.uid)
-          .maybeSingle();
+      final data = await SupabaseService().profilPublic(widget.uid);
       if (mounted && data != null) {
         setState(() {
           _name = data['name'] ?? 'Utilisateur';
@@ -1759,11 +1752,7 @@ class _ViewerTileWithLikeState extends State<_ViewerTileWithLike> {
   Future<void> _load() async {
     try {
       final results = await Future.wait([
-        Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('id', widget.uid)
-            .maybeSingle(),
+        SupabaseService().profilPublic(widget.uid),
         Supabase.instance.client
             .from('stories')
             .select('liked_by')

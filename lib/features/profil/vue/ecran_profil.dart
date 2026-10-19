@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/profil/vue/parrainage.dart';
 import 'package:rencontre/features/profil/vue/carte_partage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1163,11 +1164,9 @@ class _BoutonsLigne extends StatelessWidget {
     final uid = Supabase.instance.client.auth.currentUser?.id;
     if (uid == null) return;
     try {
-      final row = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', uid)
-          .single();
+      // Tel que les autres me voient (position arrondie…)
+      final row = await SupabaseService().profilPublic(uid);
+      if (row == null) throw Exception('profil introuvable');
       Get.toNamed('/profile/view', arguments: profilComplet(row));
     } catch (e) {
       debugPrint('aperçu : $e');

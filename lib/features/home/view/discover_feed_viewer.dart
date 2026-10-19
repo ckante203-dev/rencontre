@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/widget/musique_story.dart';
 import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/interactions_story.dart';
@@ -609,11 +610,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     _majMusique();
 
     try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', s.userId)
-          .maybeSingle();
+      final data = await SupabaseService().profilPublic(s.userId);
       if (data == null) return;
       final user = profilComplet(data);
       // ✅ On attend le retour de l'écran de profil pour savoir
