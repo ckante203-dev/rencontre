@@ -61,6 +61,32 @@ class ResultatVisages {
   const ResultatVisages(this.visages, this.tailleImage);
 }
 
+/// Visages ML Kit → nos points (yeux rangés de gauche à droite de l'image),
+/// les plus grands d'abord, 4 au plus.
+List<VisageDetecte> visagesDepuis(List<Face> faces) {
+  Offset? point(Face f, FaceLandmarkType t) {
+    final p = f.landmarks[t]?.position;
+    return p == null ? null : Offset(p.x.toDouble(), p.y.toDouble());
+  }
+
+  final visages = faces.map((f) {
+    final a = point(f, FaceLandmarkType.leftEye);
+    final b = point(f, FaceLandmarkType.rightEye);
+    final (g, d) = (a != null && b != null && a.dx > b.dx) ? (b, a) : (a, b);
+    final mg = point(f, FaceLandmarkType.leftMouth);
+    final md = point(f, FaceLandmarkType.rightMouth);
+    final (bg, bd) =
+        (mg != null && md != null && mg.dx > md.dx) ? (md, mg) : (mg, md);
+    return VisageDetecte(
+        f.boundingBox, g, d, point(f, FaceLandmarkType.bottomMouth),
+        nez: point(f, FaceLandmarkType.noseBase),
+        boucheGauche: bg,
+        boucheDroite: bd);
+  }).toList()
+    ..sort((x, y) => y.cadre.width.compareTo(x.cadre.width));
+  return visages.take(4).toList();
+}
+
 /// Repère les visages d'une photo (null si l'analyse est impossible).
 Future<ResultatVisages?> detecterVisages(String chemin) async {
   final detecteur = FaceDetector(
@@ -79,28 +105,8 @@ Future<ResultatVisages?> detecterVisages(String chemin) async {
     final image = (await codec.getNextFrame()).image;
     final taille = Size(image.width.toDouble(), image.height.toDouble());
     image.dispose();
-    Offset? point(Face f, FaceLandmarkType t) {
-      final p = f.landmarks[t]?.position;
-      return p == null ? null : Offset(p.x.toDouble(), p.y.toDouble());
-    }
-
-    final visages = faces.map((f) {
-      final a = point(f, FaceLandmarkType.leftEye);
-      final b = point(f, FaceLandmarkType.rightEye);
-      // Rangés de gauche à droite dans l'image (selfie ou non)
-      final (g, d) = (a != null && b != null && a.dx > b.dx) ? (b, a) : (a, b);
-      final mg = point(f, FaceLandmarkType.leftMouth);
-      final md = point(f, FaceLandmarkType.rightMouth);
-      final (bg, bd) =
-          (mg != null && md != null && mg.dx > md.dx) ? (md, mg) : (mg, md);
-      return VisageDetecte(
-          f.boundingBox, g, d, point(f, FaceLandmarkType.bottomMouth),
-          nez: point(f, FaceLandmarkType.noseBase),
-          boucheGauche: bg,
-          boucheDroite: bd);
-    }).toList()
-      ..sort((x, y) => y.cadre.width.compareTo(x.cadre.width));
-    return ResultatVisages(visages.take(4).toList(), taille);
+    final visages = visagesDepuis(faces);
+    return ResultatVisages(visages, taille);
   } catch (e) {
     debugPrint('Détection de visage impossible : $e');
     return null;
@@ -145,8 +151,14 @@ class EffetVisage {
 class CoucheEffetsVisage extends StatelessWidget {
   final ResultatVisages resultat;
   final String effet;
+  /// Aperçu caméra : l'image remplit l'écran (BoxFit.cover) au lieu d'y
+  /// tenir entière (BoxFit.contain, photo de l'éditeur).
+  final bool couvrir;
   const CoucheEffetsVisage(
-      {super.key, required this.resultat, required this.effet});
+      {super.key,
+      required this.resultat,
+      required this.effet,
+      this.couvrir = false});
 
   @override
   Widget build(BuildContext context) {
@@ -155,8 +167,10 @@ class CoucheEffetsVisage extends StatelessWidget {
       child: LayoutBuilder(builder: (_, box) {
         final img = resultat.tailleImage;
         if (img.isEmpty) return const SizedBox.shrink();
-        // Rectangle de la photo à l'écran (BoxFit.contain, centrée)
-        final k = math.min(box.maxWidth / img.width, box.maxHeight / img.height);
+        // Rectangle de l'image à l'écran (contain ou cover, centrée)
+        final k = couvrir
+            ? math.max(box.maxWidth / img.width, box.maxHeight / img.height)
+            : math.min(box.maxWidth / img.width, box.maxHeight / img.height);
         final dx = (box.maxWidth - img.width * k) / 2;
         final dy = (box.maxHeight - img.height * k) / 2;
         Offset ecran(Offset p) => Offset(dx + p.dx * k, dy + p.dy * k);

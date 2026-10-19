@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:rencontre/features/home/widget/filtres_story.dart';
+import 'package:rencontre/features/home/widget/visage_story.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 // ─── CAMÉRA ZAMU (ajout de story façon Snap / Instagram) ───────────
 // Plein écran dans l'app : toucher = photo, maintenir = vidéo (30 s max,
@@ -26,7 +28,10 @@ class CameraStory extends StatefulWidget {
   /// Photo ou vidéo prise : chemin du fichier. [miroir] = selfie, à
   /// afficher et publier comme dans le miroir de l'aperçu. [filtre] =
   /// identifiant du filtre choisi (FiltreStory).
-  final void Function(String chemin, bool video, bool miroir, String filtre)
+  /// [effet] = effet de visage choisi en direct (EffetVisage), à poser
+  /// sur la photo dans l'éditeur.
+  final void Function(
+          String chemin, bool video, bool miroir, String filtre, String effet)
       onMedia;
   final VoidCallback onGalerie;
   final VoidCallback onTexte;
@@ -73,6 +78,16 @@ class _CameraStoryState extends State<CameraStory>
   int _minuteur = _minuteurMemorise;
   int? _compte;
   Timer? _decompte;
+  // 😎 Effets de visage EN DIRECT : l'aperçu est analysé (~10 images/s)
+  // et l'effet suit la tête. L'effet est reposé sur la photo prise.
+  static String _effetMemorise = 'aucun';
+  String _effetLive = _effetMemorise;
+  bool _bandeauEffets = false;
+  FaceDetector? _detecteur;
+  bool _analyseEnCours = false;
+  DateTime _derniereAnalyse = DateTime(2000);
+  ResultatVisages? _visagesLive;
+  bool get _live => _effetLive != 'aucun';
   late final AnimationController _progression =
       AnimationController(vsync: this, duration: _dureeMax)
         ..addStatusListener((s) {
@@ -109,6 +124,7 @@ class _CameraStoryState extends State<CameraStory>
   @override
   void dispose() {
     _decompte?.cancel();
+    _detecteur?.close();
     WidgetsBinding.instance.removeObserver(this);
     _progression.dispose();
     _ctrl?.dispose();
@@ -150,8 +166,11 @@ class _CameraStoryState extends State<CameraStory>
 
   Future<void> _ouvrir(CameraDescription cam) async {
     final ancien = _ctrl;
-    final ctrl = CameraController(cam, ResolutionPreset.veryHigh,
-        enableAudio: true, imageFormatGroup: ImageFormatGroup.jpeg);
+    final ctrl = CameraController(
+        cam, _live ? ResolutionPreset.high : ResolutionPreset.veryHigh,
+        enableAudio: true,
+        imageFormatGroup:
+            _live ? ImageFormatGroup.nv21 : ImageFormatGroup.jpeg);
     _ctrl = ctrl;
     if (mounted) setState(() => _pret = false);
     await ancien?.dispose();
@@ -169,6 +188,7 @@ class _CameraStoryState extends State<CameraStory>
         _refus = false;
         _erreur = null;
       });
+      if (_live) await _demarrerAnalyse();
     } on CameraException catch (e) {
       if (_ctrl == ctrl) _gererErreur(e);
     } catch (e) {
@@ -234,6 +254,87 @@ class _CameraStoryState extends State<CameraStory>
     });
   }
 
+  /// Choix d'un effet de visage : la caméra repasse en mode analyse (ou en
+  /// pleine qualité si « Aucun »).
+  Future<void> _choisirEffet(String id) async {
+    if (id == _effetLive) return;
+    final avant = _live;
+    setState(() {
+      _effetLive = id;
+      _effetMemorise = id;
+      _visagesLive = null;
+    });
+    HapticFeedback.selectionClick();
+    final cam = _camera;
+    if (cam != null && avant != _live) await _ouvrir(cam); // change de mode
+  }
+
+  Future<void> _demarrerAnalyse() async {
+    final c = _ctrl;
+    if (c == null || !c.value.isInitialized || c.value.isStreamingImages) return;
+    _detecteur ??= FaceDetector(
+      options: FaceDetectorOptions(
+        enableLandmarks: true,
+        performanceMode: FaceDetectorMode.fast,
+        minFaceSize: 0.15,
+      ),
+    );
+    try {
+      await c.startImageStream(_analyser);
+    } catch (e) {
+      debugPrint('Analyse du visage impossible : $e');
+    }
+  }
+
+  Future<void> _arreterAnalyse() async {
+    final c = _ctrl;
+    if (c == null || !c.value.isStreamingImages) return;
+    try {
+      await c.stopImageStream();
+    } catch (_) {}
+  }
+
+  Future<void> _analyser(CameraImage image) async {
+    final det = _detecteur;
+    final cam = _camera;
+    if (det == null || cam == null || _analyseEnCours) return;
+    // ~10 images par seconde au plus (téléphones modestes)
+    final maintenant = DateTime.now();
+    if (maintenant.difference(_derniereAnalyse).inMilliseconds < 90) return;
+    _derniereAnalyse = maintenant;
+    _analyseEnCours = true;
+    try {
+      final plan = image.planes.first;
+      final rotation =
+          InputImageRotationValue.fromRawValue(cam.sensorOrientation) ??
+              InputImageRotation.rotation0deg;
+      final format = InputImageFormatValue.fromRawValue(image.format.raw) ??
+          InputImageFormat.nv21;
+      final faces = await det.processImage(InputImage.fromBytes(
+        bytes: plan.bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: format,
+          bytesPerRow: plan.bytesPerRow,
+        ),
+      ));
+      // Image « debout » : largeur et hauteur échangées si tournée de 90°
+      final debout = (rotation == InputImageRotation.rotation90deg ||
+              rotation == InputImageRotation.rotation270deg)
+          ? Size(image.height.toDouble(), image.width.toDouble())
+          : Size(image.width.toDouble(), image.height.toDouble());
+      if (mounted && _live) {
+        setState(() =>
+            _visagesLive = ResultatVisages(visagesDepuis(faces), debout));
+      }
+    } catch (_) {
+      // image illisible : on passe à la suivante
+    } finally {
+      _analyseEnCours = false;
+    }
+  }
+
   void _changerMinuteur() {
     setState(() {
       _minuteur = switch (_minuteur) { 0 => 3, 3 => 10, _ => 0 };
@@ -252,7 +353,8 @@ class _CameraStoryState extends State<CameraStory>
       // Selfie : affichée tout de suite en miroir, retournée à la
       // publication (comme Snap / Instagram)
       if (mounted) {
-        widget.onMedia(f.path, false, _avant, FiltreStory.tous[_filtre].id);
+        widget.onMedia(
+            f.path, false, _avant, FiltreStory.tous[_filtre].id, _effetLive);
       }
     } catch (e) {
       debugPrint('takePicture : $e');
@@ -275,6 +377,7 @@ class _CameraStoryState extends State<CameraStory>
     _demarrage = true;
     _relacheTot = false;
     try {
+      if (_live) await _arreterAnalyse();
       if (_flash && !_avant) await c.setFlashMode(FlashMode.torch);
       await c.startVideoRecording();
       _chronoVideo
@@ -313,8 +416,9 @@ class _CameraStoryState extends State<CameraStory>
       final f = await c.stopVideoRecording();
       if (_flash) await c.setFlashMode(FlashMode.always);
       if (mounted) {
-        widget.onMedia(f.path, true, false, FiltreStory.tous[_filtre].id);
+        widget.onMedia(f.path, true, false, FiltreStory.tous[_filtre].id, 'aucun');
       }
+      if (_live) await _demarrerAnalyse();
     } catch (e) {
       debugPrint('stopVideoRecording : $e');
     }
@@ -447,6 +551,16 @@ class _CameraStoryState extends State<CameraStory>
               filtre: FiltreStory.tous[_filtre].id, child: _apercu(ecran)),
         ),
 
+        // ── 😎 Effet de visage en direct ──
+        if (_live && _visagesLive != null && !_enregistre)
+          Positioned.fill(
+            child: Transform.flip(
+              flipX: _avant,
+              child: CoucheEffetsVisage(
+                  resultat: _visagesLive!, effet: _effetLive, couvrir: true),
+            ),
+          ),
+
         // ── Compte à rebours du minuteur ──
         if (_compte != null)
           Center(
@@ -525,6 +639,28 @@ class _CameraStoryState extends State<CameraStory>
                                 color: Colors.white, size: 24),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () =>
+                          setState(() => _bandeauEffets = !_bandeauEffets),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                            color: _live || _bandeauEffets
+                                ? Colors.white
+                                : Colors.black38,
+                            shape: BoxShape.circle),
+                        child: Text(
+                            _live
+                                ? EffetVisage.tous
+                                    .firstWhere((e) => e.id == _effetLive)
+                                    .emoji
+                                : '😎',
+                            style: const TextStyle(fontSize: 22)),
+                      ),
+                    ),
                   ]),
               ],
             ),
@@ -541,6 +677,42 @@ class _CameraStoryState extends State<CameraStory>
             child: Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
+                // 😎 Effets de visage en direct
+                if (_bandeauEffets && _pret && !_enregistre)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: SizedBox(
+                      height: 58,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          for (final e in EffetVisage.tous
+                              .where((e) => !e.deforme))
+                            GestureDetector(
+                              onTap: () => _choisirEffet(e.id),
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: e.id == _effetLive
+                                      ? Colors.white
+                                      : Colors.black45,
+                                  border: Border.all(
+                                      color: Colors.white54,
+                                      width: e.id == _effetLive ? 3 : 1),
+                                ),
+                                child: Text(e.emoji,
+                                    style: const TextStyle(fontSize: 24)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
                 // Filtre en cours (points) + rappel du geste
                 if (_pret && !_enregistre)
                   Padding(

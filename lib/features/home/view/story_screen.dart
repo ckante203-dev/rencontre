@@ -1970,7 +1970,24 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
           : null;
 
   void _setMedia(String chemin, bool video,
-          [bool miroir = false, String filtre = 'normal']) =>
+      [bool miroir = false, String filtre = 'normal', String effet = 'aucun']) {
+    _setMediaBase(chemin, video, miroir, filtre);
+    // Effet de visage choisi en direct dans la caméra : reposé sur la photo
+    if (!video && effet != 'aucun') {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final r = await detecterVisages(chemin);
+        if (!mounted || _previewPath != chemin) return;
+        if (r != null && r.visages.isNotEmpty) {
+          setState(() {
+            _visages = r;
+            _effetVisage = effet;
+          });
+        }
+      });
+    }
+  }
+
+  void _setMediaBase(String chemin, bool video, bool miroir, String filtre) =>
       setState(() {
         CameraStory.memoriserDernierMedia(chemin, video);
         _miroir = miroir && !video;
