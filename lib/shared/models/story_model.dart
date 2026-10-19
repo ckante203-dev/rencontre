@@ -39,6 +39,9 @@ class StoryModel {
   final String? filtre;
   // 🔒 Story mystère : floutée tant qu'on n'a pas liké l'auteur (SQL 091)
   final bool mystere;
+  // 🎵 Musique (musique_story.dart) et début de l'extrait (SQL 092)
+  final String? musique;
+  final int musiqueDebutMs;
 
   const StoryModel({
     required this.id,
@@ -69,6 +72,8 @@ class StoryModel {
     this.stickers = const [],
     this.filtre,
     this.mystere = false,
+    this.musique,
+    this.musiqueDebutMs = 0,
   });
 
   bool get legendePlacee => legendeX != null && legendeY != null;
@@ -146,6 +151,8 @@ class StoryModel {
       stickers: stickers,
       filtre: filtre,
       mystere: mystere,
+      musique: musique,
+      musiqueDebutMs: musiqueDebutMs,
     );
   }
 }

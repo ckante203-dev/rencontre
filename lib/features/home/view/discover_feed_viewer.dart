@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/musique_story.dart';
 import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/interactions_story.dart';
 import 'package:rencontre/features/home/widget/filtres_story.dart';
@@ -387,6 +388,32 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
   // lui-même via un tap.
   bool _pausedByLifecycle = false;
 
+  // 🎵 Musique de la story : joue quand la page est affichée et que rien
+  // ne l'a mise en pause (tap, arrière-plan, profil ouvert, son coupé).
+  LecteurMusique? _musique;
+  bool _horsPage = false;
+  bool _musiqueJoue = false;
+
+  void _majMusique() {
+    final m = _musique;
+    if (m == null) return;
+    final jouer = mounted &&
+        _isVisible &&
+        !_manuallyPaused &&
+        !_pausedByLifecycle &&
+        !_horsPage &&
+        !_muted;
+    if (jouer == _musiqueJoue) return;
+    _musiqueJoue = jouer;
+    if (!jouer) {
+      m.pause();
+    } else if (m.enCours == null) {
+      m.jouer(widget.story.musique, debutMs: widget.story.musiqueDebutMs);
+    } else {
+      m.reprendre();
+    }
+  }
+
   // ✅ double-tap = like, avec petite animation de cœur à l'endroit
   // exact du tap.
   Offset? _lastTapPosition;
@@ -396,6 +423,9 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (MusiqueStory.parId(widget.story.musique) != null) {
+      _musique = LecteurMusique();
+    }
     _loadLikeState();
     if (widget.story.isVideo) {
       // ✅ Réutilise la vidéo préchargée par l'accueil (avant : téléchargée
@@ -415,7 +445,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
             debut: widget.story.videoDebut, fin: widget.story.videoFin);
         if (_isVisible) {
           ctrl.play();
-          ctrl.setVolume(_muted ? 0 : 1);
+          ctrl.setVolume(_volume);
         }
       }).catchError((e) {
         // ✅ Avant : erreur non gérée si la vidéo ne charge pas (réseau…)
@@ -434,7 +464,10 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
         if (_videoCtrl != null && _videoCtrl!.value.isPlaying) {
           _pausedByLifecycle = true;
           _videoCtrl!.pause();
+        } else if (_musiqueJoue) {
+          _pausedByLifecycle = true;
         }
+        _majMusique();
         break;
       case AppLifecycleState.resumed:
         if (_pausedByLifecycle) {
@@ -444,6 +477,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
           if (_isVisible && !_manuallyPaused) {
             _videoCtrl?.play();
           }
+          _majMusique();
         }
         break;
       case AppLifecycleState.detached:
@@ -453,6 +487,8 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
 
   void setVisible(bool visible) {
     _isVisible = visible;
+    if (visible) _manuallyPaused = false;
+    _majMusique();
     if (_videoCtrl == null || !_videoReady) return;
     if (visible) {
       // ✅ Une pause manuelle ne doit valoir que pour la visite en
@@ -460,7 +496,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
       // reprend normalement, comme sur TikTok.
       _manuallyPaused = false;
       _videoCtrl!.play();
-      _videoCtrl!.setVolume(_muted ? 0 : 1);
+      _videoCtrl!.setVolume(_volume);
     } else {
       _videoCtrl!.pause();
     }
@@ -468,12 +504,22 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
 
   void _toggleMute() {
     setState(() => _muted = !_muted);
-    _videoCtrl?.setVolume(_muted ? 0 : 1);
+    _videoCtrl?.setVolume(_volume);
+    _majMusique();
   }
+
+  // Vidéo en musique : son d'origine baissé sous la musique
+  double get _volume => _muted ? 0 : (_musique != null ? 0.3 : 1);
 
   // ✅ tap simple sur l'écran : pause/relance la vidéo. Sans effet
   // sur une story image (rien à mettre en pause).
   void _handleSingleTap() {
+    // Photo en musique : le tap met la musique en pause / la relance
+    if (!widget.story.isVideo && _musique != null) {
+      _manuallyPaused = !_manuallyPaused;
+      _majMusique();
+      return;
+    }
     if (!widget.story.isVideo || _videoCtrl == null || !_videoReady) return;
     setState(() {
       if (_videoCtrl!.value.isPlaying) {
@@ -484,6 +530,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
         _manuallyPaused = false;
       }
     });
+    _majMusique();
   }
 
   // ✅ double-tap : like uniquement (jamais unlike, comme
@@ -503,6 +550,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     WidgetsBinding.instance.removeObserver(this);
     _videoCtrl?.pause();
     _videoCtrl?.dispose();
+    _musique?.dispose();
     super.dispose();
   }
 
@@ -556,6 +604,8 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     // que cette page reste montée sous l'écran de profil.
     final wasPlaying = _videoCtrl?.value.isPlaying ?? false;
     _videoCtrl?.pause();
+    _horsPage = true;
+    _majMusique();
 
     try {
       final data = await Supabase.instance.client
@@ -576,6 +626,8 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
       if (mounted && _isVisible && wasPlaying && !_manuallyPaused) {
         _videoCtrl?.play();
       }
+      _horsPage = false;
+      _majMusique();
     }
   }
 
@@ -584,10 +636,14 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
   Future<void> _report() async {
     final wasPlaying = _videoCtrl?.value.isPlaying ?? false;
     _videoCtrl?.pause();
+    _horsPage = true;
+    _majMusique();
     final reported = await showStoryReportSheet(widget.story);
     if (!reported && mounted && _isVisible && wasPlaying && !_manuallyPaused) {
       _videoCtrl?.play();
     }
+    _horsPage = false;
+    _majMusique();
   }
 
   String _ago(DateTime d) {
@@ -694,7 +750,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
         ),
         // ✅ icône pause/lecture au centre, visible tant que la
         // vidéo est manuellement en pause (façon TikTok).
-        if (widget.story.isVideo && _manuallyPaused)
+        if ((widget.story.isVideo || _musique != null) && _manuallyPaused)
           const IgnorePointer(
             child: Center(
               child: Icon(Icons.play_arrow_rounded,
@@ -867,7 +923,18 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                   style: const TextStyle(color: Colors.white, fontSize: 14)),
             ),
           ),
-        if (s.isVideo)
+        // 🎵 Musique : titre + artiste (crédit exigé par la licence)
+        if (!_replyFocused && MusiqueStory.parId(s.musique) != null)
+          Positioned(
+            bottom: bottomPad +
+                76 +
+                (!s.legendePlacee && (s.caption ?? '').isNotEmpty ? 56 : 0),
+            left: 16,
+            child: IgnorePointer(
+              child: EtiquetteMusique(musique: MusiqueStory.parId(s.musique)!),
+            ),
+          ),
+        if (s.isVideo || _musique != null)
           Positioned(
             top: MediaQuery.of(context).padding.top + 68,
             right: 12,

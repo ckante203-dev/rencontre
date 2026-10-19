@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/musique_story.dart';
 import 'package:rencontre/features/home/widget/envoi_story.dart';
 import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/interactions_story.dart';
@@ -101,6 +102,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   bool _paused = false;
   bool _longPressing = false;
   final Set<String> _likedStoryIds = {};
+  // 🎵 Musique de la story affichée (ne coupe pas le son des vidéos)
+  final _musique = LecteurMusique();
+  late final AppLifecycleListener _cycleVie = AppLifecycleListener(
+    onHide: _musique.pause,
+    onShow: () {
+      if (!_paused && _groups.isNotEmpty && _currentStory.musique != null) {
+        _musique.reprendre();
+      }
+    },
+  );
 
   // ── Cache & préchargement vidéo/image (perf) ────────────────────
   // Indexés par l'ID de la story (plus robuste qu'une position,
@@ -139,6 +150,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             (1 - Curves.easeOut.transform(_retourCtrl.value)));
       });
     _progressCtrl = AnimationController(vsync: this);
+    _cycleVie; // écoute l'arrière-plan (musique)
     _progressCtrl.addStatusListener((status) {
       if (status == AnimationStatus.completed) _advance();
     });
@@ -192,6 +204,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       c.dispose();
     }
     _videoCache.clear();
+    _cycleVie.dispose();
+    _musique.dispose();
     super.dispose();
   }
 
@@ -222,6 +236,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
     final s = _currentStory;
     _markSeen(s);
+    // 🎵 La musique de la story (ou silence si elle n'en a pas)
+    if (s.musique != null) {
+      _musique.jouer(s.musique, debutMs: s.musiqueDebutMs);
+    } else {
+      _musique.arreter();
+    }
 
     if (s.isVideo) {
       VideoPlayerController? ctrl = _videoCache[s.id];
@@ -261,6 +281,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
       if (_videoReady) {
         ctrl.setLooping(false);
+        ctrl.setVolume(s.musique != null ? 0.3 : 1.0);
         // Vidéo raccourcie dans l'éditeur : seul le passage choisi est joué
         // (la barre de progression dure le temps du passage).
         final debut = s.videoDebut ?? Duration.zero;
@@ -281,7 +302,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         _videoCtrl = null;
         _videoReady = false;
       });
-      _progressCtrl.duration = _imageDuration;
+      // Photo en musique : affichée plus longtemps (10 s)
+      _progressCtrl.duration =
+          s.musique != null ? const Duration(seconds: 10) : _imageDuration;
     }
 
     if (token != _loadToken || !mounted) return;
@@ -408,6 +431,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _paused = true;
     _progressCtrl.stop();
     _videoCtrl?.pause();
+    _musique.pause();
   }
 
   void _resume() {
@@ -415,6 +439,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _paused = false;
     _progressCtrl.forward();
     _videoCtrl?.play();
+    if (_currentStory.musique != null) _musique.reprendre();
   }
 
   // ✅ Vrai quand le menu d'options se ferme pour ouvrir aussitôt une
@@ -1029,6 +1054,19 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 y: s.legendeY!,
                 echelle: s.legendeEchelle ?? 1,
               ),
+          // 🎵 Musique : titre + artiste (crédit exigé par la licence)
+          if (MusiqueStory.parId(s.musique) != null &&
+              !_replyFocused &&
+              !_longPressing)
+            Positioned(
+              left: 12,
+              bottom: (s.caption ?? '').isNotEmpty && !s.legendePlacee
+                  ? 70
+                  : 14,
+              child: IgnorePointer(
+                child: EtiquetteMusique(musique: MusiqueStory.parId(s.musique)!),
+              ),
+            ),
           // Légende classique (non placée) en bas de la story
           if (s.caption != null &&
               s.caption!.isNotEmpty &&
@@ -1860,6 +1898,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   bool _bandeauFiltres = false;
   // 🔒 Story mystère : floutée tant qu'on ne m'a pas liké (SQL 091)
   bool _mystere = false;
+  // 🎵 Musique choisie (musique_story.dart), jouée en boucle pendant l'édition
+  MusiqueChoisie? _musique;
+  final _lecteurMusique =
+      LecteurMusique(boucleMs: MusiqueStory.extraitS * 1000);
+  late final AppLifecycleListener _cycleVie;
   // Effets de visage (photos) : visages repérés une fois, effet choisi
   ResultatVisages? _visages;
   bool _detectionVisage = false;
@@ -1896,6 +1939,12 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   @override
   void initState() {
     super.initState();
+    _cycleVie = AppLifecycleListener(
+      onHide: _lecteurMusique.pause,
+      onShow: () {
+        if (_musique != null) _lecteurMusique.reprendre();
+      },
+    );
     _textCtrl.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) => _proposerBrouillon());
   }
@@ -2133,6 +2182,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     final edition = <String, dynamic>{
       if (evenement != null) 'evenement_id': evenement.id,
       if (_mystere) 'mystere': true,
+      // 🎵 Musique jouée à la lecture (SQL 092)
+      if (_musique != null) ...{
+        'musique': _musique!.id,
+        'musique_debut_ms': _musique!.debutMs,
+      },
       // Vidéo : le filtre est appliqué à la lecture (stories.filtre, SQL 085)
       if (_isVideo && !filtre.neutre) 'filtre': filtre.id,
       if (_stickers.isNotEmpty)
@@ -2506,7 +2560,23 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     _captionCtrl.dispose();
     _cadrage.dispose();
     _textCtrl.dispose();
+    _cycleVie.dispose();
+    _lecteurMusique.dispose();
     super.dispose();
+  }
+
+  /// 🎵 Choix de la musique (À la une, catégories, extrait de 15 s)
+  Future<void> _choisirMusique() async {
+    await _lecteurMusique.pause();
+    final r = await ouvrirChoixMusique(actuelle: _musique);
+    if (!mounted) return;
+    if (r != null) setState(() => _musique = r.id.isEmpty ? null : r);
+    final m = _musique;
+    if (m == null) {
+      await _lecteurMusique.arreter();
+    } else {
+      await _lecteurMusique.jouer(m.id, debutMs: m.debutMs);
+    }
   }
 
   @override
@@ -2558,7 +2628,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                   ],
                 ));
                 if (ok == true && mounted) {
-                  setState(() => _previewPath = null);
+                  setState(() {
+                    _previewPath = null;
+                    _musique = null;
+                  });
+                  _lecteurMusique.arreter();
                 }
               } else {
                 Get.back(result: false);
@@ -2720,6 +2794,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
              filtre: _filtre,
              child: _VideoPreview(
               path: _previewPath!,
+              volume: _musique == null ? 1.0 : 0.3,
               debut: _decoupe == null
                   ? null
                   : Duration(milliseconds: (_decoupe!.start * 1000).round()),
@@ -3047,6 +3122,12 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                     onTap: _ajouterSticker,
                   ),
                   _OutilVertical(
+                    icon: Icons.music_note_rounded,
+                    label: 'Musique'.tr,
+                    actif: _musique != null,
+                    onTap: _choisirMusique,
+                  ),
+                  _OutilVertical(
                     icon: Icons.auto_awesome_rounded,
                     label: 'Filtres'.tr,
                     actif: _filtre != 'normal' || _bandeauFiltres,
@@ -3120,6 +3201,19 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                             if (_evenementEnCours != null) ...[
                               const SizedBox(height: 10),
                               _puceEvenement(_evenementEnCours!),
+                            ],
+                            if (_musique?.musique != null) ...[
+                              const SizedBox(height: 10),
+                              Center(
+                                child: EtiquetteMusique(
+                                  musique: _musique!.musique!,
+                                  onTap: _choisirMusique,
+                                  onRetirer: () {
+                                    setState(() => _musique = null);
+                                    _lecteurMusique.arreter();
+                                  },
+                                ),
+                              ),
                             ],
                             const SizedBox(height: 12),
                             _barrePublication(),
@@ -3841,8 +3935,13 @@ class _VideoPreview extends StatefulWidget {
   final String path;
   final Duration? debut, fin; // passage joué en boucle
   final ValueChanged<Duration>? onDuree;
+  final double volume;
   const _VideoPreview(
-      {required this.path, this.debut, this.fin, this.onDuree});
+      {required this.path,
+      this.debut,
+      this.fin,
+      this.onDuree,
+      this.volume = 1.0});
   @override
   State<_VideoPreview> createState() => _VideoPreviewState();
 }
@@ -3868,6 +3967,7 @@ class _VideoPreviewState extends State<_VideoPreview> {
     }
     if (!mounted) return;
     ctrl.setLooping(true);
+    ctrl.setVolume(widget.volume);
     ctrl.addListener(_boucler);
     ctrl.play();
     setState(() => _ready = true);
@@ -3893,6 +3993,7 @@ class _VideoPreviewState extends State<_VideoPreview> {
     if (old.debut != widget.debut && widget.debut != null) {
       _ctrl?.seekTo(widget.debut!);
     }
+    if (old.volume != widget.volume) _ctrl?.setVolume(widget.volume);
   }
 
   @override
