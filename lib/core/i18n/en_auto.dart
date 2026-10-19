@@ -1579,5 +1579,4 @@ const Map<String, String> enAuto = {
   "Vue unique · se ferme dans @t": "View once · closes in @t",
   "Accès encore @t": "Access for @t more",
   "@nom t'a ouvert son album privé": "@nom opened their private album to you",
-  "Impossible d'ouvrir l'album": "Couldn't open the album",
 };
