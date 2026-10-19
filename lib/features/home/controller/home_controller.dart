@@ -365,11 +365,11 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   // OUVRIR/consulter. Premium OU essai gratuit actif → illimité (dans
   // la limite chargée) ; sinon, limite gratuite. Au-delà, le tap doit
   // proposer le passage Premium au lieu de naviguer vers le profil.
-  /// Profils visibles sans Premium : 70 sur le Play Store (décision du 19/10/2026), 150 dans l'APK
+  /// Profils visibles sans Premium : 91 sur le Play Store (70 + 21, décision du 19/10/2026), 150 dans l'APK
   /// partagée aux amis (flutter build apk --dart-define=VERSION_AMIS=true).
   /// Au-delà : affichés normalement, Premium demandé au toucher (Grindr).
   static const limiteGratuite =
-      bool.fromEnvironment('VERSION_AMIS') ? 150 : 70;
+      bool.fromEnvironment('VERSION_AMIS') ? 150 : 91;
 
   int get unlockedProfileCount {
     final isPremium = ControleurProfil.estPremiumMaintenant();
