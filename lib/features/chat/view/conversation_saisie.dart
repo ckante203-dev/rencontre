@@ -640,11 +640,9 @@ class _ApercuPlusieursState extends State<_ApercuPlusieurs> {
   Future<void> _agrandir(int depart) async {
     final page = PageController(initialPage: depart);
     var index = depart;
-    // Double-toucher pour zoomer (le doigt déplace alors la photo) ; sinon
-    // le doigt change de photo. Un zoom au pincement captait le glissement.
-    final zoom = TransformationController();
+    // Pincer / double-toucher pour zoomer (_PhotoZoomable) ; zoomée, la
+    // photo ne change pas au glissement
     var zoomee = false;
-    Offset toucher = Offset.zero;
     await Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
       builder: (_) => StatefulBuilder(
@@ -682,39 +680,17 @@ class _ApercuPlusieursState extends State<_ApercuPlusieurs> {
             onPageChanged: (i) => setPlein(() {
               index = i;
               zoomee = false;
-              zoom.value = Matrix4.identity();
             }),
-            itemBuilder: (_, i) {
-              final image = Center(
-                  child: Image.file(File(_chemins[i]), fit: BoxFit.contain));
-              return GestureDetector(
-                onDoubleTapDown: (d) => toucher = d.localPosition,
-                onDoubleTap: () => setPlein(() {
-                  if (zoomee) {
-                    zoom.value = Matrix4.identity();
-                    zoomee = false;
-                  } else {
-                    const x = 2.5;
-                    zoom.value = Matrix4.identity()
-                      ..translate(-toucher.dx * (x - 1), -toucher.dy * (x - 1))
-                      ..scale(x);
-                    zoomee = true;
-                  }
-                }),
-                child: zoomee && i == index
-                    ? InteractiveViewer(
-                        transformationController: zoom,
-                        maxScale: 5,
-                        child: image)
-                    : image,
-              );
-            },
+            itemBuilder: (_, i) => _PhotoZoomable(
+              onZoom: (z) => setPlein(() => zoomee = z),
+              child: Center(
+                  child: Image.file(File(_chemins[i]), fit: BoxFit.contain)),
+            ),
           ),
         ),
       ),
     ));
     page.dispose();
-    zoom.dispose();
     if (mounted) setState(() {});
   }
 

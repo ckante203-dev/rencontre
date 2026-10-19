@@ -57,7 +57,8 @@ class _EcranEnvoiState extends State<_EcranEnvoi> {
   final Set<String> _choisis = {};
   String _q = '';
 
-  static const _durees = [1.0, 6.0, 12.0, 24.0];
+  // 1 h → 7 jours (aucune limite côté serveur)
+  static const _durees = [1.0, 6.0, 24.0, 48.0, 72.0, 168.0];
 
   List<ConversationModel> get _conversations =>
       Get.isRegistered<ChatListController>()
@@ -91,8 +92,11 @@ class _EcranEnvoiState extends State<_EcranEnvoi> {
     HapticFeedback.selectionClick();
   }
 
-  String _dureeTexte(double h) =>
-      h >= 24 ? '24 h' : '${h.round()} h';
+  String _dureeTexte(double h) => h < 24
+      ? '${h.round()} h'
+      : h == 24
+          ? '24 h'
+          : '@n j'.trParams({'n': '${(h / 24).round()}'});
 
   String get _resume {
     final n = _choisis.length;
@@ -277,17 +281,50 @@ class _EcranEnvoiState extends State<_EcranEnvoi> {
                     onChanged: (v) => setState(() => _mystere = v),
                   ),
                 ),
-                _ligne(
-                  gauche: _icone('⏱', const Color(0xFF3A3A44)),
-                  titre: 'Durée : @d'.trParams({'d': _dureeTexte(_duree)}),
-                  sous: 'Touche pour changer'.tr,
-                  actif: false,
-                  onTap: () => setState(() {
-                    final i = _durees.indexOf(_duree);
-                    _duree = _durees[(i + 1) % _durees.length];
-                  }),
-                  droite: const Icon(Icons.swap_vert_rounded,
-                      color: Colors.white54),
+                // ⏱ Durée de la story : choix direct (avant : une ligne à
+                // toucher plusieurs fois, limitée à 24 h)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: Text('⏱ ${'Visible pendant'.tr}',
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                ),
+                SizedBox(
+                  height: 46,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    children: [
+                      for (final d in _durees)
+                        GestureDetector(
+                          onTap: () => setState(() => _duree = d),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              gradient: _duree == d
+                                  ? const LinearGradient(colors: [
+                                      Color(0xFFFF3CAC),
+                                      Color(0xFF7B2FFF)
+                                    ])
+                                  : null,
+                              color: _duree == d ? null : Colors.white10,
+                              borderRadius: BorderRadius.circular(19),
+                            ),
+                            child: Text(_dureeTexte(d),
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: _duree == d
+                                        ? FontWeight.w900
+                                        : FontWeight.w600)),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ],

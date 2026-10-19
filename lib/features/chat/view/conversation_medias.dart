@@ -416,8 +416,27 @@ class _SnapPleinEcranState extends State<_SnapPleinEcran> {
 class _MediaBubble extends StatelessWidget {
   final MessageModel msg;
   final bool isMine, isVideo;
+  final ConversationController? ctrl; // galerie des photos de la discussion
   const _MediaBubble(
-      {required this.msg, required this.isMine, required this.isVideo});
+      {required this.msg,
+      required this.isMine,
+      required this.isVideo,
+      this.ctrl});
+
+  /// Photos / vidéos de la discussion, dans l'ordre (hors stickers, GIF,
+  /// envois en cours et photos sensibles reçues encore floutées).
+  static List<MessageModel> mediasDe(ConversationController c) => c.messages
+      .where((m) =>
+          m.type == MessageType.image &&
+          !m.enEnvoi &&
+          c.estVisible(m) &&
+          (m.mediaUrl ?? '').startsWith('http') &&
+          m.text != ConversationController.texteSticker &&
+          m.text != ConversationController.texteGif &&
+          !(m.senderId != c.myId &&
+              (m.text ?? '').startsWith(ConversationController.prefixeSensible) &&
+              ConversationController.flouterSensibles))
+      .toList();
 
   bool get _isVideoUrl {
     final url = msg.mediaUrl ?? '';
@@ -559,11 +578,17 @@ class _MediaBubble extends StatelessWidget {
           ? null
           : () {
               final ctx = Get.context ?? context;
+              final c = ctrl;
+              final medias = c == null ? <MessageModel>[] : mediasDe(c);
+              final depart = medias.indexWhere((m) => m.id == msg.id);
               Navigator.push(
                   ctx,
                   MaterialPageRoute(
-                      builder: (_) => _PleinEcranMedia(
-                          url: msg.mediaUrl!, isVideo: video)));
+                      builder: (_) => depart == -1
+                          ? _PleinEcranMedia(url: msg.mediaUrl!, isVideo: video)
+                          // ◀ ▶ toutes les photos de la discussion
+                          : _GalerieConversation(
+                              medias: medias, depart: depart)));
             },
       child: ClipRRect(borderRadius: BorderRadius.circular(14), child: contenu),
     );
@@ -706,6 +731,332 @@ class _PleinEcranMediaState extends State<_PleinEcranMedia>
                           memCacheWidth: 1440,))),
         ),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ZOOM (pincer / double-toucher) compatible avec un glissement de pages
+// ═══════════════════════════════════════════════════════════════════
+
+/// Zoom géré à la main : le pincement est lu sur les événements bruts, il ne
+/// « vole » donc pas le glissement horizontal d'une PageView (le zoom
+/// standard le bloquait). Zoomée, un doigt déplace la photo.
+class _PhotoZoomable extends StatefulWidget {
+  final Widget child;
+  final ValueChanged<bool> onZoom;
+  const _PhotoZoomable({required this.child, required this.onZoom});
+  @override
+  State<_PhotoZoomable> createState() => _PhotoZoomableState();
+}
+
+class _PhotoZoomableState extends State<_PhotoZoomable> {
+  final _t = TransformationController();
+  final Map<int, Offset> _doigts = {};
+  double? _ecartDepart;
+  Matrix4? _matriceDepart;
+  Offset _centre = Offset.zero;
+  Offset _toucher = Offset.zero;
+  bool _zoomee = false;
+
+  double get _echelle => _t.value.getMaxScaleOnAxis();
+
+  void _majZoom() {
+    final z = _echelle > 1.01;
+    if (z == _zoomee) return;
+    setState(() => _zoomee = z);
+    widget.onZoom(z);
+  }
+
+  void _reinitialiser() {
+    _t.value = Matrix4.identity();
+    _majZoom();
+  }
+
+  double _ecart() {
+    final p = _doigts.values.toList();
+    return (p[0] - p[1]).distance;
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (e) {
+        _doigts[e.pointer] = e.localPosition;
+        if (_doigts.length == 2) {
+          _ecartDepart = _ecart();
+          _matriceDepart = _t.value.clone();
+          final p = _doigts.values.toList();
+          _centre = (p[0] + p[1]) / 2;
+        }
+      },
+      onPointerMove: (e) {
+        _doigts[e.pointer] = e.localPosition;
+        final depart = _ecartDepart, m0 = _matriceDepart;
+        if (_doigts.length != 2 || depart == null || depart == 0 || m0 == null) {
+          return;
+        }
+        final echelleM0 = m0.getMaxScaleOnAxis();
+        final s = (_ecart() / depart).clamp(1 / echelleM0, 5 / echelleM0);
+        _t.value = Matrix4.identity()
+          ..translateByDouble(_centre.dx, _centre.dy, 0, 1)
+          ..scaleByDouble(s, s, 1, 1)
+          ..translateByDouble(-_centre.dx, -_centre.dy, 0, 1)
+          ..multiply(m0);
+        _majZoom();
+      },
+      onPointerUp: (e) {
+        _doigts.remove(e.pointer);
+        if (_doigts.length < 2) _ecartDepart = null;
+        if (_echelle <= 1.01) _reinitialiser();
+      },
+      onPointerCancel: (e) {
+        _doigts.remove(e.pointer);
+        if (_doigts.length < 2) _ecartDepart = null;
+      },
+      child: GestureDetector(
+        onDoubleTapDown: (d) => _toucher = d.localPosition,
+        onDoubleTap: () {
+          if (_zoomee) {
+            _reinitialiser();
+          } else {
+            const x = 2.5;
+            _t.value = Matrix4.identity()
+              ..translateByDouble(
+                  -_toucher.dx * (x - 1), -_toucher.dy * (x - 1), 0, 1)
+              ..scaleByDouble(x, x, 1, 1);
+            _majZoom();
+          }
+        },
+        // Zoomée : un doigt déplace la photo ; sinon aucun geste capté
+        child: _zoomee
+            ? InteractiveViewer(
+                transformationController: _t,
+                scaleEnabled: false,
+                maxScale: 5,
+                child: widget.child)
+            : AnimatedBuilder(
+                animation: _t,
+                builder: (_, child) =>
+                    Transform(transform: _t.value, child: child),
+                child: widget.child),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GALERIE DE LA DISCUSSION (◀ ▶ entre les photos et vidéos)
+// ═══════════════════════════════════════════════════════════════════
+
+class _GalerieConversation extends StatefulWidget {
+  final List<MessageModel> medias;
+  final int depart;
+  const _GalerieConversation({required this.medias, required this.depart});
+  @override
+  State<_GalerieConversation> createState() => _GalerieConversationState();
+}
+
+class _GalerieConversationState extends State<_GalerieConversation>
+    with SingleTickerProviderStateMixin {
+  late final PageController _pages = PageController(initialPage: widget.depart);
+  late int _index = widget.depart;
+  bool _zoomee = false;
+
+  // Glisser vers le haut / le bas pour fermer (inactif si zoomée)
+  double _dy = 0;
+  double _depuis = 0;
+  late final AnimationController _retour = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 180))
+    ..addListener(() => setState(() => _dy = _depuis * (1 - _retour.value)));
+
+  static bool _video(MessageModel m) => (m.text ?? '').contains('🎬');
+
+  void _aller(int i) {
+    if (i < 0 || i >= widget.medias.length) return;
+    _pages.animateToPage(i,
+        duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
+  }
+
+  void _finGlisse(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (_dy.abs() > 120 || v.abs() > 900) {
+      Navigator.pop(context);
+      return;
+    }
+    _depuis = _dy;
+    _retour.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    _retour.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.medias.length;
+    final m = widget.medias[_index];
+    final h = m.createdAt;
+    final fond = (1 - _dy.abs() / 500).clamp(0.0, 1.0);
+    return Scaffold(
+      backgroundColor: Colors.black.withValues(alpha: fond),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppColors.surMedia,
+        // Dégradé : compteur et date lisibles sur une photo claire
+        flexibleSpace: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.voileMedia.withValues(alpha: 0.75 * fond),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded,
+                color: AppColors.surMedia),
+            onPressed: () => Navigator.pop(context)),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(n > 1 ? '${_index + 1} / $n' : '',
+              style: const TextStyle(
+                  color: AppColors.surMedia,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700)),
+          Text(
+              '${h.day.toString().padLeft(2, '0')}/${h.month.toString().padLeft(2, '0')} · '
+              '${h.hour.toString().padLeft(2, '0')}:${h.minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        ]),
+      ),
+      body: GestureDetector(
+        onVerticalDragStart: _zoomee ? null : (_) => _retour.stop(),
+        onVerticalDragUpdate:
+            _zoomee ? null : (d) => setState(() => _dy += d.delta.dy),
+        onVerticalDragEnd: _zoomee ? null : _finGlisse,
+        // Toucher le bord gauche / droit : photo précédente / suivante
+        onTapUp: _zoomee
+            ? null
+            : (d) {
+                final w = MediaQuery.of(context).size.width;
+                if (d.localPosition.dx < w * 0.3) _aller(_index - 1);
+                if (d.localPosition.dx > w * 0.7) _aller(_index + 1);
+              },
+        child: Transform.translate(
+          offset: Offset(0, _dy),
+          child: PageView.builder(
+            controller: _pages,
+            physics: _zoomee
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
+            itemCount: n,
+            onPageChanged: (i) => setState(() {
+              _index = i;
+              _zoomee = false;
+            }),
+            itemBuilder: (_, i) {
+              final media = widget.medias[i];
+              if (_video(media)) {
+                return _PageVideo(
+                    url: media.mediaUrl!, active: i == _index);
+              }
+              return _PhotoZoomable(
+                onZoom: (z) => setState(() => _zoomee = z),
+                child: Center(
+                  child: CachedNetworkImage(
+                    imageUrl: media.mediaUrl!,
+                    fit: BoxFit.contain,
+                    memCacheWidth: 1440,
+                    placeholder: (_, __) => const CircularProgressIndicator(
+                        color: AppColors.surMedia),
+                    errorWidget: (_, __, ___) => const Icon(
+                        Icons.broken_image_rounded,
+                        color: Color(0x61FFFFFF),
+                        size: 48),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Vidéo dans la galerie : lue quand sa page est affichée, toucher le
+/// centre = pause / lecture.
+class _PageVideo extends StatefulWidget {
+  final String url;
+  final bool active;
+  const _PageVideo({required this.url, required this.active});
+  @override
+  State<_PageVideo> createState() => _PageVideoState();
+}
+
+class _PageVideoState extends State<_PageVideo> {
+  late final VideoPlayerController _c =
+      VideoPlayerController.networkUrl(Uri.parse(widget.url));
+  bool _pret = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.initialize().then((_) {
+      if (!mounted) return;
+      setState(() => _pret = true);
+      _c.setLooping(true);
+      if (widget.active) _c.play();
+    }).catchError((e) {
+      debugPrint('Vidéo du message non chargée : $e');
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _PageVideo old) {
+    super.didUpdateWidget(old);
+    if (!_pret || old.active == widget.active) return;
+    widget.active ? _c.play() : _c.pause();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_pret) {
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.surMedia));
+    }
+    return GestureDetector(
+      onTap: () => setState(() => _c.value.isPlaying ? _c.pause() : _c.play()),
+      child: Stack(alignment: Alignment.center, children: [
+        AspectRatio(aspectRatio: _c.value.aspectRatio, child: VideoPlayer(_c)),
+        if (!_c.value.isPlaying)
+          const CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.black45,
+            child: Icon(Icons.play_arrow_rounded,
+                color: AppColors.surMedia, size: 40),
+          ),
+      ]),
     );
   }
 }

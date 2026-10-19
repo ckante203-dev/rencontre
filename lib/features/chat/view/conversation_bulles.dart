@@ -371,7 +371,7 @@ class _MessageBubble extends StatelessWidget {
             fit: BoxFit.contain,
             placeholder: (_, __) => const SizedBox(width: 140, height: 140),
             errorWidget: (_, __, ___) =>
-                _MediaBubble(msg: msg, isMine: isMine, isVideo: false),
+                _MediaBubble(msg: msg, isMine: isMine, isVideo: false, ctrl: ctrl),
                 memCacheWidth: 420,
           );
         }
@@ -381,9 +381,9 @@ class _MessageBubble extends StatelessWidget {
             ConversationController.flouterSensibles;
         if (sensible) {
           return _FlouSensible(
-              child: _MediaBubble(msg: msg, isMine: isMine, isVideo: false));
+              child: _MediaBubble(msg: msg, isMine: isMine, isVideo: false, ctrl: ctrl));
         }
-        return _MediaBubble(msg: msg, isMine: isMine, isVideo: false);
+        return _MediaBubble(msg: msg, isMine: isMine, isVideo: false, ctrl: ctrl);
       case MessageType.location:
         return _LocationBubble(msg: msg, isMine: isMine);
       case MessageType.annonceReply:
