@@ -537,7 +537,8 @@ class _AttachMenu extends StatelessWidget {
         builder: (_) => _PreviewSheet(ctrl: ctrl, filePath: picked.path));
   }
 
-  /// Aperçu de plusieurs photos puis envoi l'une après l'autre
+  /// Aperçu de plusieurs photos (retirer, agrandir, en ajouter) puis envoi
+  /// l'une après l'autre
   void _envoyerPlusieurs(BuildContext ctx, List<String> chemins) {
     showModalBottomSheet(
       context: ctx,
@@ -545,56 +546,7 @@ class _AttachMenu extends StatelessWidget {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                for (final c in chemins)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child:
-                        Image.file(File(c), fit: BoxFit.cover, cacheWidth: 300),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                icon:
-                    const Icon(Icons.send_rounded, color: AppColors.surAccent),
-                label: Text(
-                    'Envoyer @n photos'.trParams({'n': '${chemins.length}'}),
-                    style: const TextStyle(
-                        color: AppColors.surAccent,
-                        fontWeight: FontWeight.w700)),
-                onPressed: () async {
-                  Get.back();
-                  for (final c in chemins) {
-                    if (!ctrl.peutEnvoyer()) break;
-                    ctrl.envoyerMediaEnFond(chemin: c, video: false);
-                    // identifiants temporaires distincts (horodatage en ms)
-                    await Future.delayed(const Duration(milliseconds: 30));
-                  }
-                },
-              ),
-            ),
-          ]),
-        ),
-      ),
+      builder: (_) => _ApercuPlusieurs(ctrl: ctrl, chemins: chemins),
     );
   }
 
@@ -661,6 +613,189 @@ class _AttachMenu extends StatelessWidget {
         isScrollControlled: true,
         builder: (_) =>
             _PreviewSheet(ctrl: ctrl, filePath: picked.path, isVideo: true));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  APERÇU DE PLUSIEURS PHOTOS (galerie)
+// ═══════════════════════════════════════════════════════════════════
+
+class _ApercuPlusieurs extends StatefulWidget {
+  final ConversationController ctrl;
+  final List<String> chemins;
+  const _ApercuPlusieurs({required this.ctrl, required this.chemins});
+  @override
+  State<_ApercuPlusieurs> createState() => _ApercuPlusieursState();
+}
+
+class _ApercuPlusieursState extends State<_ApercuPlusieurs> {
+  static const _max = 10;
+  late final List<String> _chemins = [...widget.chemins];
+
+  void _retirer(String c) {
+    HapticFeedback.selectionClick();
+    setState(() => _chemins.remove(c));
+    if (_chemins.isEmpty) Get.back();
+  }
+
+  Future<void> _ajouter() async {
+    final reste = _max - _chemins.length;
+    if (reste <= 0) return;
+    final photos = await ImagePicker().pickMultiImage(
+        maxWidth: 1080, maxHeight: 1920, imageQuality: 85, limit: reste);
+    if (!mounted || photos.isEmpty) return;
+    setState(() => _chemins.addAll(photos.take(reste).map((p) => p.path)));
+  }
+
+  /// Photo en grand ; glisser pour passer à la suivante, 🗑 pour la retirer
+  Future<void> _agrandir(int depart) async {
+    final page = PageController(initialPage: depart);
+    var index = depart;
+    await Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setPlein) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: AppColors.surMedia,
+            title: Text('${index + 1} / ${_chemins.length}'),
+            actions: [
+              TextButton.icon(
+                onPressed: () {
+                  final c = _chemins[index];
+                  _retirer(c);
+                  if (_chemins.isEmpty) {
+                    Navigator.of(ctx).pop();
+                    return;
+                  }
+                  setPlein(() =>
+                      index = index.clamp(0, _chemins.length - 1).toInt());
+                },
+                icon: const Icon(Icons.delete_outline_rounded,
+                    color: Color(0xFFFF453A)),
+                label: Text('Retirer'.tr,
+                    style: const TextStyle(color: Color(0xFFFF453A))),
+              ),
+            ],
+          ),
+          body: PageView.builder(
+            controller: page,
+            itemCount: _chemins.length,
+            onPageChanged: (i) => setPlein(() => index = i),
+            itemBuilder: (_, i) => InteractiveViewer(
+              maxScale: 4,
+              child: Center(
+                  child: Image.file(File(_chemins[i]), fit: BoxFit.contain)),
+            ),
+          ),
+        ),
+      ),
+    ));
+    page.dispose();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = _chemins.length;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text('Touche une photo pour la voir en grand'.tr,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+          ),
+          ConstrainedBox(
+            constraints:
+                BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.55),
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              children: [
+                for (var i = 0; i < n; i++)
+                  GestureDetector(
+                    onTap: () => _agrandir(i),
+                    child: Stack(fit: StackFit.expand, children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(File(_chemins[i]),
+                            fit: BoxFit.cover, cacheWidth: 300),
+                      ),
+                      // ✕ retirer cette photo
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => _retirer(_chemins[i]),
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: AppColors.voileMedia,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: AppColors.surMedia, width: 1.5),
+                            ),
+                            child: Icon(Icons.close_rounded,
+                                size: 16, color: AppColors.surMedia),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                if (n < _max)
+                  GestureDetector(
+                    onTap: _ajouter,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Icon(Icons.add_photo_alternate_outlined,
+                          color: AppColors.textMuted, size: 30),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.send_rounded, color: AppColors.surAccent),
+              label: Text(
+                  n == 1
+                      ? 'Envoyer la photo'.tr
+                      : 'Envoyer @n photos'.trParams({'n': '$n'}),
+                  style: const TextStyle(
+                      color: AppColors.surAccent, fontWeight: FontWeight.w700)),
+              onPressed: () async {
+                final aEnvoyer = [..._chemins];
+                Get.back();
+                for (final c in aEnvoyer) {
+                  if (!widget.ctrl.peutEnvoyer()) break;
+                  widget.ctrl.envoyerMediaEnFond(chemin: c, video: false);
+                  // identifiants temporaires distincts (horodatage en ms)
+                  await Future.delayed(const Duration(milliseconds: 30));
+                }
+              },
+            ),
+          ),
+        ]),
+      ),
+    );
   }
 }
 
