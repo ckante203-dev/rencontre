@@ -7,14 +7,88 @@ import 'package:rencontre/features/profil/vue/video_profil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
+import 'package:rencontre/features/profil/vue/ecran_profil.dart' show FeuillePseudo;
 
-class EcranModifierInfos extends StatelessWidget {
+class EcranModifierInfos extends StatefulWidget {
   const EcranModifierInfos({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final ctrl = ControleurProfil.to;
+  State<EcranModifierInfos> createState() => _EcranModifierInfosState();
+}
 
+class _EcranModifierInfosState extends State<EcranModifierInfos> {
+  final ctrl = ControleurProfil.to;
+  late String _depart;
+
+  /// Tout ce que « Sauvegarder » enregistre : sert à savoir s'il reste des
+  /// changements non enregistrés en quittant.
+  String _empreinte() => [
+        ctrl.nomController.text.trim(),
+        ctrl.tailleController.text.trim(),
+        ctrl.poidsController.text.trim(),
+        ctrl.bioController.text.trim(),
+        ctrl.metierController.text.trim(),
+        ctrl.etudesController.text.trim(),
+        ctrl.selectedMorphologie.value,
+        ctrl.selectedLookingFor.value,
+        ctrl.selectedLieuRencontre.value,
+        ctrl.languesChoisies.join(','),
+        ctrl.questionsChoisies.map((q) => '${q['q']}=${q['r']}').join('|'),
+        ctrl.selectedInterests.join(','),
+        '${ctrl.birthdate.value}',
+      ].join('§');
+
+  @override
+  void initState() {
+    super.initState();
+    _depart = _empreinte();
+  }
+
+  /// Quitter : propose d'enregistrer s'il reste des changements
+  Future<void> _quitter() async {
+    if (_empreinte() == _depart) {
+      Get.back();
+      return;
+    }
+    final choix = await Get.dialog<String>(AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Text('Enregistrer tes modifications ?'.tr,
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 17)),
+      content: Text("Sinon, elles seront perdues.".tr,
+          style: TextStyle(color: AppColors.textMuted)),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: 'quitter'),
+            child: Text('Quitter sans enregistrer'.tr,
+                style: TextStyle(color: AppColors.error))),
+        TextButton(
+            onPressed: () => Get.back(result: 'enregistrer'),
+            child: Text('Enregistrer'.tr,
+                style: TextStyle(
+                    color: AppColors.accent, fontWeight: FontWeight.w800))),
+      ],
+    ));
+    if (choix == 'enregistrer') {
+      await ctrl.sauvegarderInfos();
+    } else if (choix == 'quitter') {
+      // Les champs reprennent les valeurs enregistrées
+      await ctrl.chargerMonProfil();
+      Get.back();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (aQuitte, _) {
+        if (!aQuitte) _quitter();
+      },
+      child: _ecran(context),
+    );
+  }
+
+  Widget _ecran(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -22,7 +96,7 @@ class EcranModifierInfos extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: GestureDetector(
-          onTap: () => Get.back(),
+          onTap: _quitter,
           child: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -75,70 +149,37 @@ class EcranModifierInfos extends StatelessWidget {
              _SectionLabel(icon: '🔗', title: 'Nom d\'utilisateur'.tr),
             const SizedBox(height: 8),
             Obx(() {
-              final dispo = ctrl.usernameDispo.value;
-              final saisi = ctrl.usernameText.value;
-              final inchange = saisi == ctrl.monUsername.value;
-              Widget? suffix;
-              if (ctrl.verifUsername.value) {
-                suffix = Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.accent)),
-                );
-              } else if (!inchange && dispo == true) {
-                suffix = Icon(Icons.check_circle_rounded,
-                    color: AppColors.online, size: 20);
-              } else if (!inchange && dispo == false) {
-                suffix = Icon(Icons.cancel_rounded,
-                    color: AppColors.error, size: 20);
-              }
-              String? aide;
-              Color aideCouleur = AppColors.textMuted;
-              if (!inchange && dispo == false) {
-                aide = RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(saisi)
-                    ? 'Déjà pris'
-                    : '3 à 20 caractères : lettres, chiffres, . ou _';
-                aideCouleur = AppColors.error;
-              } else if (!inchange && dispo == true) {
-                aide = 'Disponible'.tr;
-                aideCouleur = AppColors.online;
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: ctrl.usernameController,
-                    style:
-                        TextStyle(color: AppColors.textPrimary, fontSize: 15),
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    maxLength: 20,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
-                      TextInputFormatter.withFunction((oldV, newV) =>
-                          newV.copyWith(text: newV.text.toLowerCase())),
-                    ],
-                    onChanged: (v) {
-                      ctrl.usernameText.value = v;
-                      ctrl.verifierUsername(v);
-                    },
-                    decoration: _inputDeco('ton_pseudo').copyWith(
-                      prefixText: '@ ',
-                      prefixStyle:
-                          TextStyle(color: AppColors.textMuted, fontSize: 15),
-                      suffixIcon: suffix,
-                    ),
+              final pseudo = ctrl.monUsername.value;
+              return GestureDetector(
+                onTap: () => Get.bottomSheet(
+                  FeuillePseudo(ctrl: ctrl),
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                ),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
                   ),
-                  if (aide != null)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(aide,
-                          style: TextStyle(fontSize: 12, color: aideCouleur)),
-                    ),
-                ],
+                  child: Row(children: [
+                    Text(pseudo.isEmpty ? 'Choisis ton pseudo'.tr : '@$pseudo',
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: pseudo.isEmpty
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary)),
+                    const Spacer(),
+                    Text('Modifier'.tr,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accent)),
+                  ]),
+                ),
               );
             }),
             const SizedBox(height: 20),

@@ -12,6 +12,8 @@ import 'package:rencontre/features/profil/vue/qr_zamu.dart';
 import 'package:rencontre/features/profil/vue/carte_dispo.dart';
 import 'package:flutter/services.dart';
 import 'package:rencontre/features/album/ecran_album_prive.dart';
+import 'package:rencontre/features/album/album_service.dart';
+import 'package:rencontre/shared/widgets/galerie_photos.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
@@ -134,12 +136,15 @@ class _GrandePhotoState extends State<_GrandePhoto> {
                       controller: _pageCtrl,
                       itemCount: photos.length,
                       onPageChanged: (i) => setState(() => _page = i),
-                      itemBuilder: (_, i) => CachedNetworkImage(
-                        imageUrl: photos[i],
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) =>
-                            _PlaceholderAvatar(ctrl: ctrl),
-                            memCacheWidth: 1080,
+                      itemBuilder: (_, i) => GestureDetector(
+                        onTap: () => ouvrirGaleriePhotos(photos, depart: i),
+                        child: CachedNetworkImage(
+                          imageUrl: photos[i],
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) =>
+                              _PlaceholderAvatar(ctrl: ctrl),
+                          memCacheWidth: 1080,
+                        ),
                       ),
                     ),
             ),
@@ -404,6 +409,13 @@ class _Stats extends StatelessWidget {
       }
     }
 
+    void ouvrirMessages() {
+      if (Get.isRegistered<NavigationController>()) {
+        Get.find<NavigationController>()
+            .goTo(NavigationController.messagesIndex);
+      }
+    }
+
     return Obx(() => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(
@@ -416,7 +428,8 @@ class _Stats extends StatelessWidget {
               Expanded(
                   child: _StatItem(
                       value: '${insights.matchesCount.value}',
-                      label: 'Matchs'.tr)),
+                      label: 'Matchs'.tr,
+                      onTap: ouvrirMessages)),
               _Separateur(),
               Expanded(
                   child: _StatItem(
@@ -648,20 +661,13 @@ class _CartePseudo extends StatelessWidget {
                   ),
                 ],
               ]),
-              const SizedBox(height: 6),
-              Row(children: [
-                Expanded(
-                  child: Text('Les autres peuvent me trouver avec ce pseudo'.tr,
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.surCarte)),
-                ),
-                Switch.adaptive(
-                  value: ctrl.trouvableParPseudo.value,
-                  activeColor: AppColors.clair ? AppColors.lien : AppColors.accent,
-                  onChanged: (v) => ctrl.majReglage(
-                      ctrl.trouvableParPseudo, 'trouvable_par_pseudo', v),
-                ),
-              ]),
+              // Introuvable par pseudo : réglage dans Paramètres → Confidentialité
+              if (!ctrl.trouvableParPseudo.value) ...[
+                const SizedBox(height: 8),
+                Text('🔒 ${'Introuvable par pseudo (Paramètres)'.tr}',
+                    style: TextStyle(
+                        fontSize: 12, color: AppColors.surCarteDiscret)),
+              ],
             ],
           ),
         );
@@ -1066,15 +1072,37 @@ class _CarteVerificationState extends State<_CarteVerification> {
 
 // ─── ALBUM PRIVÉ ─────────────────────────────────────────────────
 
-class _CarteAlbum extends StatelessWidget {
+class _CarteAlbum extends StatefulWidget {
   const _CarteAlbum();
 
   @override
+  State<_CarteAlbum> createState() => _CarteAlbumState();
+}
+
+class _CarteAlbumState extends State<_CarteAlbum> {
+  int? _nombre;
+
+  @override
+  void initState() {
+    super.initState();
+    _compter();
+  }
+
+  Future<void> _compter() async {
+    final n = await AlbumService.nombreMesPhotos();
+    if (mounted) setState(() => _nombre = n);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final n = _nombre;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
-        onTap: () => Get.to(() => const EcranMonAlbum()),
+        onTap: () async {
+          await Get.to(() => const EcranMonAlbum());
+          _compter();
+        },
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1098,13 +1126,19 @@ class _CarteAlbum extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Mon album privé'.tr,
+                  Text(
+                      n == null || n == 0
+                          ? 'Mon album privé'.tr
+                          : '${'Mon album privé'.tr} · $n/${AlbumService.maxPhotos}',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppColors.surCarte)),
                   const SizedBox(height: 2),
-                  Text('Des photos visibles seulement par qui tu choisis'.tr,
+                  Text(
+                      n == 0
+                          ? 'Des photos visibles seulement par qui tu choisis'.tr
+                          : "Ouvre-le à quelqu'un depuis une conversation (➕ → Album)".tr,
                       style:
                           TextStyle(fontSize: 12, color: AppColors.surCarteDiscret)),
                 ],
@@ -1137,6 +1171,10 @@ class _BoutonsLigne extends StatelessWidget {
       Get.toNamed('/profile/view', arguments: profilComplet(row));
     } catch (e) {
       debugPrint('aperçu : $e');
+      Get.snackbar('Aperçu'.tr, 'Impossible de charger ton profil, réessaie'.tr,
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: AppColors.surface,
+          colorText: AppColors.textPrimary);
     }
   }
 

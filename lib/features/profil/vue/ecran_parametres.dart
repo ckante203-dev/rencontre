@@ -125,8 +125,14 @@ class EcranParametres extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      Text('♂️', style: TextStyle(fontSize: 14)),
-                      SizedBox(width: 6),
+                      Obx(() => Text(
+                          switch (ctrl.selectedGender.value) {
+                            'homme' => '♂️',
+                            'femme' => '♀️',
+                            _ => '⚧️',
+                          },
+                          style: const TextStyle(fontSize: 14))),
+                      const SizedBox(width: 6),
                       Text('MON GENRE'.tr,
                           style: TextStyle(
                               fontSize: 11,
@@ -208,65 +214,8 @@ class EcranParametres extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // ✅ Je recherche (looking_for) dans les paramètres aussi
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border)),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Text('💞', style: TextStyle(fontSize: 14)),
-                      SizedBox(width: 6),
-                      Text('JE RECHERCHE'.tr,
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textMuted,
-                              letterSpacing: 0.8)),
-                    ]),
-                    const SizedBox(height: 12),
-                    Obx(() => Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children:
-                              ControleurProfil.lookingForOptions.map((opt) {
-                            final isSelected =
-                                ctrl.selectedLookingFor.value == opt;
-                            return GestureDetector(
-                              onTap: () => ctrl.setLookingFor(opt),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 9),
-                                decoration: BoxDecoration(
-                                  gradient: isSelected
-                                      ? AppColors.gradientPink
-                                      : null,
-                                  color: isSelected ? null : AppColors.surface2,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                      color: isSelected
-                                          ? Colors.transparent
-                                          : AppColors.border),
-                                ),
-                                child: Text(_majuscule(opt).tr,
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: isSelected
-                                            ? AppColors.surAccent
-                                            : AppColors.textMuted)),
-                              ),
-                            );
-                          }).toList(),
-                        )),
-                  ]),
-            ),
-            const SizedBox(height: 28),
+            // « Je recherche » : dans Modifier mes infos (un seul endroit)
+            const SizedBox(height: 18),
 
             // ════ CONFIDENTIALITÉ ════════════════════════════════
             _Titre('Confidentialité'.tr),
@@ -353,6 +302,77 @@ class EcranParametres extends StatelessWidget {
               onTap: () => Get.to(
                   () => const EcranAmisProches(liste: ListeStory.masques)),
             ),
+            const SizedBox(height: 10),
+            // Profils bloqués (avec la confidentialité)
+            Obx(() {
+              final count = ctrl.blockedProfiles.length;
+              return GestureDetector(
+                onTap: () => Get.toNamed('/profile/blocked'),
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border)),
+                  child: Row(children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.block_rounded,
+                          color: AppColors.error, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Profils bloqués'.tr,
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary)),
+                            const SizedBox(height: 2),
+                            Text(
+                              count == 0
+                                  ? 'Aucun profil bloqué'.tr
+                                  : '@count profil@p bloqué@p2'.trParams({
+                                      'count': count.toString(),
+                                      'p2': (count > 1 ? 's' : '').toString(),
+                                      'p': (count > 1 ? 's' : '').toString()
+                                    }),
+                              style: TextStyle(
+                                  fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ]),
+                    ),
+                    if (count > 0) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text('$count',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.surAccent)),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppColors.textMuted, size: 20),
+                  ]),
+                ),
+              );
+            }),
             const SizedBox(height: 28),
 
             // ════ NOTIFICATIONS & SONS ═══════════════════════════
@@ -365,6 +385,14 @@ class EcranParametres extends StatelessWidget {
                 value: ctrl.notifMessages.value,
                 onChanged: (v) =>
                     ctrl.majReglage(ctrl.notifMessages, 'notif_messages', v))),
+            const SizedBox(height: 10),
+            Obx(() => _Toggle(
+                icon: '💘',
+                title: 'Likes & matchs'.tr,
+                subtitle: 'Nouveaux likes, matchs et crushs'.tr,
+                value: ctrl.notifLikes.value,
+                onChanged: (v) =>
+                    ctrl.majReglage(ctrl.notifLikes, 'notif_likes', v))),
             const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '🔔',
@@ -384,6 +412,8 @@ class EcranParametres extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ▶️ Lecture auto des vidéos (Découvrir) : Wi-Fi seulement par défaut
+            _Titre('Données mobiles'.tr),
+            const SizedBox(height: 10),
             Obx(() => _Toggle(
                 icon: '▶️',
                 title: 'Vidéos en lecture auto'.tr,
@@ -490,80 +520,6 @@ class EcranParametres extends StatelessWidget {
                 onTap: ctrl.contacterSupport,
               ),
             ],
-            const SizedBox(height: 28),
-
-            // ════ PROFILS BLOQUÉS ════════════════════════════════
-            _Titre('Profils bloqués'.tr),
-            const SizedBox(height: 10),
-            Obx(() {
-              final count = ctrl.blockedProfiles.length;
-              return GestureDetector(
-                onTap: () => Get.toNamed('/profile/blocked'),
-                child: Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border)),
-                  child: Row(children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.block_rounded,
-                          color: AppColors.error, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Profils bloqués'.tr,
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary)),
-                            const SizedBox(height: 2),
-                            Text(
-                              count == 0
-                                  ? 'Aucun profil bloqué'.tr
-                                  : '@count profil@p bloqué@p2'.trParams({
-                                      'count': count.toString(),
-                                      'p2': (count > 1 ? 's' : '').toString(),
-                                      'p': (count > 1 ? 's' : '').toString()
-                                    }),
-                              style: TextStyle(
-                                  fontSize: 11, color: AppColors.textMuted),
-                            ),
-                          ]),
-                    ),
-                    if (count > 0) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text('$count',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.surAccent)),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textMuted, size: 20),
-                  ]),
-                ),
-              );
-            }),
             const SizedBox(height: 28),
 
             // ── Déconnexion ────────────────────────────────────

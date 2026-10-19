@@ -85,6 +85,20 @@ class AlbumService {
     ];
   }
 
+  /// Nombre de photos de mon album (sans créer de liens).
+  static Future<int> nombreMesPhotos() async {
+    final uid = _uid;
+    if (uid == null) return 0;
+    try {
+      return await _sb
+          .from('album_photos')
+          .count(CountOption.exact)
+          .eq('owner_id', uid);
+    } catch (_) {
+      return 0;
+    }
+  }
+
   static Future<List<PhotoAlbum>> mesPhotos() async {
     final uid = _uid;
     if (uid == null) return [];

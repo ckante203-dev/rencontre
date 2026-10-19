@@ -354,6 +354,14 @@ serve(async (req) => {
       return new Response("favoris coupés", { status: 200 });
     }
 
+    // Réglage « Likes & matchs » désactivé (SQL 095) : likes, matchs,
+    // follows et crushs de story ne sont plus notifiés
+    const estLikeOuMatch = eventType === "like" || eventType === "match" ||
+      eventType === "follow" || eventType === "crush_story";
+    if (estLikeOuMatch && toProfile.notif_likes === false) {
+      return new Response("likes coupés", { status: 200 });
+    }
+
     const en = toProfile.langue === "en";
     // ⭐ Super Like (likes.est_super, SQL 053) : texte dédié
     let superLike = false;

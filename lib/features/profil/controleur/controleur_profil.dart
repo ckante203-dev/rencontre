@@ -122,8 +122,8 @@ class ControleurProfil extends GetxController {
   final RxString selectedLookingFor = ''.obs;
   final RxBool showBirthdate = true.obs;
   final RxBool notifMessages = true.obs;
-  final RxBool notifNearby = true.obs;
-  final RxBool notifStories = true.obs;
+  // Likes, matchs, follows, crushs (SQL 095, lu par dynamic-processor)
+  final RxBool notifLikes = true.obs;
   final RxBool notifSon = true.obs;
   // ⭐ Alertes : favori en ligne / proche / dans ma ville
   final RxBool notifFavoris = true.obs;
@@ -368,8 +368,7 @@ class ControleurProfil extends GetxController {
       // Booléens sécurisés
       showBirthdate.value = data['show_birthdate'] ?? true;
       notifMessages.value = data['notif_messages'] ?? true;
-      notifNearby.value = data['notif_nearby'] ?? true;
-      notifStories.value = data['notif_stories'] ?? true;
+      notifLikes.value = data['notif_likes'] ?? true;
       notifSon.value = data['notif_son'] ?? true;
       notifFavoris.value = data['notif_favoris'] ?? true;
       trouvableParPseudo.value = data['trouvable_par_pseudo'] ?? true;

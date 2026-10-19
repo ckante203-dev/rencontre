@@ -1579,4 +1579,13 @@ const Map<String, String> enAuto = {
   "Vue unique · se ferme dans @t": "View once · closes in @t",
   "Accès encore @t": "Access for @t more",
   "@nom t'a ouvert son album privé": "@nom opened their private album to you",
+  "Likes & matchs": "Likes & matches",
+  "Nouveaux likes, matchs et crushs": "New likes, matches and crushes",
+  "Données mobiles": "Mobile data",
+  "Introuvable par pseudo (Paramètres)": "Not findable by username (Settings)",
+  "Impossible de charger ton profil, réessaie": "Couldn't load your profile, try again",
+  "Ouvre-le à quelqu'un depuis une conversation (➕ → Album)": "Open it to someone from a chat (➕ → Album)",
+  "Enregistrer tes modifications ?": "Save your changes?",
+  "Sinon, elles seront perdues.": "Otherwise they will be lost.",
+  "Quitter sans enregistrer": "Leave without saving",
 };
