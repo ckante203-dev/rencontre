@@ -119,6 +119,26 @@ class SupabaseService {
   }
 
   /// Filtre de genre, distance depuis ma position, distance maximale.
+  /// Profils précis (favoris, croisés) même s'ils ne sont pas parmi les
+  /// plus proches (SQL 096). Vide si la fonction n'existe pas encore.
+  Future<List<UserModel>> fetchProfilsParIds(List<String> ids,
+      {double? myLat, double? myLng}) async {
+    if (ids.isEmpty) return [];
+    try {
+      final res = await supabase
+          .rpc('profils_par_ids', params: {'p_ids': ids.take(200).toList()});
+      if (res is! List) return [];
+      return _apresChargement(
+        List<Map<String, dynamic>>.from(res).map(profileToUser).toList(),
+        myLat: myLat,
+        myLng: myLng,
+      );
+    } catch (e) {
+      debugPrint('profils_par_ids indisponible : $e');
+      return [];
+    }
+  }
+
   List<UserModel> _apresChargement(
     List<UserModel> users, {
     String? genderFilter,
@@ -285,6 +305,14 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> fetchConversations() async {
     final uid = currentUserId;
     if (uid == null) return [];
+
+    // ⚡ Une seule requête (SQL 093) : avant, 2 requêtes par conversation
+    try {
+      final rows = await supabase.rpc('liste_conversations') as List;
+      return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    } catch (e) {
+      debugPrint('liste_conversations indisponible ($e) : ancienne méthode');
+    }
 
     final myData = await supabase
         .from('profiles')
@@ -606,6 +634,7 @@ class SupabaseService {
           ? DateTime.tryParse(row['dispo_jusqua'].toString())?.toLocal()
           : null,
       estVerifie: row['est_verifie'] == true,
+      photoVisage: row['photo_visage'] as bool?,
       metier: row['metier'] as String?,
       etudes: row['etudes'] as String?,
       langues: List<String>.from(row['langues'] ?? const []),

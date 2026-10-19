@@ -31,6 +31,8 @@ class UserModel {
   final String? dispoTexte; // Statut « Dispo maintenant » (☕ café…)
   final DateTime? dispoJusqua; // fin du statut
   final bool estVerifie; // selfie validé par l'équipe (badge bleu)
+  // La photo principale montre un visage ? (null = pas encore vérifié)
+  final bool? photoVisage;
   final String? metier;
   final String? etudes;
   final List<String> langues; // langues parlées
@@ -68,6 +70,7 @@ class UserModel {
     this.dispoTexte,
     this.dispoJusqua,
     this.estVerifie = false,
+    this.photoVisage,
     this.metier,
     this.etudes,
     this.langues = const [],
@@ -141,6 +144,7 @@ class UserModel {
     String? dispoTexte,
     DateTime? dispoJusqua,
     bool? estVerifie,
+    bool? photoVisage,
     String? metier,
     String? etudes,
     List<String>? langues,
@@ -177,6 +181,7 @@ class UserModel {
         dispoTexte: dispoTexte ?? this.dispoTexte,
         dispoJusqua: dispoJusqua ?? this.dispoJusqua,
         estVerifie: estVerifie ?? this.estVerifie,
+        photoVisage: photoVisage ?? this.photoVisage,
         metier: metier ?? this.metier,
         etudes: etudes ?? this.etudes,
         langues: langues ?? this.langues,

@@ -103,6 +103,13 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     } catch (_) {}
   }
 
+  void demasquerProfil(String userId) {
+    profilsMasques.remove(userId);
+    try {
+      _storageBox.write(_kProfilsMasquesKey, profilsMasques.toList());
+    } catch (_) {}
+  }
+
   static const _kHiddenStoriesKey = 'hidden_story_ids';
   late final Set<String> _hiddenStoryIds = {
     ...(_storageBox.read<List>(_kHiddenStoriesKey) ?? const [])
@@ -936,6 +943,9 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   static int _compareProximite(UserModel a, UserModel b) {
     // ⚡ Boost en cours : toujours en tête (c'est ce qu'on achète)
     if (a.estBooste != b.estBooste) return a.estBooste ? -1 : 1;
+    // Photo sans visage (capture d'écran, objet…) : après les autres
+    final sa = a.photoVisage == false, sb = b.photoVisage == false;
+    if (sa != sb) return sa ? 1 : -1;
     // Puis du plus proche au plus éloigné, avec ou sans photo, vérifié ou
     // non (décision du 17/10/2026 ; avant : photo puis actif < 48 h d'abord)
     final da = a.distanceMeters;
@@ -1003,7 +1013,40 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   void setFilter(String mode) {
     filterMode.value = mode;
-    if (mode == 'croises') chargerCroises();
+    if (mode == 'croises') {
+      chargerCroises().then((_) => _completerProfils(croises));
+    }
+    if (mode == 'favoris') _completerProfils(favoris);
+  }
+
+  /// Ajoute les profils [ids] absents de la grille (favoris ou croisés qui
+  /// ne sont pas parmi les plus proches).
+  Future<void> _completerProfils(Iterable<String> ids) async {
+    final presents = {for (final u in _allUsers) u.id};
+    final manquants = ids.where((id) => !presents.contains(id)).toList();
+    if (manquants.isEmpty) return;
+    final nouveaux = await _service.fetchProfilsParIds(manquants,
+        myLat: _latRecherche, myLng: _lngRecherche);
+    final deja = {for (final u in _allUsers) u.id};
+    final aAjouter = nouveaux.where((u) => !deja.contains(u.id)).toList();
+    if (aAjouter.isEmpty) return;
+    _allUsers.addAll(aAjouter);
+    profiles.addAll(aAjouter);
+  }
+
+  /// Nombre de filtres avancés actifs (genre, distance, âge, ville)
+  int get nbFiltresActifs =>
+      (filterGender.value != 'tous' ? 1 : 0) +
+      (filterDistance.value < 50 ? 1 : 0) +
+      (filtreAgeActif ? 1 : 0) +
+      (villeVoyageActive != null ? 1 : 0);
+
+  /// Remet les filtres avancés par défaut
+  void reinitialiserFiltres() {
+    filterGender.value = 'tous';
+    filterDistance.value = 50;
+    filterAge.value = const RangeValues(ageMin, ageMax);
+    if (villeVoyageChoisie != null) choisirVilleVoyage(null);
   }
 
   // ✅ MODIFIÉ — tri systématique du profil le plus proche

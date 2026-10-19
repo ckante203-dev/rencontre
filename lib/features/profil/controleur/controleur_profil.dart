@@ -21,6 +21,9 @@ import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:rencontre/core/theme/theme_controller.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
+import 'package:rencontre/features/home/widget/visage_story.dart'
+    show detecterVisages;
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class ControleurProfil extends GetxController {
   static ControleurProfil get to => Get.find();
@@ -401,6 +404,42 @@ class ControleurProfil extends GetxController {
     } finally {
       if (!isClosed) isLoading.value = false;
     }
+    _verifierVisagePhoto().catchError((e) => debugPrint('Visage : $e'));
+  }
+
+  // ── Visage sur la photo principale (SQL 096) ─────────────────────
+  // Détecté sur le téléphone (ML Kit) et enregistré dans
+  // profiles.photo_visage : les profils sans visage passent après les
+  // autres dans l'Accueil. Vérifié une fois par photo.
+
+  /// true = visage, false = aucun visage, null = détection impossible
+  static Future<bool?> aUnVisage(String chemin) async {
+    final r = await detecterVisages(chemin);
+    return r == null ? null : r.visages.isNotEmpty;
+  }
+
+  Future<void> _verifierVisagePhoto() async {
+    final uid = supabase.auth.currentUser?.id;
+    final url = monProfil.value?.photoUrl ?? '';
+    if (uid == null || url.isEmpty) return;
+    final cle = 'visage_verifie_$uid';
+    final box = GetStorage();
+    if (box.read<String>(cle) == url) return;
+    final fichier = await DefaultCacheManager().getSingleFile(url);
+    final visage = await aUnVisage(fichier.path);
+    if (visage == null) return;
+    await _enregistrerVisage(uid, visage);
+    box.write(cle, url);
+  }
+
+  Future<void> _enregistrerVisage(String uid, bool visage) async {
+    try {
+      await supabase
+          .from('profiles')
+          .update({'photo_visage': visage}).eq('id', uid);
+    } catch (e) {
+      debugPrint('photo_visage non enregistré (SQL 096 ?) : $e');
+    }
   }
 
   // ✅ Écoute Realtime les mises à jour de ton propre profil
@@ -484,6 +523,32 @@ class ControleurProfil extends GetxController {
     if (picked == null) return;
     final chemin = await _recadrer(picked.path);
     if (chemin == null) return;
+    // 🙂 On voit le visage ? Sinon on prévient (moins de likes, et le
+    // profil passe après les autres dans l'Accueil)
+    final visage = await aUnVisage(chemin);
+    if (visage == false) {
+      final garder = await Get.dialog<bool>(AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('On ne voit pas ton visage 🤔'.tr,
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 17)),
+        content: Text(
+            'Les profils avec un visage bien visible reçoivent beaucoup plus de likes. Sans visage, ton profil passe après les autres.'
+                .tr,
+            style: TextStyle(color: AppColors.textMuted, height: 1.4)),
+        actions: [
+          TextButton(
+              onPressed: () => Get.back(result: true),
+              child: Text('Garder quand même'.tr,
+                  style: TextStyle(color: AppColors.textMuted))),
+          TextButton(
+              onPressed: () => Get.back(result: false),
+              child: Text('Choisir une autre photo'.tr,
+                  style: TextStyle(
+                      color: AppColors.accent, fontWeight: FontWeight.w800))),
+        ],
+      ));
+      if (garder != true) return;
+    }
     isUploadingPhoto.value = true;
     try {
       final uid = supabase.auth.currentUser!.id;
@@ -498,6 +563,11 @@ class ControleurProfil extends GetxController {
       // si elle est acceptée.
       final result = await ModerationService.photoProfil(url);
       monProfil.value = await _service.fetchMyProfile();
+      if (result == ModerationResult.approved && visage != null) {
+        await _enregistrerVisage(uid, visage);
+        final nouvelle = monProfil.value?.photoUrl;
+        if (nouvelle != null) GetStorage().write('visage_verifie_$uid', nouvelle);
+      }
       switch (result) {
         case ModerationResult.approved:
           _snackSuccess('Photo mise à jour'.tr);

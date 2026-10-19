@@ -6,6 +6,7 @@ import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/shared/widgets/galerie_photos.dart';
 import 'package:rencontre/features/home/widget/coins_animes.dart';
 import 'package:rencontre/features/home/view/mode_swipe.dart';
 import 'package:rencontre/features/evenements/evenements_controller.dart';
@@ -114,14 +115,24 @@ class _HomeBodyState extends State<_HomeBody> {
         const Positioned(bottom: 16, right: 16, child: _BoutonBoost()),
         if (_showScrollTop)
           Positioned(
-            bottom: 84,
-            right: 20,
-            child: FloatingActionButton.small(
-              onPressed: () => _scrollCtrl.animateTo(0,
+            bottom: 22,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => _scrollCtrl.animateTo(0,
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.fastOutSlowIn),
-              backgroundColor: AppColors.accent,
-              child: const Icon(Icons.arrow_upward, color: AppColors.surAccent),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.voileMedia,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppColors.surMedia.withValues(alpha: 0.25)),
+                ),
+                child: const Icon(Icons.keyboard_arrow_up_rounded,
+                    color: AppColors.surMedia, size: 26),
+              ),
             ),
           ),
       ],
@@ -327,6 +338,9 @@ class _FilterChipsState extends State<_FilterChips> {
                 ),
               Row(
                 children: [
+                  // Filtres avancés en premier (avant : tout au bout)
+                  const _AdvancedFilterBtn(),
+                  const SizedBox(width: 8),
                   for (final f in _filterItems)
                     if (f.mode != 'evenement' ||
                         jeParticipe ||
@@ -340,8 +354,6 @@ class _FilterChipsState extends State<_FilterChips> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  const _AdvancedFilterBtn(),
-                  const SizedBox(width: 8),
                   // Mode cartes (glisser pour liker / passer)
                   GestureDetector(
                     onTap: () => Get.to(() => const ModeSwipe()),
@@ -416,10 +428,10 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
       controller.villeVoyage.value; // suivi Obx
       final ville = controller.villeVoyageActive;
       controller.filterAge.value; // suivi Obx
-      final hasActiveFilters = controller.filterGender.value != 'tous' ||
-          controller.filterDistance.value < 50 ||
-          controller.filtreAgeActif ||
-          ville != null;
+      controller.filterGender.value; // suivi Obx
+      controller.filterDistance.value; // suivi Obx
+      final nb = controller.nbFiltresActifs;
+      final hasActiveFilters = nb > 0;
       return GestureDetector(
         onTap: () => _openAdvancedFilters(context),
         child: Container(
@@ -443,7 +455,12 @@ class _AdvancedFilterBtn extends GetView<HomeController> {
                       ? AppColors.accent
                       : AppColors.textMuted),
               const SizedBox(width: 6),
-              Text(ville != null ? '✈️ $ville' : 'Filtres'.tr,
+              Text(
+                  ville != null
+                      ? '✈️ $ville'
+                      : nb > 0
+                          ? '${'Filtres'.tr} · $nb'
+                          : 'Filtres'.tr,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -1119,10 +1136,81 @@ class _UsersGridScrollable extends GetView<HomeController> {
                 }
                 controller.openProfile(user);
               },
+              onLongPress: locked ? null : () => _menuRapide(user),
             );
           });
         },
         childCount: users.length,
+      ),
+    );
+  }
+
+  /// Appui long sur une carte (comme Grindr) : favori, photos, masquer
+  void _menuRapide(UserModel user) {
+    HapticFeedback.mediumImpact();
+    final photos = <String>[
+      if ((user.photoUrl ?? '').isNotEmpty) user.photoUrl!,
+      ...user.photoUrls.where((u) => u.isNotEmpty && u != user.photoUrl),
+    ];
+    Widget ligne(IconData icone, String texte, VoidCallback action,
+            {Color? couleur}) =>
+        ListTile(
+          leading: Icon(icone, color: couleur ?? AppColors.textPrimary),
+          title: Text(texte,
+              style: TextStyle(
+                  color: couleur ?? AppColors.textPrimary,
+                  fontWeight: FontWeight.w600)),
+          onTap: () {
+            Get.back();
+            action();
+          },
+        );
+    Get.bottomSheet(
+      SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(8, 14, 8, 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(user.age > 0 && user.showBirthdate
+                    ? '${user.name}, ${user.age}'
+                    : user.name,
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 6),
+            ligne(Icons.person_rounded, 'Voir le profil'.tr,
+                () => controller.openProfile(user)),
+            if (photos.isNotEmpty)
+              ligne(Icons.photo_library_rounded,
+                  'Voir les photos (@n)'.trParams({'n': '${photos.length}'}),
+                  () => ouvrirGaleriePhotos(photos)),
+            Obx(() {
+              final fav = controller.estFavori(user.id);
+              return ligne(
+                  fav ? Icons.star_rounded : Icons.star_border_rounded,
+                  fav ? 'Retirer des favoris'.tr : 'Ajouter aux favoris'.tr,
+                  () => controller.basculerFavori(user.id),
+                  couleur: fav ? const Color(0xFFFFC107) : null);
+            }),
+            ligne(Icons.visibility_off_rounded, 'Pas intéressé · masquer'.tr,
+                () {
+              controller.masquerProfil(user.id);
+              Get.snackbar('@nom est masqué'.trParams({'nom': user.name}), '',
+                  messageText: const SizedBox.shrink(),
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: AppColors.surface,
+                  colorText: AppColors.textPrimary,
+                  mainButton: TextButton(
+                      onPressed: () => controller.demasquerProfil(user.id),
+                      child: Text('Annuler'.tr,
+                          style: TextStyle(color: AppColors.lien))));
+            }, couleur: AppColors.textMuted),
+          ]),
+        ),
       ),
     );
   }
@@ -1198,6 +1286,28 @@ class _UsersGridScrollable extends GetView<HomeController> {
                           fontSize: 13,
                           height: 1.4,
                           color: AppColors.textMuted)),
+                  // Filtres avancés trop serrés : c'est souvent la vraie raison
+                  if (controller.nbFiltresActifs > 0) ...[
+                    const SizedBox(height: 18),
+                    GestureDetector(
+                      onTap: controller.reinitialiserFiltres,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 11),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: AppColors.accent),
+                        ),
+                        child: Text(
+                            'Réinitialiser les filtres (@n)'.trParams(
+                                {'n': '${controller.nbFiltresActifs}'}),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary)),
+                      ),
+                    ),
+                  ],
                   if (filter != 'all') ...[
                     const SizedBox(height: 18),
                     GestureDetector(
@@ -1519,6 +1629,7 @@ class _ProfileLimitPaywallSheet extends StatelessWidget {
 class _UserCard extends StatelessWidget {
   final UserModel user;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final int unreadCount;
   final bool hasActiveStory;
   final bool storyIsSeen;
@@ -1528,6 +1639,7 @@ class _UserCard extends StatelessWidget {
   const _UserCard({
     required this.user,
     required this.onTap,
+    this.onLongPress,
     this.memeEvenement,
     this.unreadCount = 0,
     this.hasActiveStory = false,
@@ -1774,6 +1886,7 @@ class _UserCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: aContour ? EdgeInsets.all(epaisseur) : null,
         decoration: BoxDecoration(
