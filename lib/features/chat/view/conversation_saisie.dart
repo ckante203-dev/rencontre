@@ -459,19 +459,13 @@ class _AttachMenu extends StatelessWidget {
             icon: Icons.lock_rounded,
             label: 'Album'.tr,
             color: const Color(0xFFFF8FB1),
-            onTap: () async {
-              final ok = await ctrl.partagerAlbum();
-              if (ok == false) {
-                Get.snackbar('Ton album privé est vide'.tr,
-                    'Ajoute des photos, puis partage-le'.tr,
-                    snackPosition: SnackPosition.TOP,
-                    backgroundColor: AppColors.surface,
-                    colorText: AppColors.textPrimary,
-                    mainButton: TextButton(
-                        onPressed: () => Get.to(() => const EcranMonAlbum()),
-                        child: Text('Ajouter'.tr,
-                            style: TextStyle(color: AppColors.textPrimary))));
-              }
+            onTap: () {
+              ctrl.showAttachMenu.value = false;
+              ouvrirAlbumConversation(
+                autreId: ctrl.conversation.userId,
+                autreNom: ctrl.conversation.userName,
+                partagerDansDiscussion: ctrl.partagerAlbum,
+              );
             }),
         _AttachItem(
             icon: Icons.emoji_emotions_rounded,

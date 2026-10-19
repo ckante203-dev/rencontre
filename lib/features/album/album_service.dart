@@ -109,6 +109,40 @@ class AlbumService {
     return row != null;
   }
 
+  /// Combien de fois [viewerId] a ouvert mon album (null si inconnu).
+  static Future<int?> vuesPar(String viewerId) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      final row = await _sb
+          .from('album_acces')
+          .select('vues')
+          .eq('owner_id', uid)
+          .eq('viewer_id', viewerId)
+          .maybeSingle();
+      return (row?['vues'] as num?)?.toInt();
+    } catch (_) {
+      return null; // colonne vues absente (SQL 052)
+    }
+  }
+
+  /// [ownerId] m'a-t-il ouvert son album ? (sans compter une « vue »)
+  static Future<bool> aPartageAvecMoi(String ownerId) async {
+    final uid = _uid;
+    if (uid == null) return false;
+    try {
+      final row = await _sb
+          .from('album_acces')
+          .select('owner_id')
+          .eq('owner_id', ownerId)
+          .eq('viewer_id', uid)
+          .maybeSingle();
+      return row != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> partager(String viewerId) async {
     final uid = _uid;
     if (uid == null) return;

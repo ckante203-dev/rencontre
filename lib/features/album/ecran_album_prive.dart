@@ -131,7 +131,7 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
                 Text(
-                  'Personne ne voit ces photos. Tu choisis à qui tu les montres, depuis une conversation (menu ⋮ → Partager mon album privé). Les captures d\'écran sont bloquées.'.tr,
+                  'Personne ne voit ces photos. Tu choisis à qui tu les montres, directement dans une conversation (➕ → Album). Les captures d\'écran sont bloquées.'.tr,
                   style: TextStyle(
                       fontSize: 13, color: AppColors.textMuted, height: 1.5),
                 ),
@@ -397,7 +397,11 @@ class _Vignette extends StatelessWidget {
   }
 }
 
-void _ouvrir(BuildContext context, List<PhotoAlbum> photos, PhotoAlbum p) {
+void _ouvrir(BuildContext context, List<PhotoAlbum> photos, PhotoAlbum p) =>
+    ouvrirPhotosAlbum(photos, p);
+
+/// Photos d'un album en plein écran, à partir de [p].
+void ouvrirPhotosAlbum(List<PhotoAlbum> photos, PhotoAlbum p) {
   Get.to(() => _PleinEcran(photos: photos, debut: photos.indexOf(p)));
 }
 
