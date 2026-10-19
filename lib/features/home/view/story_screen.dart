@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/envoi_story.dart';
 import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/interactions_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
@@ -2167,95 +2168,6 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     );
   }
 
-  /// ✈️ Envoyer à… : la photo / vidéo part en snap éphémère dans une
-  /// conversation choisie (comme Snapchat), sans publier de story.
-  Future<void> _envoyerEnPrive() async {
-    final chemin = _previewPath;
-    if (chemin == null) return;
-    if (!Get.isRegistered<ChatListController>()) {
-      _info('Ouvre d\'abord tes messages une fois, puis réessaie'.tr);
-      return;
-    }
-    final convs = [...Get.find<ChatListController>().conversations];
-    if (convs.isEmpty) {
-      _info('Tu n\'as encore aucune conversation 💬'.tr);
-      return;
-    }
-    final choisie = await Get.bottomSheet<ConversationModel>(
-      Container(
-        constraints: BoxConstraints(maxHeight: Get.height * 0.65),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1C1C1E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: SafeArea(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text('✈️ ${'Envoyer à…'.tr}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text('En snap éphémère, sans publier de story'.tr,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            ),
-            Flexible(
-              child: ListView(shrinkWrap: true, children: [
-                for (final c in convs)
-                  ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.white12,
-                      backgroundImage: (c.userPhotoUrl ?? '').isNotEmpty
-                          ? CachedNetworkImageProvider(c.userPhotoUrl!,
-                              maxWidth: 200)
-                          : null,
-                    ),
-                    title: Text(c.userName,
-                        style: const TextStyle(color: Colors.white)),
-                    trailing: const Icon(Icons.near_me_rounded,
-                        color: Color(0xFFFF3CAC)),
-                    onTap: () => Get.back(result: c),
-                  ),
-              ]),
-            ),
-          ]),
-        ),
-      ),
-      isScrollControlled: true,
-    );
-    if (choisie == null || !mounted) return;
-
-    // Photo retouchée (filtre, visage, dessin, cadrage) : on envoie l'image
-    // telle qu'à l'écran
-    var fichier = chemin;
-    final filtre = FiltreStory.parId(_filtre);
-    if (!_isVideo &&
-        (!_cadrage.value.isIdentity() ||
-            _miroir ||
-            !filtre.neutre ||
-            _effetVisage != 'aucun' ||
-            _traits.isNotEmpty)) {
-      fichier = (await _capturerCadrage())?.path ?? chemin;
-    }
-    final video = _isVideo;
-    _publiee = true; // pas de brouillon : le média est parti
-    Get.back(result: false); // ferme l'éditeur
-    Get.toNamed(AppRoutes.chatConversation, arguments: choisie);
-    // La conversation s'ouvre : on envoie dès que son contrôleur est prêt
-    for (var i = 0; i < 40; i++) {
-      await Future.delayed(const Duration(milliseconds: 150));
-      if (Get.isRegistered<ConversationController>(tag: choisie.id)) {
-        await Get.find<ConversationController>(tag: choisie.id)
-            .envoyerMediaEnFond(chemin: fichier, video: video, ephemere: true);
-        return;
-      }
-    }
-  }
-
   static const _canalVideo = MethodChannel('zamu/video');
 
   /// Copie du passage [debutMs, finMs] (MainActivity.kt, sans réencodage).
@@ -3626,144 +3538,94 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
 
   /// Bas de l'éditeur façon Snap : à qui (Publique / ⭐ Amis proches),
   /// combien de temps, et Publier — sans ouvrir de menu.
+  /// Barre du bas : un seul grand bouton « Suivant ➤ » qui ouvre l'écran
+  /// « Envoyer à… » (story + snaps, comme Snapchat).
   Widget _barrePublication() {
-    Widget audience(String valeur, IconData icon, String label) {
-      final actif = _visibility == valeur;
-      return GestureDetector(
-        onTap: () async {
-          setState(() => _visibility = valeur);
-          if (valeur != 'friends') return;
-          final n = await (_nbAmisProches ??= nombreAmisProches());
-          if (n == 0 && mounted) {
-            Get.snackbar('Ta liste Amis proches est vide'.tr,
-                'Ajoute des personnes, sinon personne ne verra cette story'.tr,
-                snackPosition: SnackPosition.TOP,
-                backgroundColor: CouleursMedia.surface,
-                colorText: CouleursMedia.textPrimary,
-                mainButton: TextButton(
-                  onPressed: () async {
-                    await Get.to(() => const EcranAmisProches());
-                    _nbAmisProches = nombreAmisProches();
-                  },
-                  child: Text('Gérer'.tr,
-                      style: TextStyle(color: CouleursMedia.accent)),
-                ));
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: actif
-                ? (valeur == 'friends' ? CouleursMedia.online : Colors.white)
-                : Colors.black54,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: actif ? Colors.transparent : Colors.white24),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon,
-                size: 15,
-                color: actif && valeur != 'friends'
-                    ? Colors.black
-                    : Colors.white),
-            const SizedBox(width: 5),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: actif && valeur != 'friends'
-                        ? Colors.black
-                        : Colors.white)),
-          ]),
+    return GestureDetector(
+      onTap: _preparation ? null : _suivant,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: CouleursMedia.gradientPink,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black45)],
         ),
-      );
-    }
-
-    return Row(children: [
-      // Rétrécit sur les petits écrans plutôt que de déborder
-      Expanded(
-          child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(children: [
-      audience('public', Icons.public_rounded, 'Publique'.tr),
-      const SizedBox(width: 6),
-      audience('amis', Icons.group_rounded, 'Amis'.tr),
-      const SizedBox(width: 6),
-      audience('friends', Icons.star_rounded, 'Proches'.tr),
-      const SizedBox(width: 6),
-      // Durée (et liste Amis proches) : menu détaillé
-      GestureDetector(
-        onTap: _showSettingsSheet,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: Colors.black54,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.timer_outlined, size: 15, color: Colors.white),
-            const SizedBox(width: 4),
-            Text(_formatDuration(_durationHours),
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
-          ]),
+        child: Center(
+          child: _preparation
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: Colors.white))
+              : Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('Suivant'.tr,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 22),
+                ]),
         ),
       ),
-              ]))),
-      const SizedBox(width: 8),
-      // ✈️ Envoyer en privé à quelqu'un (snap éphémère), sans publier
-      if (_previewPath != null)
-        GestureDetector(
-          onTap: _preparation ? null : _envoyerEnPrive,
-          child: Container(
-            width: 44,
-            height: 44,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: const [BoxShadow(blurRadius: 8, color: Colors.black38)],
-            ),
-            child: const Icon(Icons.near_me_rounded,
-                color: Color(0xFF7B2FFF), size: 22),
-          ),
-        ),
-      GestureDetector(
-        onTap: _preparation ? null : _publish,
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            gradient: CouleursMedia.gradientPink,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Center(
-            child: _preparation
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                :  Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('Publier'.tr,
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800)),
-                    SizedBox(width: 6),
-                    Icon(Icons.send_rounded, color: Colors.white, size: 16),
-                  ]),
-          ),
-        ),
-      ),
-    ]);
+    );
   }
 
-  /// Curseur à deux poignées : début et fin du passage gardé (30 s max).
+  /// Photo telle qu'à l'écran (filtre, visage, dessin, cadrage), sinon le
+  /// fichier d'origine.
+  Future<String> _fichierRetouche() async {
+    final chemin = _previewPath!;
+    final filtre = FiltreStory.parId(_filtre);
+    if (!_isVideo &&
+        (!_cadrage.value.isIdentity() ||
+            _miroir ||
+            !filtre.neutre ||
+            _effetVisage != 'aucun' ||
+            _traits.isNotEmpty)) {
+      return (await _capturerCadrage())?.path ?? chemin;
+    }
+    return chemin;
+  }
+
+  /// « Suivant » : écran Envoyer à… puis story et / ou snaps.
+  Future<void> _suivant() async {
+    if (_previewPath == null) return;
+    final choix = await ouvrirEnvoiStory(
+        audience: _visibility, mystere: _mystere, dureeHeures: _durationHours);
+    if (choix == null || !mounted) return;
+
+    // ✈️ Snaps : envoyés en arrière-plan (une copie par personne)
+    if (choix.destinataires.isNotEmpty) {
+      final fichier = await _fichierRetouche();
+      final video = _isVideo;
+      final n = choix.destinataires.length;
+      unawaited(envoyerSnaps(
+              chemin: fichier, video: video, destinataires: choix.destinataires)
+          .then((ok) => Get.snackbar(
+              '✈️',
+              ok == n
+                  ? 'Snap envoyé à @n personne@s'.trParams(
+                      {'n': '$ok', 's': ok > 1 ? 's' : ''})
+                  : 'Envoyé à @ok sur @n'.trParams({'ok': '$ok', 'n': '$n'}),
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: CouleursMedia.surface,
+              colorText: CouleursMedia.textPrimary)));
+    }
+
+    if (choix.audience != null) {
+      setState(() {
+        _visibility = choix.audience!;
+        _mystere = choix.mystere;
+        _durationHours = choix.dureeHeures;
+      });
+      await _publish();
+    } else {
+      _publiee = true; // pas de brouillon : le média est parti en snap
+      Get.back(result: false);
+    }
+  }
+
   Widget _barreDecoupe() {
     final d = _decoupe!;
     final total = _dureeVideo.inMilliseconds / 1000;
