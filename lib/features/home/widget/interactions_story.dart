@@ -86,6 +86,14 @@ class _StickerInteractifState extends State<StickerInteractif> {
   StickerStory get s => widget.sticker;
   bool get _auteur => _sb.auth.currentUser?.id == widget.story.userId;
 
+  /// Ma propre story : le bouton ne fait rien, on explique où arrivent
+  /// les réponses.
+  bool _siAuteur() {
+    if (!_auteur) return false;
+    _info('💬', 'C'est ta story : les réponses arrivent dans tes messages'.tr);
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -144,7 +152,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
 
   /// ❓ Pose-moi une question : la question part en message privé.
   Future<void> _question() async {
-    if (_auteur || _occupe) return;
+    if (_siAuteur() || _occupe) return;
     final champ = TextEditingController();
     final ok = await Get.dialog<bool>(AlertDialog(
       backgroundColor: const Color(0xFF1C1C1E),
@@ -190,7 +198,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
 
   /// ⏰ Rendez-vous : « Je viens » en message privé.
   Future<void> _rdv() async {
-    if (_occupe || _envoye || _auteur) return;
+    if (_siAuteur() || _occupe || _envoye) return;
     setState(() => _occupe = true);
     HapticFeedback.mediumImpact();
     final quand = s.options.isNotEmpty ? ' (${s.options.first})' : '';
@@ -222,7 +230,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
   }
 
   Future<void> _dispo() async {
-    if (_occupe || _envoye || _auteur) return;
+    if (_siAuteur() || _occupe || _envoye) return;
     setState(() => _occupe = true);
     HapticFeedback.mediumImpact();
     final ok = await repondreAStory(

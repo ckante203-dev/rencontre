@@ -233,6 +233,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
     _progressCtrl.stop();
     _progressCtrl.reset();
+    // ✅ La story précédente se tait (sa vidéo restait en cache et jouait
+    // encore derrière une photo ou une autre vidéo)
+    _videoCtrl?.pause();
 
     final s = _currentStory;
     _markSeen(s);
@@ -1038,8 +1041,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 story: s,
                 child: Stack(children: [
                   CoucheStickers(s.stickers,
-                      interactif: (st) =>
-                          StickerInteractif(sticker: st, story: s)),
+                      // Toucher un sticker (dispo, sondage, question…) met
+                      // la story en pause le temps de répondre
+                      interactif: (st) => Listener(
+                            onPointerDown: (_) => _pause(),
+                            onPointerUp: (_) => Future.delayed(
+                                const Duration(milliseconds: 400),
+                                _resumeWhenVisible),
+                            child: StickerInteractif(sticker: st, story: s),
+                          )),
                 ]),
               ),
             ),
