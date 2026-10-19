@@ -2167,6 +2167,95 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     );
   }
 
+  /// ✈️ Envoyer à… : la photo / vidéo part en snap éphémère dans une
+  /// conversation choisie (comme Snapchat), sans publier de story.
+  Future<void> _envoyerEnPrive() async {
+    final chemin = _previewPath;
+    if (chemin == null) return;
+    if (!Get.isRegistered<ChatListController>()) {
+      _info('Ouvre d\'abord tes messages une fois, puis réessaie'.tr);
+      return;
+    }
+    final convs = [...Get.find<ChatListController>().conversations];
+    if (convs.isEmpty) {
+      _info('Tu n\'as encore aucune conversation 💬'.tr);
+      return;
+    }
+    final choisie = await Get.bottomSheet<ConversationModel>(
+      Container(
+        constraints: BoxConstraints(maxHeight: Get.height * 0.65),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text('✈️ ${'Envoyer à…'.tr}',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800)),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('En snap éphémère, sans publier de story'.tr,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            ),
+            Flexible(
+              child: ListView(shrinkWrap: true, children: [
+                for (final c in convs)
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.white12,
+                      backgroundImage: (c.userPhotoUrl ?? '').isNotEmpty
+                          ? CachedNetworkImageProvider(c.userPhotoUrl!,
+                              maxWidth: 200)
+                          : null,
+                    ),
+                    title: Text(c.userName,
+                        style: const TextStyle(color: Colors.white)),
+                    trailing: const Icon(Icons.near_me_rounded,
+                        color: Color(0xFFFF3CAC)),
+                    onTap: () => Get.back(result: c),
+                  ),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+    if (choisie == null || !mounted) return;
+
+    // Photo retouchée (filtre, visage, dessin, cadrage) : on envoie l'image
+    // telle qu'à l'écran
+    var fichier = chemin;
+    final filtre = FiltreStory.parId(_filtre);
+    if (!_isVideo &&
+        (!_cadrage.value.isIdentity() ||
+            _miroir ||
+            !filtre.neutre ||
+            _effetVisage != 'aucun' ||
+            _traits.isNotEmpty)) {
+      fichier = (await _capturerCadrage())?.path ?? chemin;
+    }
+    final video = _isVideo;
+    _publiee = true; // pas de brouillon : le média est parti
+    Get.back(result: false); // ferme l'éditeur
+    Get.toNamed(AppRoutes.chatConversation, arguments: choisie);
+    // La conversation s'ouvre : on envoie dès que son contrôleur est prêt
+    for (var i = 0; i < 40; i++) {
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (Get.isRegistered<ConversationController>(tag: choisie.id)) {
+        await Get.find<ConversationController>(tag: choisie.id)
+            .envoyerMediaEnFond(chemin: fichier, video: video, ephemere: true);
+        return;
+      }
+    }
+  }
+
   static const _canalVideo = MethodChannel('zamu/video');
 
   /// Copie du passage [debutMs, finMs] (MainActivity.kt, sans réencodage).
@@ -3626,6 +3715,23 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
       ),
               ]))),
       const SizedBox(width: 8),
+      // ✈️ Envoyer en privé à quelqu'un (snap éphémère), sans publier
+      if (_previewPath != null)
+        GestureDetector(
+          onTap: _preparation ? null : _envoyerEnPrive,
+          child: Container(
+            width: 44,
+            height: 44,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: const [BoxShadow(blurRadius: 8, color: Colors.black38)],
+            ),
+            child: const Icon(Icons.near_me_rounded,
+                color: Color(0xFF7B2FFF), size: 22),
+          ),
+        ),
       GestureDetector(
         onTap: _preparation ? null : _publish,
         child: Container(
