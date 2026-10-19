@@ -32,6 +32,15 @@ class PersonneAcces {
       this.derniereVue});
 }
 
+/// Accès d'une personne à un album : vue unique, date de fin, ouvertures.
+class AccesAlbum {
+  final bool vueUnique;
+  final DateTime? expireLe;
+  final int vues;
+  const AccesAlbum({this.vueUnique = false, this.expireLe, this.vues = 0});
+  bool get expire => expireLe != null && expireLe!.isBefore(DateTime.now());
+}
+
 class AlbumService {
   AlbumService._();
 
@@ -41,12 +50,18 @@ class AlbumService {
   static String? get _uid => _sb.auth.currentUser?.id;
 
   /// Photos de l'album de [ownerId] — vide si je n'y ai pas accès.
+  /// Ouvrir l'album de quelqu'un est compté pour lui ; en vue unique, la
+  /// 1ʳᵉ ouverture lance les 2 minutes d'accès (SQL 094).
   static Future<List<PhotoAlbum>> photosDe(String ownerId) async {
-    // Ouverture de l'album de quelqu'un d'autre : comptée pour lui (SQL 052)
-    if (ownerId != _uid) {
-      _sb
-          .rpc('noter_vue_album', params: {'p_owner': ownerId})
-          .then((_) {}, onError: (_) {});
+    final uid = _uid;
+    var secondes = 3600;
+    if (ownerId != uid && uid != null) {
+      try {
+        await _sb.rpc('noter_vue_album', params: {'p_owner': ownerId});
+      } catch (_) {}
+      final acces = await accesDe(ownerId: ownerId, viewerId: uid);
+      // Vue unique : liens valables 2 min seulement
+      if (acces?.vueUnique == true) secondes = 120;
     }
     final rows = await _sb
         .from('album_photos')
@@ -57,7 +72,7 @@ class AlbumService {
     if (liste.isEmpty) return [];
     final chemins = liste.map((r) => r['chemin'] as String).toList();
     final signes =
-        await _sb.storage.from(_bucket).createSignedUrls(chemins, 3600);
+        await _sb.storage.from(_bucket).createSignedUrls(chemins, secondes);
     final urlParChemin = {for (final s in signes) s.path: s.signedUrl};
     return [
       for (final r in liste)
@@ -109,48 +124,78 @@ class AlbumService {
     return row != null;
   }
 
-  /// Combien de fois [viewerId] a ouvert mon album (null si inconnu).
-  static Future<int?> vuesPar(String viewerId) async {
-    final uid = _uid;
-    if (uid == null) return null;
+  /// Accès de [viewerId] à l'album de [ownerId] (null = pas partagé).
+  static Future<AccesAlbum?> accesDe(
+      {required String ownerId, required String viewerId}) async {
+    Future<Map<String, dynamic>?> lire(String colonnes) => _sb
+        .from('album_acces')
+        .select(colonnes)
+        .eq('owner_id', ownerId)
+        .eq('viewer_id', viewerId)
+        .maybeSingle();
+    Map<String, dynamic>? row;
     try {
-      final row = await _sb
-          .from('album_acces')
-          .select('vues')
-          .eq('owner_id', uid)
-          .eq('viewer_id', viewerId)
-          .maybeSingle();
-      return (row?['vues'] as num?)?.toInt();
+      row = await lire('vues, expire_le, vue_unique');
     } catch (_) {
-      return null; // colonne vues absente (SQL 052)
+      // Colonnes absentes (SQL 052 / 094 pas encore passés)
+      try {
+        row = await lire('owner_id');
+      } catch (_) {
+        return null;
+      }
     }
+    if (row == null) return null;
+    return AccesAlbum(
+      vueUnique: row['vue_unique'] == true,
+      expireLe: DateTime.tryParse('${row['expire_le'] ?? ''}')?.toLocal(),
+      vues: (row['vues'] as num?)?.toInt() ?? 0,
+    );
   }
 
-  /// [ownerId] m'a-t-il ouvert son album ? (sans compter une « vue »)
+  /// Mon album, vu par [viewerId] (null = pas partagé).
+  static Future<AccesAlbum?> monAccesPour(String viewerId) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    return accesDe(ownerId: uid, viewerId: viewerId);
+  }
+
+  /// [ownerId] m'a-t-il ouvert son album, encore valable ? (sans compter
+  /// une ouverture)
   static Future<bool> aPartageAvecMoi(String ownerId) async {
     final uid = _uid;
     if (uid == null) return false;
-    try {
-      final row = await _sb
-          .from('album_acces')
-          .select('owner_id')
-          .eq('owner_id', ownerId)
-          .eq('viewer_id', uid)
-          .maybeSingle();
-      return row != null;
-    } catch (_) {
-      return false;
-    }
+    final a = await accesDe(ownerId: ownerId, viewerId: uid);
+    return a != null && !a.expire;
   }
 
-  static Future<void> partager(String viewerId) async {
+  /// Ouvre mon album à [viewerId] : sans limite, pour une [duree], ou en
+  /// [vueUnique] (2 min à partir de la 1ʳᵉ ouverture). Un nouveau partage
+  /// remplace le précédent (supprimer puis créer : pas de règle UPDATE).
+  static Future<void> partager(String viewerId,
+      {Duration? duree, bool vueUnique = false}) async {
     final uid = _uid;
     if (uid == null) return;
-    // ignoreDuplicates : déjà partagé → rien à faire. Un upsert « normal »
-    // demanderait une règle UPDATE (absente) et échouerait au 2ᵉ partage.
-    await _sb.from('album_acces').upsert(
-        {'owner_id': uid, 'viewer_id': viewerId},
-        ignoreDuplicates: true);
+    final base = {'owner_id': uid, 'viewer_id': viewerId};
+    final limite = duree != null || vueUnique;
+    if (!limite) {
+      // Sans limite : un partage déjà présent est gardé tel quel s'il
+      // n'a pas de limite ; sinon il est remplacé.
+      final a = await accesDe(ownerId: uid, viewerId: viewerId);
+      if (a != null && a.expireLe == null && !a.vueUnique) return;
+    }
+    await retirer(viewerId);
+    try {
+      await _sb.from('album_acces').insert({
+        ...base,
+        if (duree != null)
+          'expire_le': DateTime.now().add(duree).toUtc().toIso8601String(),
+        if (vueUnique) 'vue_unique': true,
+      });
+    } on PostgrestException catch (e) {
+      // Colonnes absentes (SQL 094 pas encore passé) : partage sans limite
+      if (!limite || (e.code != 'PGRST204' && e.code != '42703')) rethrow;
+      await _sb.from('album_acces').insert(base);
+    }
   }
 
   static Future<void> retirer(String viewerId) async {

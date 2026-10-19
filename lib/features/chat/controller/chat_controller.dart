@@ -2474,13 +2474,14 @@ class ConversationController extends GetxController
 
   /// Partage mon album privé avec la personne + message dans la discussion
   /// (comme Grindr). true = partagé, false = album vide, null = échec.
-  Future<bool?> partagerAlbum() async {
+  Future<bool?> partagerAlbum({Duration? duree, bool vueUnique = false}) async {
     if (!peutEnvoyer()) return null;
     showAttachMenu.value = false;
     try {
       final photos = await AlbumService.mesPhotos();
       if (photos.isEmpty) return false;
-      await AlbumService.partager(conversation.userId);
+      await AlbumService.partager(conversation.userId,
+          duree: duree, vueUnique: vueUnique);
     } catch (e) {
       // ✅ Avant : exception non gérée (bouton ➕ Album)
       debugPrint('partagerAlbum error: $e');

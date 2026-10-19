@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -229,10 +230,118 @@ class _EcranMonAlbumState extends State<EcranMonAlbum> {
 //  ALBUM D'UNE AUTRE PERSONNE (si elle me l'a partagé)
 // ══════════════════════════════════════════════════════════════════
 
-class EcranAlbumDe extends StatelessWidget {
+/// Ouvre l'album que [ownerId] m'a partagé (avec sa limite éventuelle).
+Future<void> afficherAlbumDe(String ownerId, String nom) async {
+  final uid = Supabase.instance.client.auth.currentUser?.id;
+  try {
+    final photos = await AlbumService.photosDe(ownerId);
+    if (photos.isEmpty) {
+      _snack("L'accès à cet album a expiré ou a été retiré".tr);
+      return;
+    }
+    final acces = uid == null
+        ? null
+        : await AlbumService.accesDe(ownerId: ownerId, viewerId: uid);
+    Get.to(() => EcranAlbumDe(
+        nom: nom,
+        photos: photos,
+        expireLe: acces?.expireLe,
+        vueUnique: acces?.vueUnique ?? false));
+  } catch (_) {
+    _snack("Impossible d'ouvrir l'album".tr);
+  }
+}
+
+class EcranAlbumDe extends StatefulWidget {
   final String nom;
   final List<PhotoAlbum> photos;
-  const EcranAlbumDe({super.key, required this.nom, required this.photos});
+  // Accès limité : l'écran se ferme tout seul à la fin
+  final DateTime? expireLe;
+  final bool vueUnique;
+  const EcranAlbumDe(
+      {super.key,
+      required this.nom,
+      required this.photos,
+      this.expireLe,
+      this.vueUnique = false});
+
+  @override
+  State<EcranAlbumDe> createState() => _EcranAlbumDeState();
+}
+
+class _EcranAlbumDeState extends State<EcranAlbumDe> {
+  Timer? _minuteur;
+  String get nom => widget.nom;
+  List<PhotoAlbum> get photos => widget.photos;
+
+  @override
+  void initState() {
+    super.initState();
+    final fin = widget.expireLe;
+    if (fin != null) {
+      _minuteur = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        if (DateTime.now().isAfter(fin)) {
+          _minuteur?.cancel();
+          // Ferme l'album (et la photo ouverte en grand, s'il y en a une)
+          final route = ModalRoute.of(context);
+          if (route != null) {
+            Navigator.of(context).popUntil((r) => r == route);
+            Navigator.of(context).pop();
+          }
+          _snack(widget.vueUnique
+              ? 'Vue unique terminée 👁'.tr
+              : "L'accès à cet album a expiré".tr);
+        } else {
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _minuteur?.cancel();
+    super.dispose();
+  }
+
+  /// Bandeau : temps restant (vue unique ou durée limitée)
+  Widget? _bandeau() {
+    final fin = widget.expireLe;
+    if (fin == null && !widget.vueUnique) return null;
+    String texte;
+    if (fin == null) {
+      texte = '👁 ${'Vue unique'.tr}';
+    } else {
+      final reste = fin.difference(DateTime.now());
+      if (reste.inHours >= 24) {
+        texte = '⏱ ${'Accès jusqu\'au @d'.trParams({
+              'd': '${fin.day.toString().padLeft(2, '0')}/${fin.month.toString().padLeft(2, '0')} '
+                  '${fin.hour.toString().padLeft(2, '0')}:${fin.minute.toString().padLeft(2, '0')}'
+            })}';
+      } else {
+        final h = reste.inHours, m = reste.inMinutes % 60, sec = reste.inSeconds % 60;
+        final t = h > 0
+            ? '$h h ${m.toString().padLeft(2, '0')}'
+            : '$m:${sec.toString().padLeft(2, '0')}';
+        texte = widget.vueUnique
+            ? '👁 ${'Vue unique · se ferme dans @t'.trParams({'t': t})}'
+            : '⏱ ${'Accès encore @t'.trParams({'t': t})}';
+      }
+    }
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: AppColors.gradientPink,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(texte,
+          style: const TextStyle(
+              color: AppColors.surAccent, fontWeight: FontWeight.w800)),
+    );
+  }
 
   /// Signalement de l'album (contenu non modéré : important pour le Play Store).
   Future<void> _signaler() async {
@@ -275,19 +384,24 @@ class EcranAlbumDe extends StatelessWidget {
           ),
         ],
       ),
-      body: GridView.count(
-        padding: const EdgeInsets.all(12),
-        crossAxisCount: 3,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        children: [
-          for (final p in photos)
-            GestureDetector(
-              onTap: () => _ouvrir(context, photos, p),
-              child: _Vignette(url: p.url),
-            ),
-        ],
-      ),
+      body: Column(children: [
+        if (_bandeau() != null) _bandeau()!,
+        Expanded(
+          child: GridView.count(
+            padding: const EdgeInsets.all(12),
+            crossAxisCount: 3,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: [
+              for (final p in photos)
+                GestureDetector(
+                  onTap: () => _ouvrir(context, photos, p),
+                  child: _Vignette(url: p.url),
+                ),
+            ],
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -304,9 +418,10 @@ class BoutonAlbumPrive extends StatefulWidget {
 }
 
 class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
-  // ✅ Chargé une seule fois : avant, chaque reconstruction de la fiche
-  // (défilement des photos…) relançait la requête et les liens signés.
-  Future<List<PhotoAlbum>>? _photos;
+  // ✅ On vérifie seulement l'accès : charger les photos à l'affichage de
+  // la fiche comptait une ouverture (et lançait une vue unique).
+  Future<bool>? _partage;
+  bool _ouverture = false;
 
   bool get _maFiche =>
       widget.ownerId == Supabase.instance.client.auth.currentUser?.id;
@@ -314,10 +429,7 @@ class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
   @override
   void initState() {
     super.initState();
-    if (!_maFiche) {
-      _photos = AlbumService.photosDe(widget.ownerId)
-          .catchError((_) => <PhotoAlbum>[]);
-    }
+    if (!_maFiche) _partage = AlbumService.aPartageAvecMoi(widget.ownerId);
   }
 
   @override
@@ -325,26 +437,28 @@ class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
     super.didUpdateWidget(old);
     // Carrousel de profils : la fiche affiche maintenant quelqu'un d'autre
     if (old.ownerId != widget.ownerId && !_maFiche) {
-      _photos = AlbumService.photosDe(widget.ownerId)
-          .catchError((_) => <PhotoAlbum>[]);
+      _partage = AlbumService.aPartageAvecMoi(widget.ownerId);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     // Ma propre fiche : rien à « ouvrir »
-    if (_maFiche || _photos == null) return const SizedBox.shrink();
+    if (_maFiche || _partage == null) return const SizedBox.shrink();
     final nom = widget.nom;
-    return FutureBuilder<List<PhotoAlbum>>(
-      future: _photos,
+    return FutureBuilder<bool>(
+      future: _partage,
       builder: (_, snap) {
-        final photos = snap.data ?? const <PhotoAlbum>[];
-        if (photos.isEmpty) return const SizedBox.shrink();
+        if (snap.data != true) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: GestureDetector(
-            onTap: () =>
-                Get.to(() => EcranAlbumDe(nom: nom, photos: photos)),
+            onTap: () async {
+              if (_ouverture) return;
+              setState(() => _ouverture = true);
+              await afficherAlbumDe(widget.ownerId, nom);
+              if (mounted) setState(() => _ouverture = false);
+            },
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -357,13 +471,20 @@ class _BoutonAlbumPriveState extends State<BoutonAlbumPrive> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                      '@nom t\'a ouvert son album privé · @length photo@p'.trParams({'length': photos.length.toString(), 'nom': nom.toString(), 'p': (photos.length > 1 ? 's' : '').toString()}),
+                      "@nom t'a ouvert son album privé".trParams({'nom': nom}),
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.surAccent)),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.surAccent),
+                _ouverture
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.surAccent))
+                    : const Icon(Icons.chevron_right_rounded,
+                        color: AppColors.surAccent),
               ]),
             ),
           ),

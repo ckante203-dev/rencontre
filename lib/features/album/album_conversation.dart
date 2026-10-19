@@ -20,7 +20,8 @@ import 'package:rencontre/features/album/ecran_album_prive.dart';
 Future<void> ouvrirAlbumConversation({
   required String autreId,
   required String autreNom,
-  required Future<bool?> Function() partagerDansDiscussion,
+  required Future<bool?> Function({Duration? duree, bool vueUnique})
+      partagerDansDiscussion,
 }) {
   return Get.bottomSheet(
     _FeuilleAlbum(
@@ -34,7 +35,8 @@ Future<void> ouvrirAlbumConversation({
 
 class _FeuilleAlbum extends StatefulWidget {
   final String autreId, autreNom;
-  final Future<bool?> Function() partagerDansDiscussion;
+  final Future<bool?> Function({Duration? duree, bool vueUnique})
+      partagerDansDiscussion;
   const _FeuilleAlbum(
       {required this.autreId,
       required this.autreNom,
@@ -45,8 +47,7 @@ class _FeuilleAlbum extends StatefulWidget {
 
 class _FeuilleAlbumState extends State<_FeuilleAlbum> {
   List<PhotoAlbum> _photos = [];
-  bool? _partage; // mon album ouvert à cette personne ?
-  int? _vues; // combien de fois elle l'a ouvert
+  AccesAlbum? _acces; // mon album, vu par cette personne (null = fermé)
   bool _sonAlbum = false; // elle m'a ouvert le sien ?
   bool _chargement = true;
   bool _bascule = false;
@@ -64,16 +65,14 @@ class _FeuilleAlbumState extends State<_FeuilleAlbum> {
     try {
       final r = await Future.wait([
         AlbumService.mesPhotos(),
-        AlbumService.partageAvec(widget.autreId),
-        AlbumService.vuesPar(widget.autreId),
+        AlbumService.monAccesPour(widget.autreId),
         AlbumService.aPartageAvecMoi(widget.autreId),
       ]);
       if (!mounted) return;
       setState(() {
         _photos = r[0] as List<PhotoAlbum>;
-        _partage = r[1] as bool;
-        _vues = r[2] as int?;
-        _sonAlbum = r[3] as bool;
+        _acces = r[1] as AccesAlbum?;
+        _sonAlbum = r[2] as bool;
       });
     } catch (e) {
       debugPrint('Album (conversation) : $e');
@@ -96,14 +95,23 @@ class _FeuilleAlbumState extends State<_FeuilleAlbum> {
       return;
     }
     HapticFeedback.selectionClick();
+    _ChoixLimite? choix;
+    if (ouvrir) {
+      choix = await _choisirLimite();
+      if (choix == null || !mounted) return;
+    }
     setState(() => _bascule = true);
     try {
       if (ouvrir) {
-        final ok = await widget.partagerDansDiscussion();
-        if (ok == true && mounted) setState(() => _partage = true);
+        final ok = await widget.partagerDansDiscussion(
+            duree: choix!.duree, vueUnique: choix.vueUnique);
+        if (ok == true) {
+          final a = await AlbumService.monAccesPour(widget.autreId);
+          if (mounted) setState(() => _acces = a);
+        }
       } else {
         await AlbumService.retirer(widget.autreId);
-        if (mounted) setState(() => _partage = false);
+        if (mounted) setState(() => _acces = null);
         _info('@nom ne voit plus ton album'.trParams({'nom': _prenom}));
       }
     } catch (_) {
@@ -111,6 +119,74 @@ class _FeuilleAlbumState extends State<_FeuilleAlbum> {
     } finally {
       if (mounted) setState(() => _bascule = false);
     }
+  }
+
+  /// Pour combien de temps j'ouvre mon album ?
+  Future<_ChoixLimite?> _choisirLimite() {
+    Widget option(String emoji, String titre, String sous, _ChoixLimite c) =>
+        ListTile(
+          leading: Text(emoji, style: const TextStyle(fontSize: 24)),
+          title: Text(titre,
+              style: TextStyle(
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+          subtitle: Text(sous,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          onTap: () => Get.back(result: c),
+        );
+    return Get.bottomSheet<_ChoixLimite>(
+      SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Ouvrir mon album à @nom…'.trParams({'nom': _prenom}),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            option('👁', 'Vue unique'.tr,
+                "Une seule ouverture, 2 minutes, puis l'album se referme".tr,
+                const _ChoixLimite(vueUnique: true)),
+            option('⏱', 'Pendant 1 heure'.tr, '', const _ChoixLimite(duree: Duration(hours: 1))),
+            option('🌙', 'Pendant 24 heures'.tr, '',
+                const _ChoixLimite(duree: Duration(hours: 24))),
+            option('📅', 'Pendant 7 jours'.tr, '',
+                const _ChoixLimite(duree: Duration(days: 7))),
+            option('♾️', 'Sans limite'.tr, "Jusqu'à ce que tu le refermes".tr,
+                const _ChoixLimite()),
+          ]),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  /// État de mon album pour cette personne
+  String _etat() {
+    final a = _acces;
+    if (a == null) {
+      return 'Fermé · @nom ne voit pas tes photos'.trParams({'nom': _prenom});
+    }
+    if (a.expire) {
+      return a.vueUnique ? 'Vue unique déjà regardée'.tr : 'Accès expiré'.tr;
+    }
+    final fin = a.expireLe;
+    if (a.vueUnique) {
+      return fin == null
+          ? '👁 ${'Vue unique · pas encore ouverte'.tr}'
+          : '👁 ${'Vue unique · en cours'.tr}';
+    }
+    final vues = a.vues == 0
+        ? 'pas encore regardé'.tr
+        : 'regardé @n fois'.trParams({'n': '${a.vues}'});
+    if (fin == null) return '${'Ouvert'.tr} · $vues';
+    final d = '${fin.day.toString().padLeft(2, '0')}/${fin.month.toString().padLeft(2, '0')} '
+        '${fin.hour.toString().padLeft(2, '0')}:${fin.minute.toString().padLeft(2, '0')}';
+    return '⏱ ${'Ouvert jusqu\'au @d'.trParams({'d': d})} · $vues';
   }
 
   Future<void> _ajouter() async {
@@ -165,23 +241,12 @@ class _FeuilleAlbumState extends State<_FeuilleAlbum> {
     }
   }
 
-  Future<void> _voirSonAlbum() async {
-    try {
-      final photos = await AlbumService.photosDe(widget.autreId);
-      if (photos.isEmpty) {
-        _info("L'accès à cet album a été retiré".tr);
-        if (mounted) setState(() => _sonAlbum = false);
-        return;
-      }
-      Get.to(() => EcranAlbumDe(nom: widget.autreNom, photos: photos));
-    } catch (_) {
-      _info('Action impossible, réessaie'.tr);
-    }
-  }
+  Future<void> _voirSonAlbum() =>
+      afficherAlbumDe(widget.autreId, widget.autreNom);
 
   @override
   Widget build(BuildContext context) {
-    final ouvert = _partage == true;
+    final ouvert = _acces != null && !_acces!.expire;
     return Container(
       constraints: BoxConstraints(maxHeight: Get.height * 0.88),
       decoration: BoxDecoration(
@@ -248,14 +313,7 @@ class _FeuilleAlbumState extends State<_FeuilleAlbum> {
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.textPrimary)),
                               const SizedBox(height: 2),
-                              Text(
-                                  !ouvert
-                                      ? 'Fermé · @nom ne voit pas tes photos'
-                                          .trParams({'nom': _prenom})
-                                      : (_vues ?? 0) == 0
-                                          ? 'Ouvert · pas encore regardé'.tr
-                                          : 'Ouvert · regardé @n fois'
-                                              .trParams({'n': '$_vues'}),
+                              Text(_etat(),
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textMuted)),
@@ -425,4 +483,11 @@ class _FeuilleAlbumState extends State<_FeuilleAlbum> {
           ),
         ]),
       );
+}
+
+/// Limite choisie en ouvrant mon album
+class _ChoixLimite {
+  final Duration? duree;
+  final bool vueUnique;
+  const _ChoixLimite({this.duree, this.vueUnique = false});
 }

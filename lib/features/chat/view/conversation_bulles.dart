@@ -1085,25 +1085,10 @@ class _CarteAlbumPartageState extends State<_CarteAlbumPartage> {
       return;
     }
     setState(() => _ouverture = true);
-    try {
-      final photos = await AlbumService.photosDe(widget.msg.senderId);
-      if (photos.isEmpty) {
-        Get.snackbar('Album privé'.tr, 'L\'accès à cet album a été retiré'.tr,
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: AppColors.surface,
-            colorText: AppColors.textPrimary);
-      } else {
-        Get.to(() => EcranAlbumDe(
-            nom: widget.ctrl.conversation.userName, photos: photos));
-      }
-    } catch (_) {
-      Get.snackbar('Album privé'.tr, 'Impossible d\'ouvrir l\'album'.tr,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: AppColors.textPrimary);
-    } finally {
-      if (mounted) setState(() => _ouverture = false);
-    }
+    // Ouvre avec la limite éventuelle (vue unique, durée)
+    await afficherAlbumDe(
+        widget.msg.senderId, widget.ctrl.conversation.userName);
+    if (mounted) setState(() => _ouverture = false);
   }
 
   @override
