@@ -99,9 +99,13 @@ class _BoostSheetState extends State<_BoostSheet> {
     final heures = id == 'boost_2h' ? 2 : id == 'boost_24h' ? 24 : 1;
     if (heures == 1) return null;
     final prix = pkg.storeProduct.price / heures;
-    final p = prix >= 100 ? prix.round().toString() : prix.toStringAsFixed(2);
-    return 'soit @p @c / heure'
-        .trParams({'p': p, 'c': pkg.storeProduct.currencyCode});
+    // Franc CFA : pas de centimes, écrit « F CFA » comme le prix Google Play
+    final code = pkg.storeProduct.currencyCode;
+    final cfa = code == 'XOF' || code == 'XAF';
+    final p = cfa || prix >= 100
+        ? prix.round().toString()
+        : prix.toStringAsFixed(2);
+    return 'soit @p @c / heure'.trParams({'p': p, 'c': cfa ? 'F CFA' : code});
   }
 
   static String _restant(Duration d) {
@@ -770,13 +774,9 @@ class _BoostSheetState extends State<_BoostSheet> {
 
   /// Messages qui défilent sous le titre — vrais chiffres quand on en a.
   List<String> _messages(bool actif) {
-    final moi = _home.myProfile?.id;
-    final enLigne =
-        _home.profiles.where((u) => u.isOnline && u.id != moi).length;
+    // (Le nombre de personnes en ligne est déjà dans la carte « En ce moment »)
     final x = (_bilan?['multiplicateur'] as num?)?.toDouble();
     return [
-      if (enLigne >= 2)
-        '🔥 @enLigne personnes en ligne autour de toi en ce moment'.trParams({'enLigne': '$enLigne'}),
       if (actif) ...[
         '👀 Ton profil est en tête chez les personnes autour de toi'.tr,
         '⚡ Ton badge Boost attire les regards'.tr,

@@ -40,6 +40,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Captures d'écran : bloquées par défaut (Play Store). APK de test
+        // sur le téléphone : flutter build apk --android-project-arg=captures=1
+        resValue("bool", "captures_autorisees",
+            (project.findProperty("captures") == "1").toString())
     }
 
     signingConfigs {

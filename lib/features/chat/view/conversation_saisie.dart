@@ -259,7 +259,7 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 42),
+      constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
           color: AppColors.surface2, borderRadius: BorderRadius.circular(22)),
@@ -293,6 +293,8 @@ class _RecordingIndicatorState extends State<_RecordingIndicator>
         Expanded(
           child: Obx(() => widget.ctrl.vocalVerrouille.value
               ? Text('🔒 ' + 'Enregistrement...'.tr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted))
               : Opacity(
                   opacity: (1 + widget.ctrl.vocalGlisse.value / 110)
@@ -366,16 +368,16 @@ class _BoutonVocal extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 34,
-        height: 34,
-        margin: const EdgeInsets.only(left: 6),
+        width: 44,
+        height: 44,
+        margin: const EdgeInsets.only(left: 8),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: accent ? AppColors.gradientPink : null,
           color: accent ? null : AppColors.surface,
         ),
         child: Icon(icone,
-            size: 18,
+            size: 24,
             color: accent ? AppColors.surAccent : AppColors.textPrimary),
       ),
     );
@@ -390,7 +392,7 @@ class _ApercuVocal extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = ctrl.recordingSeconds.value;
     return Container(
-      constraints: const BoxConstraints(minHeight: 42),
+      constraints: const BoxConstraints(minHeight: 52),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
           color: AppColors.surface2, borderRadius: BorderRadius.circular(22)),

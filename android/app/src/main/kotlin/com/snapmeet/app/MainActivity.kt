@@ -21,11 +21,13 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         // Discrétion : captures et enregistrements d'écran bloqués dans toute
         // l'appli (image noire), et aperçu masqué dans les applis récentes.
-        // Sauf en version de développement (flutter run), pour pouvoir
-        // vérifier l'affichage : la version release garde la protection.
+        // Sauf en version de développement (flutter run) et dans l'APK de
+        // test (-Pcaptures=1), pour pouvoir vérifier l'affichage : le
+        // fichier Play Store (construit sans ce réglage) garde la protection.
         val developpement =
             (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (!developpement) {
+        val apkDeTest = resources.getBoolean(R.bool.captures_autorisees)
+        if (!developpement && !apkDeTest) {
             window.setFlags(
                 WindowManager.LayoutParams.FLAG_SECURE,
                 WindowManager.LayoutParams.FLAG_SECURE
