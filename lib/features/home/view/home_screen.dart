@@ -1128,7 +1128,10 @@ class _UsersGridScrollable extends GetView<HomeController> {
               unreadCount: unreadCount,
               hasActiveStory: hasStory,
               storyIsSeen: storyIsSeen,
-              locked: locked,
+              // Comme Grindr : au-delà de la limite gratuite, les profils
+              // s'affichent normalement (ni flou ni cadenas) ; c'est au
+              // toucher que Premium est demandé.
+              locked: false,
               onTap: () {
                 if (locked) {
                   showProfileLimitPaywall(context);
@@ -1136,7 +1139,9 @@ class _UsersGridScrollable extends GetView<HomeController> {
                 }
                 controller.openProfile(user);
               },
-              onLongPress: locked ? null : () => _menuRapide(user),
+              onLongPress: locked
+                  ? () => showProfileLimitPaywall(context)
+                  : () => _menuRapide(user),
             );
           });
         },
