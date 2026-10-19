@@ -405,94 +405,6 @@ class SupabaseService {
     return result;
   }
 
-  // ✅ NOUVEAU — les "demandes de message" reçues : conversations
-  // en attente qu'un AUTRE utilisateur a démarrées avec moi (je ne
-  // les ai pas encore acceptées en répondant). C'est la liste à
-  // afficher dans l'onglet/écran "Demandes" séparé, avec son propre
-  // badge — voir la discussion sur l'écran de liste des conversations.
-  Future<List<Map<String, dynamic>>> fetchMessageRequests() async {
-    final uid = currentUserId;
-    if (uid == null) return [];
-
-    final myData = await supabase
-        .from('profiles')
-        .select('blocked_users')
-        .eq('id', uid)
-        .maybeSingle();
-    final myBlockedIds = List<String>.from(myData?['blocked_users'] ?? []);
-
-    final data = await supabase
-        .from('conversations')
-        .select('''
-          id, updated_at, user1_id, user2_id, request_status, initiated_by,
-          user1_profile:profiles!conversations_user1_id_fkey(id, name, photo_url, is_online, last_seen),
-          user2_profile:profiles!conversations_user2_id_fkey(id, name, photo_url, is_online, last_seen)
-        ''')
-        .or('user1_id.eq.$uid,user2_id.eq.$uid')
-        .eq('request_status', 'pending')
-        .neq('initiated_by', uid)
-        .order('updated_at', ascending: false);
-
-    final filtered = (data as List).where((row) {
-      final otherId = row['user1_id'] == uid
-          ? row['user2_id'] as String
-          : row['user1_id'] as String;
-      return !myBlockedIds.contains(otherId);
-    }).toList();
-
-    if (filtered.isEmpty) return [];
-
-    final convIds = filtered.map((r) => r['id'] as String).toList();
-    final lastMsgsData = await supabase
-        .from('messages')
-        .select('conversation_id, type, content, sender_id, created_at')
-        .inFilter('conversation_id', convIds)
-        .order('created_at', ascending: false);
-
-    final Map<String, Map<String, dynamic>> lastMsgByConv = {};
-    for (final msg in (lastMsgsData as List)) {
-      final cid = msg['conversation_id'] as String;
-      if (!lastMsgByConv.containsKey(cid)) {
-        lastMsgByConv[cid] = msg;
-      }
-    }
-
-    final result = List<Map<String, dynamic>>.from(filtered);
-    for (final conv in result) {
-      conv['_last_message'] = lastMsgByConv[conv['id']];
-    }
-    return result;
-  }
-
-  // ✅ NOUVEAU — nombre de demandes de message en attente, pour le
-  // badge de notification (même esprit que UnreadMessagesController).
-  Future<int> countPendingMessageRequests() async {
-    final uid = currentUserId;
-    if (uid == null) return 0;
-    try {
-      final data = await supabase
-          .from('conversations')
-          .select('id')
-          .or('user1_id.eq.$uid,user2_id.eq.$uid')
-          .eq('request_status', 'pending')
-          .neq('initiated_by', uid);
-      return (data as List).length;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  // ✅ NOUVEAU — j'accepte explicitement une demande de message
-  // (bouton "Accepter" dans l'écran de demandes), sans forcément
-  // avoir encore répondu par un message.
-  Future<void> acceptMessageRequest(String conversationId) async {
-    try {
-      await supabase
-          .from('conversations')
-          .update({'request_status': 'accepted'}).eq('id', conversationId);
-    } catch (_) {}
-  }
-
   // ─── MESSAGES ───────────────────────────────────────────────────
 
   // ✅ Filtre PostgREST excluant les messages expirés (déjà masqués dans
@@ -624,26 +536,6 @@ class SupabaseService {
     } catch (e) {
       // ✅ Ne doit jamais bloquer l'ouverture de la conversation ni l'envoi
     }
-  }
-
-  RealtimeChannel listenToMessages(
-    String conversationId,
-    void Function(Map<String, dynamic>) onMessage,
-  ) {
-    return supabase
-        .channel('messages:$conversationId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) => onMessage(payload.newRecord),
-        )
-        .subscribe();
   }
 
   // ─── HELPER ─────────────────────────────────────────────────────

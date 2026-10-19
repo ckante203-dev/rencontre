@@ -113,11 +113,13 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
       );
       final safeContent = text.substring(0, text.length.clamp(0, 500));
       if (Get.isRegistered<ConversationController>(tag: convId)) {
-        await Get.find<ConversationController>(tag: convId).sendStoryReply(
+        final ok = await Get.find<ConversationController>(tag: convId)
+            .sendStoryReply(
           conversationId: convId,
           text: safeContent,
           storyData: storyData,
         );
+        if (!ok) return; // refus déjà expliqué (limite, blocage)
       } else {
         await ConversationController.insertStoryReplyRow(
           conversationId: convId,
@@ -140,7 +142,9 @@ class _BarreReponseStoryState extends State<BarreReponseStory>
     } catch (e) {
       debugPrint('replyStory error: $e');
       if (mounted) {
-        Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer le message'.tr,
+        Get.snackbar('Erreur'.tr,
+            ConversationController.motifRefus(e) ??
+                'Impossible d\'envoyer le message'.tr,
             snackPosition: SnackPosition.TOP,
             backgroundColor: CouleursMedia.surface,
             colorText: CouleursMedia.textPrimary);

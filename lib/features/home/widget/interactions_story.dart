@@ -40,7 +40,7 @@ Future<bool> repondreAStory(StoryModel story, String texte) async {
       storyBgColor: story.isTextStory ? story.bgColor : null,
     );
     if (Get.isRegistered<ConversationController>(tag: convId)) {
-      await Get.find<ConversationController>(tag: convId).sendStoryReply(
+      return await Get.find<ConversationController>(tag: convId).sendStoryReply(
           conversationId: convId, text: texte, storyData: storyData);
     } else {
       await ConversationController.insertStoryReplyRow(

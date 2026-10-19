@@ -12,7 +12,6 @@ import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/features/home/view/home_screen.dart' show UnreadMessagesController;
 import 'package:get_storage/get_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,7 +19,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/chat/model/message_model.dart';
-import 'package:rencontre/features/chat/view/conversation_screen.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/features/home/widget/story_report_sheet.dart';
 
@@ -95,8 +93,12 @@ class ChatListController extends GetxController {
 
   // Conversations archivées (enregistrées sur le téléphone). Une
   // conversation archivée revient dans la liste dès qu'un message arrive.
+  // Rangées par compte (plusieurs comptes sur le même téléphone)
+  String get _cleArchives => 'conv_archivees_${myId ?? ''}';
   late final RxSet<String> archivees = <String>{
-    ...(GetStorage().read<List>('conv_archivees') ?? const [])
+    ...(GetStorage().read<List>(_cleArchives) ??
+            GetStorage().read<List>('conv_archivees') ?? // ancienne clé
+            const [])
         .map((e) => e.toString())
   }.obs;
 
@@ -105,7 +107,7 @@ class ChatListController extends GetxController {
         ? archivees.remove(conv.id)
         : archivees.add(conv.id);
     try {
-      GetStorage().write('conv_archivees', archivees.toList());
+      GetStorage().write(_cleArchives, archivees.toList());
     } catch (_) {}
   }
 
@@ -616,7 +618,8 @@ class ChatListController extends GetxController {
     conversations.removeWhere((c) => c.id == convId);
     _retirerNonLueForcee(convId);
     if (pinnedIds.remove(convId)) _box.write(_cleEpingles, pinnedIds.toList());
-    _box.write('chat_efface_$convId', DateTime.now().toIso8601String());
+    _box.write(ConversationController.cleEfface(convId),
+        DateTime.now().toIso8601String());
     update();
     unawaited(_service.markMessagesAsRead(convId));
     NotificationService.clearConversationNotifications(convId);
@@ -828,7 +831,7 @@ class ConversationController extends GetxController
   final Rx<DateTime?> effaceAvant = Rx<DateTime?>(null);
   final _box = GetStorage();
   String get _cleFond => 'chat_fond_${conversation.id}';
-  String get _cleEfface => 'chat_efface_${conversation.id}';
+  String get _cleEfface => cleEfface(conversation.id);
   String get _cleMasques => 'chat_masques_${conversation.id}';
   // Messages supprimés « pour moi » : masqués sur cet appareil seulement.
   final RxSet<String> masques = <String>{}.obs;
@@ -880,7 +883,6 @@ class ConversationController extends GetxController
   // ✅ Retire de l'écran les messages lus depuis plus de 24h (règle
   // éphémère), sans attendre leur suppression par le serveur.
   Timer? _expirationTimer;
-  final _imagePicker = ImagePicker();
   // ✅ FIX — drapeau de fermeture : callbacks Realtime/polling ignorés
   // après onClose.
   bool _closed = false;
@@ -904,8 +906,7 @@ class ConversationController extends GetxController
     conversation = conv;
     isOtherOnline.value = conv.isOnline;
     fond.value = _box.read<String>(_cleFond) ?? 'defaut';
-    final efface = _box.read<String>(_cleEfface);
-    effaceAvant.value = efface == null ? null : DateTime.tryParse(efface);
+    effaceAvant.value = historiqueEffaceAvant(conv.id);
     masques.addAll(List<String>.from(_box.read<List>(_cleMasques) ?? []));
     _audioPlayer.onPlayerComplete.listen((_) => currentlyPlayingId.value = '');
     // Recalcule la limite dès que la liste des messages change
@@ -964,8 +965,26 @@ class ConversationController extends GetxController
 
   /// Date jusqu'à laquelle l'historique a été effacé sur cet appareil.
   static DateTime? historiqueEffaceAvant(String convId) {
-    final v = GetStorage().read<String>('chat_efface_$convId');
+    final box = GetStorage();
+    final v = box.read<String>(cleEfface(convId)) ??
+        box.read<String>('chat_efface_$convId'); // ancienne clé
     return v == null ? null : DateTime.tryParse(v);
+  }
+
+  /// Clé « historique effacé » propre au compte connecté : avant, effacer
+  /// une conversation la cachait aussi à un autre compte du même téléphone.
+  static String cleEfface(String convId) =>
+      'chat_efface_${Supabase.instance.client.auth.currentUser?.id ?? ''}_$convId';
+
+  /// Refus du serveur (limite sans réponse, blocage) en message clair,
+  /// null pour une autre erreur.
+  static String? motifRefus(Object e) {
+    final t = e.toString();
+    if (t.contains('limite_sans_reponse')) {
+      return "Attends sa réponse pour envoyer d'autres messages".tr;
+    }
+    if (t.contains('bloque')) return 'Tu ne peux plus écrire à cette personne'.tr;
+    return null;
   }
 
   /// Messages affichés : hors messages expirés et historique effacé.
@@ -1217,9 +1236,17 @@ class ConversationController extends GetxController
     _handleMyTyping();
   }
 
+  DateTime _dernierSignalFrappe = DateTime(2000);
+
   void _handleMyTyping() {
-    if (textController.text.trim().isNotEmpty && !_isCurrentlyTyping) {
+    // ✅ Renouvelé toutes les 3 s : chez l'autre, l'indicateur s'efface
+    // après 4 s sans signal (avant : il disparaissait en pleine frappe)
+    final maintenant = DateTime.now();
+    if (textController.text.trim().isNotEmpty &&
+        (!_isCurrentlyTyping ||
+            maintenant.difference(_dernierSignalFrappe).inSeconds >= 3)) {
       _isCurrentlyTyping = true;
+      _dernierSignalFrappe = maintenant;
       _updateTypingStatus(true);
     }
     _myTypingTimer?.cancel();
@@ -1470,10 +1497,10 @@ class ConversationController extends GetxController
               }
             }
             final newMsg = _rowToMessage(record, replyTo: replyTo);
-            messages.removeWhere((m) =>
-                m.id.startsWith('temp_') &&
-                m.text == newMsg.text &&
-                m.senderId == newMsg.senderId);
+            // ✅ Une seule bulle « en cours d'envoi » remplacée (avant :
+            // toutes celles au même texte, ex. plusieurs « 📷 Photo »)
+            final iTemp = _indexBulleTemporaire(newMsg);
+            if (iTemp != -1) messages.removeAt(iTemp);
             if (!messages.any((m) => m.id == newMsg.id)) {
               messages.add(newMsg);
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1639,10 +1666,7 @@ class ConversationController extends GetxController
           // ✅ FIX — remplace la bulle temporaire "en cours d'envoi"
           // correspondante (même expéditeur + même contenu) au lieu
           // d'ajouter un doublon.
-          final tempIdx = messages.indexWhere((m) =>
-              m.id.startsWith('temp_') &&
-              m.senderId == msg.senderId &&
-              m.text == msg.text);
+          final tempIdx = _indexBulleTemporaire(msg);
           if (tempIdx != -1) {
             messages[tempIdx] = withReply;
           } else {
@@ -1655,6 +1679,15 @@ class ConversationController extends GetxController
       } catch (_) {}
     }
   }
+
+  /// Bulle temporaire correspondant à un message enregistré (même
+  /// expéditeur, même texte). Les médias envoyés en arrière-plan sont
+  /// exclus : leur envoi remplace lui-même sa bulle.
+  int _indexBulleTemporaire(MessageModel vrai) => messages.indexWhere((m) =>
+      m.id.startsWith('temp_') &&
+      !m.id.startsWith('temp_media_') &&
+      m.senderId == vrai.senderId &&
+      m.text == vrai.text);
 
   // ✅ FIX — comparaison de deux maps de réactions
   bool _sameReactions(
@@ -1797,14 +1830,16 @@ class ConversationController extends GetxController
     return false;
   }
 
-  Future<void> sendStoryReply({
+  /// false si l'envoi est refusé (limite, blocage : déjà expliqué à
+  /// l'écran) ; lève une exception si l'envoi échoue.
+  Future<bool> sendStoryReply({
     required String conversationId,
     required String text,
     required StoryReplyData storyData,
   }) async {
-    if (!peutEnvoyer()) return;
+    if (!peutEnvoyer()) return false;
     final uid = _service.currentUserId;
-    if (uid == null) return;
+    if (uid == null) return false;
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
     messages.add(MessageModel(
       id: tempId,
@@ -1815,7 +1850,6 @@ class ConversationController extends GetxController
       createdAt: DateTime.now(),
       storyReply: storyData,
     ));
-    bool sent = false;
     try {
       final keptStory = await insertStoryReplyRow(
         conversationId: conversationId,
@@ -1823,7 +1857,6 @@ class ConversationController extends GetxController
         text: text,
         storyData: storyData,
       );
-      sent = true;
       if (!keptStory) {
         // ✅ FIX — le message réellement enregistré n'a pas de données
         // de story : la bulle temporaire est ajustée pour correspondre
@@ -1844,8 +1877,9 @@ class ConversationController extends GetxController
       }
     } catch (e) {
       messages.removeWhere((m) => m.id == tempId);
+      if (gererRefusServeur(e)) return false;
+      rethrow; // ✅ avant : échec silencieux, « Envoyé ✓ » affiché quand même
     }
-    if (!sent) return;
     // ✅ FIX — comme sendMessage : la liste est triée par updated_at,
     // et une réponse du destinataire accepte une demande en attente.
     try {
@@ -1854,6 +1888,7 @@ class ConversationController extends GetxController
       }).eq('id', conversationId);
     } catch (_) {}
     await _service.maybePromoteMessageRequest(conversationId);
+    return true;
   }
 
   /// Supprimer « pour moi » : masqué sur cet appareil, l'autre le garde.
@@ -2068,7 +2103,8 @@ class ConversationController extends GetxController
                             } catch (e) {
                               debugPrint('Transfert échoué : $e');
                               Get.snackbar('Message non envoyé'.tr,
-                                  'Vérifie ta connexion et réessaie'.tr,
+                                  motifRefus(e) ??
+                                      'Vérifie ta connexion et réessaie'.tr,
                                   snackPosition: SnackPosition.TOP,
                                   backgroundColor: AppColors.surface,
                                   colorText: AppColors.textPrimary);
@@ -2246,79 +2282,6 @@ class ConversationController extends GetxController
     // Comme Snapchat : le snap n'est plus visible mais une trace
     // « Snap ouvert » reste dans la discussion (la bulle passe d'elle-même
     // en trace à la fin du compte à rebours ; le serveur supprime la photo).
-  }
-
-  Future<void> envoyerPhotoEphemere() async {
-    if (!peutEnvoyer()) return;
-    showAttachMenu.value = false;
-    final picked = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1080,
-        maxHeight: 1920,
-        imageQuality: 85);
-    if (picked == null) return;
-    final uid = _service.currentUserId!;
-    final path = 'snaps/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    try {
-      final file = File(picked.path);
-      await Supabase.instance.client.storage.from('snaps').upload(path, file,
-          fileOptions:
-              const FileOptions(upsert: true, contentType: 'image/jpeg'));
-      final url =
-          Supabase.instance.client.storage.from('snaps').getPublicUrl(path);
-      await _service.sendMessage(
-        conversationId: conversation.id,
-        content: '📸 Photo éphémère',
-        type: 'snap',
-        mediaUrl: url,
-        expiresAt: DateTime.now().add(const Duration(hours: 24)),
-        snapDurationSeconds: 10,
-      );
-    } catch (e) {
-      if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer le snap'.tr,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: AppColors.textPrimary);
-    }
-  }
-
-  Future<void> envoyerPhotoAvecDuree(
-      {required bool camera, required SnapDuration duree}) async {
-    if (!peutEnvoyer()) return;
-    showAttachMenu.value = false;
-    final picked = await _imagePicker.pickImage(
-      source: camera ? ImageSource.camera : ImageSource.gallery,
-      maxWidth: 1080,
-      maxHeight: 1920,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-    final uid = _service.currentUserId!;
-    final isSnap = duree != SnapDuration.none;
-    final path =
-        '${isSnap ? 'snaps' : 'photos'}/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    try {
-      final file = File(picked.path);
-      await Supabase.instance.client.storage.from('snaps').upload(path, file,
-          fileOptions:
-              const FileOptions(upsert: true, contentType: 'image/jpeg'));
-      final url =
-          Supabase.instance.client.storage.from('snaps').getPublicUrl(path);
-      await _service.sendMessage(
-        conversationId: conversation.id,
-        content: isSnap ? '📸 Photo éphémère' : '📷 Photo',
-        type: isSnap ? 'snap' : 'image',
-        mediaUrl: url,
-        snapDurationSeconds: duree.seconds,
-      );
-    } catch (e) {
-      if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer la photo'.tr,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: AppColors.textPrimary);
-    }
   }
 
   void toggleAttachMenu() => showAttachMenu.toggle();
@@ -2760,7 +2723,7 @@ class ConversationController extends GetxController
     messages.add(MessageModel(
       id: tempId,
       senderId: uid,
-      text: '🎤 Message vocal'.tr,
+      text: '🎤 Message vocal', // même texte que l'enregistré (non traduit)
       type: MessageType.audio,
       status: MessageStatus.sending,
       createdAt: DateTime.now(),
@@ -2813,39 +2776,6 @@ class ConversationController extends GetxController
     }
   }
 
-  Future<void> envoyerPhoto({bool camera = false}) async {
-    if (!peutEnvoyer()) return;
-    showAttachMenu.value = false;
-    final picked = await _imagePicker.pickImage(
-        source: camera ? ImageSource.camera : ImageSource.gallery,
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 80);
-    if (picked == null) return;
-    final uid = _service.currentUserId!;
-    final path = 'photos/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    try {
-      final file = File(picked.path);
-      await Supabase.instance.client.storage.from('snaps').upload(path, file,
-          fileOptions:
-              const FileOptions(upsert: true, contentType: 'image/jpeg'));
-      final url =
-          Supabase.instance.client.storage.from('snaps').getPublicUrl(path);
-      await _service.sendMessage(
-        conversationId: conversation.id,
-        content: '📷 Photo',
-        type: 'image',
-        mediaUrl: url,
-      );
-    } catch (e) {
-      if (gererRefusServeur(e)) return;
-      Get.snackbar('Erreur'.tr, 'Impossible d\'envoyer la photo'.tr,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.surface,
-          colorText: AppColors.textPrimary);
-    }
-  }
-
   Future<void> envoyerLocalisation() async {
     if (!peutEnvoyer()) return;
     showAttachMenu.value = false;
@@ -2877,6 +2807,7 @@ class ConversationController extends GetxController
         type: 'location',
       );
     } catch (e) {
+      if (gererRefusServeur(e)) return;
       Get.snackbar('Erreur'.tr, 'Impossible de récupérer la position'.tr,
           snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.surface,
