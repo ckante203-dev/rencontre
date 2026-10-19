@@ -1541,4 +1541,8 @@ const Map<String, String> enAuto = {
   "😌 Chill": "😌 Chill",
   "🎤 Hip-hop": "🎤 Hip-hop",
   "C'est ta story : les réponses arrivent dans tes messages": "It's your story: replies arrive in your messages",
+  "🎨 Sticker": "🎨 Sticker",
+  "Vocal": "Voice",
+  "📸 Snap": "📸 Snap",
+  "📷 Photo": "📷 Photo",
 };

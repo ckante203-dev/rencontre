@@ -291,7 +291,9 @@ class _MessageBubble extends StatelessWidget {
                             isMine: isMine,
                             reponse: _buildContent(isMine, context))
                       else ...[
-                        if (msg.replyTo != null)
+                        // Texte : la citation est DANS la bulle (WhatsApp) ;
+                        // autres messages : au-dessus
+                        if (msg.replyTo != null && !texteSimple)
                           _ReplyPreview(
                               replyTo: msg.replyTo!,
                               isMine: isMine,
@@ -391,7 +393,17 @@ class _MessageBubble extends StatelessWidget {
           return _CarteAlbumPartage(msg: msg, isMine: isMine, ctrl: ctrl);
         }
         return _TextBubble(
-            msg: msg, isMine: isMine, isFirst: isFirst, isLast: isLast);
+            msg: msg,
+            isMine: isMine,
+            isFirst: isFirst,
+            isLast: isLast,
+            citation: msg.replyTo == null
+                ? null
+                : _ReplyPreview(
+                    replyTo: msg.replyTo!,
+                    isMine: isMine,
+                    ctrl: ctrl,
+                    dansBulle: true));
       // (heure + coches ajoutées dans _TextBubble)
     }
   }
@@ -748,60 +760,141 @@ class _StoryReplyFullScreenState extends State<_StoryReplyFullScreen> {
   }
 }
 
+/// Libellé d'un message cité (réponse) : texte, ou type de média.
+String _apercuCitation(MessageModel m) {
+  switch (m.type) {
+    case MessageType.image:
+      final t = m.text ?? '';
+      if (t == ConversationController.texteSticker) return '🎨 Sticker'.tr;
+      if (t == ConversationController.texteGif) return '🎞️ GIF';
+      if (t.contains('🎬')) return '🎬 Vidéo'.tr;
+      return '📷 Photo'.tr;
+    case MessageType.audio:
+      final d = m.audioDurationSec;
+      return d == null
+          ? '🎤 Vocal'.tr
+          : '🎤 ${'Vocal'.tr} ${d ~/ 60}:${(d % 60).toString().padLeft(2, '0')}';
+    case MessageType.snap:
+      return '📸 Snap'.tr;
+    case MessageType.location:
+      return '📍 Position'.tr;
+    default:
+      return m.text ?? '';
+  }
+}
+
+/// Miniature d'un message cité : photo (ou image de la vidéo). Jamais pour
+/// un snap ni une photo sensible reçue.
+String? _miniatureCitation(MessageModel m, String myId) {
+  if (m.type != MessageType.image) return null;
+  final t = m.text ?? '';
+  if (m.senderId != myId &&
+      t.startsWith(ConversationController.prefixeSensible)) {
+    return null;
+  }
+  final u = t.contains('🎬') ? m.vignetteUrl : m.mediaUrl;
+  return (u ?? '').isEmpty ? null : u;
+}
+
+class _MiniatureCitation extends StatelessWidget {
+  final String url;
+  const _MiniatureCitation(this.url);
+  @override
+  Widget build(BuildContext context) {
+    const taille = 40.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: url.startsWith('http')
+          ? CachedNetworkImage(
+              imageUrl: url,
+              width: taille,
+              height: taille,
+              fit: BoxFit.cover,
+              memCacheWidth: 120,
+              errorWidget: (_, __, ___) =>
+                  const SizedBox(width: taille, height: taille))
+          : Image.file(File(url),
+              width: taille,
+              height: taille,
+              fit: BoxFit.cover,
+              cacheWidth: 120,
+              errorBuilder: (_, __, ___) =>
+                  const SizedBox(width: taille, height: taille)),
+    );
+  }
+}
+
 class _ReplyPreview extends StatelessWidget {
   final MessageModel replyTo;
   final bool isMine;
   final ConversationController ctrl;
+  // Affichée à l'intérieur de la bulle (message texte) ou au-dessus
+  final bool dansBulle;
   const _ReplyPreview(
-      {required this.replyTo, required this.isMine, required this.ctrl});
-  String get _preview {
-    switch (replyTo.type) {
-      case MessageType.image:
-        return '📷 Photo'.tr;
-      case MessageType.audio:
-        return '🎤 Vocal'.tr;
-      case MessageType.snap:
-        return '📸 Snap'.tr;
-      case MessageType.location:
-        return '📍 Localisation'.tr;
-      default:
-        return replyTo.text ?? '';
-    }
-  }
+      {required this.replyTo,
+      required this.isMine,
+      required this.ctrl,
+      this.dansBulle = false});
 
   @override
   Widget build(BuildContext context) {
     final isReplyMine = replyTo.senderId == ctrl.myId;
+    final surRose = isMine && !AppColors.clair;
+    final miniature = _miniatureCitation(replyTo, ctrl.myId);
     return Container(
-      constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
-      margin: const EdgeInsets.only(bottom: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: dansBulle
+          ? null
+          : BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
+      margin: EdgeInsets.only(bottom: dansBulle ? 5 : 3),
+      padding: EdgeInsets.fromLTRB(9, 5, miniature == null ? 9 : 5, 5),
       decoration: BoxDecoration(
-        color: isMine && !AppColors.clair
-            ? AppColors.surAccent.withValues(alpha: 0.1)
-            : AppColors.surface2,
+        color: surRose
+            ? Colors.black.withValues(alpha: 0.16)
+            : dansBulle
+                ? AppColors.bg.withValues(alpha: 0.55)
+                : AppColors.surface2,
         borderRadius: BorderRadius.circular(8),
         border: Border(
             left: BorderSide(
-                color: isMine && !AppColors.clair
-                    ? AppColors.surAccent.withValues(alpha: 0.38)
+                color: surRose
+                    ? AppColors.surAccent.withValues(alpha: 0.6)
                     : AppColors.accent,
                 width: 3)),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(isReplyMine ? 'Vous'.tr : ctrl.conversation.userName,
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: isMine && !AppColors.clair
-                    ? AppColors.surAccent.withValues(alpha: 0.7)
-                    : AppColors.textPrimary)),
-        const SizedBox(height: 2),
-        Text(_preview,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+      // Dans la bulle : miniature calée à droite (WhatsApp)
+      child: Row(
+          mainAxisSize: dansBulle ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+        Flexible(
+          fit: dansBulle ? FlexFit.tight : FlexFit.loose,
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(isReplyMine ? 'Vous'.tr : ctrl.conversation.userName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: surRose
+                            ? AppColors.surAccent.withValues(alpha: 0.85)
+                            : AppColors.accent)),
+                const SizedBox(height: 2),
+                Text(_apercuCitation(replyTo),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        color: surRose
+                            ? AppColors.surAccent.withValues(alpha: 0.8)
+                            : AppColors.textMuted)),
+              ]),
+        ),
+        if (miniature != null) ...[
+          const SizedBox(width: 8),
+          _MiniatureCitation(miniature),
+        ],
       ]),
     );
   }
@@ -814,11 +907,13 @@ class _ReplyPreview extends StatelessWidget {
 class _TextBubble extends StatelessWidget {
   final MessageModel msg;
   final bool isMine, isFirst, isLast;
+  final Widget? citation; // message auquel on répond, en tête de bulle
   const _TextBubble(
       {required this.msg,
       required this.isMine,
       this.isFirst = true,
-      this.isLast = true});
+      this.isLast = true,
+      this.citation});
 
   // Compilées une seule fois (et non à chaque bulle affichée). L'analyseur
   // ne connaît pas \p{Extended_Pictographic}, pourtant valide à l'exécution.
@@ -890,7 +985,7 @@ class _TextBubble extends StatelessWidget {
           gradient: isMine ? AppColors.gradientPink : null,
           color: isMine ? null : AppColors.surface2,
           borderRadius: borderRadius),
-      child: Stack(children: [
+      child: _avecCitation(Stack(children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 2),
           child: Text.rich(
@@ -905,7 +1000,18 @@ class _TextBubble extends StatelessWidget {
           ),
         ),
         Positioned(right: 0, bottom: 0, child: meta),
-      ]),
+      ])),
+    );
+  }
+
+  /// Citation au-dessus du texte, à la largeur de la bulle
+  Widget _avecCitation(Widget texte) {
+    final c = citation;
+    if (c == null) return texte;
+    return IntrinsicWidth(
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [c, texte]),
     );
   }
 }

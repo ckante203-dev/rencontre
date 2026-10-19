@@ -210,32 +210,21 @@ class _ReplyBar extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 2),
-          Text(_preview(msg),
+          Text(_apercuCitation(msg),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
         ])),
+        if (_miniatureCitation(msg, ctrl.myId) != null) ...[
+          _MiniatureCitation(_miniatureCitation(msg, ctrl.myId)!),
+          const SizedBox(width: 10),
+        ],
         GestureDetector(
             onTap: ctrl.cancelReply,
             child: Icon(Icons.close_rounded,
                 size: 16, color: AppColors.textMuted)),
       ]),
     );
-  }
-
-  String _preview(MessageModel msg) {
-    switch (msg.type) {
-      case MessageType.image:
-        return '📷 Photo'.tr;
-      case MessageType.audio:
-        return '🎤 Vocal'.tr;
-      case MessageType.snap:
-        return '📸 Snap'.tr;
-      case MessageType.location:
-        return '📍 Position'.tr;
-      default:
-        return msg.text ?? '';
-    }
   }
 }
 
@@ -651,6 +640,11 @@ class _ApercuPlusieursState extends State<_ApercuPlusieurs> {
   Future<void> _agrandir(int depart) async {
     final page = PageController(initialPage: depart);
     var index = depart;
+    // Double-toucher pour zoomer (le doigt déplace alors la photo) ; sinon
+    // le doigt change de photo. Un zoom au pincement captait le glissement.
+    final zoom = TransformationController();
+    var zoomee = false;
+    Offset toucher = Offset.zero;
     await Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
       builder: (_) => StatefulBuilder(
@@ -681,18 +675,46 @@ class _ApercuPlusieursState extends State<_ApercuPlusieurs> {
           ),
           body: PageView.builder(
             controller: page,
+            physics: zoomee
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
             itemCount: _chemins.length,
-            onPageChanged: (i) => setPlein(() => index = i),
-            itemBuilder: (_, i) => InteractiveViewer(
-              maxScale: 4,
-              child: Center(
-                  child: Image.file(File(_chemins[i]), fit: BoxFit.contain)),
-            ),
+            onPageChanged: (i) => setPlein(() {
+              index = i;
+              zoomee = false;
+              zoom.value = Matrix4.identity();
+            }),
+            itemBuilder: (_, i) {
+              final image = Center(
+                  child: Image.file(File(_chemins[i]), fit: BoxFit.contain));
+              return GestureDetector(
+                onDoubleTapDown: (d) => toucher = d.localPosition,
+                onDoubleTap: () => setPlein(() {
+                  if (zoomee) {
+                    zoom.value = Matrix4.identity();
+                    zoomee = false;
+                  } else {
+                    const x = 2.5;
+                    zoom.value = Matrix4.identity()
+                      ..translate(-toucher.dx * (x - 1), -toucher.dy * (x - 1))
+                      ..scale(x);
+                    zoomee = true;
+                  }
+                }),
+                child: zoomee && i == index
+                    ? InteractiveViewer(
+                        transformationController: zoom,
+                        maxScale: 5,
+                        child: image)
+                    : image,
+              );
+            },
           ),
         ),
       ),
     ));
     page.dispose();
+    zoom.dispose();
     if (mounted) setState(() {});
   }
 
