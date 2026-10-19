@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/interactions_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
 import 'package:path_provider/path_provider.dart';
@@ -1006,8 +1007,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         ]))))),
           ),
           if (!_longPressing && !_replyFocused)
-            CoucheStickers(s.stickers,
-                interactif: (st) => StickerInteractif(sticker: st, story: s)),
+            Positioned.fill(
+              child: MasqueSiMystere(
+                story: s,
+                child: Stack(children: [
+                  CoucheStickers(s.stickers,
+                      interactif: (st) =>
+                          StickerInteractif(sticker: st, story: s)),
+                ]),
+              ),
+            ),
           if (!_longPressing)
             // Légende placée par l'auteur (éditeur façon Snap)
             if (s.legendePlacee &&
@@ -1303,7 +1312,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     if (profileIndex != _profileIndex) {
       return _buildStaticPreview(_groups[profileIndex].first);
     }
-    return _buildMedia(_currentStory);
+    return VoileMystere(
+        story: _currentStory, child: _buildMedia(_currentStory));
   }
 
   Widget _buildStaticPreview(StoryModel s) {
@@ -1847,6 +1857,8 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
   // Filtre (filtres_story.dart) : choisi dans la caméra ou l'éditeur
   String _filtre = 'normal';
   bool _bandeauFiltres = false;
+  // 🔒 Story mystère : floutée tant qu'on ne m'a pas liké (SQL 091)
+  bool _mystere = false;
   // Effets de visage (photos) : visages repérés une fois, effet choisi
   ResultatVisages? _visages;
   bool _detectionVisage = false;
@@ -2102,6 +2114,7 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     final evenement = _avecEvenement ? _evenementEnCours : null;
     final edition = <String, dynamic>{
       if (evenement != null) 'evenement_id': evenement.id,
+      if (_mystere) 'mystere': true,
       // Vidéo : le filtre est appliqué à la lecture (stories.filtre, SQL 085)
       if (_isVideo && !filtre.neutre) 'filtre': filtre.id,
       if (_stickers.isNotEmpty)
@@ -3031,6 +3044,18 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                       actif: _effetVisage != 'aucun' || _bandeauVisage,
                       onTap: _ouvrirEffetsVisage,
                     ),
+                  _OutilVertical(
+                    icon: _mystere ? Icons.lock_rounded : Icons.lock_open_rounded,
+                    label: 'Mystère'.tr,
+                    actif: _mystere,
+                    onTap: () {
+                      setState(() => _mystere = !_mystere);
+                      HapticFeedback.selectionClick();
+                      _info(_mystere
+                          ? "🔒 Story mystère : floutée pour ceux qui ne t'ont pas encore liké. Ils devront te liker pour la voir 😏".tr
+                          : 'Story visible par tous'.tr);
+                    },
+                  ),
                   if (!_isVideo && !_cadrage.value.isIdentity())
                     _OutilVertical(
                       icon: Icons.crop_free_rounded,

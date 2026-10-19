@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/lecture_auto_stories.dart';
 import 'package:rencontre/features/home/stories_officielles.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
@@ -246,7 +247,10 @@ Color _couleur(String? hex) {
   return v != null ? Color(v) : const Color(0xFF6A3093);
 }
 
-Widget _apercu(StoryModel s, {double texte = 13}) {
+Widget _apercu(StoryModel s, {double texte = 13}) =>
+    VoileMystere(story: s, compact: true, child: _apercuBrut(s, texte: texte));
+
+Widget _apercuBrut(StoryModel s, {double texte = 13}) {
   if (s.isTextStory) {
     return Container(
       color: _couleur(s.bgColor),
@@ -409,6 +413,9 @@ class _CarteStory extends StatelessWidget {
           // Découvrir : la vidéo la plus visible se lit toute seule, sans
           // le son (comme Snapchat) ; sinon vignette + ▶
           if (s.isVideo && !compacte && s.mediaUrl.isNotEmpty)
+            if (s.mystere)
+              _apercu(s, texte: 15)
+            else
             ApercuVideoAuto(
               id: s.id,
               url: s.mediaUrl,

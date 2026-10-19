@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/home/widget/mystere_story.dart';
 import 'package:rencontre/features/home/widget/interactions_story.dart';
 import 'package:rencontre/features/home/widget/filtres_story.dart';
 import 'package:rencontre/features/home/widget/legende_story.dart';
@@ -641,9 +642,11 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
         // ✅ Story texte : pas de média, on affiche le texte sur sa
         // couleur de fond (avant : image vide → icône d'image cassée).
         if (s.isTextStory)
-          _TextStoryContent(story: s)
+          VoileMystere(story: s, child: _TextStoryContent(story: s))
         else
-        Center(
+        VoileMystere(
+         story: s,
+         child: Center(
           child: s.isVideo
               ? (_videoReady && _videoCtrl != null
                   ? AspectRatio(
@@ -663,6 +666,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                       size: 48),
                       memCacheWidth: 1440,
                 ),
+        ),
         ),
          DecoratedBox(
           decoration: BoxDecoration(
@@ -827,8 +831,15 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
           ]),
         ),
         if (!_replyFocused)
-          CoucheStickers(s.stickers,
-              interactif: (st) => StickerInteractif(sticker: st, story: s)),
+          Positioned.fill(
+            child: MasqueSiMystere(
+              story: s,
+              child: Stack(children: [
+                CoucheStickers(s.stickers,
+                    interactif: (st) => StickerInteractif(sticker: st, story: s)),
+              ]),
+            ),
+          ),
         if (!_replyFocused &&
             s.legendePlacee &&
             (s.caption ?? '').isNotEmpty)

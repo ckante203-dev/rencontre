@@ -37,6 +37,8 @@ class StoryModel {
   final List<StickerStory> stickers;
   // Filtre d'une vidéo, appliqué à la lecture (stories.filtre, SQL 085)
   final String? filtre;
+  // 🔒 Story mystère : floutée tant qu'on n'a pas liké l'auteur (SQL 091)
+  final bool mystere;
 
   const StoryModel({
     required this.id,
@@ -66,6 +68,7 @@ class StoryModel {
     this.videoFinMs,
     this.stickers = const [],
     this.filtre,
+    this.mystere = false,
   });
 
   bool get legendePlacee => legendeX != null && legendeY != null;
@@ -142,6 +145,7 @@ class StoryModel {
       videoFinMs: videoFinMs,
       stickers: stickers,
       filtre: filtre,
+      mystere: mystere,
     );
   }
 }
