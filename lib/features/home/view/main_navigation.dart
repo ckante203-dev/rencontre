@@ -372,10 +372,10 @@ class _NavItemMessages extends StatelessWidget {
               ),
               GetBuilder<ChatListController>(
                 builder: (ctrl) => Obx(() {
-                  // Messages privés + groupes (hors sourdine)
-                  final total = ctrl.conversations
-                          .fold<int>(0, (sum, c) => sum + c.unreadCount) +
-                      GroupesController.to.totalNonLus;
+                  // Conversations + groupes non lus, hors sourdine (comme
+                  // WhatsApp : nombre de discussions, pas de messages)
+                  final total = ctrl.conversationsNonLuesHorsSourdine +
+                      GroupesController.to.groupesNonLusHorsSourdine;
                   if (total == 0) return const SizedBox.shrink();
                   return Positioned(
                     top: -2,

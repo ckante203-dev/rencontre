@@ -27,6 +27,11 @@ class GroupesController extends GetxController {
       .where((g) => !g.sourdine)
       .fold(0, (n, g) => n + g.nonLus);
 
+  /// Nombre de GROUPES non lus (pas de messages), comme WhatsApp.
+  int get groupesNonLus => groupes.where((g) => g.nonLus > 0).length;
+  int get groupesNonLusHorsSourdine =>
+      groupes.where((g) => g.nonLus > 0 && !g.sourdine).length;
+
   // ── Actions au maintien (comme les conversations) ──
   // Épinglés / archivés : gardés sur le téléphone, comme pour les
   // conversations. Sourdine, « lu » et quitter : enregistrés sur le serveur.

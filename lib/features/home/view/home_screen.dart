@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:rencontre/features/chat/controller/chat_controller.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:rencontre/shared/widgets/badge_verifie.dart';
@@ -24,83 +25,24 @@ import 'package:rencontre/shared/models/user_model.dart';
 // ─── CONTROLLER MESSAGES NON LUS ─────────────────────────────────
 
 class UnreadMessagesController extends GetxController {
-  final _sb = Supabase.instance.client;
-  final RxMap<String, int> unreadByUser = <String, int>{}.obs;
-  RealtimeChannel? _channel;
-
-  @override
-  void onInit() {
-    super.onInit();
-    loadUnread();
-    _listenRealtime();
-  }
-
+  // ⚡ Plus de requêtes ni d'abonnement propres : avant, chaque message de
+  // la base (et chaque suppression) rechargeait TOUS les non-lus. Les
+  // pastilles des profils se lisent maintenant dans la liste des
+  // conversations, déjà tenue à jour en temps réel.
   Future<void> loadUnread() async {
-    final myId = _sb.auth.currentUser?.id;
-    if (myId == null) return;
-    try {
-      final convData = await _sb
-          .from('conversations')
-          .select('id')
-          .or('user1_id.eq.$myId,user2_id.eq.$myId');
-      final convIds = (convData as List).map((c) => c['id'] as String).toList();
-
-      if (convIds.isEmpty) {
-        unreadByUser.clear();
-        return;
-      }
-
-      final data = await _sb
-          .from('messages')
-          .select('sender_id')
-          .inFilter('conversation_id', convIds)
-          .neq('sender_id', myId)
-          .eq('is_read', false);
-
-      final Map<String, int> counts = {};
-      for (final msg in (data as List)) {
-        final senderId = msg['sender_id'] as String;
-        counts[senderId] = (counts[senderId] ?? 0) + 1;
-      }
-      unreadByUser.assignAll(counts);
-    } catch (e) {
-      debugPrint('loadUnread error: $e');
+    if (Get.isRegistered<ChatListController>()) {
+      Get.find<ChatListController>().conversations.refresh();
     }
   }
 
-  void _listenRealtime() {
-    final myId = _sb.auth.currentUser?.id;
-    if (myId == null) return;
-    _channel = _sb
-        .channel('public:messages:unread:$myId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'messages',
-          callback: (payload) => _scheduleLoadUnread(),
-        )
-        .subscribe();
-  }
-
-  // ✅ Anti-rebond : chaque événement messages déclenchait 2 requêtes ;
-  // une rafale de messages ne provoque plus qu'un seul rechargement.
-  Timer? _reloadDebounce;
-
-  void _scheduleLoadUnread() {
-    _reloadDebounce?.cancel();
-    _reloadDebounce = Timer(const Duration(milliseconds: 1500), () {
-      _reloadDebounce = null;
-      loadUnread();
-    });
-  }
-
-  int unreadFrom(String userId) => unreadByUser[userId] ?? 0;
-
-  @override
-  void onClose() {
-    _reloadDebounce?.cancel();
-    _channel?.unsubscribe();
-    super.onClose();
+  /// Messages non lus reçus de cette personne (pastille sur son profil).
+  int unreadFrom(String userId) {
+    if (!Get.isRegistered<ChatListController>()) return 0;
+    return Get.find<ChatListController>()
+            .conversations
+            .firstWhereOrNull((c) => c.userId == userId)
+            ?.unreadCount ??
+        0;
   }
 }
 

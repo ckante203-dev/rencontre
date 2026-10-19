@@ -184,8 +184,8 @@ class _FilterBar extends GetView<ChatListController> {
                 onTap: () => controller.setFilter(ChatFilter.unread),
                 // Nombre de conversations non lues (comme WhatsApp), pas
                 // de messages : il correspond aux lignes affichées.
-                badge: controller.conversationsNonLues > 0
-                    ? controller.conversationsNonLues
+                badge: _nonLuesAffichees(controller) > 0
+                    ? _nonLuesAffichees(controller)
                     : null,
               ),
               _FilterChip(
@@ -201,8 +201,8 @@ class _FilterBar extends GetView<ChatListController> {
                 active: controller.activeFilter.value == ChatFilter.groupes,
                 onTap: () => controller.setFilter(ChatFilter.groupes),
                 badge: Get.isRegistered<GroupesController>() &&
-                        GroupesController.to.totalNonLus > 0
-                    ? GroupesController.to.totalNonLus
+                        GroupesController.to.groupesNonLus > 0
+                    ? GroupesController.to.groupesNonLus
                     : null,
               ),
               _FilterChip(
@@ -1217,3 +1217,11 @@ class BadgeFlamme extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 //  RAPPEL : matchs à qui je n'ai encore rien écrit
 // ═══════════════════════════════════════════════════════════════════
+
+/// « Non lus » : conversations ET groupes non lus, c'est-à-dire les lignes
+/// affichées par ce filtre.
+int _nonLuesAffichees(ChatListController c) =>
+    c.conversationsNonLues +
+    (Get.isRegistered<GroupesController>()
+        ? GroupesController.to.groupesNonLus
+        : 0);

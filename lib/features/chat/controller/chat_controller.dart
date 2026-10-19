@@ -153,6 +153,10 @@ class ChatListController extends GetxController {
   int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
   int get conversationsNonLues =>
       conversations.where((c) => c.unreadCount > 0).length;
+  // Pastille de l'onglet Messages : conversations non lues hors sourdine
+  int get conversationsNonLuesHorsSourdine => conversations
+      .where((c) => c.unreadCount > 0 && !sourdineIds.contains(c.id))
+      .length;
 
   List<ConversationModel> get filteredConversations {
     List<ConversationModel> list;
@@ -1569,19 +1573,11 @@ class ConversationController extends GetxController
             }
           },
         )
-        // ✅ Messages supprimés par le serveur (purge éphémère) : les
-        // suppressions ne sont pas filtrables par conversation, on
-        // retire simplement l'id s'il est affiché.
-        .onPostgresChanges(
-          event: PostgresChangeEvent.delete,
-          schema: 'public',
-          table: 'messages',
-          callback: (payload) {
-            if (_closed) return;
-            final id = payload.oldRecord['id'];
-            if (id != null) messages.removeWhere((m) => m.id == id);
-          },
-        )
+        // ⚡ Plus d'écoute des suppressions : Supabase ne sait pas les
+        // filtrer, chaque conversation ouverte recevait celles de TOUTE la
+        // base (purge des messages lus toutes les 15 min). Les messages
+        // expirés sont retirés par la minuterie ci-dessous, ceux supprimés
+        // « pour tout le monde » au rattrapage (retour, notification).
         .subscribe((status, [error]) {
       if (_closed) return; // ✅ FIX — statuts ignorés après onClose
       if (status == RealtimeSubscribeStatus.subscribed) {
@@ -1627,6 +1623,10 @@ class ConversationController extends GetxController
       try {
         final data = await _service.fetchMessages(conversation.id);
         if (_closed) return;
+        // Messages supprimés « pour tout le monde » depuis l'affichage
+        final surServeur = {for (final r in data) r['id']};
+        messages.removeWhere(
+            (m) => !m.id.startsWith('temp_') && !surServeur.contains(m.id));
         final msgById = {for (final m in messages) m.id: m};
         bool receivedFromOther = false;
         for (final row in data) {
