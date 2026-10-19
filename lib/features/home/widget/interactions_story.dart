@@ -90,7 +90,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
   /// les réponses.
   bool _siAuteur() {
     if (!_auteur) return false;
-    _info('💬', 'C'est ta story : les réponses arrivent dans tes messages'.tr);
+    _info('💬', "C'est ta story : les réponses arrivent dans tes messages".tr);
     return true;
   }
 
