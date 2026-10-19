@@ -402,6 +402,19 @@ class HomeController extends GetxController with WidgetsBindingObserver {
 
   List<StoryModel> get discoverStories => _discoverOrder;
 
+  // ⭐ Zamu Stars (SQL 100) : badge et stories en tête de Découvrir
+  final RxSet<String> stars = <String>{}.obs;
+  bool estStar(String userId) => stars.contains(userId);
+
+  Future<void> chargerStars() async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('zamu_stars')
+          .select('user_id') as List;
+      stars.assignAll(rows.map((r) => r['user_id'] as String));
+    } catch (_) {} // SQL 100 pas encore passé
+  }
+
   void _buildDiscoverOrder() {
     final myUid = _myUid ?? '';
     bool vu(StoryModel s) =>
@@ -429,16 +442,19 @@ class HomeController extends GetxController with WidgetsBindingObserver {
     }
 
     unseen.shuffle(Random());
-    // ⚡ Boostés d'abord, puis Premium, puis le reste
-    final boostesUnseen = unseen.where((l) => storyBoostee(l.first.userId));
-    final premiumUnseen = unseen
+    // ⭐ Stars d'abord, puis ⚡ Boostés, puis Premium, puis le reste
+    final starsUnseen = unseen.where((l) => estStar(l.first.userId));
+    final reste = unseen.where((l) => !estStar(l.first.userId));
+    final boostesUnseen = reste.where((l) => storyBoostee(l.first.userId));
+    final premiumUnseen = reste
         .where((l) => !storyBoostee(l.first.userId) && l.first.isPremium);
-    final autresUnseen = unseen
+    final autresUnseen = reste
         .where((l) => !storyBoostee(l.first.userId) && !l.first.isPremium);
 
     dejaVues.sort((a, b) => a.last.createdAt.compareTo(b.last.createdAt));
 
     final fresh = [
+      ...starsUnseen,
       ...boostesUnseen,
       ...premiumUnseen,
       ...autresUnseen,
@@ -1205,6 +1221,7 @@ class HomeController extends GetxController with WidgetsBindingObserver {
   Future<void> loadStories() async {
     final uid = _myUid;
     if (uid == null) return;
+    await chargerStars();
     try {
       final data = await Supabase.instance.client
           .from('stories')

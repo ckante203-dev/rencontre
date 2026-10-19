@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/star/zamu_star.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/widget/musique_story.dart';
 import 'package:rencontre/features/home/widget/envoi_story.dart';
@@ -1285,6 +1286,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700)),
                             ),
+                            if (Get.isRegistered<HomeController>() &&
+                                Get.find<HomeController>().estStar(s.userId)) ...[
+                              const SizedBox(width: 5),
+                              const BadgeStar(size: 15),
+                            ],
                             if (s.visibility == 'amis') ...[
                               const SizedBox(width: 6),
                               Container(

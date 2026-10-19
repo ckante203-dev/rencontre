@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/star/zamu_star.dart';
 import 'package:rencontre/shared/widgets/badge_verifie.dart';
 import 'package:rencontre/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
@@ -720,6 +721,11 @@ class _ProfilDetailContentState extends State<_ProfilDetailContent> {
                             if (user.estVerifie) ...[
                               const SizedBox(width: 8),
                               const BadgeVerifie(size: 24),
+                            ],
+                            if (Get.isRegistered<HomeController>() &&
+                                Get.find<HomeController>().estStar(user.id)) ...[
+                              const SizedBox(width: 8),
+                              const BadgeStar(size: 24),
                             ],
                             if (user.isPremium) ...[
                               const SizedBox(width: 8),

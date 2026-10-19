@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:rencontre/features/star/zamu_star.dart';
+import 'package:rencontre/features/home/controller/home_controller.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/profil/vue/parrainage.dart';
 import 'package:rencontre/features/profil/vue/carte_partage.dart';
@@ -65,6 +67,7 @@ class EcranProfil extends StatelessWidget {
                   const SizedBox(height: 14),
                   _Completion(ctrl: ctrl),
                   _CarteVerification(ctrl: ctrl),
+                  const _CarteStar(),
                   CarteDispo(ctrl: ctrl),
                   const SizedBox(height: 14),
                   _CartePremium(ctrl: ctrl),
@@ -1063,6 +1066,64 @@ class _CarteVerificationState extends State<_CarteVerification> {
               ),
               Icon(Icons.chevron_right_rounded,
                   color: AppColors.surCarteDiscret),
+            ]),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+// ─── ZAMU STAR ───────────────────────────────────────────────────
+
+class _CarteStar extends StatelessWidget {
+  const _CarteStar();
+
+  @override
+  Widget build(BuildContext context) {
+    final home =
+        Get.isRegistered<HomeController>() ? Get.find<HomeController>() : null;
+    final uid = Supabase.instance.client.auth.currentUser?.id ?? '';
+    return Obx(() {
+      final star = home?.estStar(uid) ?? false;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+        child: GestureDetector(
+          onTap: () async {
+            await Get.to(() => const EcranZamuStar());
+            home?.chargerStars();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.carte,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: star ? const Color(0xFFFFB300) : AppColors.carteBord),
+            ),
+            child: Row(children: [
+              const BadgeStar(size: 40),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(star ? 'Tu es Zamu Star ⭐'.tr : 'Devenir Zamu Star'.tr,
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.surCarte)),
+                    const SizedBox(height: 2),
+                    Text(
+                        star
+                            ? 'Tes stories sont mises en avant auprès de tous'.tr
+                            : 'Tes stories vues par tous, badge ⭐'.tr,
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.surCarteDiscret)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: AppColors.surCarteDiscret),
             ]),
           ),
         ),

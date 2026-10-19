@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rencontre/features/star/zamu_star.dart';
 import 'package:rencontre/core/services/supabase_service.dart';
 import 'package:rencontre/features/home/widget/musique_story.dart';
 import 'package:rencontre/features/home/widget/mystere_story.dart';
@@ -832,6 +833,11 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700)),
                       ),
+                      if (Get.isRegistered<HomeController>() &&
+                          Get.find<HomeController>().estStar(s.userId)) ...[
+                        const SizedBox(width: 5),
+                        const BadgeStar(size: 15),
+                      ],
                       if (s.isOnline && !isOwner) ...[
                         const SizedBox(width: 6),
                         Container(
