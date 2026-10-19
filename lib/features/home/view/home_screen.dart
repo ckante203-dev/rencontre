@@ -183,52 +183,105 @@ class _TopBar extends GetView<HomeController> {
 
 // ─── BOUTON BOOST FLOTTANT (en bas à droite, au-dessus de « Profil ») ──
 
-class _BoutonBoost extends GetView<HomeController> {
+class _BoutonBoost extends StatefulWidget {
   const _BoutonBoost();
+  @override
+  State<_BoutonBoost> createState() => _BoutonBoostState();
+}
+
+/// ⚡ Boost : bat doucement et affiche le nombre de personnes en ligne
+/// quand il y a du monde autour (c'est là qu'un Boost rapporte le plus).
+class _BoutonBoostState extends State<_BoutonBoost>
+    with SingleTickerProviderStateMixin {
+  final controller = Get.find<HomeController>();
+  late final AnimationController _pulse = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: showBoostSheet,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Obx(() {
+      final moi = controller.myProfile;
+      final booste = moi?.estBooste ?? false;
+      final enLigne = controller.profiles
+          .where((u) => u.isOnline && u.id != moi?.id)
+          .length;
+      // Du monde et pas de Boost en cours : le bouton attire l'œil
+      final appel = !booste && enLigne >= 10;
+      final bouton = GestureDetector(
+        onTap: showBoostSheet,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                  color: Color(0x99FFA500), blurRadius: 14, spreadRadius: 1),
+              BoxShadow(
+                  color: Colors.black45, blurRadius: 8, offset: Offset(0, 3)),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-                color: Color(0x99FFA500), blurRadius: 14, spreadRadius: 1),
-            BoxShadow(
-                color: Colors.black45, blurRadius: 8, offset: Offset(0, 3)),
-          ],
-        ),
-        child: Stack(clipBehavior: Clip.none, children: [
-          const Center(
-              child: Icon(Icons.bolt_rounded, color: AppColors.surAccent, size: 30)),
-          // Point vert : Boost en cours
-          Obx(() => (controller.myProfile?.estBooste ?? false)
-              ? Positioned(
-                  top: 1,
-                  right: 1,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: AppColors.online,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.bg, width: 2),
-                    ),
+          child: Stack(clipBehavior: Clip.none, children: [
+            const Center(
+                child: Icon(Icons.bolt_rounded,
+                    color: AppColors.surAccent, size: 30)),
+            // Point vert : Boost en cours
+            if (booste)
+              Positioned(
+                top: 1,
+                right: 1,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: AppColors.online,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.bg, width: 2),
                   ),
-                )
-              : const SizedBox.shrink()),
-        ]),
-      ),
-    );
+                ),
+              ),
+            // Nombre de personnes en ligne autour
+            if (appel)
+              Positioned(
+                top: -6,
+                left: -10,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.online,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.bg, width: 1.5),
+                  ),
+                  child: Text('$enLigne',
+                      style: const TextStyle(
+                          color: AppColors.surAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900)),
+                ),
+              ),
+          ]),
+        ),
+      );
+      if (!appel) return bouton;
+      return ScaleTransition(
+        scale: Tween(begin: 1.0, end: 1.1)
+            .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
+        child: bouton,
+      );
+    });
   }
 }
 

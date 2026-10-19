@@ -263,6 +263,27 @@ class NotificationService {
   // ✅ NOTIFICATIONS INTELLIGENTES
   // ═══════════════════════════════════════════════════════════════
 
+  /// ⚡ Rappel local « C'est l'heure de booster » (pic d'affluence).
+  /// Le toucher ouvre la fenêtre Boost (type boost_bilan).
+  static const _idRappelBoost = 7701;
+
+  static Future<void> rappelBoost(DateTime quand) async {
+    await AwesomeNotifications().cancel(_idRappelBoost);
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: _idRappelBoost,
+        channelKey: 'smart',
+        title: "⚡ C'est l'heure de booster".tr,
+        body: 'Il y a le plus de monde en ligne en ce moment : passe en tête !'.tr,
+        payload: {'type': 'boost_bilan'},
+      ),
+      schedule: NotificationCalendar.fromDate(date: quand, allowWhileIdle: true),
+    );
+  }
+
+  static Future<void> annulerRappelBoost() =>
+      AwesomeNotifications().cancel(_idRappelBoost);
+
   /// Notif "X personnes ont vu ton profil"
   static Future<void> showProfileViewsNotification({
     required int viewCount,

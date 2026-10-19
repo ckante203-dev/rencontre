@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rencontre/core/services/notification_service.dart';
 import 'package:rencontre/core/services/revenue_cat_service.dart';
 import 'package:rencontre/core/theme/app_theme.dart';
 import 'package:rencontre/core/utils/app_routes.dart';
@@ -44,6 +46,7 @@ class _BoostSheetState extends State<_BoostSheet> {
     _chargerBilan();
     _chargerOffert();
     _chargerProgramme();
+    _chargerAffluence();
     _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       // Bilan rafraîchi toutes les 30 s pendant le Boost
@@ -90,6 +93,17 @@ class _BoostSheetState extends State<_BoostSheet> {
     }
   }
 
+  /// « soit 245 XOF / heure » pour les Boosts de plus d'une heure
+  static String? _parHeure(Package pkg) {
+    final id = pkg.storeProduct.identifier.split(':').first;
+    final heures = id == 'boost_2h' ? 2 : id == 'boost_24h' ? 24 : 1;
+    if (heures == 1) return null;
+    final prix = pkg.storeProduct.price / heures;
+    final p = prix >= 100 ? prix.round().toString() : prix.toStringAsFixed(2);
+    return 'soit @p @c / heure'
+        .trParams({'p': p, 'c': pkg.storeProduct.currencyCode});
+  }
+
   static String _restant(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -108,6 +122,185 @@ class _BoostSheetState extends State<_BoostSheet> {
     } catch (e) {
       debugPrint('boost_offert_etat: $e');
     }
+  }
+
+  // ─── 🕗 Affluence par heure (SQL 101) : le bon moment pour booster ───
+  Map<String, dynamic>? _affluence;
+  static const _cleRappel = 'rappel_boost_le';
+
+  Future<void> _chargerAffluence() async {
+    try {
+      final r = await Supabase.instance.client.rpc('affluence_heures');
+      if (mounted && r is Map) {
+        setState(() => _affluence = Map<String, dynamic>.from(r));
+      }
+    } catch (_) {} // SQL 101 pas encore passé : carte sans le graphique
+  }
+
+  /// Heure du pic d'affluence, à l'heure du téléphone (serveur en UTC)
+  int? get _heurePic {
+    final h = (_affluence?['meilleure'] as num?)?.toInt();
+    if (h == null) return null;
+    final n = DateTime.now().toUtc();
+    return DateTime.utc(n.year, n.month, n.day, h).toLocal().hour;
+  }
+
+  int get _enLigneAutour {
+    final moi = _home.myProfile?.id;
+    return _home.profiles.where((u) => u.isOnline && u.id != moi).length;
+  }
+
+  /// Bon moment = affluence actuelle proche du pic, ou beaucoup de monde
+  bool get _bonMoment {
+    final max = (_affluence?['max'] as num?)?.toDouble() ?? 0;
+    final mtn = (_affluence?['maintenant'] as num?)?.toDouble() ?? 0;
+    return _enLigneAutour >= 15 || (max > 0 && mtn >= max * 0.7);
+  }
+
+  DateTime? get _rappel {
+    try {
+      final v = GetStorage().read<String>(_cleRappel);
+      final d = v == null ? null : DateTime.tryParse(v);
+      return d != null && d.isAfter(DateTime.now()) ? d : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _programmerRappel() async {
+    final h = _heurePic;
+    if (h == null) return;
+    final n = DateTime.now();
+    var quand = DateTime(n.year, n.month, n.day, h);
+    if (quand.isBefore(n.add(const Duration(minutes: 5)))) {
+      quand = quand.add(const Duration(days: 1));
+    }
+    try {
+      await NotificationService.rappelBoost(quand);
+      GetStorage().write(_cleRappel, quand.toIso8601String());
+      setState(() {});
+      _snack('🔔 Rappel programmé à @h h'.trParams({'h': '$h'}));
+    } catch (e) {
+      debugPrint('Rappel Boost : $e');
+      _snack('Impossible de programmer le rappel'.tr);
+    }
+  }
+
+  Future<void> _annulerRappel() async {
+    await NotificationService.annulerRappelBoost();
+    GetStorage().remove(_cleRappel);
+    setState(() {});
+  }
+
+  /// Carte « En ce moment » : du monde autour ? bon moment ? sinon le pic
+  Widget _carteMoment() {
+    final enLigne = _enLigneAutour;
+    final pic = _heurePic;
+    final bon = _bonMoment;
+    final heures = (_affluence?['heures'] as Map?) ?? const {};
+    final max = (_affluence?['max'] as num?)?.toDouble() ?? 0;
+    final mtn = (_affluence?['maintenant'] as num?)?.toDouble() ?? 0;
+    final fois = (!bon && mtn > 0 && max > mtn * 1.4) ? (max / mtn) : null;
+    final heureUtc = DateTime.now().toUtc().hour;
+    final rappel = _rappel;
+    const vert = Color(0xFF30D158);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: (bon ? vert : AppColors.accent).withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: (bon ? vert : AppColors.accent).withValues(alpha: 0.55)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                  color: vert, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+                enLigne >= 2
+                    ? '@n personnes en ligne autour de toi'
+                        .trParams({'n': '$enLigne'})
+                    : 'En ce moment autour de toi'.tr,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+            bon
+                ? "🔥 C'est le bon moment : il y a du monde, passe devant tout le monde !"
+                    .tr
+                : pic != null
+                    ? (fois != null
+                        ? "🕗 Le pic, c'est vers @h h : ×@x plus de monde qu'en ce moment"
+                            .trParams({
+                            'h': '$pic',
+                            'x': fois.toStringAsFixed(1).replaceAll('.0', '').replaceAll('.', ',')
+                          })
+                        : "🕗 Le pic d'affluence, c'est vers @h h"
+                            .trParams({'h': '$pic'}))
+                    : '🕗 Le soir, entre 20 h et 23 h, il y a le plus de monde'.tr,
+            style: TextStyle(
+                fontSize: 12.5, height: 1.35, color: AppColors.textPrimary)),
+        // Petit graphique de la journée (heure actuelle en couleur)
+        if (heures.length >= 6 && max > 0) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 34,
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              for (var h = 0; h < 24; h++)
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    height: 4 +
+                        30 *
+                            (((heures['$h'] as num?)?.toDouble() ?? 0) / max)
+                                .clamp(0.0, 1.0),
+                    decoration: BoxDecoration(
+                      color: h == heureUtc
+                          ? (bon ? vert : AppColors.accent)
+                          : AppColors.textMuted.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+          const SizedBox(height: 2),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            for (final h in const [0, 6, 12, 18, 23])
+              Text(
+                  '${DateTime.utc(2026, 1, 1, h).toLocal().hour} h',
+                  style: TextStyle(fontSize: 9.5, color: AppColors.textMuted)),
+          ]),
+        ],
+        // Pas le bon moment : rappel au pic
+        if (!bon && pic != null) ...[
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: rappel == null ? _programmerRappel : _annulerRappel,
+            child: Text(
+                rappel == null
+                    ? '🔔 Me rappeler à @h h'.trParams({'h': '$pic'})
+                    : '🔔 Rappel à @h h · annuler'
+                        .trParams({'h': '${rappel.hour}'}),
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accent)),
+          ),
+        ],
+      ]),
+    );
   }
 
   // Boost offert programmé (table boosts_programmes, SQL 058)
@@ -415,6 +608,9 @@ class _BoostSheetState extends State<_BoostSheet> {
             ]),
           ),
 
+        // ─── En ce moment : du monde ? bon moment ? (hors Boost) ───
+        if (fin == null && !_activation) _carteMoment(),
+
         // ─── Bilan : en direct, ou celui du dernier Boost ───
         if (!_activation) _carteBilan(fin != null),
 
@@ -488,6 +684,10 @@ class _BoostSheetState extends State<_BoostSheet> {
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary)),
+                          if (_parHeure(pkg) != null)
+                            Text(_parHeure(pkg)!,
+                                style: TextStyle(
+                                    fontSize: 11, color: AppColors.textMuted)),
                           if (meilleur)
                             Text('⭐ Recommandé'.tr,
                                 style: TextStyle(
