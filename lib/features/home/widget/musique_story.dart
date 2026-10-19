@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 
 /// 🎵 Musique des stories (façon Snapchat / TikTok).
@@ -119,6 +120,23 @@ class MusiqueChoisie {
   MusiqueStory? get musique => MusiqueStory.parId(id);
 }
 
+/// Fichier local du morceau (téléchargé une fois, ~1 Mo, gardé en cache) :
+/// la lecture en ligne mettait plusieurs secondes à démarrer.
+Future<String?> fichierMusique(MusiqueStory m) async {
+  try {
+    return (await DefaultCacheManager().getSingleFile(m.url)).path;
+  } catch (e) {
+    debugPrint('Musique non téléchargée : $e');
+    return null;
+  }
+}
+
+/// Télécharge à l'avance la musique d'une story voisine.
+void prechargerMusique(String? id) {
+  final m = MusiqueStory.parId(id);
+  if (m != null) fichierMusique(m);
+}
+
 String _mmss(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
 /// Lecteur discret de la musique d'une story. Ne prend PAS le focus audio :
@@ -127,7 +145,8 @@ class LecteurMusique {
   final AudioPlayer _p = AudioPlayer();
   StreamSubscription<Duration>? _position;
   StreamSubscription<void>? _fin;
-  String? _id;
+  String? _id; // morceau voulu
+  String? _charge; // morceau chargé dans le lecteur
   int _debutMs = 0;
   int _jeton = 0;
   bool _pause = false;
@@ -165,16 +184,24 @@ class LecteurMusique {
     final m = MusiqueStory.parId(id);
     if (m == null) {
       _id = null;
-      await _p.stop();
+      await _p.pause();
       return;
     }
+    _id = m.id;
     _pause = false;
     _debutMs = debutMs;
     try {
-      if (_id != m.id) {
-        _id = m.id;
+      if (_charge != m.id) {
+        _charge = null;
         await _p.stop();
-        await _p.setSourceUrl(m.url);
+        final fichier = await fichierMusique(m);
+        if (jeton != _jeton) return;
+        if (fichier != null) {
+          await _p.setSource(DeviceFileSource(fichier));
+        } else {
+          await _p.setSourceUrl(m.url);
+        }
+        _charge = m.id;
       }
       if (jeton != _jeton) return;
       await _p.seek(Duration(milliseconds: debutMs));
@@ -199,7 +226,8 @@ class LecteurMusique {
   Future<void> arreter() async {
     _jeton++;
     _id = null;
-    await _p.stop();
+    // pause (pas stop) : le morceau reste prêt pour un retour instantané
+    await _p.pause();
   }
 
   void dispose() {
@@ -451,6 +479,7 @@ class _ChoixMusiqueState extends State<_ChoixMusique> {
                     child: Text('Aucun son trouvé'.tr,
                         style: const TextStyle(color: Colors.white54)))
                 : ListView.builder(
+                    padding: EdgeInsets.zero,
                     itemCount: liste.length,
                     itemBuilder: (_, i) => _ligne(liste[i]),
                   ),

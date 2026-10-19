@@ -366,6 +366,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _flatStoryAt(_flatIndexOfCurrent - 1),
     ]) {
       if (s == null || s.isTextStory) continue;
+      prechargerMusique(s.musique);
       if (s.isVideo) {
         if (!_videoCache.containsKey(s.id)) {
           final ctrl = VideoPlayerController.networkUrl(Uri.parse(s.mediaUrl));
@@ -3393,11 +3394,11 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
                                     fontWeight: FontWeight.w800)),
                           ),
                         ]),
-                        // Badge au-dessus de l'émoji (ne cache pas le titre)
+                        // Badge dans le coin haut droit (ne cache ni l'émoji ni le titre)
                         if (c.$5)
                           Positioned(
-                            top: 4,
-                            left: -4,
+                            top: -6,
+                            right: 6,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
@@ -3483,8 +3484,13 @@ class _AddStoryScreenState extends State<AddStoryScreen> {
     }
     if (nouveau == null || !mounted) return;
     final n = nouveau;
+    // Place libre : les stickers Rencontre ne s'empilent plus au même endroit
+    const places = [0.45, 0.25, 0.65, 0.35, 0.55, 0.75];
+    final y = places.firstWhere(
+        (p) => !_stickers.any((x) => x.estRencontre && (x.y - p).abs() < 0.09),
+        orElse: () => 0.45);
     setState(() {
-      _stickers.add(n.copyWith(x: 0.5, y: 0.45));
+      _stickers.add(n.copyWith(x: 0.5, y: y));
       _stickerIds.add(_prochainStickerId++);
     });
   }

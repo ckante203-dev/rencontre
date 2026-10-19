@@ -425,6 +425,7 @@ class _StoryFeedPageState extends State<_StoryFeedPage>
     WidgetsBinding.instance.addObserver(this);
     if (MusiqueStory.parId(widget.story.musique) != null) {
       _musique = LecteurMusique();
+      prechargerMusique(widget.story.musique); // page voisine : prête à jouer
     }
     _loadLikeState();
     if (widget.story.isVideo) {
