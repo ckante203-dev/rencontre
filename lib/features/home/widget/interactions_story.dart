@@ -184,7 +184,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
     if (ok != true || texte.isEmpty || !mounted) return;
     setState(() => _occupe = true);
     final envoye = await repondreAStory(
-        widget.story, '❓ « ${s.valeur} »\n$texte');
+        widget.story, '❓ « ${s.valeur} »\n$texte');
     if (!mounted) return;
     setState(() {
       _occupe = false;
@@ -203,7 +203,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
     HapticFeedback.mediumImpact();
     final quand = s.options.isNotEmpty ? ' (${s.options.first})' : '';
     final ok = await repondreAStory(
-        widget.story, '🙋 ${'Je viens !'.tr} « ${s.valeur}$quand »');
+        widget.story, '🙋 ${'Je viens !'.tr} « ${s.valeur}${quand} »');
     if (!mounted) return;
     setState(() {
       _occupe = false;
@@ -234,7 +234,7 @@ class _StickerInteractifState extends State<StickerInteractif> {
     setState(() => _occupe = true);
     HapticFeedback.mediumImpact();
     final ok = await repondreAStory(
-        widget.story, '🙋 ${'Je suis dispo !'.tr} « ${s.valeur} »');
+        widget.story, '🙋 ${'Je suis dispo !'.tr} « ${s.valeur} »');
     if (!mounted) return;
     setState(() {
       _occupe = false;
