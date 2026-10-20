@@ -25,7 +25,8 @@
 
 ## 2. À faire AVANT le compte Apple (possible maintenant, sans payer)
 
-- [ ] **Liens `zamu://profil/...`** : sur Android, ils passent par le canal natif `zamu/liens` (`MainActivity.kt`). **Rien d'équivalent sur iOS** (`AppDelegate.swift` ne déclare pas ce canal, et le schéma `zamu` n'est pas dans `Info.plist`). → Ajouter le schéma `zamu` dans `CFBundleURLTypes` + le canal dans `AppDelegate.swift` (ou passer au paquet `app_links` pour les deux plateformes).
+- [x] **Liens `zamu://profil/...`** (20/10/2026) : schéma `zamu` ajouté dans `Info.plist` et canal `zamu/liens` dans `AppDelegate.swift` (même contrat qu'Android : `initial` puis `lien`). À vérifier sur TestFlight. Penser aussi à la page web `p.html` : sur iPhone, renvoyer vers l'App Store au lieu du Play Store quand l'app n'est pas installée.
+- [x] **Découpe vidéo des stories** (20/10/2026) : canal `zamu/video` dans `AppDelegate.swift` (AVAssetExportSession « passthrough », sans réencodage). Sans lui, la vidéo entière était envoyée (le lecteur ne jouait que le passage choisi).
 - [x] Appels aux canaux natifs protégés : `liens_profil.dart` (`try/catch` → pas de plantage, les liens ne marchent simplement pas encore sur iPhone) et `appareil_service.dart` (`Platform.isAndroid`). Vérifié le 15/10/2026.
 - [ ] **Captures d'écran** : Android les bloque (`FLAG_SECURE` dans `MainActivity.kt`). iOS ne permet pas de bloquer une capture ; on peut **masquer l'app dans le sélecteur d'applis** (vue floutée dans `AppDelegate` quand l'app passe en arrière-plan) et **détecter** une capture (`UIApplication.userDidTakeScreenshotNotification`) pour prévenir l'autre personne (comme Snapchat).
 - [ ] Préparer les **textes et captures App Store** (FR + EN), l'**icône 1024×1024** sans transparence, la **politique de confidentialité** (déjà en ligne) et les **« étiquettes de confidentialité »** Apple (équivalent de la Sécurité des données Google).

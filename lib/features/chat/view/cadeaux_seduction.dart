@@ -20,10 +20,15 @@ import 'package:rencontre/features/profil/controleur/controleur_profil.dart';
 class CadeauSeduction {
   final String id, emoji, nom, texte;
   final List<Color> couleurs;
-  const CadeauSeduction(this.id, this.emoji, this.nom, this.texte, this.couleurs);
+  const CadeauSeduction(
+      this.id, this.emoji, this.nom, this.texte, this.couleurs);
 
   static const tous = [
-    CadeauSeduction('coeurs', '💖', 'Pluie de cœurs', '🎁 💖 Pluie de cœurs pour toi',
+    CadeauSeduction(
+        'coeurs',
+        '💖',
+        'Pluie de cœurs',
+        '🎁 💖 Pluie de cœurs pour toi',
         [Color(0xFFFF3CAC), Color(0xFFFF7EB3)]),
     CadeauSeduction('rose', '🌹', 'Une rose', '🎁 🌹 Une rose pour toi',
         [Color(0xFFD7263D), Color(0xFFFF5E78)]),
@@ -33,8 +38,8 @@ class CadeauSeduction {
         [Color(0xFFB0124B), Color(0xFFFF3CAC)]),
     CadeauSeduction('champagne', '🍾', 'Champagne', '🎁 🍾 On trinque ?',
         [Color(0xFFFFC107), Color(0xFFFF8A00)]),
-    CadeauSeduction('couronne', '👑', 'Ma reine / mon roi', '🎁 👑 Ma reine / mon roi',
-        [Color(0xFF7B2FFF), Color(0xFFFFC107)]),
+    CadeauSeduction('couronne', '👑', 'Ma reine / mon roi',
+        '🎁 👑 Ma reine / mon roi', [Color(0xFF7B2FFF), Color(0xFFFFC107)]),
   ];
 
   static CadeauSeduction? depuisTexte(String? texte) {
@@ -98,39 +103,47 @@ class _PluieEmojisState extends State<_PluieEmojis>
   @override
   Widget build(BuildContext context) {
     final taille = MediaQuery.of(context).size;
+    // Material transparent : sans lui, les Text posés dans l'Overlay n'ont
+    // pas de DefaultTextStyle et Flutter les souligne en jaune.
     return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: _a,
-        builder: (_, __) {
-          final t = _a.value;
-          return Stack(children: [
-            // Grand emoji au centre qui grossit puis s'efface
-            Center(
-              child: Opacity(
-                opacity: (t < 0.15 ? t / 0.15 : (1 - (t - 0.15) / 0.5))
-                    .clamp(0.0, 1.0),
-                child: Transform.scale(
-                  scale: 0.6 + Curves.elasticOut.transform(t.clamp(0.0, 0.6) / 0.6) * 1.2,
-                  child: Text(widget.emoji, style: const TextStyle(fontSize: 110)),
+      child: Material(
+        type: MaterialType.transparency,
+        child: AnimatedBuilder(
+          animation: _a,
+          builder: (_, __) {
+            final t = _a.value;
+            return Stack(children: [
+              // Grand emoji au centre qui grossit puis s'efface
+              Center(
+                child: Opacity(
+                  opacity: (t < 0.15 ? t / 0.15 : (1 - (t - 0.15) / 0.5))
+                      .clamp(0.0, 1.0),
+                  child: Transform.scale(
+                    scale: 0.6 +
+                        Curves.elasticOut.transform(t.clamp(0.0, 0.6) / 0.6) *
+                            1.2,
+                    child: Text(widget.emoji,
+                        style: const TextStyle(fontSize: 110)),
+                  ),
                 ),
               ),
-            ),
-            for (final (x, retard, tailleEmoji, balance) in _emojis)
-              if (t > retard)
-                Builder(builder: (_) {
-                  final p = ((t - retard) / (1 - retard)).clamp(0.0, 1.0);
-                  return Positioned(
-                    left: x * taille.width + sin(p * pi * 3) * balance,
-                    top: taille.height * (1.05 - p * 1.2),
-                    child: Opacity(
-                      opacity: (1 - p).clamp(0.0, 1.0),
-                      child: Text(widget.emoji,
-                          style: TextStyle(fontSize: tailleEmoji)),
-                    ),
-                  );
-                }),
-          ]);
-        },
+              for (final (x, retard, tailleEmoji, balance) in _emojis)
+                if (t > retard)
+                  Builder(builder: (_) {
+                    final p = ((t - retard) / (1 - retard)).clamp(0.0, 1.0);
+                    return Positioned(
+                      left: x * taille.width + sin(p * pi * 3) * balance,
+                      top: taille.height * (1.05 - p * 1.2),
+                      child: Opacity(
+                        opacity: (1 - p).clamp(0.0, 1.0),
+                        child: Text(widget.emoji,
+                            style: TextStyle(fontSize: tailleEmoji)),
+                      ),
+                    );
+                  }),
+            ]);
+          },
+        ),
       ),
     );
   }
@@ -143,7 +156,10 @@ class BulleCadeau extends StatelessWidget {
   final bool isMine;
   final String autreNom;
   const BulleCadeau(
-      {super.key, required this.texte, required this.isMine, required this.autreNom});
+      {super.key,
+      required this.texte,
+      required this.isMine,
+      required this.autreNom});
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +175,9 @@ class BulleCadeau extends StatelessWidget {
             : '@nom t\'offre 72 h de Premium'.trParams({'nom': autreNom}))
         : (c?.nom.tr ?? 'Cadeau'.tr);
     final sous = premium
-        ? (isMine ? 'Cadeau envoyé 🎁'.tr : 'Profite de tous les avantages 👑'.tr)
+        ? (isMine
+            ? 'Cadeau envoyé 🎁'.tr
+            : 'Profite de tous les avantages 👑'.tr)
         : (isMine ? 'Cadeau envoyé 🎁'.tr : 'Touche pour revoir'.tr);
     return GestureDetector(
       onTap: () async {
@@ -189,7 +207,8 @@ class BulleCadeau extends StatelessWidget {
           Text(emoji, style: const TextStyle(fontSize: 38)),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(titre,
                   style: const TextStyle(
                       color: AppColors.surAccent,
@@ -242,7 +261,8 @@ class _FeuilleCadeauxState extends State<_FeuilleCadeaux> {
     } catch (_) {} // SQL 099 pas encore passé
   }
 
-  DateTime? get _prochain => DateTime.tryParse('${_monCadeau?['prochain'] ?? ''}')?.toLocal();
+  DateTime? get _prochain =>
+      DateTime.tryParse('${_monCadeau?['prochain'] ?? ''}')?.toLocal();
   bool get _abonne => _monCadeau?['premium'] == true;
   bool get _disponible =>
       _abonne && (_prochain == null || _prochain!.isBefore(DateTime.now()));
@@ -276,11 +296,13 @@ class _FeuilleCadeauxState extends State<_FeuilleCadeaux> {
       actions: [
         TextButton(
             onPressed: () => Get.back(result: false),
-            child: Text('Annuler'.tr, style: TextStyle(color: AppColors.textMuted))),
+            child: Text('Annuler'.tr,
+                style: TextStyle(color: AppColors.textMuted))),
         TextButton(
             onPressed: () => Get.back(result: true),
             child: Text('Offrir 🎁'.tr,
-                style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800))),
+                style: TextStyle(
+                    color: AppColors.accent, fontWeight: FontWeight.w800))),
       ],
     ));
     if (ok != true) return;
@@ -331,7 +353,8 @@ class _FeuilleCadeauxState extends State<_FeuilleCadeaux> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 14),
             Text('🎁 ${'Séduis @nom'.trParams({'nom': _prenom})}',
@@ -368,7 +391,8 @@ class _FeuilleCadeauxState extends State<_FeuilleCadeaux> {
                       ),
                       child: Stack(children: [
                         Center(
-                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          child:
+                              Column(mainAxisSize: MainAxisSize.min, children: [
                             Text(c.emoji, style: const TextStyle(fontSize: 34)),
                             const SizedBox(height: 4),
                             Text(c.nom.tr,
@@ -420,9 +444,11 @@ class _FeuilleCadeauxState extends State<_FeuilleCadeaux> {
                           const SizedBox(height: 2),
                           Text(
                               !_abonne
-                                  ? 'Avec ton abonnement : un cadeau par mois'.tr
+                                  ? 'Avec ton abonnement : un cadeau par mois'
+                                      .tr
                                   : _disponible
-                                      ? 'Ton cadeau du mois est disponible 🎁'.tr
+                                      ? 'Ton cadeau du mois est disponible 🎁'
+                                          .tr
                                       : 'Prochain cadeau le @d'.trParams({
                                           'd':
                                               '${prochain!.day.toString().padLeft(2, '0')}/${prochain.month.toString().padLeft(2, '0')}'

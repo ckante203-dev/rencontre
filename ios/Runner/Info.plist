@@ -79,6 +79,16 @@
 				<string>com.googleusercontent.apps.70132643190-6c3po7iuqnov0feru6r5ufg0823ffajg</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.vybestyle.zamu.profil</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>zamu</string>
+			</array>
+		</dict>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
