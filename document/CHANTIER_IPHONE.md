@@ -16,7 +16,7 @@
 | Droits (entitlements) | `ios/Runner/Runner.entitlements` | Notifications push (`aps-environment`), Connexion avec Apple |
 | Connexion Google sur iOS | `Info.plist` → `CFBundleURLSchemes` | Schéma `com.googleusercontent.apps…` présent |
 | **Connexion avec Apple** | `auth_controller.dart` → `signInWithApple()` | Code déjà écrit (paquet `sign_in_with_apple`) — **obligatoire chez Apple** puisqu'on propose Google |
-| Version minimale | `ios/Podfile` | iOS 13 |
+| Version minimale | `ios/Podfile` | iOS 15.5 (exigé par ML Kit, 20/10/2026) |
 | Construction sans Mac | `codemagic.yaml` → workflow `ios-verification` | Compile l'app iPhone **sans signature** (vérifie que tout compile) |
 | RevenueCat | `revenue_cat_service.dart` | Choix automatique de la clé selon la plateforme ; constante `kRevenueCatIosApiKey` prête (vide) |
 | Identifiant d'appareil (bannissement) | `appareil_service.dart` | Protégé : ne s'exécute que sur Android (`Platform.isAndroid`) |
